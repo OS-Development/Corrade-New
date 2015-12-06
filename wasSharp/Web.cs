@@ -11,7 +11,7 @@ using System.Net;
 
 namespace wasSharp
 {
-    public class Web
+    public static class Web
     {
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
@@ -21,7 +21,7 @@ namespace wasSharp
         ///     data - a string to escape
         /// </remarks>
         /// <returns>an RFC3986 escaped string</returns>
-        public static Func<string, string> URIEscapeDataString =
+        public static readonly Func<string, string> URIEscapeDataString =
             ((Expression<Func<string, string>>)
                 (data => string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766)
                     .Select(o => Uri.EscapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
@@ -35,7 +35,7 @@ namespace wasSharp
         ///     data - a string to unescape
         /// </remarks>
         /// <returns>the resulting string</returns>
-        public static Func<string, string> URIUnescapeDataString =
+        public static readonly Func<string, string> URIUnescapeDataString =
             ((Expression<Func<string, string>>)
                 (data => string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766)
                     .Select(

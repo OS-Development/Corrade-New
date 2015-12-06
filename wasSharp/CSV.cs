@@ -12,7 +12,7 @@ using System.Text;
 
 namespace wasSharp
 {
-    public class CSV
+    public static class CSV
     {
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //

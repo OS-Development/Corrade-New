@@ -377,6 +377,8 @@
             this.SaveConfigurationDialog = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.Version = new System.Windows.Forms.Label();
+            this.AutoActivateGroupDelay = new System.Windows.Forms.TextBox();
+            this.pictureBox91 = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -569,6 +571,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).BeginInit();
             this.groupBox21.SuspendLayout();
             this.Status.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox91)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -628,7 +631,7 @@
             // 
             this.groupBox77.Controls.Add(this.pictureBox12);
             this.groupBox77.Controls.Add(this.ClientIdentificationTag);
-            this.groupBox77.Location = new System.Drawing.Point(36, 223);
+            this.groupBox77.Location = new System.Drawing.Point(35, 241);
             this.groupBox77.Name = "groupBox77";
             this.groupBox77.Size = new System.Drawing.Size(296, 55);
             this.groupBox77.TabIndex = 10;
@@ -732,7 +735,7 @@
             // 
             this.groupBox8.Controls.Add(this.pictureBox9);
             this.groupBox8.Controls.Add(this.GroupCreateFee);
-            this.groupBox8.Location = new System.Drawing.Point(300, 157);
+            this.groupBox8.Location = new System.Drawing.Point(167, 155);
             this.groupBox8.Name = "groupBox8";
             this.groupBox8.Size = new System.Drawing.Size(126, 57);
             this.groupBox8.TabIndex = 7;
@@ -760,11 +763,13 @@
             // 
             // groupBox7
             // 
+            this.groupBox7.Controls.Add(this.pictureBox91);
+            this.groupBox7.Controls.Add(this.AutoActivateGroupDelay);
             this.groupBox7.Controls.Add(this.pictureBox7);
             this.groupBox7.Controls.Add(this.AutoActivateGroup);
-            this.groupBox7.Location = new System.Drawing.Point(168, 156);
+            this.groupBox7.Location = new System.Drawing.Point(35, 155);
             this.groupBox7.Name = "groupBox7";
-            this.groupBox7.Size = new System.Drawing.Size(126, 57);
+            this.groupBox7.Size = new System.Drawing.Size(126, 80);
             this.groupBox7.TabIndex = 6;
             this.groupBox7.TabStop = false;
             this.groupBox7.Text = "Auto-Activate Group";
@@ -795,7 +800,7 @@
             // 
             this.groupBox6.Controls.Add(this.pictureBox8);
             this.groupBox6.Controls.Add(this.TOS);
-            this.groupBox6.Location = new System.Drawing.Point(36, 155);
+            this.groupBox6.Location = new System.Drawing.Point(299, 157);
             this.groupBox6.Name = "groupBox6";
             this.groupBox6.Size = new System.Drawing.Size(126, 58);
             this.groupBox6.TabIndex = 5;
@@ -1987,9 +1992,10 @@
             // 
             // HTTPServerPrefix
             // 
+            this.HTTPServerPrefix.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HTTPServerPrefix.Location = new System.Drawing.Point(7, 29);
             this.HTTPServerPrefix.Name = "HTTPServerPrefix";
-            this.HTTPServerPrefix.Size = new System.Drawing.Size(428, 22);
+            this.HTTPServerPrefix.Size = new System.Drawing.Size(428, 20);
             this.HTTPServerPrefix.TabIndex = 0;
             // 
             // groupBox40
@@ -4379,6 +4385,25 @@
             this.Version.TabIndex = 6;
             this.Version.Text = "                ";
             // 
+            // AutoActivateGroupDelay
+            // 
+            this.AutoActivateGroupDelay.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AutoActivateGroupDelay.Location = new System.Drawing.Point(16, 48);
+            this.AutoActivateGroupDelay.Name = "AutoActivateGroupDelay";
+            this.AutoActivateGroupDelay.Size = new System.Drawing.Size(68, 20);
+            this.AutoActivateGroupDelay.TabIndex = 11;
+            // 
+            // pictureBox91
+            // 
+            this.pictureBox91.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox91.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox91.Image")));
+            this.pictureBox91.Location = new System.Drawing.Point(90, 48);
+            this.pictureBox91.Name = "pictureBox91";
+            this.pictureBox91.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox91.TabIndex = 12;
+            this.pictureBox91.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox91, "The group activation delay.");
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -4655,6 +4680,7 @@
             this.groupBox21.ResumeLayout(false);
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox91)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -5009,6 +5035,8 @@
         private System.Windows.Forms.TextBox AESKey;
         private System.Windows.Forms.Button button10;
         private System.Windows.Forms.PictureBox pictureBox90;
+        private System.Windows.Forms.PictureBox pictureBox91;
+        private System.Windows.Forms.TextBox AutoActivateGroupDelay;
     }
 }
 

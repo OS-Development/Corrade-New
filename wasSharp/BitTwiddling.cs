@@ -6,7 +6,7 @@
 
 namespace wasSharp
 {
-    public class BitTwiddling
+    public static class BitTwiddling
     {
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //

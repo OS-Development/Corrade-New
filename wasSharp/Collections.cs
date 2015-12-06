@@ -11,7 +11,7 @@ using System.Xml.Serialization;
 
 namespace wasSharp
 {
-    public class Collections
+    public static class Collections
     {
         /// <summary>
         ///     A serializable dictionary class.

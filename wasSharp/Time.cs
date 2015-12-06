@@ -14,7 +14,7 @@ using System.Xml.Serialization;
 
 namespace wasSharp
 {
-    public class Time
+    public static class Time
     {
         public delegate void TimerCallback(object state);
 

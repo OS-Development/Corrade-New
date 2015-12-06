@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace wasSharp
 {
-    public class Cryptography
+    public static class Cryptography
     {
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //

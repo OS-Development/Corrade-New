@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace wasSharp
 {
-    public class IO
+    public static class IO
     {
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //

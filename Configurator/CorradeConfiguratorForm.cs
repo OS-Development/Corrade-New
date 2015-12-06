@@ -39,6 +39,7 @@ namespace Configurator
             mainForm.StartLocation.Text = corradeConfiguration.StartLocation;
             mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
             mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
+            mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.GroupCreateFee.Text = corradeConfiguration.GroupCreateFee.ToString();
             mainForm.ExpectedExitCode.Value = corradeConfiguration.ExitCodeExpected < -100 ||
                                               corradeConfiguration.ExitCodeExpected > 100
@@ -232,6 +233,10 @@ namespace Configurator
             }
             corradeConfiguration.AutoActivateGroup = mainForm.AutoActivateGroup.Checked;
             uint outUint;
+            if (uint.TryParse(mainForm.AutoActivateGroupDelay.Text, out outUint))
+            {
+                corradeConfiguration.AutoActivateGroupDelay = outUint;
+            }
             if (uint.TryParse(mainForm.GroupCreateFee.Text, out outUint))
             {
                 corradeConfiguration.GroupCreateFee = outUint;

@@ -9,7 +9,7 @@ using System.Linq.Expressions;
 
 namespace wasSharp
 {
-    public class Numerics
+    public static class Numerics
     {
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
@@ -26,20 +26,18 @@ namespace wasSharp
         ///     yMax - the upper bound of the target range
         /// </remarks>
         /// <returns>a value in x mapped in the range of y</returns>
-        public static Func<double, double, double, double, double, double> MapValueToRange =
+        public static readonly Func<double, double, double, double, double, double> MapValueToRange =
             ((Expression<Func<double, double, double, double, double, double>>)
                 ((value, xMin, xMax, yMin, yMax) => yMin + (
-                    (
-                        yMax - yMin
-                        )
-                    *
-                    (
-                        value - xMin
-                        )
-                    /
-                    (
-                        xMax - xMin
-                        )
-                    ))).Compile();
+                    yMax - yMin
+                    )
+                                                    *
+                                                    (
+                                                        value - xMin
+                                                        )
+                                                    /
+                                                    (
+                                                        xMax - xMin
+                                                        ))).Compile();
     }
 }

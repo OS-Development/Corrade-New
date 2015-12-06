@@ -45,7 +45,7 @@ namespace Corrade
                             }
                             // stop non default animations if requested
                             bool deanimate;
-                            switch (!bool.TryParse(wasInput(
+                            switch (bool.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
                                     corradeCommandParameters.Message)), out deanimate) && deanimate)
                             {

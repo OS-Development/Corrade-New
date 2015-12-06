@@ -11,7 +11,7 @@ using System.Linq.Expressions;
 
 namespace wasSharp
 {
-    public class KeyValue
+    public static class KeyValue
     {
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -20,7 +20,7 @@ namespace wasSharp
         ///     Returns the value of a key from a key-value data string.
         /// </summary>
         /// <returns>true if the key was found in data</returns>
-        public static Func<string, string, string> Get =
+        public static readonly Func<string, string, string> Get =
             ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
@@ -39,7 +39,7 @@ namespace wasSharp
         ///     a key-value data string or the empty string if either key or
         ///     value are empty
         /// </returns>
-        public static Func<string, string, string, string> Set =
+        public static readonly Func<string, string, string, string> Set =
             ((Expression<Func<string, string, string, string>>)
                 ((key, value, data) => string.Join("&", string.Join("&", data.Split('&')
                     .AsParallel()
@@ -55,7 +55,7 @@ namespace wasSharp
         ///     Deletes a key-value pair from a string referenced by a key.
         /// </summary>
         /// <returns>a key-value pair string</returns>
-        public static Func<string, string, string> Delete =
+        public static readonly Func<string, string, string> Delete =
             ((Expression<Func<string, string, string>>) ((key, data) => string.Join("&", data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
@@ -71,7 +71,7 @@ namespace wasSharp
         ///     Decodes key-value pair data to a dictionary.
         /// </summary>
         /// <returns>a dictionary containing the keys and values</returns>
-        public static Func<string, Dictionary<string, string>> Decode =
+        public static readonly Func<string, Dictionary<string, string>> Decode =
             ((Expression<Func<string, Dictionary<string, string>>>) (data => data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
@@ -91,7 +91,7 @@ namespace wasSharp
         ///     Serialises a dictionary to key-value data.
         /// </summary>
         /// <returns>a key-value data encoded string</returns>
-        public static Func<Dictionary<string, string>, string> Encode =
+        public static readonly Func<Dictionary<string, string>, string> Encode =
             ((Expression<Func<Dictionary<string, string>, string>>)
                 (data => string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value))))).Compile();
 
@@ -101,7 +101,7 @@ namespace wasSharp
         /// <summary>
         ///     Escapes a dictionary's keys and values for sending as POST data.
         /// </summary>
-        public static Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>> Escape =
+        public static readonly Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>> Escape =
             ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
                 ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
     }

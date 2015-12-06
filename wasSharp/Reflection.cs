@@ -11,7 +11,7 @@ using System.Reflection;
 
 namespace wasSharp
 {
-    public class Reflection
+    public static class Reflection
     {
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //

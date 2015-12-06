@@ -8,7 +8,7 @@ using System;
 
 namespace wasSharp
 {
-    public class Arrays
+    public static class Arrays
     {
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
@@ -22,13 +22,7 @@ namespace wasSharp
         /// <return>an array element</return>
         public static T GetElementAt<T>(T[] data, int index)
         {
-            switch (index < 0)
-            {
-                case true:
-                    return data[((index%data.Length) + data.Length)%data.Length];
-                default:
-                    return data[index%data.Length];
-            }
+            return index < 0 ? data[(index%data.Length + data.Length) % data.Length] : data[index % data.Length];
         }
 
         ///////////////////////////////////////////////////////////////////////////

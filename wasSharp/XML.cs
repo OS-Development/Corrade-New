@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace wasSharp
 {
-    public class XML
+    public static class XML
     {
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //

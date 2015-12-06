@@ -34,7 +34,7 @@ namespace Corrade
                     }
                     // stop non default animations if requested
                     bool deanimate;
-                    switch (!bool.TryParse(wasInput(
+                    switch (bool.TryParse(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
                             corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
@@ -47,7 +47,10 @@ namespace Corrade
                                 Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
                                     .Where(o => !lindenAnimations.Contains(o)),
-                                o => { Client.Self.AnimationStop(o, true); });
+                                o =>
+                                {
+                                    Client.Self.AnimationStop(o, true);
+                                });
                             break;
                     }
                     // Set the camera on the avatar.
