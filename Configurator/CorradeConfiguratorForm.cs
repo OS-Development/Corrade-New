@@ -730,11 +730,11 @@ namespace Configurator
 
                 switch (e.NewValue)
                 {
-                    case CheckState.Checked: // add permission
+                    case CheckState.Checked: // add notification
                         if (!group.Notifications.Contains(notification))
                             group.Notifications.Add(notification);
                         break;
-                    case CheckState.Unchecked: // remove permission
+                    case CheckState.Unchecked: // remove notification
                         if (group.Notifications.Contains(notification))
                             group.Notifications.Remove(notification);
                         break;
@@ -906,9 +906,9 @@ namespace Configurator
 
                 group = new Configuration.Group
                 {
-                    Name = XML.EscapeXML(GroupName.Text),
+                    Name = GroupName.Text,
                     UUID = groupUUID,
-                    Password = XML.EscapeXML(GroupPassword.Text),
+                    Password = GroupPassword.Text,
                     Workers = groupWorkers,
                     Schedules = groupSchedules,
                     DatabaseFile = GroupDatabaseFile.Text,
@@ -917,7 +917,7 @@ namespace Configurator
                     Permissions = permissions,
                     Notifications = notifications
                 };
-
+                
                 corradeConfiguration.Groups.Add(group);
                 Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = GroupName.Text, Tag = group};
             }));
@@ -1009,9 +1009,9 @@ namespace Configurator
 
                 Configuration.Group group = new Configuration.Group
                 {
-                    Name = XML.EscapeXML(GroupName.Text),
+                    Name = GroupName.Text,
                     UUID = groupUUID,
-                    Password = XML.EscapeXML(GroupPassword.Text),
+                    Password = GroupPassword.Text,
                     Workers = groupWorkers,
                     Schedules = groupSchedules,
                     DatabaseFile = GroupDatabaseFile.Text,

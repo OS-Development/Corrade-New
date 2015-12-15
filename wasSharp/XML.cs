@@ -4,9 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace wasSharp
@@ -125,5 +128,22 @@ namespace wasSharp
             });
             return string.Join("", result);
         }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Determines whether a string is safe to use in XML
+        /// </summary>
+        /// <param name="s">the string to check</param>
+        /// <returns>true in case the string is safe</returns>
+        public static readonly Func<string, bool> IsSafeXML =
+            ((Expression<Func<string, bool>>)
+                (data =>
+                    Regex.Replace(data,
+                        @"(" + string.Join("|", @"&amp;", @"&lt;", @"&gt;", @"&quot;", @"&apos;") + @")",
+                        @"", RegexOptions.IgnoreCase | RegexOptions.Multiline)
+                        .IndexOfAny(new[] {'&', '<', '>', '"', '\''})
+                        .Equals(-1))).Compile();
     }
 }
