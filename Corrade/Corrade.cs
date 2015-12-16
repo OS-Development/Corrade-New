@@ -3963,7 +3963,6 @@ namespace Corrade
                             Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
                             break;
                     }
-                    
                 },
                 corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
@@ -5128,8 +5127,6 @@ namespace Corrade
 
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
         {
-            // Ignore chat with no message (ie: start / stop typing)
-            if (string.IsNullOrEmpty(e.Message)) return;
             // Check if message is from muted agent or object and ignore it.
             if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(e.SourceID) || o.ID.Equals(e.OwnerID)))
                 return;
@@ -5138,6 +5135,24 @@ namespace Corrade
             Configuration.Group commandGroup;
             switch (e.Type)
             {
+                case ChatType.StartTyping:
+                case ChatType.StopTyping:
+                    Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
+                    // Send typing notifications.
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Configuration.Notifications.Typing, new TypingEventArgs
+                        {
+                            Action = !e.Type.Equals(
+                                ChatType.StartTyping)
+                                ? Action.STOP
+                                : Action.START,
+                            AgentUUID = e.SourceID,
+                            FirstName = fullName.First(),
+                            LastName = fullName.Last(),
+                            Entity = Entity.LOCAL
+                        }),
+                        corradeConfiguration.MaximumNotificationThreads);
+                    break;
                 case ChatType.OwnerSay:
                     // If this is a message from an agent, add the agent to the cache.
                     if (e.SourceType.Equals(ChatSourceType.Agent))
@@ -5576,7 +5591,17 @@ namespace Corrade
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Configuration.Notifications.Typing, args),
+                        () => SendNotification(Configuration.Notifications.Typing, new TypingEventArgs
+                        {
+                            Action = !args.IM.Dialog.Equals(
+                                InstantMessageDialog.StartTyping)
+                                ? Action.STOP
+                                : Action.START,
+                            AgentUUID = args.IM.FromAgentID,
+                            FirstName = fullName.First(),
+                            LastName = fullName.Last(),
+                            Entity = Entity.MESSAGE
+                        }),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.FriendshipOffered:
@@ -6557,7 +6582,7 @@ namespace Corrade
                 case true:
                     // Don't start if the expiration thread is already started.
                     if (GroupSchedulesThread != null) return;
-                    // Start sphere and beam effect expiration thread
+                    // Start the group expiration thread.
                     runGroupSchedulesThread = true;
                     GroupSchedulesThread = new Thread(() =>
                     {
@@ -8870,6 +8895,18 @@ namespace Corrade
             public UUID GroupUUID;
             public string LastName;
             public string Message;
+        }
+
+        /// <summary>
+        ///     An event for typing on local or instant message.
+        /// </summary>
+        private class TypingEventArgs : EventArgs
+        {
+            public Action Action;
+            public UUID AgentUUID;
+            public Entity Entity;
+            public string FirstName;
+            public string LastName;
         }
 
         /// <summary>

@@ -44,68 +44,77 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out offset))
                     {
-                        offset = Client.Self.SimPosition;
+                        offset = Vector3.Zero;
                     }
                     ViewerEffectType viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
+                    UUID targetUUID = UUID.Zero;
                     switch (viewerEffectType)
                     {
+                        case ViewerEffectType.SPHERE:
                         case ViewerEffectType.BEAM:
                         case ViewerEffectType.POINT:
                         case ViewerEffectType.LOOK:
-                            string item = wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message));
-                            UUID targetUUID;
-                            switch (!string.IsNullOrEmpty(item))
+                            switch (viewerEffectType)
                             {
-                                case true:
-                                    float range;
-                                    if (
-                                        !float.TryParse(
-                                            wasInput(KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
-                                                corradeCommandParameters.Message)),
-                                            out range))
+                                case ViewerEffectType.BEAM:
+                                case ViewerEffectType.POINT:
+                                case ViewerEffectType.LOOK:
+                                    string item = wasInput(KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                                        corradeCommandParameters.Message));
+                                    switch (!string.IsNullOrEmpty(item))
                                     {
-                                        range = corradeConfiguration.Range;
-                                    }
-                                    Primitive primitive = null;
-                                    if (
-                                        !FindPrimitive(
-                                            StringOrUUID(item),
-                                            range,
-                                            ref primitive, corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout))
-                                    {
-                                        throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                                    }
-                                    targetUUID = primitive.ID;
-                                    break;
-                                default:
-                                    if (
-                                        !UUID.TryParse(
-                                            wasInput(KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
-                                                corradeCommandParameters.Message)),
-                                            out targetUUID) && !AgentNameToUUID(
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        case true:
+                                            float range;
+                                            if (
+                                                !float.TryParse(
+                                                    wasInput(KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                                         corradeCommandParameters.Message)),
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    out range))
+                                            {
+                                                range = corradeConfiguration.Range;
+                                            }
+                                            Primitive primitive = null;
+                                            if (
+                                                !FindPrimitive(
+                                                    StringOrUUID(item),
+                                                    range,
+                                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout))
+                                            {
+                                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                            }
+                                            targetUUID = primitive.ID;
+                                            break;
+                                        default:
+                                            if (
+                                                !UUID.TryParse(
+                                                    wasInput(KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                                         corradeCommandParameters.Message)),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout,
-                                                ref targetUUID))
-                                    {
-                                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                                                    out targetUUID) && !AgentNameToUUID(
+                                                        wasInput(
+                                                            KeyValue.Get(
+                                                                wasOutput(
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                                corradeCommandParameters.Message)),
+                                                        wasInput(
+                                                            KeyValue.Get(
+                                                                wasOutput(
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                                corradeCommandParameters.Message)),
+                                                        corradeConfiguration.ServicesTimeout,
+                                                        corradeConfiguration.DataTimeout,
+                                                        ref targetUUID))
+                                            {
+                                                throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                                            }
+                                            break;
                                     }
                                     break;
                             }
