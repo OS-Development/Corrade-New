@@ -22,7 +22,7 @@ namespace wasSharp
         /// <return>an array element</return>
         public static T GetElementAt<T>(T[] data, int index)
         {
-            return index < 0 ? data[(index%data.Length + data.Length) % data.Length] : data[index % data.Length];
+            return index < 0 ? data[(index%data.Length + data.Length)%data.Length] : data[index%data.Length];
         }
 
         ///////////////////////////////////////////////////////////////////////////

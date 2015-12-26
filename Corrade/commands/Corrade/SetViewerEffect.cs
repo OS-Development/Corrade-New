@@ -131,11 +131,8 @@ namespace Corrade
                                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    LookAtType lookAtType = lookAtTypeInfo != null
-                                        ? (LookAtType)
-                                            lookAtTypeInfo
-                                                .GetValue(null)
-                                        : LookAtType.None;
+                                    LookAtType lookAtType = (LookAtType?) lookAtTypeInfo?.GetValue(null) ??
+                                                            LookAtType.None;
                                     Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
                                         lookAtType, effectUUID);
                                     if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
@@ -165,11 +162,8 @@ namespace Corrade
                                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    PointAtType pointAtType = pointAtTypeInfo != null
-                                        ? (PointAtType)
-                                            pointAtTypeInfo
-                                                .GetValue(null)
-                                        : PointAtType.None;
+                                    PointAtType pointAtType = (PointAtType?) pointAtTypeInfo?.GetValue(null) ??
+                                                              PointAtType.None;
                                     Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
                                         pointAtType, effectUUID);
                                     if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))

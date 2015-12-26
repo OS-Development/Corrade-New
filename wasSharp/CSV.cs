@@ -14,6 +14,22 @@ namespace wasSharp
 {
     public static class CSV
     {
+        private static readonly Func<IEnumerable<string>, string> directFromEnumerable =
+            ((Expression<Func<IEnumerable<string>, string>>) (data => string.Join(",",
+                data
+                    .Select(o => o.Replace("\"", "\"\""))
+                    .Select(o => o.IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1) ? o : "\"" + o + "\""))))
+                .Compile();
+
+        private static readonly Func<string, IEnumerable<KeyValuePair<string, string>>> directToKeyValue =
+            ((Expression<Func<string, IEnumerable<KeyValuePair<string, string>>>>)
+                (csv => ToEnumerable(csv).AsParallel().Select((o, p) => new {o, p})
+                    .GroupBy(q => q.p/2, q => q.o)
+                    .Select(o => o.ToArray())
+                    .TakeWhile(o => o.Length%2 == 0)
+                    .Where(o => !string.IsNullOrEmpty(o[0]) || !string.IsNullOrEmpty(o[1]))
+                    .ToDictionary(o => o[0], p => p[1]).Select(o => o))).Compile();
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -22,12 +38,10 @@ namespace wasSharp
         /// </summary>
         /// <returns>a commma-separated list of values</returns>
         /// <remarks>compliant with RFC 4180</remarks>
-        public static readonly Func<IEnumerable<string>, string> FromEnumerable =
-            ((Expression<Func<IEnumerable<string>, string>>) (data => string.Join(",",
-                data
-                    .Select(o => o.Replace("\"", "\"\""))
-                    .Select(o => o.IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1) ? o : "\"" + o + "\""))))
-                .Compile();
+        public static string FromEnumerable(IEnumerable<string> input)
+        {
+            return directFromEnumerable(input);
+        }
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -36,14 +50,10 @@ namespace wasSharp
         ///     Converts successive comma-separated values to key-value pairs.
         /// </summary>
         /// <returns>key-value pairs of successive comma-separate values</returns>
-        public static readonly Func<string, IEnumerable<KeyValuePair<string, string>>> ToKeyValue =
-            ((Expression<Func<string, IEnumerable<KeyValuePair<string, string>>>>)
-                (csv => ToEnumerable(csv).AsParallel().Select((o, p) => new {o, p})
-                    .GroupBy(q => q.p/2, q => q.o)
-                    .Select(o => o.ToArray())
-                    .TakeWhile(o => o.Length%2 == 0)
-                    .Where(o => !string.IsNullOrEmpty(o[0]) || !string.IsNullOrEmpty(o[1]))
-                    .ToDictionary(o => o[0], p => p[1]).Select(o => o))).Compile();
+        public static IEnumerable<KeyValuePair<string, string>> ToKeyValue(string input)
+        {
+            return directToKeyValue(input);
+        }
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //

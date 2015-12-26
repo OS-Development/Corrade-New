@@ -11,6 +11,10 @@ namespace wasSharp
 {
     public static class Numerics
     {
+        private static readonly Func<double, double, double, double, double, double> directMapValueToRange =
+            ((Expression<Func<double, double, double, double, double, double>>)
+                ((value, xMin, xMax, yMin, yMax) => yMin + (yMax - yMin)*(value - xMin)/(xMax - xMin))).Compile();
+
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
         ///////////////////////////////////////////////////////////////////////////
@@ -26,18 +30,9 @@ namespace wasSharp
         ///     yMax - the upper bound of the target range
         /// </remarks>
         /// <returns>a value in x mapped in the range of y</returns>
-        public static readonly Func<double, double, double, double, double, double> MapValueToRange =
-            ((Expression<Func<double, double, double, double, double, double>>)
-                ((value, xMin, xMax, yMin, yMax) => yMin + (
-                    yMax - yMin
-                    )
-                                                    *
-                                                    (
-                                                        value - xMin
-                                                        )
-                                                    /
-                                                    (
-                                                        xMax - xMin
-                                                        ))).Compile();
+        public static double MapValueToRange(double value, double xMin, double xMax, double yMin, double yMax)
+        {
+            return directMapValueToRange(value, xMin, xMax, yMin, yMax);
+        }
     }
 }

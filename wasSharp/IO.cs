@@ -4,13 +4,20 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace wasSharp
 {
     public static class IO
     {
+        private static readonly Func<string[], string> directPathCombine =
+            ((Expression<Func<string[], string>>) (data =>
+                data.Aggregate((x, y) => Path.Combine(x, y))))
+                .Compile();
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -21,7 +28,7 @@ namespace wasSharp
         /// <returns>a combined path</returns>
         public static string PathCombine(params string[] paths)
         {
-            return paths.Aggregate((x, y) => Path.Combine(x, y));
+            return directPathCombine(paths);
         }
     }
 }

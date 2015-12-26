@@ -13,14 +13,7 @@ namespace wasSharp
 {
     public static class KeyValue
     {
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns the value of a key from a key-value data string.
-        /// </summary>
-        /// <returns>true if the key was found in data</returns>
-        public static readonly Func<string, string, string> Get =
+        private static readonly Func<string, string, string> directGet =
             ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
@@ -29,17 +22,7 @@ namespace wasSharp
                 .Select(o => o[1])
                 .FirstOrDefault())).Compile();
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns a key-value data string with a key set to a given value.
-        /// </summary>
-        /// <returns>
-        ///     a key-value data string or the empty string if either key or
-        ///     value are empty
-        /// </returns>
-        public static readonly Func<string, string, string, string> Set =
+        private static readonly Func<string, string, string, string> directSet =
             ((Expression<Func<string, string, string, string>>)
                 ((key, value, data) => string.Join("&", string.Join("&", data.Split('&')
                     .AsParallel()
@@ -48,14 +31,7 @@ namespace wasSharp
                     .Where(o => !o[0].Equals(key))
                     .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value)))).Compile();
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Deletes a key-value pair from a string referenced by a key.
-        /// </summary>
-        /// <returns>a key-value pair string</returns>
-        public static readonly Func<string, string, string> Delete =
+        private static readonly Func<string, string, string> directDelete =
             ((Expression<Func<string, string, string>>) ((key, data) => string.Join("&", data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
@@ -64,14 +40,7 @@ namespace wasSharp
                 .Select(o => string.Join("=", o[0], o[1]))
                 .ToArray()))).Compile();
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Decodes key-value pair data to a dictionary.
-        /// </summary>
-        /// <returns>a dictionary containing the keys and values</returns>
-        public static readonly Func<string, Dictionary<string, string>> Decode =
+        private static readonly Func<string, Dictionary<string, string>> directDecode =
             ((Expression<Func<string, Dictionary<string, string>>>) (data => data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
@@ -84,6 +53,66 @@ namespace wasSharp
                 .GroupBy(o => o.k)
                 .ToDictionary(o => o.Key, p => p.First().v))).Compile();
 
+        private static readonly Func<Dictionary<string, string>, string> directEncode =
+            ((Expression<Func<Dictionary<string, string>, string>>)
+                (data => string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value))))).Compile();
+
+        private static readonly Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>
+            directEscape =
+                ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
+                    ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns the value of a key from a key-value data string.
+        /// </summary>
+        /// <returns>true if the key was found in data</returns>
+        public static string Get(string key, string data)
+        {
+            return directGet(key, data);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns a key-value data string with a key set to a given value.
+        /// </summary>
+        /// <returns>
+        ///     a key-value data string or the empty string if either key or
+        ///     value are empty
+        /// </returns>
+        public static string Set(string key, string value, string data)
+        {
+            return directSet(key, value, data);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Deletes a key-value pair from a string referenced by a key.
+        /// </summary>
+        /// <returns>a key-value pair string</returns>
+        public static string Delete(string key, string data)
+        {
+            return directDelete(key, data);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Decodes key-value pair data to a dictionary.
+        /// </summary>
+        /// <returns>a dictionary containing the keys and values</returns>
+        public static Dictionary<string, string> Decode(string data)
+        {
+            return directDecode(data);
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -91,9 +120,10 @@ namespace wasSharp
         ///     Serialises a dictionary to key-value data.
         /// </summary>
         /// <returns>a key-value data encoded string</returns>
-        public static readonly Func<Dictionary<string, string>, string> Encode =
-            ((Expression<Func<Dictionary<string, string>, string>>)
-                (data => string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value))))).Compile();
+        public static string Encode(Dictionary<string, string> data)
+        {
+            return directEncode(data);
+        }
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -101,8 +131,9 @@ namespace wasSharp
         /// <summary>
         ///     Escapes a dictionary's keys and values for sending as POST data.
         /// </summary>
-        public static readonly Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>> Escape =
-            ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
-                ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
+        public static Dictionary<string, string> Escape(Dictionary<string, string> data, Func<string, string> func)
+        {
+            return directEscape(data, func);
+        }
     }
 }

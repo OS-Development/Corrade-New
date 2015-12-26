@@ -16,6 +16,15 @@ namespace wasSharp
 {
     public static class XML
     {
+        private static readonly Func<string, bool> directIsSafeXML =
+            ((Expression<Func<string, bool>>)
+                (data =>
+                    Regex.Replace(data,
+                        @"(" + string.Join("|", @"&amp;", @"&lt;", @"&gt;", @"&quot;", @"&apos;") + @")",
+                        @"", RegexOptions.IgnoreCase | RegexOptions.Multiline)
+                        .IndexOfAny(new[] {'&', '<', '>', '"', '\''})
+                        .Equals(-1))).Compile();
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -137,13 +146,9 @@ namespace wasSharp
         /// </summary>
         /// <param name="s">the string to check</param>
         /// <returns>true in case the string is safe</returns>
-        public static readonly Func<string, bool> IsSafeXML =
-            ((Expression<Func<string, bool>>)
-                (data =>
-                    Regex.Replace(data,
-                        @"(" + string.Join("|", @"&amp;", @"&lt;", @"&gt;", @"&quot;", @"&apos;") + @")",
-                        @"", RegexOptions.IgnoreCase | RegexOptions.Multiline)
-                        .IndexOfAny(new[] {'&', '<', '>', '"', '\''})
-                        .Equals(-1))).Compile();
+        public static bool IsSafeXML(string data)
+        {
+            return directIsSafeXML(data);
+        }
     }
 }
