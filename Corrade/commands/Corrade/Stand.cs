@@ -47,10 +47,7 @@ namespace Corrade
                                 Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
                                     .Where(o => !lindenAnimations.Contains(o)),
-                                o =>
-                                {
-                                    Client.Self.AnimationStop(o, true);
-                                });
+                                o => { Client.Self.AnimationStop(o, true); });
                             break;
                     }
                     // Set the camera on the avatar.

@@ -133,22 +133,46 @@ namespace Corrade
                                                     StringComparison.Ordinal));
                                     LookAtType lookAtType = (LookAtType?) lookAtTypeInfo?.GetValue(null) ??
                                                             LookAtType.None;
+                                    // Check whether the specified UUID belongs to a different effect type.
+                                    lock (PointAtEffectsLock)
+                                    {
+                                        if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                            throw new ScriptException(
+                                                ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                    }
+                                    lock (BeamEffectsLock)
+                                    {
+                                        if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                            throw new ScriptException(
+                                                ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                    }
+                                    lock (SphereEffectsLock)
+                                    {
+                                        if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                            throw new ScriptException(
+                                                ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                    }
+                                    // Trigger the effect.
                                     Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
                                         lookAtType, effectUUID);
-                                    if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                    // Update the list of effects.
+                                    lock (LookAtEffectsLock)
                                     {
-                                        LookAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                    }
-                                    if (!lookAtType.Equals(LookAtType.None))
-                                    {
-                                        LookAtEffects.Add(new LookAtEffect
+                                        if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                         {
-                                            Effect = effectUUID,
-                                            Offset = offset,
-                                            Source = Client.Self.AgentID,
-                                            Target = targetUUID,
-                                            Type = lookAtType
-                                        });
+                                            LookAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                        }
+                                        if (!lookAtType.Equals(LookAtType.None))
+                                        {
+                                            LookAtEffects.Add(new LookAtEffect
+                                            {
+                                                Effect = effectUUID,
+                                                Offset = offset,
+                                                Source = Client.Self.AgentID,
+                                                Target = targetUUID,
+                                                Type = lookAtType
+                                            });
+                                        }
                                     }
                                     break;
                                 case ViewerEffectType.POINT:
@@ -164,22 +188,44 @@ namespace Corrade
                                                     StringComparison.Ordinal));
                                     PointAtType pointAtType = (PointAtType?) pointAtTypeInfo?.GetValue(null) ??
                                                               PointAtType.None;
+                                    // Check whether the specified UUID belongs to a different effect type.
+                                    lock (LookAtEffectsLock)
+                                    {
+                                        if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                            throw new ScriptException(
+                                                ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                    }
+                                    lock (BeamEffectsLock)
+                                    {
+                                        if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                            throw new ScriptException(
+                                                ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                    }
+                                    lock (SphereEffectsLock)
+                                    {
+                                        if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                            throw new ScriptException(
+                                                ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                    }
                                     Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
                                         pointAtType, effectUUID);
-                                    if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                    lock (PointAtEffectsLock)
                                     {
-                                        PointAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                    }
-                                    if (!pointAtType.Equals(PointAtType.None))
-                                    {
-                                        PointAtEffects.Add(new PointAtEffect
+                                        if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                         {
-                                            Effect = effectUUID,
-                                            Offset = offset,
-                                            Source = Client.Self.AgentID,
-                                            Target = targetUUID,
-                                            Type = pointAtType
-                                        });
+                                            PointAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                        }
+                                        if (!pointAtType.Equals(PointAtType.None))
+                                        {
+                                            PointAtEffects.Add(new PointAtEffect
+                                            {
+                                                Effect = effectUUID,
+                                                Offset = offset,
+                                                Source = Client.Self.AgentID,
+                                                Target = targetUUID,
+                                                Type = pointAtType
+                                            });
+                                        }
                                     }
                                     break;
                                 case ViewerEffectType.BEAM:
@@ -221,6 +267,25 @@ namespace Corrade
                                     switch (viewerEffectType)
                                     {
                                         case ViewerEffectType.BEAM:
+                                            // Check whether the specified UUID belongs to a different effect type.
+                                            lock (LookAtEffectsLock)
+                                            {
+                                                if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                                    throw new ScriptException(
+                                                        ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                            }
+                                            lock (PointAtEffectsLock)
+                                            {
+                                                if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                                    throw new ScriptException(
+                                                        ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                            }
+                                            lock (SphereEffectsLock)
+                                            {
+                                                if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                                    throw new ScriptException(
+                                                        ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                            }
                                             Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
                                                 color, duration, effectUUID);
                                             lock (BeamEffectsLock)
@@ -243,6 +308,25 @@ namespace Corrade
                                             }
                                             break;
                                         case ViewerEffectType.SPHERE:
+                                            // Check whether the specified UUID belongs to a different effect type.
+                                            lock (LookAtEffectsLock)
+                                            {
+                                                if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                                    throw new ScriptException(
+                                                        ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                            }
+                                            lock (PointAtEffectsLock)
+                                            {
+                                                if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                                    throw new ScriptException(
+                                                        ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                            }
+                                            lock (BeamEffectsLock)
+                                            {
+                                                if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
+                                                    throw new ScriptException(
+                                                        ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                            }
                                             Client.Self.SphereEffect(offset, color, duration,
                                                 effectUUID);
                                             lock (SphereEffectsLock)

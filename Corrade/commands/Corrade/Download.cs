@@ -268,14 +268,17 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     // Otherwise, save it to the specified file.
-                    using (StreamWriter sw = new StreamWriter(path, false, Encoding.UTF8))
+                    using (FileStream fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
-                        using (BinaryWriter bw = new BinaryWriter(sw.BaseStream, Encoding.UTF8))
+                        using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            bw.Write(assetData);
-                            bw.Flush();
+                            using (BinaryWriter binaryWriter = new BinaryWriter(streamWriter.BaseStream, Encoding.UTF8))
+                            {
+                                binaryWriter.Write(assetData);
+                                binaryWriter.Flush();
+                            }
+                            streamWriter.Flush();
                         }
-                        sw.Flush();
                     }
                 };
         }

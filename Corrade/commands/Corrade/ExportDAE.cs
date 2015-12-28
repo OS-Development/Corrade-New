@@ -343,10 +343,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         // Otherwise, save it to the specified file.
-                        using (StreamWriter fs = new StreamWriter(path, false, Encoding.UTF8))
+                        using (
+                            FileStream fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
                         {
-                            zipMemoryStream.WriteTo(fs.BaseStream);
-                            zipMemoryStream.Flush();
+                            using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                            {
+                                zipMemoryStream.WriteTo(streamWriter.BaseStream);
+                                zipMemoryStream.Flush();
+                            }
                         }
                     }
                 };

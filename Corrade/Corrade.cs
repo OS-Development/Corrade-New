@@ -331,7 +331,8 @@ namespace Corrade
             [Status(42798)] [Reflection.DescriptionAttribute("timeout retrieving notice")] TIMEOUT_RETRIEVING_NOTICE,
             [Status(06330)] [Reflection.DescriptionAttribute("no notice found")] NO_NOTICE_FOUND,
             [Status(20303)] [Reflection.DescriptionAttribute("notice does not contain attachment")] NOTICE_DOES_NOT_CONTAIN_ATTACHMENT,
-            [Status(10522)] [Reflection.DescriptionAttribute("failed to read log file")] FAILED_TO_READ_LOG_FILE
+            [Status(10522)] [Reflection.DescriptionAttribute("failed to read log file")] FAILED_TO_READ_LOG_FILE,
+            [Status(62646)] [Reflection.DescriptionAttribute("effect UUID belongs to different effect")] EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT
         }
 
         /// <summary>
@@ -445,6 +446,8 @@ namespace Corrade
         private static readonly object SphereEffectsLock = new object();
         private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
         private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
+        private static readonly object LookAtEffectsLock = new object();
+        private static readonly object PointAtEffectsLock = new object();
         private static readonly object RadarObjectsLock = new object();
         private static readonly object BeamEffectsLock = new object();
         private static readonly object InputFiltersLock = new object();
@@ -860,18 +863,21 @@ namespace Corrade
         {
             try
             {
-                using (
-                    StreamWriter writer =
-                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
+                lock (GroupMembersLock)
                 {
-                    XmlSerializer serializer =
-                        new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
-                    lock (GroupMembersLock)
+                    using (
+                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        serializer.Serialize(writer, GroupMembers);
+                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer =
+                                new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
+                            serializer.Serialize(writer, GroupMembers);
+                            writer.Flush();
+                        }
                     }
-                    writer.Flush();
                 }
             }
             catch (Exception e)
@@ -892,24 +898,30 @@ namespace Corrade
             {
                 try
                 {
-                    using (StreamReader stream = new StreamReader(groupMembersStateFile, Encoding.UTF8))
+                    using (
+                        FileStream fileStream = File.Open(groupMembersStateFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read))
                     {
-                        XmlSerializer serializer =
-                            new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
-                        Parallel.ForEach(
-                            (Collections.SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
-                            o =>
-                            {
-                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
-                                    return;
-                                lock (GroupMembersLock)
+                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer =
+                                new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
+                            Parallel.ForEach(
+                                (Collections.SerializableDictionary<UUID, HashSet<UUID>>)
+                                    serializer.Deserialize(streamReader),
+                                o =>
                                 {
-                                    if (!GroupMembers.Contains(o))
+                                    if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
+                                        return;
+                                    lock (GroupMembersLock)
                                     {
-                                        GroupMembers.Add(o.Key, o.Value);
+                                        if (!GroupMembers.Contains(o))
+                                        {
+                                            GroupMembers.Add(o.Key, o.Value);
+                                        }
                                     }
-                                }
-                            });
+                                });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -929,17 +941,20 @@ namespace Corrade
             SchedulesWatcher.EnableRaisingEvents = false;
             try
             {
-                using (
-                    StreamWriter writer =
-                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE), false, Encoding.UTF8))
+                lock (GroupSchedulesLock)
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
-                    lock (GroupSchedulesLock)
+                    using (
+                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        serializer.Serialize(writer, GroupSchedules);
+                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
+                            serializer.Serialize(writer, GroupSchedules);
+                            writer.Flush();
+                        }
                     }
-                    writer.Flush();
                 }
             }
             catch (Exception e)
@@ -962,28 +977,34 @@ namespace Corrade
             {
                 try
                 {
-                    using (StreamReader stream = new StreamReader(groupSchedulesStateFile, Encoding.UTF8))
+                    using (
+                        FileStream fileStream = File.Open(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read))
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
-                        Parallel.ForEach((HashSet<GroupSchedule>) serializer.Deserialize(stream),
-                            o =>
-                            {
-                                if (
-                                    !corradeConfiguration.Groups.AsParallel()
-                                        .Any(
-                                            p =>
-                                                p.UUID.Equals(o.Group.UUID) &&
-                                                !(p.PermissionMask & (uint) Configuration.Permissions.Schedule).Equals(0) &&
-                                                !p.Schedules.Equals(0)))
-                                    return;
-                                lock (GroupSchedulesLock)
+                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
+                            Parallel.ForEach((HashSet<GroupSchedule>) serializer.Deserialize(streamReader),
+                                o =>
                                 {
-                                    if (!GroupSchedules.Contains(o))
+                                    if (
+                                        !corradeConfiguration.Groups.AsParallel()
+                                            .Any(
+                                                p =>
+                                                    p.UUID.Equals(o.Group.UUID) &&
+                                                    !(p.PermissionMask & (uint) Configuration.Permissions.Schedule)
+                                                        .Equals(0) &&
+                                                    !p.Schedules.Equals(0)))
+                                        return;
+                                    lock (GroupSchedulesLock)
                                     {
-                                        GroupSchedules.Add(o);
+                                        if (!GroupSchedules.Contains(o))
+                                        {
+                                            GroupSchedules.Add(o);
+                                        }
                                     }
-                                }
-                            });
+                                });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1004,17 +1025,20 @@ namespace Corrade
             NotificationsWatcher.EnableRaisingEvents = false;
             try
             {
-                using (
-                    StreamWriter writer =
-                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
+                lock (GroupNotificationsLock)
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                    lock (GroupNotificationsLock)
+                    using (
+                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        serializer.Serialize(writer, GroupNotifications);
+                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                            serializer.Serialize(writer, GroupNotifications);
+                            writer.Flush();
+                        }
                     }
-                    writer.Flush();
                 }
             }
             catch (Exception e)
@@ -1037,22 +1061,27 @@ namespace Corrade
             {
                 try
                 {
-                    using (StreamReader stream = new StreamReader(groupNotificationsStateFile, Encoding.UTF8))
+                    using (
+                        FileStream fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read))
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                        Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(stream),
-                            o =>
-                            {
-                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.Name.Equals(o.GroupName)))
-                                    return;
-                                lock (GroupNotificationsLock)
+                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                            Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(streamReader),
+                                o =>
                                 {
-                                    if (!GroupNotifications.Contains(o))
+                                    if (!corradeConfiguration.Groups.AsParallel().Any(p => p.Name.Equals(o.GroupName)))
+                                        return;
+                                    lock (GroupNotificationsLock)
                                     {
-                                        GroupNotifications.Add(o);
+                                        if (!GroupNotifications.Contains(o))
+                                        {
+                                            GroupNotifications.Add(o);
+                                        }
                                     }
-                                }
-                            });
+                                });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1072,32 +1101,33 @@ namespace Corrade
         {
             try
             {
-                using (
-                    StreamWriter writer =
-                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), false, Encoding.UTF8))
+                lock (ClientInstanceSelfLock)
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
-                    AgentMovement movement;
-                    lock (ClientInstanceSelfLock)
+                    using (
+                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        movement = new AgentMovement
+                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            AlwaysRun = Client.Self.Movement.AlwaysRun,
-                            AutoResetControls = Client.Self.Movement.AutoResetControls,
-                            Away = Client.Self.Movement.Away,
-                            BodyRotation = Client.Self.Movement.BodyRotation,
-                            Flags = Client.Self.Movement.Flags,
-                            Fly = Client.Self.Movement.Fly,
-                            HeadRotation = Client.Self.Movement.HeadRotation,
-                            Mouselook = Client.Self.Movement.Mouselook,
-                            SitOnGround = Client.Self.Movement.SitOnGround,
-                            StandUp = Client.Self.Movement.StandUp,
-                            State = Client.Self.Movement.State
-                        };
+                            XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
+                            serializer.Serialize(writer, new AgentMovement
+                            {
+                                AlwaysRun = Client.Self.Movement.AlwaysRun,
+                                AutoResetControls = Client.Self.Movement.AutoResetControls,
+                                Away = Client.Self.Movement.Away,
+                                BodyRotation = Client.Self.Movement.BodyRotation,
+                                Flags = Client.Self.Movement.Flags,
+                                Fly = Client.Self.Movement.Fly,
+                                HeadRotation = Client.Self.Movement.HeadRotation,
+                                Mouselook = Client.Self.Movement.Mouselook,
+                                SitOnGround = Client.Self.Movement.SitOnGround,
+                                StandUp = Client.Self.Movement.StandUp,
+                                State = Client.Self.Movement.State
+                            });
+                            writer.Flush();
+                        }
                     }
-                    serializer.Serialize(writer, movement);
-                    writer.Flush();
                 }
             }
             catch (Exception e)
@@ -1118,24 +1148,30 @@ namespace Corrade
             {
                 try
                 {
-                    using (StreamReader stream = new StreamReader(movementStateFile, Encoding.UTF8))
+                    lock (ClientInstanceSelfLock)
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
-                        AgentMovement movement = (AgentMovement) serializer.Deserialize(stream);
-                        lock (ClientInstanceSelfLock)
+                        using (
+                            FileStream fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
-                            Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
-                            Client.Self.Movement.Away = movement.Away;
-                            Client.Self.Movement.BodyRotation = movement.BodyRotation;
-                            Client.Self.Movement.Flags = movement.Flags;
-                            Client.Self.Movement.Fly = movement.Fly;
-                            Client.Self.Movement.HeadRotation = movement.HeadRotation;
-                            Client.Self.Movement.Mouselook = movement.Mouselook;
-                            Client.Self.Movement.SitOnGround = movement.SitOnGround;
-                            Client.Self.Movement.StandUp = movement.StandUp;
-                            Client.Self.Movement.State = movement.State;
-                            Client.Self.Movement.SendUpdate(true);
+                            using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
+                                AgentMovement movement = (AgentMovement) serializer.Deserialize(streamReader);
+
+                                Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
+                                Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
+                                Client.Self.Movement.Away = movement.Away;
+                                Client.Self.Movement.BodyRotation = movement.BodyRotation;
+                                Client.Self.Movement.Flags = movement.Flags;
+                                Client.Self.Movement.Fly = movement.Fly;
+                                Client.Self.Movement.HeadRotation = movement.HeadRotation;
+                                Client.Self.Movement.Mouselook = movement.Mouselook;
+                                Client.Self.Movement.SitOnGround = movement.SitOnGround;
+                                Client.Self.Movement.StandUp = movement.StandUp;
+                                Client.Self.Movement.State = movement.State;
+                                Client.Self.Movement.SendUpdate(true);
+                            }
                         }
                     }
                 }
@@ -2639,11 +2675,19 @@ namespace Corrade
                 ? corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         groupUUID.Equals(o.UUID) &&
-                        password.Equals(o.Password, StringComparison.Ordinal))
+                        (password.Equals(o.Password, StringComparison.Ordinal) ||
+                         Utils.MD5String(password)
+                             .Equals(Utils.MD5String(o.Password), StringComparison.OrdinalIgnoreCase) ||
+                         Utils.SHA1String(password)
+                             .Equals(Utils.SHA1String(o.Password), StringComparison.OrdinalIgnoreCase)))
                 : corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
-                        password.Equals(o.Password, StringComparison.Ordinal));
+                        (password.Equals(o.Password, StringComparison.Ordinal) ||
+                         Utils.MD5String(password)
+                             .Equals(Utils.MD5String(o.Password), StringComparison.OrdinalIgnoreCase) ||
+                         Utils.SHA1String(password)
+                             .Equals(Utils.SHA1String(o.Password), StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <summary>
@@ -3929,11 +3973,15 @@ namespace Corrade
                             lock (ClientLogFileLock)
                             {
                                 using (
-                                    StreamWriter logWriter =
-                                        new StreamWriter(corradeConfiguration.ClientLogFile, true, Encoding.UTF8))
+                                    FileStream fileStream = File.Open(corradeConfiguration.ClientLogFile,
+                                        FileMode.Append,
+                                        FileAccess.Write, FileShare.None))
                                 {
-                                    logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
-                                    //logWriter.Flush();
+                                    using (StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                    {
+                                        logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
+                                            output.ToArray()));
+                                    }
                                 }
                             }
                         }
@@ -4003,14 +4051,17 @@ namespace Corrade
                             lock (ClientLogFileLock)
                             {
                                 using (
-                                    StreamWriter logWriter =
-                                        new StreamWriter(corradeConfiguration.ClientLogFile, true, Encoding.UTF8))
+                                    FileStream fileStream = File.Open(corradeConfiguration.ClientLogFile,
+                                        FileMode.Append,
+                                        FileAccess.Write, FileShare.None))
                                 {
-                                    foreach (string message in output)
+                                    using (StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8))
                                     {
-                                        logWriter.WriteLine(message);
+                                        foreach (string message in output)
+                                        {
+                                            logWriter.WriteLine(message);
+                                        }
                                     }
-                                    //logWriter.Flush();
                                 }
                             }
                         }
@@ -4934,9 +4985,9 @@ namespace Corrade
                         }
                         using (Stream responseStream = response.OutputStream)
                         {
-                            using (BinaryWriter responseStreamWriter = new BinaryWriter(responseStream))
+                            using (BinaryWriter responseBinaryWriter = new BinaryWriter(responseStream))
                             {
-                                responseStreamWriter.Write(data);
+                                responseBinaryWriter.Write(data);
                             }
                         }
                     }
@@ -5221,21 +5272,22 @@ namespace Corrade
                                 lock (LocalLogFileLock)
                                 {
                                     using (
-                                        StreamWriter logWriter =
-                                            new StreamWriter(
-                                                Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
-                                                    Client.Network.CurrentSim.Name) +
-                                                "." +
-                                                CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                        FileStream fileStream =
+                                            File.Open(Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
+                                                Client.Network.CurrentSim.Name) +
+                                                      "." +
+                                                      CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
+                                                FileAccess.Write, FileShare.None))
                                     {
-                                        logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
-                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                Utils.EnUsCulture.DateTimeFormat),
-                                            fullName.First(), fullName.Last(),
-                                            Enum.GetName(typeof (ChatType), e.Type),
-                                            e.Message);
-                                        //logWriter.Flush();
-                                        //logWriter.Close();
+                                        using (StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                        {
+                                            logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                    Utils.EnUsCulture.DateTimeFormat),
+                                                fullName.First(), fullName.Last(),
+                                                Enum.GetName(typeof (ChatType), e.Type),
+                                                e.Message);
+                                        }
                                     }
                                 }
                             }
@@ -5514,7 +5566,7 @@ namespace Corrade
 
                     break;
                 case LoginStatus.Failed:
-                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason, e.Message);
                     ConnectionSemaphores['l'].Set();
                     break;
             }
@@ -5876,19 +5928,21 @@ namespace Corrade
                                             lock (GroupLogFileLock)
                                             {
                                                 using (
-                                                    StreamWriter logWriter = new StreamWriter(o.ChatLog, true,
-                                                        Encoding.UTF8)
-                                                    )
+                                                    FileStream fileStream = File.Open(o.ChatLog, FileMode.Append,
+                                                        FileAccess.Write, FileShare.None))
                                                 {
-                                                    logWriter.WriteLine(
-                                                        CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            Utils.EnUsCulture.DateTimeFormat),
-                                                        fullName.First(),
-                                                        fullName.Last(),
-                                                        args.IM.Message);
-                                                    //logWriter.Flush();
-                                                    //logWriter.Close();
+                                                    using (
+                                                        StreamWriter logWriter = new StreamWriter(fileStream,
+                                                            Encoding.UTF8))
+                                                    {
+                                                        logWriter.WriteLine(
+                                                            CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                Utils.EnUsCulture.DateTimeFormat),
+                                                            fullName.First(),
+                                                            fullName.Last(),
+                                                            args.IM.Message);
+                                                    }
                                                 }
                                             }
                                         }
@@ -5936,22 +5990,25 @@ namespace Corrade
                                         lock (InstantMessageLogFileLock)
                                         {
                                             using (
-                                                StreamWriter logWriter =
-                                                    new StreamWriter(
+                                                FileStream fileStream =
+                                                    File.Open(
                                                         Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
                                                             args.IM.FromAgentName) +
-                                                        "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8)
-                                                )
+                                                        "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
+                                                        FileAccess.Write, FileShare.None))
                                             {
-                                                logWriter.WriteLine(
-                                                    CORRADE_CONSTANTS.INSTANT_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        Utils.EnUsCulture.DateTimeFormat),
-                                                    fullName.First(),
-                                                    fullName.Last(),
-                                                    args.IM.Message);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter = new StreamWriter(fileStream,
+                                                        Encoding.UTF8))
+                                                {
+                                                    logWriter.WriteLine(
+                                                        CORRADE_CONSTANTS.INSTANT_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            Utils.EnUsCulture.DateTimeFormat),
+                                                        fullName.First(),
+                                                        fullName.Last(),
+                                                        args.IM.Message);
+                                                }
                                             }
                                         }
                                     }
@@ -5986,20 +6043,25 @@ namespace Corrade
                                         lock (RegionLogFileLock)
                                         {
                                             using (
-                                                StreamWriter logWriter =
-                                                    new StreamWriter(
+                                                FileStream fileStream =
+                                                    File.Open(
                                                         Path.Combine(corradeConfiguration.RegionMessageLogDirectory,
                                                             Client.Network.CurrentSim.Name) + "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
+                                                        FileAccess.Write, FileShare.None))
                                             {
-                                                logWriter.WriteLine(CORRADE_CONSTANTS.REGION_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        Utils.EnUsCulture.DateTimeFormat),
-                                                    fullName.First(),
-                                                    fullName.Last(),
-                                                    args.IM.Message);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8)
+                                                    )
+                                                {
+                                                    logWriter.WriteLine(
+                                                        CORRADE_CONSTANTS.REGION_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            Utils.EnUsCulture.DateTimeFormat),
+                                                        fullName.First(),
+                                                        fullName.Last(),
+                                                        args.IM.Message);
+                                                }
                                             }
                                         }
                                     }
@@ -7162,23 +7224,17 @@ namespace Corrade
                                                 {
                                                     NotificationTCPQueueElement notificationTCPQueueElement =
                                                         new NotificationTCPQueueElement();
-                                                    if (
-                                                        NotificationTCPQueue.Dequeue(
-                                                            (int) configuration.TCPNotificationThrottle,
-                                                            ref notificationTCPQueueElement))
-                                                    {
-                                                        if (
-                                                            !notificationTCPQueueElement.Equals(
-                                                                default(NotificationTCPQueueElement)) &&
-                                                            notificationTCPQueueElement.IPEndPoint.Equals(
-                                                                remoteEndPoint))
-                                                        {
-                                                            streamWriter.WriteLine(
-                                                                KeyValue.Encode(
-                                                                    notificationTCPQueueElement.message));
-                                                            streamWriter.Flush();
-                                                        }
-                                                    }
+                                                    if (!NotificationTCPQueue.Dequeue(
+                                                        (int) configuration.TCPNotificationThrottle,
+                                                        ref notificationTCPQueueElement)) continue;
+                                                    if (notificationTCPQueueElement.Equals(
+                                                        default(NotificationTCPQueueElement)) ||
+                                                        !notificationTCPQueueElement.IPEndPoint.Equals(
+                                                            remoteEndPoint)) continue;
+                                                    streamWriter.WriteLine(
+                                                        KeyValue.Encode(
+                                                            notificationTCPQueueElement.message));
+                                                    streamWriter.Flush();
                                                 } while (runTCPNotificationsServer && TCPClient.Connected);
                                             }
                                         }
@@ -8159,11 +8215,15 @@ namespace Corrade
             {
                 try
                 {
-                    using (StreamWriter writer = new StreamWriter(FileName, false, Encoding.UTF8))
+                    using (
+                        FileStream fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof (T));
-                        serializer.Serialize(writer, o);
-                        writer.Flush();
+                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (T));
+                            serializer.Serialize(writer, o);
+                            writer.Flush();
+                        }
                     }
                 }
                 catch (Exception e)
@@ -8184,10 +8244,13 @@ namespace Corrade
                 if (!File.Exists(FileName)) return o;
                 try
                 {
-                    using (StreamReader stream = new StreamReader(FileName, Encoding.UTF8))
+                    using (FileStream fileStream = File.Open(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof (T));
-                        return (T) serializer.Deserialize(stream);
+                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (T));
+                            return (T) serializer.Deserialize(streamReader);
+                        }
                     }
                 }
                 catch (Exception ex)

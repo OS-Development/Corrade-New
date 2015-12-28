@@ -92,23 +92,24 @@ namespace Corrade
                                     {
                                         lock (InstantMessageLogFileLock)
                                         {
-                                            using (
-                                                StreamWriter logWriter =
-                                                    new StreamWriter(
-                                                        Path.Combine(
-                                                            corradeConfiguration.InstantMessageLogDirectory,
-                                                            string.Join(" ", fullName.First(), fullName.Last())) +
-                                                        "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                            using (FileStream fileStream = File.Open(Path.Combine(
+                                                corradeConfiguration.InstantMessageLogDirectory,
+                                                string.Join(" ", fullName.First(), fullName.Last())) + "." +
+                                                                                     CORRADE_CONSTANTS
+                                                                                         .LOG_FILE_EXTENSION,
+                                                FileMode.Append, FileAccess.Write, FileShare.None))
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        Utils.EnUsCulture.DateTimeFormat),
-                                                    myName.First(),
-                                                    myName.Last(),
-                                                    data);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8)
+                                                    )
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            Utils.EnUsCulture.DateTimeFormat),
+                                                        myName.First(),
+                                                        myName.Last(),
+                                                        data);
+                                                }
                                             }
                                         }
                                     }
@@ -171,18 +172,21 @@ namespace Corrade
                                         {
                                             lock (GroupLogFileLock)
                                             {
-                                                using (
-                                                    StreamWriter logWriter = new StreamWriter(o.ChatLog, true,
-                                                        Encoding.UTF8))
+                                                using (FileStream fileStream = File.Open(o.ChatLog,
+                                                    FileMode.Append, FileAccess.Write, FileShare.None))
                                                 {
-                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            Utils.EnUsCulture.DateTimeFormat),
-                                                        myName.First(),
-                                                        myName.Last(),
-                                                        data);
-                                                    //logWriter.Flush();
-                                                    //logWriter.Close();
+                                                    using (
+                                                        StreamWriter logWriter = new StreamWriter(fileStream,
+                                                            Encoding.UTF8)
+                                                        )
+                                                    {
+                                                        logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                Utils.EnUsCulture.DateTimeFormat),
+                                                            myName.First(),
+                                                            myName.Last(),
+                                                            data);
+                                                    }
                                                 }
                                             }
                                         }
@@ -246,22 +250,27 @@ namespace Corrade
                                     {
                                         lock (LocalLogFileLock)
                                         {
-                                            using (
-                                                StreamWriter logWriter =
-                                                    new StreamWriter(
-                                                        Path.Combine(
-                                                            corradeConfiguration.LocalMessageLogDirectory,
-                                                            Client.Network.CurrentSim.Name) + "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                            using (FileStream fileStream = File.Open(Path.Combine(
+                                                corradeConfiguration.LocalMessageLogDirectory,
+                                                Client.Network.CurrentSim.Name) + "." +
+                                                                                     CORRADE_CONSTANTS
+                                                                                         .LOG_FILE_EXTENSION,
+                                                FileMode.Append, FileAccess.Write, FileShare.None))
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        Utils.EnUsCulture.DateTimeFormat),
-                                                    fullName.First(),
-                                                    fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
-                                                    data);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter = new StreamWriter(fileStream,
+                                                        Encoding.UTF8)
+                                                    )
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            Utils.EnUsCulture.DateTimeFormat),
+                                                        fullName.First(),
+                                                        fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
+                                                        data);
+                                                    //logWriter.Flush();
+                                                    //logWriter.Close();
+                                                }
                                             }
                                         }
                                     }

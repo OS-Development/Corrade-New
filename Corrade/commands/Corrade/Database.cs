@@ -109,14 +109,16 @@ namespace Corrade
                                 string contents = File.ReadAllText(corradeCommandParameters.Group.DatabaseFile,
                                     Encoding.UTF8);
                                 using (
-                                    StreamWriter recreateDatabase =
-                                        new StreamWriter(corradeCommandParameters.Group.DatabaseFile,
-                                            false, Encoding.UTF8))
+                                    FileStream fileStream = File.Open(corradeCommandParameters.Group.DatabaseFile,
+                                        FileMode.Create,
+                                        FileAccess.Write, FileShare.None))
                                 {
-                                    recreateDatabase.Write(KeyValue.Set(databaseSetKey,
-                                        databaseSetValue, contents));
-                                    recreateDatabase.Flush();
-                                    //recreateDatabase.Close();
+                                    using (StreamWriter recreateDatabase = new StreamWriter(fileStream, Encoding.UTF8))
+                                    {
+                                        recreateDatabase.Write(KeyValue.Set(databaseSetKey,
+                                            databaseSetValue, contents));
+                                        recreateDatabase.Flush();
+                                    }
                                 }
                             }
                             lock (DatabaseFileLock)
@@ -149,13 +151,16 @@ namespace Corrade
                                 string contents = File.ReadAllText(corradeCommandParameters.Group.DatabaseFile,
                                     Encoding.UTF8);
                                 using (
-                                    StreamWriter recreateDatabase =
-                                        new StreamWriter(corradeCommandParameters.Group.DatabaseFile,
-                                            false, Encoding.UTF8))
+                                    FileStream fileStream = File.Open(corradeCommandParameters.Group.DatabaseFile,
+                                        FileMode.Create,
+                                        FileAccess.Write, FileShare.None))
                                 {
-                                    recreateDatabase.Write(KeyValue.Delete(databaseDeleteKey, contents));
-                                    recreateDatabase.Flush();
-                                    //recreateDatabase.Close();
+                                    using (StreamWriter recreateDatabase = new StreamWriter(fileStream, Encoding.UTF8))
+                                    {
+                                        recreateDatabase.Write(KeyValue.Delete(databaseDeleteKey, contents));
+                                        recreateDatabase.Flush();
+                                        //recreateDatabase.Close();
+                                    }
                                 }
                             }
                             lock (DatabaseFileLock)

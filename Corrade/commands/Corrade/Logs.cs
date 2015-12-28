@@ -45,11 +45,13 @@ namespace Corrade
                                 lock (GroupLogFileLock)
                                 {
                                     using (
-                                        StreamReader stream =
-                                            new StreamReader(corradeCommandParameters.Group.ChatLog,
-                                                Encoding.UTF8))
+                                        FileStream fileStream = File.Open(corradeCommandParameters.Group.ChatLog,
+                                            FileMode.Open, FileAccess.Read, FileShare.Read))
                                     {
-                                        groupChatLog = stream.ReadToEnd();
+                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        {
+                                            groupChatLog = streamReader.ReadToEnd();
+                                        }
                                     }
                                 }
                             }
@@ -213,9 +215,17 @@ namespace Corrade
                             Parallel.ForEach(Directory.GetFiles(corradeConfiguration.InstantMessageLogDirectory), o =>
                             {
                                 string messageLine;
-                                using (StreamReader streamReader = new StreamReader(o, Encoding.UTF8))
+                                lock (InstantMessageLogFileLock)
                                 {
-                                    messageLine = streamReader.ReadToEnd();
+                                    using (
+                                        FileStream fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                            FileShare.Read))
+                                    {
+                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        {
+                                            messageLine = streamReader.ReadToEnd();
+                                        }
+                                    }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
                                 Parallel.ForEach(
@@ -376,9 +386,17 @@ namespace Corrade
                             Parallel.ForEach(Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory), o =>
                             {
                                 string messageLine;
-                                using (StreamReader streamReader = new StreamReader(o, Encoding.UTF8))
+                                lock (LocalLogFileLock)
                                 {
-                                    messageLine = streamReader.ReadToEnd();
+                                    using (
+                                        FileStream fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                            FileShare.Read))
+                                    {
+                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        {
+                                            messageLine = streamReader.ReadToEnd();
+                                        }
+                                    }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
                                 Parallel.ForEach(
@@ -588,9 +606,17 @@ namespace Corrade
                             Parallel.ForEach(Directory.GetFiles(corradeConfiguration.RegionMessageLogDirectory), o =>
                             {
                                 string messageLine;
-                                using (StreamReader streamReader = new StreamReader(o, Encoding.UTF8))
+                                lock (RegionLogFileLock)
                                 {
-                                    messageLine = streamReader.ReadToEnd();
+                                    using (
+                                        FileStream fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                            FileShare.Read))
+                                    {
+                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        {
+                                            messageLine = streamReader.ReadToEnd();
+                                        }
+                                    }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
                                 Parallel.ForEach(

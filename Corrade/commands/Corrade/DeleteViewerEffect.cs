@@ -41,8 +41,12 @@ namespace Corrade
                     switch (viewerEffectType)
                     {
                         case ViewerEffectType.LOOK:
-                            LookAtEffect lookAtEffect =
-                                LookAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            LookAtEffect lookAtEffect;
+                            lock (LookAtEffectsLock)
+                            {
+                                lookAtEffect =
+                                    LookAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            }
                             switch (!lookAtEffect.Equals(default(LookAtEffect)))
                             {
                                 case false:
@@ -53,8 +57,12 @@ namespace Corrade
                                 LookAtType.Idle, effectUUID);
                             break;
                         case ViewerEffectType.POINT:
-                            PointAtEffect pointAtEffect =
-                                PointAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            PointAtEffect pointAtEffect;
+                            lock (PointAtEffectsLock)
+                            {
+                                pointAtEffect =
+                                    PointAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            }
                             switch (!pointAtEffect.Equals(default(PointAtEffect)))
                             {
                                 case false:
@@ -63,11 +71,17 @@ namespace Corrade
                             Client.Self.PointAtEffect(Client.Self.AgentID, UUID.Zero,
                                 Vector3.Zero,
                                 PointAtType.None, effectUUID);
-                            PointAtEffects.Remove(pointAtEffect);
+                            lock (PointAtEffectsLock)
+                            {
+                                PointAtEffects.Remove(pointAtEffect);
+                            }
                             break;
                         case ViewerEffectType.BEAM:
-                            BeamEffect beamEffect =
-                                BeamEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            BeamEffect beamEffect;
+                            lock (BeamEffectsLock)
+                            {
+                                beamEffect = BeamEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            }
                             switch (!beamEffect.Equals(default(BeamEffect)))
                             {
                                 case false:
@@ -76,11 +90,18 @@ namespace Corrade
                             Client.Self.BeamEffect(Client.Self.AgentID, beamEffect.Target, Vector3.Zero,
                                 new Color4(beamEffect.Color.X, beamEffect.Color.Y, beamEffect.Color.Z, beamEffect.Alpha),
                                 0, effectUUID);
-                            BeamEffects.Remove(beamEffect);
+                            lock (BeamEffectsLock)
+                            {
+                                BeamEffects.Remove(beamEffect);
+                            }
                             break;
                         case ViewerEffectType.SPHERE:
-                            SphereEffect sphereEffect =
-                                SphereEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            SphereEffect sphereEffect;
+                            lock (SphereEffectsLock)
+                            {
+                                sphereEffect =
+                                    SphereEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            }
                             switch (!sphereEffect.Equals(default(SphereEffect)))
                             {
                                 case false:
@@ -89,7 +110,10 @@ namespace Corrade
                             Client.Self.SphereEffect(Vector3.Zero,
                                 new Color4(sphereEffect.Color.X, sphereEffect.Color.Y, sphereEffect.Color.Z,
                                     sphereEffect.Alpha), 0, effectUUID);
-                            SphereEffects.Remove(sphereEffect);
+                            lock (SphereEffectsLock)
+                            {
+                                SphereEffects.Remove(sphereEffect);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.INVALID_VIEWER_EFFECT);
