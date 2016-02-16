@@ -13,6 +13,8 @@ namespace wasSharp
 {
     public static class KeyValue
     {
+
+#if !__MonoCS__
         private static readonly Func<string, string, string> directGet =
             ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
                 .AsParallel()
@@ -61,6 +63,7 @@ namespace wasSharp
             directEscape =
                 ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
                     ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
+#endif
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -71,7 +74,17 @@ namespace wasSharp
         /// <returns>true if the key was found in data</returns>
         public static string Get(string key, string data)
         {
+#if !__MonoCS__
             return directGet(key, data);
+#else
+            return data.Split('&')
+                .AsParallel()
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
+                .Where(o => o[0].Equals(key))
+                .Select(o => o[1])
+                .FirstOrDefault();
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -86,7 +99,16 @@ namespace wasSharp
         /// </returns>
         public static string Set(string key, string value, string data)
         {
+#if !__MonoCS__
             return directSet(key, value, data);
+#else
+            return string.Join("&", string.Join("&", data.Split('&')
+                    .AsParallel()
+                    .Select(o => o.Split('='))
+                    .Where(o => o.Length.Equals(2))
+                    .Where(o => !o[0].Equals(key))
+                    .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value));
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -98,7 +120,17 @@ namespace wasSharp
         /// <returns>a key-value pair string</returns>
         public static string Delete(string key, string data)
         {
+#if !__MonoCS__
             return directDelete(key, data);
+#else
+            return string.Join("&", data.Split('&')
+                .AsParallel()
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
+                .Where(o => !o[0].Equals(key))
+                .Select(o => string.Join("=", o[0], o[1]))
+                .ToArray());
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -110,7 +142,21 @@ namespace wasSharp
         /// <returns>a dictionary containing the keys and values</returns>
         public static Dictionary<string, string> Decode(string data)
         {
+#if !__MonoCS__
             return directDecode(data);
+#else
+            return data.Split('&')
+                .AsParallel()
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
+                .Select(o => new
+                {
+                    k = o[0],
+                    v = o[1]
+                })
+                .GroupBy(o => o.k)
+                .ToDictionary(o => o.Key, p => p.First().v);
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -122,7 +168,11 @@ namespace wasSharp
         /// <returns>a key-value data encoded string</returns>
         public static string Encode(Dictionary<string, string> data)
         {
+#if !__MonoCS__
             return directEncode(data);
+#else
+            return string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value)));
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -133,7 +183,11 @@ namespace wasSharp
         /// </summary>
         public static Dictionary<string, string> Escape(Dictionary<string, string> data, Func<string, string> func)
         {
+#if !__MonoCS__
             return directEscape(data, func);
+#else
+            return data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value));
+#endif
         }
     }
 }

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -57,8 +58,8 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                             }
                             if (IsSecondLife() &&
-                                (name.Length > LINDEN_CONSTANTS.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
-                                 name.Length < LINDEN_CONSTANTS.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
+                                (name.Length > Constants.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
+                                 name.Length < Constants.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
                             {
                                 throw new Exception(
                                     Reflection.GetNameFromEnumValue(
@@ -70,10 +71,10 @@ namespace Corrade
                                 (sender, args) =>
                                 {
                                     succeeded =
-                                        args.Status.Equals((int) LINDEN_CONSTANTS.AVATARS.SET_DISPLAY_NAME_SUCCESS);
+                                        args.Status.Equals((int) Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                     SetDisplayNameEvent.Set();
                                 };
-                            lock (ClientInstanceSelfLock)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                                 Client.Self.SetDisplayName(previous, name);

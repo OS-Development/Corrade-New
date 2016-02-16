@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -46,7 +47,7 @@ namespace Corrade
                                         .ToDictionary(o => o.Key, o => o.Value);
                                 TopScriptsReplyEvent.Set();
                             };
-                            lock (ClientInstanceEstateLock)
+                            lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
                                 Client.Estate.RequestTopScripts();
@@ -68,7 +69,7 @@ namespace Corrade
                                             .ToDictionary(o => o.Key, o => o.Value);
                                     TopCollidersReplyEvent.Set();
                                 };
-                            lock (ClientInstanceEstateLock)
+                            lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
                                 Client.Estate.RequestTopColliders();

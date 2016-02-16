@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -77,7 +78,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
+                        if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                         }

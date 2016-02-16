@@ -10,7 +10,9 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -57,7 +59,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
-                            if (IsSecondLife() && body.Length > LINDEN_CONSTANTS.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
+                            if (IsSecondLife() && body.Length > Constants.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE);
                             }
@@ -72,7 +74,7 @@ namespace Corrade
                                 OwnerID = Client.Self.AgentID
                             };
                             object item =
-                                StringOrUUID(
+                                Helpers.StringOrUUID(
                                     wasInput(
                                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                             corradeCommandParameters.Message)));
@@ -121,7 +123,7 @@ namespace Corrade
                                     groupNotices.AddRange(args.Notices.OrderBy(o => o.Timestamp));
                                     GroupNoticesReplyEvent.Set();
                                 };
-                            lock (ClientInstanceGroupsLock)
+                            lock (Locks.ClientInstanceGroupsLock)
                             {
                                 Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
                                 Client.Groups.RequestGroupNoticesList(corradeCommandParameters.Group.UUID);
@@ -198,7 +200,7 @@ namespace Corrade
                                             instantMessage = args.IM;
                                             InstantMessageEvent.Set();
                                         };
-                                    lock (ClientInstanceGroupsLock)
+                                    lock (Locks.ClientInstanceGroupsLock)
                                     {
                                         Client.Self.IM += InstantMessageEventHandler;
                                         Client.Groups.RequestGroupNotice(groupNotice);
@@ -238,7 +240,7 @@ namespace Corrade
                                                 KeyValue.Get(
                                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                                     corradeCommandParameters.Message)), out agentUUID) &&
-                                        !AgentNameToUUID(
+                                        !Resolvers.AgentNameToUUID(Client,
                                             wasInput(
                                                 KeyValue.Get(
                                                     wasOutput(
@@ -250,6 +252,7 @@ namespace Corrade
                                                     corradeCommandParameters.Message)),
                                             corradeConfiguration.ServicesTimeout,
                                             corradeConfiguration.DataTimeout,
+                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                             ref agentUUID))
                                     {
                                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);

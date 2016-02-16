@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -29,7 +30,7 @@ namespace Corrade
                 Primitive primitive = null;
                 if (
                     !FindPrimitive(sitTarget,
-                        LINDEN_CONSTANTS.LSL.SENSOR_RANGE,
+                        Constants.LSL.SENSOR_RANGE,
                         ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                 {
                     return;
@@ -52,7 +53,7 @@ namespace Corrade
                         .Keys.AsParallel()
                         .Where(o => !lindenAnimations.Contains(o)),
                     o => { Client.Self.AnimationStop(o, true); });
-                lock (ClientInstanceSelfLock)
+                lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                     Client.Self.AlertMessage += AlertMessageEventHandler;

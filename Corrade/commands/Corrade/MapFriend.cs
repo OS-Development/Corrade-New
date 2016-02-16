@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -32,7 +33,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
-                            out agentUUID) && !AgentNameToUUID(
+                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
@@ -42,6 +43,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -71,7 +73,7 @@ namespace Corrade
                         position = args.Location;
                         FriendFoundEvent.Set();
                     };
-                    lock (ClientInstanceFriendsLock)
+                    lock (Locks.ClientInstanceFriendsLock)
                     {
                         Client.Friends.FriendFoundReply += FriendFoundEventHandler;
                         Client.Friends.MapFriend(agentUUID);
@@ -94,7 +96,7 @@ namespace Corrade
                         regionName = args.Parcel.SimName;
                         ParcelInfoEvent.Set();
                     };
-                    lock (ClientInstanceParcelsLock)
+                    lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                         Client.Parcels.RequestParcelInfo(parcelUUID);

@@ -10,7 +10,9 @@ using System.Linq;
 using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -62,7 +64,7 @@ namespace Corrade
                                     typeof (AttachmentPoint).GetFields(
                                         BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Count(p => !items.ContainsKey(p.Name)) >
-                                    LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
+                                    Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
                                     throw new Exception(
                                         Reflection.GetNameFromEnumValue(
@@ -73,7 +75,7 @@ namespace Corrade
                                 if (items.Count +
                                     GetAttachments(corradeConfiguration.DataTimeout)
                                         .Count() >
-                                    LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
+                                    Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
                                     throw new Exception(
                                         Reflection.GetNameFromEnumValue(
@@ -92,7 +94,7 @@ namespace Corrade
                             {
                                 InventoryBase inventoryBaseItem =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                        StringOrUUID(o.Value)
+                                        Helpers.StringOrUUID(o.Value)
                                         )
                                         .AsParallel().FirstOrDefault(
                                             r => r is InventoryObject || r is InventoryAttachment);

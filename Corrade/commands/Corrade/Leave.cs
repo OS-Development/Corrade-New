@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -43,7 +44,7 @@ namespace Corrade
                         succeeded = args.Success;
                         GroupLeaveReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
                         Client.Groups.LeaveGroup(corradeCommandParameters.Group.UUID);

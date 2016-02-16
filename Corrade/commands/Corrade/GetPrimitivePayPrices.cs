@@ -10,7 +10,9 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -40,7 +42,7 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
@@ -61,7 +63,7 @@ namespace Corrade
                             args.ButtonPrices.Select(o => o.ToString(Utils.EnUsCulture)));
                         PayPrceReceivedEvent.Set();
                     };
-                    lock (ClientInstanceObjectsLock)
+                    lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
                         Client.Objects.RequestPayPrice(

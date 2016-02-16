@@ -10,7 +10,9 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -61,7 +63,7 @@ namespace Corrade
                     }
                     if (IsSecondLife())
                     {
-                        if (items.Count > LINDEN_CONSTANTS.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
+                        if (items.Count > Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
                         {
                             throw new ScriptException(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
                         }
@@ -73,7 +75,7 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(items[o]),
+                                Helpers.StringOrUUID(items[o]),
                                 range,
                                 ref primitive, corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout))
@@ -110,7 +112,7 @@ namespace Corrade
                             }
                         }
                     };
-                    lock (ClientInstanceObjectsLock)
+                    lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                         switch (action)

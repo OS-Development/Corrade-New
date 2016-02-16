@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -47,11 +49,12 @@ namespace Corrade
                             switch (!UUID.TryParse(o, out agentUUID))
                             {
                                 case true:
-                                    List<string> fullName = new List<string>(GetAvatarNames(o));
+                                    List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
                                     switch (
-                                        !AgentNameToUUID(fullName.First(), fullName.Last(),
+                                        !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                             corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout, ref agentUUID))
+                                            corradeConfiguration.DataTimeout,
+                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
                                     {
                                         case true: // the name could not be resolved to an UUID so add it to the return
                                             data.Add(o);

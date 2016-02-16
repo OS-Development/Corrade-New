@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -36,7 +37,7 @@ namespace Corrade
                             return;
                         }
                         List<string> inventoryObjectOfferedName =
-                            new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                            new List<string>(Helpers.AvatarFullNameRegex.Matches(
                                 inventoryOfferEventArgs.IM.FromAgentName)
                                 .Cast<Match>()
                                 .ToDictionary(p => new[]
@@ -138,7 +139,7 @@ namespace Corrade
                             return;
                         }
                         List<string> inventoryObjectOfferedName =
-                            new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                            new List<string>(Helpers.AvatarFullNameRegex.Matches(
                                 inventoryObjectOfferedEventArgs.Offer.FromAgentName)
                                 .Cast<Match>()
                                 .ToDictionary(p => new[]

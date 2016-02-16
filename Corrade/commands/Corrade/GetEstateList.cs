@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -54,7 +55,7 @@ namespace Corrade
                                         break;
                                 }
                             };
-                            lock (ClientInstanceEstateLock)
+                            lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
                                 Client.Estate.RequestInfo();
@@ -84,7 +85,7 @@ namespace Corrade
                                             break;
                                     }
                                 };
-                            lock (ClientInstanceEstateLock)
+                            lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
                                 Client.Estate.RequestInfo();
@@ -114,7 +115,7 @@ namespace Corrade
                                             break;
                                     }
                                 };
-                            lock (ClientInstanceEstateLock)
+                            lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
                                 Client.Estate.RequestInfo();
@@ -144,7 +145,7 @@ namespace Corrade
                                             break;
                                     }
                                 };
-                            lock (ClientInstanceEstateLock)
+                            lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
                                 Client.Estate.RequestInfo();
@@ -173,7 +174,9 @@ namespace Corrade
                             Parallel.ForEach(estateList, o =>
                             {
                                 string agentName = string.Empty;
-                                if (!AgentUUIDToName(o, corradeConfiguration.ServicesTimeout, ref agentName))
+                                if (
+                                    !Resolvers.AgentUUIDToName(Client, o, corradeConfiguration.ServicesTimeout,
+                                        ref agentName))
                                     return;
                                 lock (LockObject)
                                 {
@@ -186,7 +189,9 @@ namespace Corrade
                             Parallel.ForEach(estateList, o =>
                             {
                                 string groupName = string.Empty;
-                                if (!GroupUUIDToName(o, corradeConfiguration.ServicesTimeout, ref groupName))
+                                if (
+                                    !Resolvers.GroupUUIDToName(Client, o, corradeConfiguration.ServicesTimeout,
+                                        ref groupName))
                                     return;
                                 lock (LockObject)
                                 {

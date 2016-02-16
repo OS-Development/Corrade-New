@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -63,7 +64,7 @@ namespace Corrade
                     // Check if the teleport destination is not too close.
                     if (region.Equals(Client.Network.CurrentSim.Name) &&
                         Vector3.Distance(Client.Self.SimPosition, position) <
-                        LINDEN_CONSTANTS.REGION.TELEPORT_MINIMUM_DISTANCE)
+                        Constants.REGION.TELEPORT_MINIMUM_DISTANCE)
                     {
                         throw new ScriptException(ScriptError.DESTINATION_TOO_CLOSE);
                     }
@@ -77,7 +78,7 @@ namespace Corrade
                             regionHandle = args.Region.RegionHandle;
                             GridRegionEvent.Set();
                         };
-                    lock (ClientInstanceGridLock)
+                    lock (Locks.ClientInstanceGridLock)
                     {
                         Client.Grid.GridRegion += GridRegionEventHandler;
                         Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
@@ -132,7 +133,7 @@ namespace Corrade
                                 o => { Client.Self.AnimationStop(o, true); });
                             break;
                     }
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.TeleportProgress += TeleportEventHandler;
                         Client.Self.Teleport(regionHandle, position, lookAt);
@@ -154,7 +155,7 @@ namespace Corrade
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true: // if fly was specified, set the fly state
-                            lock (ClientInstanceSelfLock)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Fly(fly);
                             }

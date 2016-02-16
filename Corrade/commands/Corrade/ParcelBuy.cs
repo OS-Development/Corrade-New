@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -91,7 +92,7 @@ namespace Corrade
                         parcelUUID = args.Parcel.ID;
                         ParcelInfoEvent.Set();
                     };
-                    lock (ClientInstanceParcelsLock)
+                    lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                         Client.Parcels.RequestParcelInfo(parcelUUID);
@@ -119,7 +120,7 @@ namespace Corrade
                                 }
                             });
                             if (((handledEvents - counter)%
-                                 LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
+                                 Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                             {
                                 ++counter;
                                 Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -128,7 +129,7 @@ namespace Corrade
                             }
                             DirLandReplyEvent.Set();
                         };
-                    lock (ClientInstanceDirectoryLock)
+                    lock (Locks.ClientInstanceDirectoryLock)
                     {
                         Client.Directory.DirLandReply += DirLandReplyEventArgs;
                         Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -144,7 +145,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.PARCEL_NOT_FOR_SALE);
                     }
-                    if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
+                    if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }

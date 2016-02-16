@@ -10,7 +10,9 @@ using System.Linq;
 using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -82,7 +84,7 @@ namespace Corrade
                                             Primitive primitive = null;
                                             if (
                                                 !FindPrimitive(
-                                                    StringOrUUID(item),
+                                                    Helpers.StringOrUUID(item),
                                                     range,
                                                     ref primitive, corradeConfiguration.ServicesTimeout,
                                                     corradeConfiguration.DataTimeout))
@@ -97,7 +99,7 @@ namespace Corrade
                                                     wasInput(KeyValue.Get(
                                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                                         corradeCommandParameters.Message)),
-                                                    out targetUUID) && !AgentNameToUUID(
+                                                    out targetUUID) && !Resolvers.AgentNameToUUID(Client,
                                                         wasInput(
                                                             KeyValue.Get(
                                                                 wasOutput(
@@ -110,6 +112,7 @@ namespace Corrade
                                                                 corradeCommandParameters.Message)),
                                                         corradeConfiguration.ServicesTimeout,
                                                         corradeConfiguration.DataTimeout,
+                                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                                         ref targetUUID))
                                             {
                                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);

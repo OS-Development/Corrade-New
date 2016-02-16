@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -39,7 +40,7 @@ namespace Corrade
                         wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, Helpers.StringOrUUID(o)
                                     ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
                             if (inventoryBaseItem == null)
                                 return;

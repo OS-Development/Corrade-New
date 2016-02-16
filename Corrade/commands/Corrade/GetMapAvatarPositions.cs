@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -44,7 +45,7 @@ namespace Corrade
                         regionHandle = args.Region.RegionHandle;
                         GridRegionEvent.Set();
                     };
-                    lock (ClientInstanceGridLock)
+                    lock (Locks.ClientInstanceGridLock)
                     {
                         Client.Grid.GridRegion += GridRegionEventHandler;
                         Client.Grid.RequestMapRegion(region, GridLayerType.Objects);

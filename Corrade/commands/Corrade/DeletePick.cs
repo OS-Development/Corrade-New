@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -44,7 +45,7 @@ namespace Corrade
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();
                     };
-                    lock (ClientInstanceAvatarsLock)
+                    lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                         Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);

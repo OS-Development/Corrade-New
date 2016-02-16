@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -31,17 +32,17 @@ namespace Corrade
                     {
                         switch (args.Message)
                         {
-                            case LINDEN_CONSTANTS.ALERTS.UNABLE_TO_SET_HOME:
+                            case Constants.ALERTS.UNABLE_TO_SET_HOME:
                                 succeeded = false;
                                 AlertMessageEvent.Set();
                                 break;
-                            case LINDEN_CONSTANTS.ALERTS.HOME_SET:
+                            case Constants.ALERTS.HOME_SET:
                                 succeeded = true;
                                 AlertMessageEvent.Set();
                                 break;
                         }
                     };
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.AlertMessage += AlertMessageEventHandler;
                         Client.Self.SetHome();

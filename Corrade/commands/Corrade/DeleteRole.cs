@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -51,9 +52,10 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     UUID roleUUID;
-                    if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
-                        corradeConfiguration.ServicesTimeout,
-                        ref roleUUID))
+                    if (!UUID.TryParse(role, out roleUUID) &&
+                        !Resolvers.RoleNameToUUID(Client, role, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
+                            ref roleUUID))
                     {
                         throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     }
@@ -80,7 +82,7 @@ namespace Corrade
                             o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, roleUUID, o.Value));
                         GroupRoleMembersReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);

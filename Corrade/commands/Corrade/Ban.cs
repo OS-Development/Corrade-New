@@ -10,7 +10,9 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -73,11 +75,13 @@ namespace Corrade
                                         UUID agentUUID;
                                         if (!UUID.TryParse(o, out agentUUID))
                                         {
-                                            List<string> fullName = new List<string>(GetAvatarNames(o));
+                                            List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
                                             if (
-                                                !AgentNameToUUID(fullName.First(), fullName.Last(),
+                                                !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                     corradeConfiguration.ServicesTimeout,
-                                                    corradeConfiguration.DataTimeout, ref agentUUID))
+                                                    corradeConfiguration.DataTimeout,
+                                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                    ref agentUUID))
                                             {
                                                 // Add all the unrecognized agents to the returned list.
                                                 lock (LockObject)
@@ -95,7 +99,7 @@ namespace Corrade
                             if (!avatars.Any())
                                 throw new ScriptException(ScriptError.NO_AVATARS_TO_BAN_OR_UNBAN);
                             // ban or unban the avatars
-                            lock (ClientInstanceGroupsLock)
+                            lock (Locks.ClientInstanceGroupsLock)
                             {
                                 ManualResetEvent GroupBanEvent = new ManualResetEvent(false);
                                 switch (action)
@@ -137,7 +141,7 @@ namespace Corrade
                                                 groupMembers = args.Members;
                                                 groupMembersReceivedEvent.Set();
                                             };
-                                        lock (ClientInstanceGroupsLock)
+                                        lock (Locks.ClientInstanceGroupsLock)
                                         {
                                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                                             Client.Groups.RequestGroupMembers(corradeCommandParameters.Group.UUID);
@@ -167,7 +171,7 @@ namespace Corrade
                                                 groupRolesMembers = args.RolesMembers;
                                                 GroupRoleMembersReplyEvent.Set();
                                             };
-                                        lock (ClientInstanceGroupsLock)
+                                        lock (Locks.ClientInstanceGroupsLock)
                                         {
                                             Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                                             Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
@@ -216,7 +220,7 @@ namespace Corrade
                                                         succeeded = args.Success;
                                                         GroupEjectEvent.Set();
                                                     };
-                                                lock (ClientInstanceGroupsLock)
+                                                lock (Locks.ClientInstanceGroupsLock)
                                                 {
                                                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                                     Client.Groups.EjectUser(corradeCommandParameters.Group.UUID,
@@ -255,7 +259,7 @@ namespace Corrade
                                 bannedAgents = args.BannedAgents;
                                 BannedAgentsEvent.Set();
                             };
-                            lock (ClientInstanceGroupsLock)
+                            lock (Locks.ClientInstanceGroupsLock)
                             {
                                 Client.Groups.BannedAgents += BannedAgentsEventHandler;
                                 Client.Groups.RequestBannedAgents(corradeCommandParameters.Group.UUID);
@@ -274,7 +278,8 @@ namespace Corrade
                                     {
                                         string agentName = string.Empty;
                                         switch (
-                                            !AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout,
+                                            !Resolvers.AgentUUIDToName(Client, o.Key,
+                                                corradeConfiguration.ServicesTimeout,
                                                 ref agentName))
                                         {
                                             case false:

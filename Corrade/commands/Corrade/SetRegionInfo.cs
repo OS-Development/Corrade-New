@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -99,7 +100,7 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out limit))
                     {
-                        limit = LINDEN_CONSTANTS.REGION.DEFAULT_AGENT_LIMIT;
+                        limit = Constants.REGION.DEFAULT_AGENT_LIMIT;
                     }
                     float bonus;
                     if (
@@ -109,7 +110,7 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out bonus))
                     {
-                        bonus = LINDEN_CONSTANTS.REGION.DEFAULT_OBJECT_BONUS;
+                        bonus = Constants.REGION.DEFAULT_OBJECT_BONUS;
                     }
                     bool mature;
                     if (

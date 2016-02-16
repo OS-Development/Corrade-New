@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -52,7 +53,7 @@ namespace Corrade
                         roleCount = args.Roles.Count;
                         GroupRoleDataReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                         Client.Groups.RequestGroupRoles(corradeCommandParameters.Group.UUID);
@@ -63,7 +64,7 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     }
-                    if (IsSecondLife() && roleCount >= LINDEN_CONSTANTS.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
+                    if (IsSecondLife() && roleCount >= Constants.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
                     {
                         throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED);
                     }
@@ -94,7 +95,7 @@ namespace Corrade
                     string title = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TITLE)),
                         corradeCommandParameters.Message));
-                    if (IsSecondLife() && title.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
+                    if (IsSecondLife() && title.Length > Constants.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE);
                     }
@@ -113,7 +114,7 @@ namespace Corrade
                     });
                     UUID roleUUID = UUID.Zero;
                     if (
-                        !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
+                        !Resolvers.RoleNameToUUID(Client, role, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout, ref roleUUID))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_CREATE_ROLE);

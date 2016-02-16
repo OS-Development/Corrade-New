@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -45,7 +46,7 @@ namespace Corrade
                         groupTitles = args.Titles;
                         GroupTitlesReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                         Client.Groups.RequestGroupTitles(corradeCommandParameters.Group.UUID);
@@ -60,7 +61,7 @@ namespace Corrade
                     Parallel.ForEach(groupTitles, o =>
                     {
                         string roleName = string.Empty;
-                        if (RoleUUIDToName(o.Value.RoleID, corradeCommandParameters.Group.UUID,
+                        if (Resolvers.RoleUUIDToName(Client, o.Value.RoleID, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout,
                             ref roleName))

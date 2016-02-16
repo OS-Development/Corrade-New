@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -46,7 +47,7 @@ namespace Corrade
                         groupMembers = args.Members;
                         agentInGroupEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                         Client.Groups.RequestGroupMembers(corradeCommandParameters.Group.UUID);
@@ -61,7 +62,8 @@ namespace Corrade
                     Parallel.ForEach(groupMembers, o =>
                     {
                         string agentName = string.Empty;
-                        if (AgentUUIDToName(o.Value.ID, corradeConfiguration.ServicesTimeout, ref agentName))
+                        if (Resolvers.AgentUUIDToName(Client, o.Value.ID, corradeConfiguration.ServicesTimeout,
+                            ref agentName))
                         {
                             lock (LockObject)
                             {

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -50,7 +51,7 @@ namespace Corrade
                         }).SelectMany(o => o));
                         GroupRoleDataReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                         Client.Groups.RequestGroupRoles(corradeCommandParameters.Group.UUID);

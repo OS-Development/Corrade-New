@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -32,7 +33,7 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref movement);
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
                         Client.Self.Movement.AtNeg = movement.AtNeg;

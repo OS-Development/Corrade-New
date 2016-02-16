@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -45,7 +46,7 @@ namespace Corrade
                         interests = args.Interests;
                         AvatarProfileDataEvent[1].Set();
                     };
-                    lock (ClientInstanceAvatarsLock)
+                    lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.AvatarPropertiesReply += AvatarPropertiesEventHandler;
                         Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
@@ -68,12 +69,12 @@ namespace Corrade
                     if (IsSecondLife())
                     {
                         if (Encoding.UTF8.GetByteCount(properties.AboutText) >
-                            LINDEN_CONSTANTS.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
+                            Constants.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
                         {
                             throw new ScriptException(ScriptError.SECOND_LIFE_TEXT_TOO_LARGE);
                         }
                         if (Encoding.UTF8.GetByteCount(properties.FirstLifeText) >
-                            LINDEN_CONSTANTS.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
+                            Constants.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
                         {
                             throw new ScriptException(ScriptError.FIRST_LIFE_TEXT_TOO_LARGE);
                         }

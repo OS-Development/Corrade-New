@@ -11,7 +11,9 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -53,7 +55,7 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
@@ -70,7 +72,7 @@ namespace Corrade
                     };
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
                     {
-                        if (args.Message.Equals(LINDEN_CONSTANTS.ALERTS.NO_ROOM_TO_SIT_HERE))
+                        if (args.Message.Equals(Constants.ALERTS.NO_ROOM_TO_SIT_HERE))
                         {
                             succeeded = false;
                         }
@@ -98,7 +100,7 @@ namespace Corrade
                                 o => { Client.Self.AnimationStop(o, true); });
                             break;
                     }
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                         Client.Self.AlertMessage += AlertMessageEventHandler;

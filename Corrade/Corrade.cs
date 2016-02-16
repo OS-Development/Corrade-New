@@ -16,7 +16,6 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Management;
 using System.Net;
 using System.Net.Sockets;
@@ -35,8 +34,10 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.Rendering;
+using wasOpenMetaverse;
 using wasSharp;
 using Group = OpenMetaverse.Group;
+using Helpers = OpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 using Path = System.IO.Path;
 using ThreadState = System.Threading.ThreadState;
@@ -372,20 +373,6 @@ namespace Corrade
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher SchedulesWatcher = new FileSystemWatcher();
         private static readonly object AIMLBotLock = new object();
-        private static readonly object ClientInstanceGroupsLock = new object();
-        private static readonly object ClientInstanceInventoryLock = new object();
-        private static readonly object ClientInstanceAvatarsLock = new object();
-        private static readonly object ClientInstanceSelfLock = new object();
-        private static readonly object ClientInstanceConfigurationLock = new object();
-        private static readonly object ClientInstanceParcelsLock = new object();
-        private static readonly object ClientInstanceNetworkLock = new object();
-        private static readonly object ClientInstanceGridLock = new object();
-        private static readonly object ClientInstanceDirectoryLock = new object();
-        private static readonly object ClientInstanceEstateLock = new object();
-        private static readonly object ClientInstanceObjectsLock = new object();
-        private static readonly object ClientInstanceFriendsLock = new object();
-        private static readonly object ClientInstanceAssetsLock = new object();
-        private static readonly object ClientInstanceAppearanceLock = new object();
         private static readonly object ConfigurationFileLock = new object();
         private static readonly object ClientLogFileLock = new object();
         private static readonly object GroupLogFileLock = new object();
@@ -395,8 +382,8 @@ namespace Corrade
         private static readonly object DatabaseFileLock = new object();
 
         private static readonly Time.TimedThrottle TimedTeleportThrottle =
-            new Time.TimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
-                LINDEN_CONSTANTS.TELEPORTS.THROTTLE.GRACE_SECONDS);
+            new Time.TimedThrottle(Constants.TELEPORTS.THROTTLE.MAX_TELEPORTS,
+                Constants.TELEPORTS.THROTTLE.GRACE_SECONDS);
 
         private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
         private static readonly object GroupNotificationsLock = new object();
@@ -594,7 +581,7 @@ namespace Corrade
         /// </summary>
         private static readonly Timer RebakeTimer = new Timer(Rebake =>
         {
-            lock (ClientInstanceAppearanceLock)
+            lock (Locks.ClientInstanceAppearanceLock)
             {
                 ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
                 EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
@@ -722,30 +709,6 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Gets the first name and last name from an avatar name.
-        /// </summary>
-        /// <returns>the firstname and the lastname or Resident</returns>
-        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
-            ((Expression<Func<string, IEnumerable<string>>>) (o => !string.IsNullOrEmpty(o)
-                ? CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
-                    .Cast<Match>()
-                    .ToDictionary(p => new[]
-                    {
-                        p.Groups["first"].Value,
-                        p.Groups["last"].Value
-                    })
-                    .SelectMany(
-                        p =>
-                            new[]
-                            {
-                                p.Key[0].Trim(),
-                                !string.IsNullOrEmpty(p.Key[1])
-                                    ? p.Key[1].Trim()
-                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                            })
-                : null)).Compile();
-
-        /// <summary>
         ///     Updates the inventory starting from a folder recursively.
         /// </summary>
         private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
@@ -802,7 +765,7 @@ namespace Corrade
         private static readonly System.Action LoadInventoryCache = () =>
         {
             int itemsLoaded;
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 itemsLoaded = Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
@@ -820,7 +783,7 @@ namespace Corrade
             string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
             int itemsSaved;
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 itemsSaved = Client.Inventory.Store.Items.Count;
                 Client.Inventory.Store.SaveToDisk(path);
@@ -835,13 +798,31 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadCorradeCache = () =>
         {
-            Cache.AgentCache =
-                Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                    Cache.AgentCache);
+            try
+            {
+                Cache.AgentCache =
+                    Cache.Load(
+                        Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                        Cache.AgentCache);
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
+                    ex.Message);
+            }
 
-            Cache.GroupCache =
-                Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                    Cache.GroupCache);
+            try
+            {
+                Cache.GroupCache =
+                    Cache.Load(
+                        Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                        Cache.GroupCache);
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
+                    ex.Message);
+            }
         };
 
         /// <summary>
@@ -849,11 +830,29 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveCorradeCache = () =>
         {
-            Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                Cache.AgentCache);
+            try
+            {
+                Cache.Save(
+                    Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                    Cache.AgentCache);
+            }
+            catch (Exception e)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
+                    e.Message);
+            }
 
-            Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                Cache.GroupCache);
+            try
+            {
+                Cache.Save(
+                    Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                    Cache.GroupCache);
+            }
+            catch (Exception e)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
+                    e.Message);
+            }
         };
 
         /// <summary>
@@ -1101,7 +1100,7 @@ namespace Corrade
         {
             try
             {
-                lock (ClientInstanceSelfLock)
+                lock (Locks.ClientInstanceSelfLock)
                 {
                     using (
                         FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1148,7 +1147,7 @@ namespace Corrade
             {
                 try
                 {
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         using (
                             FileStream fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
@@ -1401,7 +1400,7 @@ namespace Corrade
                     joinedMembers.Clear();
                     // Clear the members that have left the group.
                     partedMembers.Clear();
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                         GroupMembersReplyEvent.Reset();
@@ -1435,11 +1434,12 @@ namespace Corrade
                                     {
                                         string agentName = string.Empty;
                                         string groupName = string.Empty;
-                                        if (AgentUUIDToName(
+                                        if (Resolvers.AgentUUIDToName(Client,
                                             o,
                                             corradeConfiguration.ServicesTimeout,
                                             ref agentName) &&
-                                            GroupUUIDToName(groupUUID, corradeConfiguration.ServicesTimeout,
+                                            Resolvers.GroupUUIDToName(Client, groupUUID,
+                                                corradeConfiguration.ServicesTimeout,
                                                 ref groupName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -1467,11 +1467,12 @@ namespace Corrade
                                     {
                                         string agentName = string.Empty;
                                         string groupName = string.Empty;
-                                        if (AgentUUIDToName(
+                                        if (Resolvers.AgentUUIDToName(Client,
                                             o,
                                             corradeConfiguration.ServicesTimeout,
                                             ref agentName) &&
-                                            GroupUUIDToName(groupUUID, corradeConfiguration.ServicesTimeout,
+                                            Resolvers.GroupUUIDToName(Client, groupUUID,
+                                                corradeConfiguration.ServicesTimeout,
                                                 ref groupName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -1589,7 +1590,7 @@ namespace Corrade
 
         private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
         {
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
@@ -1601,7 +1602,7 @@ namespace Corrade
 
         private static void Detach(InventoryItem item)
         {
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
@@ -1613,7 +1614,7 @@ namespace Corrade
 
         private static void Wear(InventoryItem item, bool replace)
         {
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryWearable)) return;
@@ -1625,7 +1626,7 @@ namespace Corrade
 
         private static void UnWear(InventoryItem item)
         {
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryWearable)) return;
@@ -1994,7 +1995,7 @@ namespace Corrade
             // Handle date and time as an LSL timestamp
             if (data is DateTime)
             {
-                yield return ((DateTime) data).ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP);
+                yield return ((DateTime) data).ToString(Constants.LSL.DATE_TIME_STAMP);
             }
 
             string @string = data.ToString();
@@ -2194,7 +2195,7 @@ namespace Corrade
                 if (!UUID.TryParse(setting, out UUIDData))
                 {
                     InventoryItem item = null;
-                    lock (ClientInstanceInventoryLock)
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
                         item = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                             setting).FirstOrDefault() as InventoryItem;
@@ -2370,7 +2371,7 @@ namespace Corrade
             // Update the object.
             Permissions permissions = wasStringToPermissions(wasPermissions);
             inventoryItem.Permissions = permissions;
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 Client.Inventory.RequestUpdateItem(inventoryItem);
             }
@@ -2384,7 +2385,7 @@ namespace Corrade
                     succeeded = args.Item.Permissions.Equals(permissions);
                     ItemReceivedEvent.Set();
                 };
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 Client.Inventory.ItemReceived += ItemReceivedEventHandler;
                 Client.Inventory.RequestFetchInventory(inventoryItem.UUID, inventoryItem.OwnerID);
@@ -2579,7 +2580,7 @@ namespace Corrade
                     avatarGroups.AddRange(args.Groups);
                 }
             };
-            lock (ClientInstanceAvatarsLock)
+            lock (Locks.ClientInstanceAvatarsLock)
             {
                 Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                 Client.Avatars.RequestAvatarProperties(agentUUID);
@@ -2614,7 +2615,7 @@ namespace Corrade
                     succeeded = args.Success;
                     GroupChatJoinedEvent.Set();
                 };
-            lock (ClientInstanceSelfLock)
+            lock (Locks.ClientInstanceSelfLock)
             {
                 Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                 Client.Self.RequestJoinGroupChat(groupUUID);
@@ -2648,7 +2649,7 @@ namespace Corrade
                 groupMembers = args.Members;
                 groupMembersReceivedEvent.Set();
             };
-            lock (ClientInstanceGroupsLock)
+            lock (Locks.ClientInstanceGroupsLock)
             {
                 Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                 Client.Groups.RequestGroupMembers(groupUUID);
@@ -2749,7 +2750,7 @@ namespace Corrade
         /// <returns>true if the connected grid is Second Life</returns>
         private static bool IsSecondLife()
         {
-            return Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE);
+            return Client.Network.CurrentSim.SimVersion.Contains(Constants.GRID.SECOND_LIFE);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2771,7 +2772,7 @@ namespace Corrade
                 localGroup = args.Group;
                 GroupProfileEvent.Set();
             };
-            lock (ClientInstanceGroupsLock)
+            lock (Locks.ClientInstanceGroupsLock)
             {
                 Client.Groups.GroupProfile += GroupProfileDelegate;
                 Client.Groups.RequestGroupProfile(groupUUID);
@@ -2802,7 +2803,7 @@ namespace Corrade
             ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
-            lock (ClientInstanceParcelsLock)
+            lock (Locks.ClientInstanceParcelsLock)
             {
                 Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
                 switch (!simulator.IsParcelMapFull())
@@ -2953,7 +2954,7 @@ namespace Corrade
                 switch (!Client.Assets.Cache.HasAsset(primitive.Sculpt.SculptTexture))
                 {
                     case true:
-                        lock (ClientInstanceAssetsLock)
+                        lock (Locks.ClientInstanceAssetsLock)
                         {
                             ManualResetEvent ImageDownloadedEvent = new ManualResetEvent(false);
                             Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
@@ -2990,7 +2991,7 @@ namespace Corrade
             }
             FacetedMesh localFacetedMesh = null;
             ManualResetEvent MeshDownloadedEvent = new ManualResetEvent(false);
-            lock (ClientInstanceAssetsLock)
+            lock (Locks.ClientInstanceAssetsLock)
             {
                 Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
                 {
@@ -3470,10 +3471,10 @@ namespace Corrade
                             if (!args.IsNew) return;
                             RangeUpdateAlarm.Alarm(dataTimeout);
                         };
-                    lock (ClientInstanceObjectsLock)
+                    lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.AvatarUpdate += AvatarUpdateEventHandler;
-                        lock (ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceConfigurationLock)
                         {
                             Client.Self.Movement.Camera.Far = range;
                         }
@@ -3483,7 +3484,7 @@ namespace Corrade
                             Client.Network.Simulators.AsParallel().Select(o => o.ObjectsAvatars)
                                 .Select(o => o.Copy().Values)
                                 .SelectMany(o => o);
-                        lock (ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceConfigurationLock)
                         {
                             Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
                         }
@@ -3522,10 +3523,10 @@ namespace Corrade
                             if (!args.IsNew) return;
                             RangeUpdateAlarm.Alarm(dataTimeout);
                         };
-                    lock (ClientInstanceObjectsLock)
+                    lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                        lock (ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceConfigurationLock)
                         {
                             Client.Self.Movement.Camera.Far = range;
                         }
@@ -3535,7 +3536,7 @@ namespace Corrade
                             Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
                                 .Select(o => o.Copy().Values).ToList()
                                 .SelectMany(o => o);
-                        lock (ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceConfigurationLock)
                         {
                             Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
                         }
@@ -3572,7 +3573,7 @@ namespace Corrade
             do
             {
                 Primitive updatePrimitive = primitiveQueue.Dequeue();
-                lock (ClientInstanceObjectsLock)
+                lock (Locks.ClientInstanceObjectsLock)
                 {
                     Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
                     ObjectPropertiesEvent.Reset();
@@ -3647,7 +3648,7 @@ namespace Corrade
                         avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                     }
                 };
-            lock (ClientInstanceAvatarsLock)
+            lock (Locks.ClientInstanceAvatarsLock)
             {
                 Parallel.ForEach(scansAvatars, o =>
                 {
@@ -3733,7 +3734,7 @@ namespace Corrade
         private static bool GetCurrentGroups(uint millisecondsTimeout, ref IEnumerable<UUID> groups)
         {
             bool succeeded;
-            lock (ClientInstanceGroupsLock)
+            lock (Locks.ClientInstanceGroupsLock)
             {
                 if (Cache.CurrentGroupsCache.Any())
                 {
@@ -3765,7 +3766,7 @@ namespace Corrade
             ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
-            lock (ClientInstanceSelfLock)
+            lock (Locks.ClientInstanceSelfLock)
             {
                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                 Client.Self.RequestMuteList();
@@ -3785,7 +3786,7 @@ namespace Corrade
         private static bool GetMutes(uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
         {
             bool succeeded;
-            lock (ClientInstanceSelfLock)
+            lock (Locks.ClientInstanceSelfLock)
             {
                 if (Cache.MutesCache != null)
                 {
@@ -5182,7 +5183,7 @@ namespace Corrade
             if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(e.SourceID) || o.ID.Equals(e.OwnerID)))
                 return;
             // Get the full name.
-            List<string> fullName = new List<string>(GetAvatarNames(e.FromName));
+            List<string> fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.FromName));
             Configuration.Group commandGroup;
             switch (e.Type)
             {
@@ -5262,8 +5263,8 @@ namespace Corrade
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Configuration.Notifications.LocalChat, e),
                         corradeConfiguration.MaximumNotificationThreads);
-                    // Log local chat,
-                    if (corradeConfiguration.LocalMessageLogEnabled)
+                    // Log local chat if the message could be heard.
+                    if (corradeConfiguration.LocalMessageLogEnabled && !string.IsNullOrEmpty(e.Message))
                     {
                         CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                         {
@@ -5371,7 +5372,7 @@ namespace Corrade
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem;
-            lock (ClientInstanceInventoryLock)
+            lock (Locks.ClientInstanceInventoryLock)
             {
                 inventoryBaseItem = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
                 {
@@ -5385,7 +5386,7 @@ namespace Corrade
             if (inventoryBaseItem != null)
             {
                 // Assume we do not want the item.
-                lock (ClientInstanceInventoryLock)
+                lock (Locks.ClientInstanceInventoryLock)
                 {
                     Client.Inventory.Move(
                         inventoryBaseItem,
@@ -5406,7 +5407,7 @@ namespace Corrade
                 {
                     case true:
                         InventoryBase inventoryBaseFolder;
-                        lock (ClientInstanceInventoryLock)
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
                             // Locate the folder and move.
                             inventoryBaseFolder =
@@ -5423,7 +5424,7 @@ namespace Corrade
                         }
                         break;
                     default:
-                        lock (ClientInstanceInventoryLock)
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
                             Client.Inventory.Move(
                                 inventoryBaseItem,
@@ -5440,12 +5441,13 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
-            List<string> owner = new List<string>(GetAvatarNames(e.ObjectOwnerName));
+            List<string> owner = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.ObjectOwnerName));
             UUID ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
             if (
-                !AgentNameToUUID(owner.First(), owner.Last(), corradeConfiguration.ServicesTimeout,
+                !Resolvers.AgentNameToUUID(Client, owner.First(), owner.Last(), corradeConfiguration.ServicesTimeout,
                     corradeConfiguration.DataTimeout,
+                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                     ref ownerUUID))
             {
                 return;
@@ -5479,7 +5481,7 @@ namespace Corrade
                     !RLVRules.AsParallel()
                         .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                     return;
-                lock (ClientInstanceSelfLock)
+                lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.ScriptQuestionReply(e.Simulator, e.ItemID, e.TaskID, e.Questions);
                 }
@@ -5543,7 +5545,7 @@ namespace Corrade
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
-                        lock (ClientInstanceSelfLock)
+                        lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.RetrieveInstantMessages();
                         }
@@ -5633,7 +5635,7 @@ namespace Corrade
                 return;
             List<string> fullName =
                 new List<string>(
-                    GetAvatarNames(args.IM.FromAgentName));
+                    wasOpenMetaverse.Helpers.GetAvatarNames(args.IM.FromAgentName));
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
@@ -5697,7 +5699,7 @@ namespace Corrade
                                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
                                 return;
                             }
-                            lock (ClientInstanceSelfLock)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                             }
@@ -5723,7 +5725,7 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.TeleportLure, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     // If we got a teleport request from a master, then accept it (for the moment).
-                    lock (ClientInstanceConfigurationLock)
+                    lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (
                             !corradeConfiguration.Masters.AsParallel()
@@ -5739,7 +5741,7 @@ namespace Corrade
                         Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
                         return;
                     }
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
@@ -5766,9 +5768,10 @@ namespace Corrade
                     Cache.AddGroup(inviteGroup.Name, inviteGroup.ID);
                     UUID inviteGroupAgent = UUID.Zero;
                     if (
-                        !AgentNameToUUID(fullName.First(), fullName.Last(),
+                        !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                             ref inviteGroupAgent))
                         return;
                     // Add the agent to the cache.
@@ -5794,7 +5797,7 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.GroupInvite, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     // If a master sends it, then accept.
-                    lock (ClientInstanceConfigurationLock)
+                    lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (
                             !corradeConfiguration.Masters.AsParallel()
@@ -5818,9 +5821,10 @@ namespace Corrade
                     Cache.AddGroup(noticeGroup.Name, noticeGroup.ID);
                     UUID noticeGroupAgent = UUID.Zero;
                     if (
-                        !AgentNameToUUID(fullName.First(), fullName.Last(),
+                        !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                             ref noticeGroupAgent))
                         return;
                     // Add the agent to the cache.
@@ -5971,9 +5975,11 @@ namespace Corrade
                             // Check if we were ejected.
                             UUID groupUUID = UUID.Zero;
                             if (
-                                GroupNameToUUID(
+                                Resolvers.GroupNameToUUID(
+                                    Client,
                                     CORRADE_CONSTANTS.EjectedFromGroupRegEx.Match(args.IM.Message).Groups[1].Value,
                                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref groupUUID))
                             {
                                 // Remove the group from the cache.
@@ -6238,7 +6244,7 @@ namespace Corrade
                 if (UUID.TryParse(identifier, out fromAgentID))
                 {
                     if (
-                        !AgentUUIDToName(fromAgentID, corradeConfiguration.ServicesTimeout,
+                        !Resolvers.AgentUUIDToName(Client, fromAgentID, corradeConfiguration.ServicesTimeout,
                             ref sender))
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
@@ -6416,7 +6422,7 @@ namespace Corrade
 
             // add the time stamp
             result.Add(Reflection.GetNameFromEnumValue(ResultKeys.TIME),
-                DateTime.Now.ToUniversalTime().ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP));
+                DateTime.Now.ToUniversalTime().ToString(Constants.LSL.DATE_TIME_STAMP));
 
             // build afterburn
             object AfterBurnLock = new object();
@@ -7659,9 +7665,6 @@ namespace Corrade
             public const string MOVEMENT_STATE_FILE = @"Movement.state";
             public const string LIBS_DIRECTORY = @"libs";
 
-            public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
-                RegexOptions.Compiled);
-
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
 
             public static readonly Regex InventoryOfferObjectNameRegEx = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
@@ -8068,210 +8071,6 @@ namespace Corrade
                     ProfileHollow = 0.0f,
                     State = 0
                 };
-            }
-        }
-
-        /// <summary>
-        ///     Corrade's caches.
-        /// </summary>
-        public struct Cache
-        {
-            private static HashSet<Agents> _agentCache = new HashSet<Agents>();
-            private static HashSet<Groups> _groupCache = new HashSet<Groups>();
-            private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
-            private static HashSet<MuteEntry> _mutesCache;
-            private static readonly object AgentCacheLock = new object();
-            private static readonly object GroupCacheLock = new object();
-            private static readonly object CurrentGroupsCacheLock = new object();
-            private static readonly object MutesCacheLock = new object();
-
-            public static HashSet<Agents> AgentCache
-            {
-                get
-                {
-                    lock (AgentCacheLock)
-                    {
-                        return _agentCache;
-                    }
-                }
-                set
-                {
-                    lock (AgentCacheLock)
-                    {
-                        _agentCache = value;
-                    }
-                }
-            }
-
-            public static HashSet<Groups> GroupCache
-            {
-                get
-                {
-                    lock (GroupCacheLock)
-                    {
-                        return _groupCache;
-                    }
-                }
-                set
-                {
-                    lock (AgentCacheLock)
-                    {
-                        _groupCache = value;
-                    }
-                }
-            }
-
-            public static HashSet<UUID> CurrentGroupsCache
-            {
-                get
-                {
-                    lock (CurrentGroupsCacheLock)
-                    {
-                        return _currentGroupsCache;
-                    }
-                }
-                set
-                {
-                    lock (AgentCacheLock)
-                    {
-                        _currentGroupsCache = value;
-                    }
-                }
-            }
-
-            public static HashSet<MuteEntry> MutesCache
-            {
-                get
-                {
-                    lock (MutesCacheLock)
-                    {
-                        return _mutesCache;
-                    }
-                }
-                set
-                {
-                    lock (AgentCacheLock)
-                    {
-                        _mutesCache = value;
-                    }
-                }
-            }
-
-            internal static void Purge()
-            {
-                AgentCache.Clear();
-                GroupCache.Clear();
-                CurrentGroupsCache.Clear();
-                MutesCache.Clear();
-            }
-
-            public static void AddAgent(string FirstName, string LastName, UUID agentUUID)
-            {
-                Agents agent = new Agents
-                {
-                    FirstName = FirstName,
-                    LastName = LastName,
-                    UUID = agentUUID
-                };
-
-                if (!AgentCache.Contains(agent))
-                {
-                    AgentCache.Add(agent);
-                }
-            }
-
-            public static Agents GetAgent(string FirstName, string LastName)
-            {
-                return AgentCache.AsParallel().FirstOrDefault(
-                    o =>
-                        o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
-                        o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
-            }
-
-            public static Agents GetAgent(UUID agentUUID)
-            {
-                return AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
-            }
-
-            public static void AddGroup(string GroupName, UUID GroupUUID)
-            {
-                Groups group = new Groups
-                {
-                    Name = GroupName,
-                    UUID = GroupUUID
-                };
-                if (!GroupCache.Contains(group))
-                {
-                    GroupCache.Add(group);
-                }
-            }
-
-            /// <summary>
-            ///     Serializes to a file.
-            /// </summary>
-            /// <param name="FileName">File path of the new xml file</param>
-            /// <param name="o">the object to save</param>
-            public static void Save<T>(string FileName, T o)
-            {
-                try
-                {
-                    using (
-                        FileStream fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
-                        {
-                            XmlSerializer serializer = new XmlSerializer(typeof (T));
-                            serializer.Serialize(writer, o);
-                            writer.Flush();
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
-                        e.Message);
-                }
-            }
-
-            /// <summary>
-            ///     Load an object from an xml file
-            /// </summary>
-            /// <param name="FileName">Xml file name</param>
-            /// <param name="o">the object to load to</param>
-            /// <returns>The object created from the xml file</returns>
-            public static T Load<T>(string FileName, T o)
-            {
-                if (!File.Exists(FileName)) return o;
-                try
-                {
-                    using (FileStream fileStream = File.Open(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
-                        {
-                            XmlSerializer serializer = new XmlSerializer(typeof (T));
-                            return (T) serializer.Deserialize(streamReader);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
-                        ex.Message);
-                }
-                return o;
-            }
-
-            public struct Agents
-            {
-                public string FirstName;
-                public string LastName;
-                public UUID UUID;
-            }
-
-            public struct Groups
-            {
-                public string Name;
-                public UUID UUID;
             }
         }
 
@@ -8970,178 +8769,6 @@ namespace Corrade
             public Entity Entity;
             public string FirstName;
             public string LastName;
-        }
-
-        /// <summary>
-        ///     Linden constants.
-        /// </summary>
-        private struct LINDEN_CONSTANTS
-        {
-            public struct ALERTS
-            {
-                public const string NO_ROOM_TO_SIT_HERE = @"No room to sit here, try another spot.";
-
-                public const string UNABLE_TO_SET_HOME =
-                    @"You can only set your 'Home Location' on your land or at a mainland Infohub.";
-
-                public const string HOME_SET = @"Home position set.";
-            }
-
-            public struct ASSETS
-            {
-                public struct NOTECARD
-                {
-                    public const string NEWLINE = "\n";
-                    public const uint MAXIMUM_BODY_LENTH = 65536;
-                }
-            }
-
-            public struct AVATARS
-            {
-                public const uint SET_DISPLAY_NAME_SUCCESS = 200;
-                public const string LASTNAME_PLACEHOLDER = @"Resident";
-                public const uint MAXIMUM_DISPLAY_NAME_CHARACTERS = 31;
-                public const uint MINIMUM_DISPLAY_NAME_CHARACTERS = 1;
-                public const uint MAXIMUM_NUMBER_OF_ATTACHMENTS = 38;
-
-                public struct PROFILE
-                {
-                    public const uint SECOND_LIFE_TEXT_SIZE = 510;
-                    public const uint FIRST_LIFE_TEXT_SIZE = 253;
-                }
-
-                public struct PICKS
-                {
-                    public const uint MAXIMUM_PICKS = 10;
-                    public const uint MAXIMUM_PICK_DESCRIPTION_SIZE = 1022;
-                }
-
-                public struct CLASSIFIEDS
-                {
-                    public const uint MAXIMUM_CLASSIFIEDS = 100;
-                }
-            }
-
-            public struct PRIMITIVES
-            {
-                public const uint MAXIMUM_NAME_SIZE = 63;
-                public const uint MAXIMUM_DESCRIPTION_SIZE = 127;
-                public const double MAXIMUM_REZ_HEIGHT = 4096.0;
-                public const double MINIMUM_SIZE_X = 0.01;
-                public const double MINIMUM_SIZE_Y = 0.01;
-                public const double MINIMUM_SIZE_Z = 0.01;
-                public const double MAXIMUM_SIZE_X = 64.0;
-                public const double MAXIMUM_SIZE_Y = 64.0;
-                public const double MAXIMUM_SIZE_Z = 64.0;
-            }
-
-            public struct OBJECTS
-            {
-                public const uint MAXIMUM_PRIMITIVE_COUNT = 256;
-            }
-
-            public struct DIRECTORY
-            {
-                public struct EVENT
-                {
-                    public const uint SEARCH_RESULTS_COUNT = 200;
-                }
-
-                public struct GROUP
-                {
-                    public const uint SEARCH_RESULTS_COUNT = 100;
-                }
-
-                public struct LAND
-                {
-                    public const uint SEARCH_RESULTS_COUNT = 100;
-                }
-
-                public struct PEOPLE
-                {
-                    public const uint SEARCH_RESULTS_COUNT = 100;
-                }
-            }
-
-            public struct ESTATE
-            {
-                public const uint REGION_RESTART_DELAY = 120;
-                public const uint MAXIMUM_BAN_LIST_LENGTH = 500;
-                public const uint MAXIMUM_GROUP_LIST_LENGTH = 63;
-                public const uint MAXIMUM_USER_LIST_LENGTH = 500;
-                public const uint MAXIMUM_MANAGER_LIST_LENGTH = 10;
-
-                public struct MESSAGES
-                {
-                    public const string REGION_RESTART_MESSAGE = @"restart";
-                }
-            }
-
-            public struct PARCELS
-            {
-                public const double MAXIMUM_AUTO_RETURN_TIME = 999999;
-                public const uint MINIMUM_AUTO_RETURN_TIME = 0;
-                public const uint MAXIMUM_NAME_LENGTH = 63;
-                public const uint MAXIMUM_DESCRIPTION_LENGTH = 255;
-            }
-
-            public struct GRID
-            {
-                public const string SECOND_LIFE = @"Second Life";
-                public const string TIME_ZONE = @"Pacific Standard Time";
-            }
-
-            public struct CHAT
-            {
-                public const uint MAXIMUM_MESSAGE_LENGTH = 1024;
-            }
-
-            public struct GROUPS
-            {
-                public const uint MAXIMUM_NUMBER_OF_ROLES = 10;
-                public const string EVERYONE_ROLE_NAME = @"Everyone";
-                public const uint MAXIMUM_GROUP_NAME_LENGTH = 35;
-                public const uint MAXIMUM_GROUP_TITLE_LENGTH = 20;
-            }
-
-            public struct NOTICES
-            {
-                public const uint MAXIMUM_NOTICE_MESSAGE_LENGTH = 512;
-            }
-
-            public struct LSL
-            {
-                public const string CSV_DELIMITER = @", ";
-                public const float SENSOR_RANGE = 96;
-                public const string DATE_TIME_STAMP = @"yyy-MM-ddTHH:mm:ss.ffffffZ";
-            }
-
-            public struct REGION
-            {
-                public const float TELEPORT_MINIMUM_DISTANCE = 1;
-                public const float DEFAULT_AGENT_LIMIT = 40;
-                public const float DEFAULT_OBJECT_BONUS = 1;
-                public const bool DEFAULT_FIXED_SUN = false;
-                public const float DEFAULT_TERRAIN_LOWER_LIMIT = -4;
-                public const float DEFAULT_TERRAIN_RAISE_LIMIT = 4;
-                public const bool DEFAULT_USE_ESTATE_SUN = true;
-                public const float DEFAULT_WATER_HEIGHT = 20;
-                public const float SUNRISE = 6;
-            }
-
-            public struct VIEWER
-            {
-                public const float MAXIMUM_DRAW_DISTANCE = 4096;
-            }
-
-            public struct TELEPORTS
-            {
-                public struct THROTTLE
-                {
-                    public const uint MAX_TELEPORTS = 10;
-                    public const uint GRACE_SECONDS = 15;
-                }
-            }
         }
 
         /// <summary>
@@ -10452,465 +10079,6 @@ namespace Corrade
                 }
             }
             return plaintext;
-        }
-
-        #endregion
-
-        #region GRID SERVICES
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Tries to build an UUID out of the data string.
-        /// </summary>
-        /// <param name="data">a string</param>
-        /// <returns>an UUID or the supplied string in case data could not be resolved</returns>
-        private static object StringOrUUID(string data)
-        {
-            if (string.IsNullOrEmpty(data))
-            {
-                return null;
-            }
-            UUID @UUID;
-            if (!UUID.TryParse(data, out @UUID))
-            {
-                return data;
-            }
-            return @UUID;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Updates the current balance by requesting it from the grid.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the request in milliseconds</param>
-        /// <returns>true if the balance could be retrieved</returns>
-        private static bool UpdateBalance(uint millisecondsTimeout)
-        {
-            ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
-            EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
-                (sender, args) => MoneyBalanceEvent.Set();
-            lock (ClientInstanceSelfLock)
-            {
-                Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
-                Client.Self.RequestBalance();
-                if (!MoneyBalanceEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
-                    return false;
-                }
-                Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
-            }
-            return true;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves a group name to an UUID by using the directory search.
-        /// </summary>
-        /// <param name="GroupName">the name of the group to resolve</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="GroupUUID">an object in which to store the UUID of the group</param>
-        /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool directGroupNameToUUID(string GroupName, uint millisecondsTimeout, uint dataTimeout,
-            ref UUID GroupUUID)
-        {
-            UUID groupUUID = UUID.Zero;
-            Time.DecayingAlarm DirGroupsReceivedAlarm = new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-            EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
-            {
-                DirGroupsReceivedAlarm.Alarm(dataTimeout);
-                DirectoryManager.GroupSearchData groupSearchData =
-                    args.MatchedGroups.AsParallel()
-                        .FirstOrDefault(o => o.GroupName.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
-                switch (!groupSearchData.Equals(default(DirectoryManager.GroupSearchData)))
-                {
-                    case true:
-                        groupUUID = groupSearchData.GroupID;
-                        DirGroupsReceivedAlarm.Signal.Set();
-                        break;
-                }
-            };
-            Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
-            Client.Directory.StartGroupSearch(GroupName, 0);
-            if (!DirGroupsReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
-            {
-                Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
-                return false;
-            }
-            Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
-            if (!groupUUID.Equals(UUID.Zero))
-            {
-                GroupUUID = groupUUID;
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
-        /// </summary>
-        /// <param name="GroupName">the name of the group to resolve</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="GroupUUID">an object in which to store the UUID of the group</param>
-        /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool GroupNameToUUID(string GroupName, uint millisecondsTimeout, uint dataTimeout,
-            ref UUID GroupUUID)
-        {
-            bool succeeded;
-            lock (ClientInstanceDirectoryLock)
-            {
-                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.Name.Equals(GroupName));
-
-                if (!@group.Equals(default(Cache.Groups)))
-                {
-                    GroupUUID = @group.UUID;
-                    return true;
-                }
-
-                succeeded = directGroupNameToUUID(GroupName, millisecondsTimeout, dataTimeout, ref GroupUUID);
-
-                if (succeeded)
-                {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = GroupName,
-                        UUID = GroupUUID
-                    });
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves a group name to an UUID by using the directory search.
-        /// </summary>
-        /// <param name="GroupName">a string to store the name to</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="GroupUUID">the UUID of the group to resolve</param>
-        /// <returns>true if the group UUID could be resolved to an name</returns>
-        private static bool directGroupUUIDToName(UUID GroupUUID, uint millisecondsTimeout,
-            ref string GroupName)
-        {
-            string groupName = string.Empty;
-            ManualResetEvent GroupProfileReceivedEvent = new ManualResetEvent(false);
-            EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
-            {
-                if (s.Group.ID.Equals(GroupUUID))
-                    groupName = s.Group.Name;
-                GroupProfileReceivedEvent.Set();
-            };
-            Client.Groups.GroupProfile += GroupProfileDelegate;
-            Client.Groups.RequestGroupProfile(GroupUUID);
-            if (!GroupProfileReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-            {
-                Client.Groups.GroupProfile -= GroupProfileDelegate;
-                return false;
-            }
-            Client.Groups.GroupProfile -= GroupProfileDelegate;
-            if (!string.IsNullOrEmpty(groupName))
-            {
-                GroupName = groupName;
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
-        /// </summary>
-        /// <param name="GroupName">a string to store the name to</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="GroupUUID">the UUID of the group to resolve</param>
-        /// <returns>true if the group UUID could be resolved to an name</returns>
-        private static bool GroupUUIDToName(UUID GroupUUID, uint millisecondsTimeout,
-            ref string GroupName)
-        {
-            bool succeeded;
-            lock (ClientInstanceGroupsLock)
-            {
-                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
-
-                if (!@group.Equals(default(Cache.Groups)))
-                {
-                    GroupName = @group.Name;
-                    return true;
-                }
-
-                succeeded = directGroupUUIDToName(GroupUUID, millisecondsTimeout, ref GroupName);
-
-                if (succeeded)
-                {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = GroupName,
-                        UUID = GroupUUID
-                    });
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves an agent name to an agent UUID by searching the directory
-        ///     services.
-        /// </summary>
-        /// <param name="FirstName">the first name of the agent</param>
-        /// <param name="LastName">the last name of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="AgentUUID">an object to store the agent UUID</param>
-        /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool directAgentNameToUUID(string FirstName, string LastName, uint millisecondsTimeout,
-            uint dataTimeout,
-            ref UUID AgentUUID)
-        {
-            UUID agentUUID = UUID.Zero;
-            Time.DecayingAlarm DirPeopleReceivedAlarm = new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-            EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
-            {
-                DirPeopleReceivedAlarm.Alarm(dataTimeout);
-                DirectoryManager.AgentSearchData agentSearchData =
-                    args.MatchedPeople.AsParallel().FirstOrDefault(
-                        o =>
-                            o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
-                            o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
-                switch (!agentSearchData.Equals(default(DirectoryManager.AgentSearchData)))
-                {
-                    case true:
-                        agentUUID = agentSearchData.AgentID;
-                        DirPeopleReceivedAlarm.Signal.Set();
-                        break;
-                }
-            };
-            Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
-            Client.Directory.StartPeopleSearch(
-                string.Format(Utils.EnUsCulture, "{0} {1}", FirstName, LastName), 0);
-            if (!DirPeopleReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
-            {
-                Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
-                return false;
-            }
-            Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
-            if (!agentUUID.Equals(UUID.Zero))
-            {
-                AgentUUID = agentUUID;
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        ///     A wrapper for looking up an agent name using Corrade's internal cache.
-        /// </summary>
-        /// <param name="FirstName">the first name of the agent</param>
-        /// <param name="LastName">the last name of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="AgentUUID">an object to store the agent UUID</param>
-        /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool AgentNameToUUID(string FirstName, string LastName, uint millisecondsTimeout,
-            uint dataTimeout,
-            ref UUID AgentUUID)
-        {
-            bool succeeded;
-            lock (ClientInstanceDirectoryLock)
-            {
-                Cache.Agents agent = Cache.GetAgent(FirstName, LastName);
-                if (!agent.Equals(default(Cache.Agents)))
-                {
-                    AgentUUID = agent.UUID;
-                    return true;
-                }
-
-                succeeded = directAgentNameToUUID(FirstName, LastName, millisecondsTimeout, dataTimeout,
-                    ref AgentUUID);
-
-                if (succeeded)
-                {
-                    Cache.AddAgent(FirstName, LastName, AgentUUID);
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves an agent UUID to an agent name.
-        /// </summary>
-        /// <param name="AgentUUID">the UUID of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="AgentName">an object to store the name of the agent in</param>
-        /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool directAgentUUIDToName(UUID AgentUUID, uint millisecondsTimeout,
-            ref string AgentName)
-        {
-            if (AgentUUID.Equals(UUID.Zero))
-                return false;
-            string agentName = string.Empty;
-            ManualResetEvent UUIDNameReplyEvent = new ManualResetEvent(false);
-            EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
-            {
-                args.Names.TryGetValue(AgentUUID, out agentName);
-                UUIDNameReplyEvent.Set();
-            };
-            Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
-            Client.Avatars.RequestAvatarName(AgentUUID);
-            if (!UUIDNameReplyEvent.WaitOne((int) millisecondsTimeout, false))
-            {
-                Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
-                return false;
-            }
-            Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
-            if (!string.IsNullOrEmpty(agentName))
-            {
-                AgentName = agentName;
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        ///     A wrapper for agent to UUID lookups using Corrade's internal cache.
-        /// </summary>
-        /// <param name="AgentUUID">the UUID of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="AgentName">an object to store the name of the agent in</param>
-        /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool AgentUUIDToName(UUID AgentUUID, uint millisecondsTimeout,
-            ref string AgentName)
-        {
-            bool succeeded;
-            lock (ClientInstanceAvatarsLock)
-            {
-                Cache.Agents agent = Cache.GetAgent(AgentUUID);
-                if (!agent.Equals(default(Cache.Agents)))
-                {
-                    AgentName = string.Join(" ", agent.FirstName, agent.LastName);
-                    return true;
-                }
-
-                succeeded = directAgentUUIDToName(AgentUUID, millisecondsTimeout, ref AgentName);
-
-                if (succeeded)
-                {
-                    List<string> name = new List<string>(GetAvatarNames(AgentName));
-                    Cache.AddAgent(name.First(), name.Last(), AgentUUID);
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// ///
-        /// <summary>
-        ///     Resolves a role name to a role UUID.
-        /// </summary>
-        /// <param name="RoleName">the name of the role to be resolved to an UUID</param>
-        /// <param name="GroupUUID">the UUID of the group to query for the role UUID</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="RoleUUID">an UUID object to store the role UUID in</param>
-        /// <returns>true if the role could be found</returns>
-        private static bool RoleNameToUUID(string RoleName, UUID GroupUUID, uint millisecondsTimeout,
-            ref UUID RoleUUID)
-        {
-            switch (!RoleName.Equals(LINDEN_CONSTANTS.GROUPS.EVERYONE_ROLE_NAME, StringComparison.Ordinal))
-            {
-                case false:
-                    RoleUUID = UUID.Zero;
-                    return true;
-            }
-            ManualResetEvent GroupRoleDataReceivedEvent = new ManualResetEvent(false);
-            UUID roleUUID = UUID.Zero;
-            EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
-            {
-                roleUUID =
-                    args.Roles.AsParallel().Where(o => o.Value.Name.Equals(RoleName, StringComparison.Ordinal))
-                        .Select(o => o.Key)
-                        .FirstOrDefault();
-                GroupRoleDataReceivedEvent.Set();
-            };
-            lock (ClientInstanceGroupsLock)
-            {
-                Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
-                Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-                    return false;
-                }
-                Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-            }
-            if (!roleUUID.Equals(UUID.Zero))
-            {
-                RoleUUID = roleUUID;
-                return true;
-            }
-            return false;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves a role name to a role UUID.
-        /// </summary>
-        /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
-        /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="roleName">a string object to store the role name in</param>
-        /// <returns>true if the role could be resolved</returns>
-        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, uint millisecondsTimeout, uint dataTimeout,
-            ref string roleName)
-        {
-            switch (!RoleUUID.Equals(UUID.Zero))
-            {
-                case false:
-                    roleName = LINDEN_CONSTANTS.GROUPS.EVERYONE_ROLE_NAME;
-                    return true;
-            }
-            ManualResetEvent GroupRoleDataReceivedEvent = new ManualResetEvent(false);
-            GroupRole groupRole = new GroupRole();
-            EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
-            {
-                args.Roles.TryGetValue(RoleUUID, out groupRole);
-                GroupRoleDataReceivedEvent.Set();
-            };
-            lock (ClientInstanceGroupsLock)
-            {
-                Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
-                Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-                    return false;
-                }
-                Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-            }
-            if (!groupRole.Equals(default(GroupRole)))
-            {
-                roleName = groupRole.Name;
-                return true;
-            }
-            return false;
         }
 
         #endregion

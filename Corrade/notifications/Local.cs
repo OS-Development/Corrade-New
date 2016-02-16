@@ -29,7 +29,7 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = GetAvatarNames(localChatEventArgs.FromName);
+                    IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(localChatEventArgs.FromName);
                     if (name != null)
                     {
                         List<string> fullName = new List<string>(name);
@@ -41,8 +41,12 @@ namespace Corrade
                                 fullName.Last());
                         }
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        localChatEventArgs.Message);
+                    // Message can be empty if it was not heard (out of chat range).
+                    if (!string.IsNullOrEmpty(localChatEventArgs.Message))
+                    {
+                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            localChatEventArgs.Message);
+                    }
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                         localChatEventArgs.OwnerID.ToString());
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),

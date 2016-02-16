@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -120,7 +121,7 @@ namespace Corrade
 
                     bool succeeded = true;
 
-                    lock (ClientInstanceSelfLock)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Objects.TerseObjectUpdate += TerseObjectUpdateEvent;
                         Client.Self.Movement.AtPos = false;
@@ -151,7 +152,7 @@ namespace Corrade
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true:
-                            lock (ClientInstanceSelfLock)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Fly(fly);
                             }

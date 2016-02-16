@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -106,7 +107,7 @@ namespace Corrade
                                                                      BindingFlags.Static)
                                             .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                         q => { muteFlags |= ((int) q.GetValue(null)); }));
-                            lock (ClientInstanceSelfLock)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                                 Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, (MuteFlags) muteFlags);
@@ -154,7 +155,7 @@ namespace Corrade
                             if (mute == null || mute.Equals(default(MuteEntry)))
                                 throw new ScriptException(ScriptError.MUTE_ENTRY_NOT_FOUND);
 
-                            lock (ClientInstanceSelfLock)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
                                 // remove the mute list
                                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;

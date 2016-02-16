@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -49,8 +50,9 @@ namespace Corrade
                     Parallel.ForEach(CSV.ToEnumerable(wearables)
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
-                        .Select(o => FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
-                            ).AsParallel().FirstOrDefault(p => p is InventoryWearable))
+                        .Select(
+                            o => FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, Helpers.StringOrUUID(o)
+                                ).AsParallel().FirstOrDefault(p => p is InventoryWearable))
                         .Where(o => o != null)
                         .Select(o => o as InventoryItem),
                         o => { Wear(o, replace); });

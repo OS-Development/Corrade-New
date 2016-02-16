@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -27,11 +28,11 @@ namespace Corrade
                     }
                     // if the grid is SecondLife and the group name length exceeds the allowed length...
                     if (IsSecondLife() &&
-                        corradeCommandParameters.Group.Name.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
+                        corradeCommandParameters.Group.Name.Length > Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
                     }
-                    if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
+                    if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
@@ -60,7 +61,7 @@ namespace Corrade
                         succeeded = args.Success;
                         GroupCreatedReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                         Client.Groups.RequestCreateGroup(targetGroup);

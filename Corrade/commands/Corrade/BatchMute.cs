@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -111,7 +112,7 @@ namespace Corrade
                                                         .Where(q => q.Name.Equals(p, StringComparison.Ordinal)),
                                                     r => { muteFlags |= ((int) r.GetValue(null)); }));
                                         succeeded = true;
-                                        lock (ClientInstanceSelfLock)
+                                        lock (Locks.ClientInstanceSelfLock)
                                         {
                                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                                             MuteListUpdatedEvent.Reset();
@@ -179,7 +180,7 @@ namespace Corrade
                                             return;
                                         }
                                         succeeded = true;
-                                        lock (ClientInstanceSelfLock)
+                                        lock (Locks.ClientInstanceSelfLock)
                                         {
                                             // remove the mute list
                                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;

@@ -10,7 +10,9 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -53,7 +55,7 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
@@ -86,7 +88,7 @@ namespace Corrade
                         running = args.IsRunning;
                         ScriptRunningReplyEvent.Set();
                     };
-                    lock (ClientInstanceInventoryLock)
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
                         Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                         Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);

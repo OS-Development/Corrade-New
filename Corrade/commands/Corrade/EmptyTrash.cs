@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -23,7 +24,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    lock (ClientInstanceInventoryLock)
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
                         Client.Inventory.EmptyTrash();
                     }

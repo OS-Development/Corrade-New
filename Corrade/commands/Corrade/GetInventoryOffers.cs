@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -34,7 +35,7 @@ namespace Corrade
                         {
                             List<string> name =
                                 new List<string>(
-                                    GetAvatarNames(o.Key.Offer.FromAgentName));
+                                    Helpers.GetAvatarNames(o.Key.Offer.FromAgentName));
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]

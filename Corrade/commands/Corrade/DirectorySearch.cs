@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -82,7 +83,7 @@ namespace Corrade
                                         }
                                     }
                                 });
-                            lock (ClientInstanceDirectoryLock)
+                            lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                 Client.Directory.StartClassifiedSearch(name);
@@ -146,15 +147,15 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         LINDEN_CONSTANTS.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
+                                         Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartEventsSearch(name, (uint) handledEvents);
                                     }
                                 };
-                            lock (ClientInstanceDirectoryLock)
+                            lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.DirEventsReply += DirEventsEventHandler;
                                 Client.Directory.StartEventsSearch(name,
@@ -222,15 +223,15 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         LINDEN_CONSTANTS.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
+                                         Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartGroupSearch(name, handledEvents);
                                     }
                                 };
-                            lock (ClientInstanceDirectoryLock)
+                            lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.DirGroupsReply += DirGroupsEventHandler;
                                 Client.Directory.StartGroupSearch(name, handledEvents);
@@ -293,9 +294,9 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
+                                         Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -303,7 +304,7 @@ namespace Corrade
                                             handledEvents);
                                     }
                                 };
-                            lock (ClientInstanceDirectoryLock)
+                            lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.DirLandReply += DirLandReplyEventArgs;
                                 Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -365,15 +366,15 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         LINDEN_CONSTANTS.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
+                                         Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartPeopleSearch(name, handledEvents);
                                     }
                                 };
-                            lock (ClientInstanceDirectoryLock)
+                            lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
                                 Client.Directory.StartPeopleSearch(name, handledEvents);
@@ -437,7 +438,7 @@ namespace Corrade
                                         }
                                     }
                                 });
-                            lock (ClientInstanceDirectoryLock)
+                            lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                 Client.Directory.StartPlacesSearch(name);

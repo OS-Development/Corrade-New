@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -39,7 +40,7 @@ namespace Corrade
                     }
 
                     InventoryFolder inventoryFolder;
-                    lock (ClientInstanceInventoryLock)
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
                         inventoryFolder = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder)
                             .FirstOrDefault(o => o is InventoryFolder) as InventoryFolder;
@@ -50,7 +51,7 @@ namespace Corrade
                     }
 
                     List<InventoryItem> equipItems = new List<InventoryItem>();
-                    lock (ClientInstanceInventoryLock)
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
                         equipItems.AddRange(
                             Client.Inventory.Store.GetContents(inventoryFolder)
@@ -109,7 +110,7 @@ namespace Corrade
                             }
                         });
 
-                    lock (ClientInstanceInventoryLock)
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
                         // Now remove the links.
                         Client.Inventory.Remove(removeItems, null);
@@ -122,7 +123,7 @@ namespace Corrade
                     }
 
                     // And replace the outfit wit hthe new items.
-                    lock (ClientInstanceAppearanceLock)
+                    lock (Locks.ClientInstanceAppearanceLock)
                     {
                         Client.Appearance.ReplaceOutfit(equipItems, false);
                     }

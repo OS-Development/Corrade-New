@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -55,19 +56,21 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
-                                            corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout,
-                                                ref targetUUID))
+                                            corradeCommandParameters.Message)), out targetUUID) &&
+                                !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(
+                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref targetUUID))
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
@@ -97,7 +100,7 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (ClientInstanceEstateLock)
+                                        lock (Locks.ClientInstanceEstateLock)
                                         {
                                             Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
                                             Client.Estate.RequestInfo();
@@ -113,9 +116,9 @@ namespace Corrade
                                             }
                                             Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                         }
-                                        lock (ClientInstanceNetworkLock)
+                                        lock (Locks.ClientInstanceNetworkLock)
                                         {
-                                            if (estateList.Count >= LINDEN_CONSTANTS.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
+                                            if (estateList.Count >= Constants.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
                                             {
                                                 throw new Exception(
                                                     Reflection.GetNameFromEnumValue(
@@ -139,12 +142,13 @@ namespace Corrade
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
-                                    out targetUUID) && !GroupNameToUUID(
+                                    out targetUUID) && !Resolvers.GroupNameToUUID(Client,
                                         wasInput(
                                             KeyValue.Get(
                                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                                 corradeCommandParameters.Message)),
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                         ref targetUUID))
                             {
                                 throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
@@ -174,7 +178,7 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (ClientInstanceEstateLock)
+                                        lock (Locks.ClientInstanceEstateLock)
                                         {
                                             Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
                                             Client.Estate.RequestInfo();
@@ -189,10 +193,10 @@ namespace Corrade
                                             }
                                             Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                         }
-                                        lock (ClientInstanceNetworkLock)
+                                        lock (Locks.ClientInstanceNetworkLock)
                                         {
                                             if (estateList.Count >=
-                                                LINDEN_CONSTANTS.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
+                                                Constants.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
                                             {
                                                 throw new Exception(
                                                     Reflection.GetNameFromEnumValue(
@@ -215,19 +219,21 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
-                                            corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout,
-                                                ref targetUUID))
+                                            corradeCommandParameters.Message)), out targetUUID) &&
+                                !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(
+                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref targetUUID))
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
@@ -256,7 +262,7 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (ClientInstanceEstateLock)
+                                        lock (Locks.ClientInstanceEstateLock)
                                         {
                                             Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
                                             Client.Estate.RequestInfo();
@@ -271,9 +277,9 @@ namespace Corrade
                                             }
                                             Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                         }
-                                        lock (ClientInstanceNetworkLock)
+                                        lock (Locks.ClientInstanceNetworkLock)
                                         {
-                                            if (estateList.Count >= LINDEN_CONSTANTS.ESTATE.MAXIMUM_USER_LIST_LENGTH)
+                                            if (estateList.Count >= Constants.ESTATE.MAXIMUM_USER_LIST_LENGTH)
                                             {
                                                 throw new Exception(
                                                     Reflection.GetNameFromEnumValue(
@@ -296,19 +302,21 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
-                                            corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout,
-                                                ref targetUUID))
+                                            corradeCommandParameters.Message)), out targetUUID) &&
+                                !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(
+                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref targetUUID))
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
@@ -337,7 +345,7 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (ClientInstanceEstateLock)
+                                        lock (Locks.ClientInstanceEstateLock)
                                         {
                                             Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
                                             Client.Estate.RequestInfo();
@@ -352,10 +360,10 @@ namespace Corrade
                                             }
                                             Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                         }
-                                        lock (ClientInstanceNetworkLock)
+                                        lock (Locks.ClientInstanceNetworkLock)
                                         {
                                             if (estateList.Count >=
-                                                LINDEN_CONSTANTS.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
+                                                Constants.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
                                             {
                                                 throw new Exception(
                                                     Reflection.GetNameFromEnumValue(

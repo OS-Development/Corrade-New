@@ -54,7 +54,10 @@ namespace Corrade
                         {
                             if (
                                 !wearables.AsParallel()
-                                    .Any(p => p is InventoryWearable && (p as InventoryWearable).WearableType.Equals(RLVWearables[o].WearableType)))
+                                    .Any(
+                                        p =>
+                                            p is InventoryWearable &&
+                                            (p as InventoryWearable).WearableType.Equals(RLVWearables[o].WearableType)))
                             {
                                 data[o] = RLV_CONSTANTS.FALSE_MARKER;
                                 return;

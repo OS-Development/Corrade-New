@@ -10,7 +10,9 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -55,7 +57,7 @@ namespace Corrade
                         groupMembers = args.Members;
                         groupMembersReceivedEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                         Client.Groups.RequestGroupMembers(corradeCommandParameters.Group.UUID);
@@ -81,7 +83,7 @@ namespace Corrade
                         groupRolesMembers = args.RolesMembers;
                         GroupRoleMembersReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
@@ -107,11 +109,12 @@ namespace Corrade
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))
                             {
-                                List<string> fullName = new List<string>(GetAvatarNames(o));
+                                List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
                                 if (
-                                    !AgentNameToUUID(fullName.First(), fullName.Last(),
+                                    !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout, ref agentUUID))
+                                        corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
                                 {
                                     // Add all the unrecognized agents to the returned list.
                                     lock (LockObject)
@@ -161,7 +164,7 @@ namespace Corrade
                                     succeeded = args.Success;
                                     GroupEjectEvent.Set();
                                 };
-                            lock (ClientInstanceGroupsLock)
+                            lock (Locks.ClientInstanceGroupsLock)
                             {
                                 Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                 Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);

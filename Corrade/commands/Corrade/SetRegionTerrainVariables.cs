@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -34,7 +35,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WATERHEIGHT)),
                                     corradeCommandParameters.Message)), out waterHeight))
                     {
-                        waterHeight = LINDEN_CONSTANTS.REGION.DEFAULT_WATER_HEIGHT;
+                        waterHeight = Constants.REGION.DEFAULT_WATER_HEIGHT;
                     }
                     float terrainRaiseLimit;
                     if (
@@ -44,7 +45,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAINRAISELIMIT)),
                                     corradeCommandParameters.Message)), out terrainRaiseLimit))
                     {
-                        terrainRaiseLimit = LINDEN_CONSTANTS.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
+                        terrainRaiseLimit = Constants.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
                     }
                     float terrainLowerLimit;
                     if (
@@ -54,7 +55,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAINLOWERLIMIT)),
                                     corradeCommandParameters.Message)), out terrainLowerLimit))
                     {
-                        terrainLowerLimit = LINDEN_CONSTANTS.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
+                        terrainLowerLimit = Constants.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
                     }
                     bool useEstateSun;
                     if (
@@ -64,7 +65,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.USEESTATESUN)),
                                     corradeCommandParameters.Message)), out useEstateSun))
                     {
-                        useEstateSun = LINDEN_CONSTANTS.REGION.DEFAULT_USE_ESTATE_SUN;
+                        useEstateSun = Constants.REGION.DEFAULT_USE_ESTATE_SUN;
                     }
                     bool fixedSun;
                     if (
@@ -74,7 +75,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIXEDSUN)),
                                     corradeCommandParameters.Message)), out fixedSun))
                     {
-                        fixedSun = LINDEN_CONSTANTS.REGION.DEFAULT_FIXED_SUN;
+                        fixedSun = Constants.REGION.DEFAULT_FIXED_SUN;
                     }
                     float sunPosition;
                     if (
@@ -84,7 +85,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUNPOSITION)),
                                     corradeCommandParameters.Message)), out sunPosition))
                     {
-                        sunPosition = LINDEN_CONSTANTS.REGION.SUNRISE;
+                        sunPosition = Constants.REGION.SUNRISE;
                     }
                     Client.Estate.SetTerrainVariables(waterHeight, terrainRaiseLimit, terrainLowerLimit, useEstateSun,
                         fixedSun, sunPosition);

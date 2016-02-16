@@ -10,7 +10,9 @@ using System.Linq;
 using System.Text;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -40,7 +42,7 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
@@ -56,7 +58,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
                     if (IsSecondLife() &&
-                        Encoding.UTF8.GetByteCount(name) > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_NAME_SIZE)
+                        Encoding.UTF8.GetByteCount(name) > Constants.PRIMITIVES.MAXIMUM_NAME_SIZE)
                     {
                         throw new ScriptException(ScriptError.NAME_TOO_LARGE);
                     }

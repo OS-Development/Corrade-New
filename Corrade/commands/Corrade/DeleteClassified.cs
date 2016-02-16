@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -45,7 +46,7 @@ namespace Corrade
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();
                     };
-                    lock (ClientInstanceAvatarsLock)
+                    lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                         Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);

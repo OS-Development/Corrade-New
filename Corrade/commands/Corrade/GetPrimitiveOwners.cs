@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -61,7 +62,7 @@ namespace Corrade
                             ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                 (sender, args) => SimParcelsDownloadedEvent.Set();
-                            lock (ClientInstanceParcelsLock)
+                            lock (Locks.ClientInstanceParcelsLock)
                             {
                                 Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
                                 Client.Parcels.RequestAllSimParcels(simulator);
@@ -124,7 +125,7 @@ namespace Corrade
                                 parcelPrimOwners = args.PrimOwners;
                                 ParcelObjectOwnersReplyEvent.Set();
                             };
-                        lock (ClientInstanceParcelsLock)
+                        lock (Locks.ClientInstanceParcelsLock)
                         {
                             Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
                             Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
@@ -157,7 +158,7 @@ namespace Corrade
                     Parallel.ForEach(primitives, o =>
                     {
                         string owner = string.Empty;
-                        if (!AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout, ref owner))
+                        if (!Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout, ref owner))
                             return;
                         lock (LockObject)
                         {

@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -27,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
-                        StringOrUUID(
+                        Helpers.StringOrUUID(
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
@@ -82,19 +84,21 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
-                                            corradeCommandParameters.Message)), out agentUUID) && !AgentNameToUUID(
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout,
-                                                ref agentUUID))
+                                            corradeCommandParameters.Message)), out agentUUID) &&
+                                !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(
+                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref agentUUID))
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
@@ -116,7 +120,7 @@ namespace Corrade
                             Primitive primitive = null;
                             if (
                                 !FindPrimitive(
-                                    StringOrUUID(wasInput(
+                                    Helpers.StringOrUUID(wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message))),

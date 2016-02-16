@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -80,7 +81,7 @@ namespace Corrade
                     {
                         string name = string.Empty;
                         if (
-                            !AgentUUIDToName(p.Key, corradeConfiguration.ServicesTimeout,
+                            !Resolvers.AgentUUIDToName(Client, p.Key, corradeConfiguration.ServicesTimeout,
                                 ref name))
                             return;
                         switch (entity)

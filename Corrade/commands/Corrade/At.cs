@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -87,7 +88,7 @@ namespace Corrade
                             {
                                 groupSchedule.Sender,
                                 groupSchedule.Identifier,
-                                groupSchedule.At.ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP),
+                                groupSchedule.At.ToString(Constants.LSL.DATE_TIME_STAMP),
                                 groupSchedule.Message
                             }));
                             break;
@@ -124,7 +125,7 @@ namespace Corrade
                                             new[]
                                             {
                                                 o.Sender, o.Identifier,
-                                                o.At.ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP), o.Message
+                                                o.At.ToString(Constants.LSL.DATE_TIME_STAMP), o.Message
                                             }));
                             }
                             if (csv.Any())

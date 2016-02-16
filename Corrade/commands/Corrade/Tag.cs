@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -52,7 +53,7 @@ namespace Corrade
                                 roleData = args.Roles.ToDictionary(o => o.Value.Title, o => o.Value.ID);
                                 GroupRoleDataReplyEvent.Set();
                             };
-                            lock (ClientInstanceGroupsLock)
+                            lock (Locks.ClientInstanceGroupsLock)
                             {
                                 Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
                                 Client.Groups.RequestGroupRoles(corradeCommandParameters.Group.UUID);
@@ -93,7 +94,7 @@ namespace Corrade
                                 }
                                 GroupTitlesReplyEvent.Set();
                             };
-                            lock (ClientInstanceGroupsLock)
+                            lock (Locks.ClientInstanceGroupsLock)
                             {
                                 Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                                 Client.Groups.RequestGroupTitles(corradeCommandParameters.Group.UUID);

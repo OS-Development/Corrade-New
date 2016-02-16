@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -66,16 +67,16 @@ namespace Corrade
                             corradeCommandParameters.Message)), ref parcel);
                     if (IsSecondLife())
                     {
-                        if (parcel.OtherCleanTime > LINDEN_CONSTANTS.PARCELS.MAXIMUM_AUTO_RETURN_TIME ||
-                            parcel.OtherCleanTime < LINDEN_CONSTANTS.PARCELS.MINIMUM_AUTO_RETURN_TIME)
+                        if (parcel.OtherCleanTime > Constants.PARCELS.MAXIMUM_AUTO_RETURN_TIME ||
+                            parcel.OtherCleanTime < Constants.PARCELS.MINIMUM_AUTO_RETURN_TIME)
                         {
                             throw new ScriptException(ScriptError.AUTO_RETURN_TIME_OUTSIDE_LIMIT_RANGE);
                         }
-                        if (parcel.Name.Length > LINDEN_CONSTANTS.PARCELS.MAXIMUM_NAME_LENGTH)
+                        if (parcel.Name.Length > Constants.PARCELS.MAXIMUM_NAME_LENGTH)
                         {
                             throw new ScriptException(ScriptError.NAME_TOO_LARGE);
                         }
-                        if (parcel.Desc.Length > LINDEN_CONSTANTS.PARCELS.MAXIMUM_DESCRIPTION_LENGTH)
+                        if (parcel.Desc.Length > Constants.PARCELS.MAXIMUM_DESCRIPTION_LENGTH)
                         {
                             throw new ScriptException(ScriptError.DESCRIPTION_TOO_LARGE);
                         }

@@ -13,6 +13,7 @@ using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -89,7 +90,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                             }
-                            if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
+                            if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                             }

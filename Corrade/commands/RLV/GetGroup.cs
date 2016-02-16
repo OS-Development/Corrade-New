@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -30,7 +31,8 @@ namespace Corrade
                     return;
                 string groupName = string.Empty;
                 if (
-                    !GroupUUIDToName(currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)),
+                    !Resolvers.GroupUUIDToName(Client,
+                        currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)),
                         corradeConfiguration.ServicesTimeout, ref groupName))
                 {
                     return;

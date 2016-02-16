@@ -34,7 +34,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = GetAvatarNames(friendInfoEventArgs.Friend.Name);
+                        IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(friendInfoEventArgs.Friend.Name);
                         if (name != null)
                         {
                             List<string> fullName = new List<string>(name);
@@ -80,7 +80,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = GetAvatarNames(friendshipResponseEventArgs.AgentName);
+                        IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(friendshipResponseEventArgs.AgentName);
                         if (name != null)
                         {
                             List<string> fullName = new List<string>(name);
@@ -111,7 +111,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = GetAvatarNames(friendshipOfferedEventArgs.AgentName);
+                        IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(friendshipOfferedEventArgs.AgentName);
                         if (name != null)
                         {
                             List<string> fullName = new List<string>(name);

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -32,7 +33,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
-                            out agentUUID) && !AgentNameToUUID(
+                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
@@ -42,6 +43,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -85,7 +87,7 @@ namespace Corrade
                             ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             classifieds = args;
                         };
-                    lock (ClientInstanceAvatarsLock)
+                    lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
                         Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;

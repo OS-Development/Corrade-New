@@ -11,9 +11,12 @@ namespace wasSharp
 {
     public static class Numerics
     {
+
+#if !__MonoCS__
         private static readonly Func<double, double, double, double, double, double> directMapValueToRange =
             ((Expression<Func<double, double, double, double, double, double>>)
                 ((value, xMin, xMax, yMin, yMax) => yMin + (yMax - yMin)*(value - xMin)/(xMax - xMin))).Compile();
+#endif
 
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
@@ -32,7 +35,11 @@ namespace wasSharp
         /// <returns>a value in x mapped in the range of y</returns>
         public static double MapValueToRange(double value, double xMin, double xMax, double yMin, double yMax)
         {
+#if !__MonoCS__
             return directMapValueToRange(value, xMin, xMax, yMin, yMax);
+#else
+            return yMin + (yMax - yMin)*(value - xMin)/(xMax - xMin);
+#endif
         }
     }
 }

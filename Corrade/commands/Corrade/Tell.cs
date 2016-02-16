@@ -12,7 +12,9 @@ using System.Reflection;
 using System.Text;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -33,7 +35,7 @@ namespace Corrade
                             corradeCommandParameters.Message));
                     List<string> myName =
                         new List<string>(
-                            GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
+                            Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
                     switch (
                         Reflection.GetEnumValueFromName<Entity>(
                             wasInput(
@@ -48,26 +50,28 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
-                                            corradeCommandParameters.Message)), out agentUUID) && !AgentNameToUUID(
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                wasInput(
-                                                    KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        corradeCommandParameters.Message)),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout,
-                                                ref agentUUID))
+                                            corradeCommandParameters.Message)), out agentUUID) &&
+                                !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(
+                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref agentUUID))
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
                             if (string.IsNullOrEmpty(data) ||
                                 (IsSecondLife() &&
                                  Encoding.UTF8.GetByteCount(data) >
-                                 LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH))
+                                 Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
@@ -76,7 +80,7 @@ namespace Corrade
                             if (corradeConfiguration.InstantMessageLogEnabled)
                             {
                                 string agentName = string.Empty;
-                                if (!AgentUUIDToName(
+                                if (!Resolvers.AgentUUIDToName(Client,
                                     agentUUID,
                                     corradeConfiguration.ServicesTimeout,
                                     ref agentName))
@@ -85,7 +89,7 @@ namespace Corrade
                                 }
                                 List<string> fullName =
                                     new List<string>(
-                                        GetAvatarNames(agentName));
+                                        Helpers.GetAvatarNames(agentName));
                                 CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try
@@ -138,7 +142,7 @@ namespace Corrade
                             }
                             if (string.IsNullOrEmpty(data) || (IsSecondLife() &&
                                                                Encoding.UTF8.GetByteCount(data) >
-                                                               LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH))
+                                                               Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
@@ -204,7 +208,7 @@ namespace Corrade
                         case Entity.LOCAL:
                             if (string.IsNullOrEmpty(data) || (IsSecondLife() &&
                                                                Encoding.UTF8.GetByteCount(data) >
-                                                               LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH))
+                                                               Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
@@ -243,7 +247,8 @@ namespace Corrade
                             {
                                 List<string> fullName =
                                     new List<string>(
-                                        GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
+                                        Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName,
+                                            Client.Self.LastName)));
                                 CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try

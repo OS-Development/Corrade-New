@@ -19,8 +19,10 @@ using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
+using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -51,7 +53,7 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
@@ -153,7 +155,7 @@ namespace Corrade
                         switch (!Client.Assets.Cache.HasAsset(o))
                         {
                             case true:
-                                lock (ClientInstanceAssetsLock)
+                                lock (Locks.ClientInstanceAssetsLock)
                                 {
                                     ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
                                     Client.Assets.RequestImage(o, ImageType.Normal,
@@ -280,7 +282,7 @@ namespace Corrade
                                 {
                                     primitiveEntryDataStreamWriter.Write(
                                         OSDParser.SerializeLLSDXmlString(
-                                            Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
+                                            OpenMetaverse.Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
                                     primitiveEntryDataStreamWriter.Flush();
                                 }
                             }

@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -28,7 +30,7 @@ namespace Corrade
                     }
                     InventoryBase inventoryBaseItem =
                         FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message)))
                             ).FirstOrDefault();
@@ -48,7 +50,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
                     if (IsSecondLife() &&
-                        position.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                        position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
                         throw new Exception(
                             Reflection.GetNameFromEnumValue(

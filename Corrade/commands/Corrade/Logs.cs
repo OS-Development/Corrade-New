@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -159,7 +160,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
@@ -195,7 +196,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
@@ -329,7 +330,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
@@ -366,7 +367,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
@@ -531,7 +532,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
@@ -578,7 +579,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
@@ -734,7 +735,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
@@ -774,7 +775,7 @@ namespace Corrade
                                             {
                                                 Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                                 o.DateTime.ToUniversalTime()
-                                                    .ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP)
+                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
                                             });
                                             csv.AddRange(new[]
                                             {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -55,7 +56,7 @@ namespace Corrade
                             summary = args.Summary;
                             RequestGroupAccountSummaryEvent.Set();
                         };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
                         Client.Groups.RequestGroupAccountSummary(corradeCommandParameters.Group.UUID, days, interval);

@@ -29,8 +29,11 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        ownerSayEventArgs.Message);
+                    if (!string.IsNullOrEmpty(ownerSayEventArgs.Message))
+                    {
+                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            ownerSayEventArgs.Message);
+                    }
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                         ownerSayEventArgs.SourceID.ToString());
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -43,7 +44,7 @@ namespace Corrade
                     ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                         (sender, args) => SimParcelsDownloadedEvent.Set();
-                    lock (ClientInstanceParcelsLock)
+                    lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
                         Client.Parcels.RequestAllSimParcels(simulator);

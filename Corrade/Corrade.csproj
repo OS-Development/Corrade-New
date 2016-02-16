@@ -105,6 +105,9 @@
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
+    <Reference Include="wasOpenMetaverse">
+      <HintPath>..\wasOpenMetaverse\bin\Release\wasOpenMetaverse.dll</HintPath>
+    </Reference>
     <Reference Include="wasSharp">
       <HintPath>..\wasSharp\bin\Release\wasSharp.dll</HintPath>
     </Reference>

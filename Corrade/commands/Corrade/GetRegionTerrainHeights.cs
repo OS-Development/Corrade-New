@@ -6,9 +6,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade

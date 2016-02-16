@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -38,7 +39,7 @@ namespace Corrade
                         });
                         EstateCovenantReceivedEvent.Set();
                     };
-                    lock (ClientInstanceEstateLock)
+                    lock (Locks.ClientInstanceEstateLock)
                     {
                         Client.Estate.EstateCovenantReply += EstateCovenantReplyEventhandler;
                         Client.Estate.RequestCovenant();

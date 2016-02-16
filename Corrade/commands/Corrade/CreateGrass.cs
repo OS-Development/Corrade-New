@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -93,12 +94,12 @@ namespace Corrade
                         scale = new Vector3(0.5f, 0.5f, 0.5f);
                     }
                     if (IsSecondLife() &&
-                        ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
-                          scale.Y < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Y ||
-                          scale.Z < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Z ||
-                          scale.X > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_X ||
-                          scale.Y > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Y ||
-                          scale.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                        ((scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
+                          scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
+                          scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
+                          scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
+                          scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                          scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z)))
                     {
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }

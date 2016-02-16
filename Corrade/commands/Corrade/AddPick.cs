@@ -11,7 +11,9 @@ using System.Text;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -29,7 +31,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
-                        StringOrUUID(
+                        Helpers.StringOrUUID(
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
@@ -65,7 +67,7 @@ namespace Corrade
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();
                     };
-                    lock (ClientInstanceAvatarsLock)
+                    lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                         Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
@@ -84,12 +86,12 @@ namespace Corrade
                     if (IsSecondLife())
                     {
                         if (pickUUID.Equals(UUID.Zero) &&
-                            pickCount >= LINDEN_CONSTANTS.AVATARS.PICKS.MAXIMUM_PICKS)
+                            pickCount >= Constants.AVATARS.PICKS.MAXIMUM_PICKS)
                         {
                             throw new ScriptException(ScriptError.MAXIMUM_AMOUNT_OF_PICKS_REACHED);
                         }
                         if (Encoding.UTF8.GetByteCount(description) >
-                            LINDEN_CONSTANTS.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
+                            Constants.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
                         {
                             throw new ScriptException(ScriptError.DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE);
                         }

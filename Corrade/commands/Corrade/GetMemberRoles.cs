@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -44,7 +45,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
-                            out agentUUID) && !AgentNameToUUID(
+                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
@@ -54,6 +55,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -73,7 +75,7 @@ namespace Corrade
                         groupRolesMembers.UnionWith(args.RolesMembers);
                         GroupRoleMembersReplyEvent.Set();
                     };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
@@ -89,7 +91,7 @@ namespace Corrade
                     Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)), o =>
                     {
                         string roleName = string.Empty;
-                        switch (RoleUUIDToName(o.Key, corradeCommandParameters.Group.UUID,
+                        switch (Resolvers.RoleUUIDToName(Client, o.Key, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout,
                             ref roleName))

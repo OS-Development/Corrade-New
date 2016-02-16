@@ -30,7 +30,7 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
+                    IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
                     if (name != null)
                     {
                         List<string> fullName = new List<string>(name);

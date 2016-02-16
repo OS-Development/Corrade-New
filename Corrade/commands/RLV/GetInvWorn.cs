@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -119,7 +120,7 @@ namespace Corrade
                            WornIndicator(allItemsCount, allItemsWornCount);
                 };
                 List<string> response = new List<string>();
-                lock (ClientInstanceInventoryLock)
+                lock (Locks.ClientInstanceInventoryLock)
                 {
                     response.Add($"{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
                     response.AddRange(

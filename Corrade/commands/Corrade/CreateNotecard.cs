@@ -11,6 +11,7 @@ using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -33,7 +34,7 @@ namespace Corrade
                             corradeCommandParameters.Message));
                     if (IsSecondLife() &&
                         Encoding.UTF8.GetByteCount(text) >
-                        LINDEN_CONSTANTS.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
+                        Constants.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
                     {
                         throw new ScriptException(ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE);
                     }
@@ -71,7 +72,7 @@ namespace Corrade
                     }
                     AssetNotecard blank = new AssetNotecard
                     {
-                        BodyText = LINDEN_CONSTANTS.ASSETS.NOTECARD.NEWLINE
+                        BodyText = Constants.ASSETS.NOTECARD.NEWLINE
                     };
                     blank.Encode();
                     ManualResetEvent UploadBlankNotecardEvent = new ManualResetEvent(false);

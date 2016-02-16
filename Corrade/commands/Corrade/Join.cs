@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -58,7 +59,7 @@ namespace Corrade
                     ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                         (sender, args) => GroupJoinedReplyEvent.Set();
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
                         Client.Groups.RequestJoinGroup(corradeCommandParameters.Group.UUID);

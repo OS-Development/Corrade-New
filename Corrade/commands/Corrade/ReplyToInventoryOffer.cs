@@ -11,6 +11,7 @@ using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -50,7 +51,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVENTORY_OFFER_NOT_FOUND);
                     }
                     object folder =
-                        StringOrUUID(
+                        Helpers.StringOrUUID(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),

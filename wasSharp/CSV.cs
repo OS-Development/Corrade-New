@@ -14,6 +14,8 @@ namespace wasSharp
 {
     public static class CSV
     {
+
+#if !__MonoCS__
         private static readonly Func<IEnumerable<string>, string> directFromEnumerable =
             ((Expression<Func<IEnumerable<string>, string>>) (data => string.Join(",",
                 data
@@ -29,6 +31,7 @@ namespace wasSharp
                     .TakeWhile(o => o.Length%2 == 0)
                     .Where(o => !string.IsNullOrEmpty(o[0]) || !string.IsNullOrEmpty(o[1]))
                     .ToDictionary(o => o[0], p => p[1]).Select(o => o))).Compile();
+#endif
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -40,7 +43,14 @@ namespace wasSharp
         /// <remarks>compliant with RFC 4180</remarks>
         public static string FromEnumerable(IEnumerable<string> input)
         {
+#if !__MonoCS__
             return directFromEnumerable(input);
+#else
+            return string.Join(",",
+                input
+                    .Select(o => o.Replace("\"", "\"\""))
+                    .Select(o => o.IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1) ? o : "\"" + o + "\""));
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -52,7 +62,16 @@ namespace wasSharp
         /// <returns>key-value pairs of successive comma-separate values</returns>
         public static IEnumerable<KeyValuePair<string, string>> ToKeyValue(string input)
         {
+#if !__MonoCS__
             return directToKeyValue(input);
+#else
+            return ToEnumerable(input).AsParallel().Select((o, p) => new {o, p})
+                    .GroupBy(q => q.p/2, q => q.o)
+                    .Select(o => o.ToArray())
+                    .TakeWhile(o => o.Length%2 == 0)
+                    .Where(o => !string.IsNullOrEmpty(o[0]) || !string.IsNullOrEmpty(o[1]))
+                    .ToDictionary(o => o[0], p => p[1]).Select(o => o);
+#endif
         }
 
         ///////////////////////////////////////////////////////////////////////////

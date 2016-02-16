@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -126,7 +127,7 @@ namespace Corrade
                         accessList = args.AccessList;
                         ParcelAccessListEvent.Set();
                     };
-                    lock (ClientInstanceParcelsLock)
+                    lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                         Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
@@ -143,7 +144,7 @@ namespace Corrade
                     {
                         string agent = string.Empty;
                         if (
-                            !AgentUUIDToName(o.AgentID, corradeConfiguration.ServicesTimeout,
+                            !Resolvers.AgentUUIDToName(Client, o.AgentID, corradeConfiguration.ServicesTimeout,
                                 ref agent))
                             return;
                         lock (LockObject)

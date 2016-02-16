@@ -11,7 +11,9 @@ using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -31,7 +33,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
-                        StringOrUUID(
+                        Helpers.StringOrUUID(
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
@@ -72,7 +74,7 @@ namespace Corrade
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();
                     };
-                    lock (ClientInstanceAvatarsLock)
+                    lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                         Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
@@ -85,7 +87,7 @@ namespace Corrade
                     }
                     if (IsSecondLife() &&
                         classifiedUUID.Equals(UUID.Zero) &&
-                        classifiedCount >= LINDEN_CONSTANTS.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
+                        classifiedCount >= Constants.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
                     {
                         throw new ScriptException(ScriptError.MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED);
                     }

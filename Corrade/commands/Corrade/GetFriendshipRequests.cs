@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -32,7 +33,7 @@ namespace Corrade
                     {
                         string name = string.Empty;
                         if (
-                            !AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout,
+                            !Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout,
                                 ref name))
                             return;
                         lock (LockObject)

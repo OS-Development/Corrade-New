@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -49,7 +51,7 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.Get(
+                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
@@ -74,12 +76,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_SCALE);
                     }
                     if (IsSecondLife() &&
-                        ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
-                          scale.Y < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Y ||
-                          scale.Z < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Z ||
-                          scale.X > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_X ||
-                          scale.Y > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Y ||
-                          scale.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                        ((scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
+                          scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
+                          scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
+                          scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
+                          scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                          scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z)))
                     {
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }

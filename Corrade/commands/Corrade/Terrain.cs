@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -64,7 +65,7 @@ namespace Corrade
                                 data = args.Xfer.AssetData;
                                 DownloadTerrainEvents[1].Set();
                             };
-                            lock (ClientInstanceAssetsLock)
+                            lock (Locks.ClientInstanceAssetsLock)
                             {
                                 Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived += XferReceivedEventHandler;
@@ -114,7 +115,7 @@ namespace Corrade
                                     AssetUploadEvent.Set();
                                 }
                             };
-                            lock (ClientInstanceAssetsLock)
+                            lock (Locks.ClientInstanceAssetsLock)
                             {
                                 Client.Assets.UploadProgress += AssetUploadEventHandler;
                                 Client.Estate.UploadTerrain(data, simulator.Name);

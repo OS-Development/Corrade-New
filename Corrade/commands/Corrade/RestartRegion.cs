@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -35,7 +36,7 @@ namespace Corrade
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out delay))
                     {
-                        delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
+                        delay = Constants.ESTATE.REGION_RESTART_DELAY;
                     }
                     switch (
                         Reflection.GetEnumValueFromName<Action>(
@@ -47,7 +48,7 @@ namespace Corrade
                         case Action.RESTART:
                             // Manually override Client.Estate.RestartRegion();
                             Client.Estate.EstateOwnerMessage(
-                                LINDEN_CONSTANTS.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
+                                Constants.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
                                 delay.ToString(Utils.EnUsCulture));
                             break;
                         case Action.CANCEL:

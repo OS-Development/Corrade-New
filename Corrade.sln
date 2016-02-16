@@ -5,6 +5,7 @@ VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corrade", "Corrade\Corrade.csproj", "{DBF5CAB0-CCF6-4D8F-A257-100CE4CA4F32}"
 	ProjectSection(ProjectDependencies) = postProject
+		{B9537C43-94DC-4BD4-B6FB-B7CA77C11824} = {B9537C43-94DC-4BD4-B6FB-B7CA77C11824}
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
 		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340} = {9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}
 	EndProjectSection
@@ -21,6 +22,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CorradeConfiguration", "Cor
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasSharp", "wasSharp\wasSharp.csproj", "{A971E1C9-776C-4CD2-88AC-71197C7B955E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasOpenMetaverse", "wasOpenMetaverse\wasOpenMetaverse.csproj", "{B9537C43-94DC-4BD4-B6FB-B7CA77C11824}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +50,10 @@ Global
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9537C43-94DC-4BD4-B6FB-B7CA77C11824}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9537C43-94DC-4BD4-B6FB-B7CA77C11824}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9537C43-94DC-4BD4-B6FB-B7CA77C11824}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9537C43-94DC-4BD4-B6FB-B7CA77C11824}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

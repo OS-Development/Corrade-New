@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -46,9 +47,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ROLE_NAME_SPECIFIED);
                     }
                     UUID roleUUID;
-                    if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
-                        corradeConfiguration.ServicesTimeout,
-                        ref roleUUID))
+                    if (!UUID.TryParse(role, out roleUUID) &&
+                        !Resolvers.RoleNameToUUID(Client, role, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
+                            ref roleUUID))
                     {
                         throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     }
@@ -61,7 +63,7 @@ namespace Corrade
                             groupRolesMembers.UnionWith(args.RolesMembers);
                             GroupRoleMembersReplyEvent.Set();
                         };
-                    lock (ClientInstanceGroupsLock)
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
@@ -77,7 +79,8 @@ namespace Corrade
                     Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)), o =>
                     {
                         string agentName = string.Empty;
-                        if (AgentUUIDToName(o.Value, corradeConfiguration.ServicesTimeout, ref agentName))
+                        if (Resolvers.AgentUUIDToName(Client, o.Value, corradeConfiguration.ServicesTimeout,
+                            ref agentName))
                         {
                             lock (LockObject)
                             {

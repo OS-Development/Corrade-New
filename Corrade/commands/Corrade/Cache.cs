@@ -31,7 +31,7 @@ namespace Corrade
                     {
                         case Action.PURGE:
                             Client.Assets.Cache.BeginPrune();
-                            Cache.Purge();
+                            //wasOpenMetaverse.Cache.Purge();
                             break;
                         case Action.SAVE:
                             SaveCorradeCache.Invoke();
