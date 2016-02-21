@@ -71,6 +71,14 @@ namespace Corrade
         ///     1.) jot -r 900 0 65535 | uniq | xargs printf "%05d\n" | pbcopy
         ///     2.) paste codes.txt status.txt | awk -F"\n" '{print $1,$2}' | pbcopy
         ///     Removals: 43508 - could not get land users
+        ///     Removals: 42240 - no notification provided
+        ///     Removals: 56462 - texture not found
+        ///     Removals: 57429 - timeout waiting for estate list
+        ///     Removals: 14951 - timeout joining group chat
+        ///     Removals: 36716 - timeout retrieving item
+        ///     Removals: 11869 - timeout getting primitive data
+        ///     Removals: 20238 - parcel must be owned
+        ///     Removals: 22961 - could not add mute entry
         /// </remarks>
         public enum ScriptError : uint
         {
@@ -104,7 +112,6 @@ namespace Corrade
             [Status(17019)] [Reflection.DescriptionAttribute("unable to set home")] UNABLE_TO_SET_HOME,
             [Status(31493)] [Reflection.DescriptionAttribute("unable to go home")] UNABLE_TO_GO_HOME,
             [Status(32923)] [Reflection.DescriptionAttribute("timeout getting profile")] TIMEOUT_GETTING_PROFILE,
-            [Status(56462)] [Reflection.DescriptionAttribute("texture not found")] TEXTURE_NOT_FOUND,
             [Status(36068)] [Reflection.DescriptionAttribute("type can only be voice or text")] TYPE_CAN_BE_VOICE_OR_TEXT,
             [Status(19862)] [Reflection.DescriptionAttribute("agent not in group")] AGENT_NOT_IN_GROUP,
             [Status(29345)] [Reflection.DescriptionAttribute("empty attachments")] EMPTY_ATTACHMENTS,
@@ -139,7 +146,6 @@ namespace Corrade
             [Status(28429)] [Reflection.DescriptionAttribute("unknown move action")] UNKNOWN_MOVE_ACTION,
             [Status(20541)] [Reflection.DescriptionAttribute("timeout getting top scripts")] TIMEOUT_GETTING_TOP_SCRIPTS,
             [Status(47172)] [Reflection.DescriptionAttribute("timeout getting top colliders")] TIMEOUT_GETTING_TOP_COLLIDERS,
-            [Status(57429)] [Reflection.DescriptionAttribute("timeout waiting for estate list")] TIMEOUT_WAITING_FOR_ESTATE_LIST,
             [Status(41676)] [Reflection.DescriptionAttribute("unknown top type")] UNKNOWN_TOP_TYPE,
             [Status(25897)] [Reflection.DescriptionAttribute("unknown estate list action")] UNKNOWN_ESTATE_LIST_ACTION,
             [Status(46990)] [Reflection.DescriptionAttribute("unknown estate list")] UNKNOWN_ESTATE_LIST,
@@ -161,7 +167,6 @@ namespace Corrade
             [Status(00616)] [Reflection.DescriptionAttribute("timeout ejecting agent")] TIMEOUT_EJECTING_AGENT,
             [Status(25426)] [Reflection.DescriptionAttribute("timeout getting group role members")] TIMEOUT_GETTING_GROUP_ROLE_MEMBERS,
             [Status(31237)] [Reflection.DescriptionAttribute("timeout leaving group")] TIMEOUT_LEAVING_GROUP,
-            [Status(14951)] [Reflection.DescriptionAttribute("timeout joining group chat")] TIMEOUT_JOINING_GROUP_CHAT,
             [Status(43780)] [Reflection.DescriptionAttribute("timeout during teleport")] TIMEOUT_DURING_TELEPORT,
             [Status(46316)] [Reflection.DescriptionAttribute("timeout requesting sit")] TIMEOUT_REQUESTING_SIT,
             [Status(09111)] [Reflection.DescriptionAttribute("timeout getting land users")] TIMEOUT_GETTING_LAND_USERS,
@@ -237,7 +242,6 @@ namespace Corrade
             [Status(26623)] [Reflection.DescriptionAttribute("unable to create folder")] UNABLE_TO_CREATE_FOLDER,
             [Status(28866)] [Reflection.DescriptionAttribute("no permissions provided")] NO_PERMISSIONS_PROVIDED,
             [Status(43615)] [Reflection.DescriptionAttribute("setting permissions failed")] SETTING_PERMISSIONS_FAILED,
-            [Status(36716)] [Reflection.DescriptionAttribute("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM,
             [Status(39391)] [Reflection.DescriptionAttribute("expected item as source")] EXPECTED_ITEM_AS_SOURCE,
             [Status(22655)] [Reflection.DescriptionAttribute("expected folder as target")] EXPECTED_FOLDER_AS_TARGET,
             [Status(63024)] [Reflection.DescriptionAttribute("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
@@ -249,7 +253,6 @@ namespace Corrade
             [Status(04994)] [Reflection.DescriptionAttribute("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
             [Status(61067)] [Reflection.DescriptionAttribute("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
             [Status(08411)] [Reflection.DescriptionAttribute("could not start process")] COULD_NOT_START_PROCESS,
-            [Status(11869)] [Reflection.DescriptionAttribute("timeout getting primitive data")] TIMEOUT_GETTING_PRIMITIVE_DATA,
             [Status(22737)] [Reflection.DescriptionAttribute("item is not an object")] ITEM_IS_NOT_AN_OBJECT,
             [Status(19143)] [Reflection.DescriptionAttribute("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
             [Status(37841)] [Reflection.DescriptionAttribute("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
@@ -287,7 +290,6 @@ namespace Corrade
             [Status(36123)] [Reflection.DescriptionAttribute("teleport throttled")] TELEPORT_THROTTLED,
             [Status(06617)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
             [Status(08842)] [Reflection.DescriptionAttribute("unknown tree type")] UNKNOWN_TREE_TYPE,
-            [Status(20238)] [Reflection.DescriptionAttribute("parcel must be owned")] PARCEL_MUST_BE_OWNED,
             [Status(62130)] [Reflection.DescriptionAttribute("invalid texture coordinates")] INVALID_TEXTURE_COORDINATES,
             [Status(10945)] [Reflection.DescriptionAttribute("invalid surface coordinates")] INVALID_SURFACE_COORDINATES,
             [Status(28487)] [Reflection.DescriptionAttribute("invalid normal vector")] INVALID_NORMAL_VECTOR,
@@ -308,7 +310,6 @@ namespace Corrade
             [Status(51086)] [Reflection.DescriptionAttribute("no name or UUID provided")] NO_NAME_OR_UUID_PROVIDED,
             [Status(16450)] [Reflection.DescriptionAttribute("could not retrieve mute list")] COULD_NOT_RETRIEVE_MUTE_LIST,
             [Status(39647)] [Reflection.DescriptionAttribute("mute entry already exists")] MUTE_ENTRY_ALREADY_EXISTS,
-            [Status(22961)] [Reflection.DescriptionAttribute("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY,
             [Status(39787)] [Reflection.DescriptionAttribute("timeout reaching destination")] TIMEOUT_REACHING_DESTINATION,
             [Status(10776)] [Reflection.DescriptionAttribute("group schedules exceeded")] GROUP_SCHEDULES_EXCEEDED,
             [Status(36896)] [Reflection.DescriptionAttribute("no index provided")] NO_INDEX_PROVIDED,
@@ -328,7 +329,6 @@ namespace Corrade
             [Status(60073)] [Reflection.DescriptionAttribute("teleport lure not found")] TELEPORT_LURE_NOT_FOUND,
             [Status(42248)] [Reflection.DescriptionAttribute("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION,
             [Status(26356)] [Reflection.DescriptionAttribute("timeout retrieving group notices")] TIMEOUT_RETRIEVING_GROUP_NOTICES,
-            [Status(42240)] [Reflection.DescriptionAttribute("no notice identifier provided")] NO_NOTICE_PROVIDED,
             [Status(42798)] [Reflection.DescriptionAttribute("timeout retrieving notice")] TIMEOUT_RETRIEVING_NOTICE,
             [Status(06330)] [Reflection.DescriptionAttribute("no notice found")] NO_NOTICE_FOUND,
             [Status(20303)] [Reflection.DescriptionAttribute("notice does not contain attachment")] NOTICE_DOES_NOT_CONTAIN_ATTACHMENT,
@@ -798,31 +798,39 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadCorradeCache = () =>
         {
-            try
+            new Thread(() =>
             {
-                Cache.AgentCache =
-                    Cache.Load(
-                        Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                        Cache.AgentCache);
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
-                    ex.Message);
-            }
+                try
+                {
+                    Cache.AgentCache =
+                        Cache.Load(
+                            Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                            Cache.AgentCache);
+                }
+                catch (Exception ex)
+                {
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
+                        ex.Message);
+                }
+            })
+            { IsBackground = true }.Start();
 
-            try
+            new Thread(() =>
             {
-                Cache.GroupCache =
-                    Cache.Load(
-                        Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                        Cache.GroupCache);
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
-                    ex.Message);
-            }
+                try
+                {
+                    Cache.GroupCache =
+                        Cache.Load(
+                            Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                            Cache.GroupCache);
+                }
+                catch (Exception ex)
+                {
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
+                        ex.Message);
+                }
+            })
+            {IsBackground = true}.Start();
         };
 
         /// <summary>
@@ -830,29 +838,37 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveCorradeCache = () =>
         {
-            try
+            new Thread(() =>
             {
-                Cache.Save(
-                    Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                    Cache.AgentCache);
-            }
-            catch (Exception e)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
-                    e.Message);
-            }
+                try
+                {
+                    Cache.Save(
+                        Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                        Cache.AgentCache);
+                }
+                catch (Exception e)
+                {
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
+                        e.Message);
+                }
+            })
+            {IsBackground = true}.Start();
 
-            try
+            new Thread(() =>
             {
-                Cache.Save(
-                    Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                    Cache.GroupCache);
-            }
-            catch (Exception e)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
-                    e.Message);
-            }
+                try
+                {
+                    Cache.Save(
+                        Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                        Cache.GroupCache);
+                }
+                catch (Exception e)
+                {
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
+                        e.Message);
+                }
+            })
+            {IsBackground = true}.Start();
         };
 
         /// <summary>
@@ -1349,7 +1365,7 @@ namespace Corrade
                 if (!Client.Network.Connected) continue;
 
                 IEnumerable<UUID> groups = Enumerable.Empty<UUID>();
-                if (!GetCurrentGroups(corradeConfiguration.ServicesTimeout, ref groups))
+                if (!Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout, ref groups))
                     continue;
 
                 // Enqueue configured groups that are currently joined groups.
@@ -3690,129 +3706,6 @@ namespace Corrade
         }
 
         ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Requests the UUIDs of all the current groups.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="groups">a hashset where to store the UUIDs</param>
-        /// <returns>true if the current groups could be fetched</returns>
-        private static bool directGetCurrentGroups(uint millisecondsTimeout, ref IEnumerable<UUID> groups)
-        {
-            ManualResetEvent CurrentGroupsReceivedEvent = new ManualResetEvent(false);
-            Dictionary<UUID, Group> currentGroups = null;
-            EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
-            {
-                currentGroups = args.Groups;
-                CurrentGroupsReceivedEvent.Set();
-            };
-            Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
-            Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-            {
-                Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-                return false;
-            }
-            Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-            switch (currentGroups.Any())
-            {
-                case true:
-                    groups = currentGroups.Keys;
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /// <summary>
-        ///     A wrapper for retrieveing all the current groups that implements caching.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="groups">a hashset where to store the UUIDs</param>
-        /// <returns>true if the current groups could be fetched</returns>
-        private static bool GetCurrentGroups(uint millisecondsTimeout, ref IEnumerable<UUID> groups)
-        {
-            bool succeeded;
-            lock (Locks.ClientInstanceGroupsLock)
-            {
-                if (Cache.CurrentGroupsCache.Any())
-                {
-                    groups = Cache.CurrentGroupsCache;
-                    return true;
-                }
-
-                succeeded = directGetCurrentGroups(millisecondsTimeout, ref groups);
-
-                if (succeeded)
-                {
-                    Cache.CurrentGroupsCache = new HashSet<UUID>(groups);
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Requests the UUIDs of all the current groups.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="mutes">an enumerable where to store mute entries</param>
-        /// <returns>true if the current groups could be fetched</returns>
-        private static bool directGetMutes(uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
-        {
-            ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
-            EventHandler<EventArgs> MuteListUpdatedEventHandler =
-                (sender, args) => MuteListUpdatedEvent.Set();
-            lock (Locks.ClientInstanceSelfLock)
-            {
-                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                Client.Self.RequestMuteList();
-                MuteListUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
-                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-            }
-            mutes = Client.Self.MuteList.Copy().Values;
-            return true;
-        }
-
-        /// <summary>
-        ///     A wrapper for retrieveing all the current groups that implements caching.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="mutes">an enumerable where to store mute entries</param>
-        /// <returns>true if the current groups could be fetched</returns>
-        private static bool GetMutes(uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
-        {
-            bool succeeded;
-            lock (Locks.ClientInstanceSelfLock)
-            {
-                if (Cache.MutesCache != null)
-                {
-                    mutes = Cache.MutesCache;
-                    return true;
-                }
-
-                succeeded = directGetMutes(millisecondsTimeout, ref mutes);
-
-                if (succeeded)
-                {
-                    switch (Cache.MutesCache != null)
-                    {
-                        case true:
-                            Cache.MutesCache.UnionWith(mutes);
-                            break;
-                        default:
-                            Cache.MutesCache = new HashSet<MuteEntry>(mutes);
-                            break;
-                    }
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
@@ -4764,10 +4657,7 @@ namespace Corrade
         private static void HandleGroupJoined(object sender, GroupOperationEventArgs e)
         {
             // Add the group to the cache.
-            if (!Cache.CurrentGroupsCache.Contains(e.GroupID))
-            {
-                Cache.CurrentGroupsCache.Add(e.GroupID);
-            }
+            Cache.AddCurrentGroup(e.GroupID);
 
             // Join group chat if possible.
             if (!Client.Self.GroupChatSessions.ContainsKey(e.GroupID) &&
@@ -5555,7 +5445,7 @@ namespace Corrade
                     new Thread(() =>
                     {
                         IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
-                        if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                        if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                             return;
                         Cache.MutesCache.UnionWith(mutes);
                     })
@@ -5774,8 +5664,6 @@ namespace Corrade
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                             ref inviteGroupAgent))
                         return;
-                    // Add the agent to the cache.
-                    Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Add the group invite - have to track them manually.
                     lock (GroupInviteLock)
                     {
@@ -5827,8 +5715,6 @@ namespace Corrade
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                             ref noticeGroupAgent))
                         return;
-                    // Add the agent to the cache.
-                    Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // message contains an attachment
                     bool noticeAttachment;
                     AssetType noticeAssetType = AssetType.Unknown;
@@ -5888,7 +5774,7 @@ namespace Corrade
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
-                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                        !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                         return;
 

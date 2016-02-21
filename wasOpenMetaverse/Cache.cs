@@ -97,12 +97,51 @@ namespace wasOpenMetaverse
             }
         }
 
-        internal static void Purge()
+        public static void Purge()
         {
-            AgentCache.Clear();
-            GroupCache.Clear();
-            CurrentGroupsCache.Clear();
-            MutesCache.Clear();
+            lock (AgentCacheLock)
+            {
+                _agentCache.Clear();
+            }
+            lock (GroupCacheLock)
+            {
+                _groupCache.Clear();
+            }
+            lock (CurrentGroupsCacheLock)
+            {
+                _currentGroupsCache.Clear();
+            }
+            lock (MutesCacheLock)
+            {
+                _mutesCache.Clear();
+            }
+        }
+
+        public static void AddMute(MuteFlags flags, UUID uuid, string name, MuteType type)
+        {
+            MuteEntry muteEntry = new MuteEntry
+            {
+                Flags = flags,
+                ID = uuid,
+                Name = name,
+                Type = type
+            };
+
+            lock (MutesCacheLock)
+            {
+                if (!_mutesCache.Contains(muteEntry))
+                {
+                    _mutesCache.Add(muteEntry);
+                }
+            }
+        }
+
+        public static void RemoveMute(MuteEntry mute)
+        {
+            lock (MutesCacheLock)
+            {
+                _mutesCache.Remove(mute);
+            }
         }
 
         public static void AddAgent(string FirstName, string LastName, UUID agentUUID)
@@ -114,23 +153,43 @@ namespace wasOpenMetaverse
                 UUID = agentUUID
             };
 
-            if (!AgentCache.Contains(agent))
+            lock (AgentCacheLock)
             {
-                AgentCache.Add(agent);
+                if (!_agentCache.Contains(agent))
+                {
+                    _agentCache.Add(agent);
+                }
             }
         }
 
         public static Agents GetAgent(string FirstName, string LastName)
         {
-            return AgentCache.AsParallel().FirstOrDefault(
-                o =>
-                    o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
-                    o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
+            lock (AgentCacheLock)
+            {
+                return _agentCache.AsParallel().FirstOrDefault(
+                    o =>
+                        o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
+                        o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         public static Agents GetAgent(UUID agentUUID)
         {
-            return AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+            lock (AgentCacheLock)
+            {
+                return _agentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+            }
+        }
+
+        public static void AddCurrentGroup(UUID GroupUUID)
+        {
+            lock (CurrentGroupsCacheLock)
+            {
+                if (!_currentGroupsCache.Contains(GroupUUID))
+                {
+                    _currentGroupsCache.Add(GroupUUID);
+                }
+            }
         }
 
         public static void AddGroup(string GroupName, UUID GroupUUID)
@@ -140,9 +199,28 @@ namespace wasOpenMetaverse
                 Name = GroupName,
                 UUID = GroupUUID
             };
-            if (!GroupCache.Contains(group))
+            lock (GroupCacheLock)
             {
-                GroupCache.Add(group);
+                if (!_groupCache.Contains(group))
+                {
+                    _groupCache.Add(group);
+                }
+            }
+        }
+
+        public static Groups GetGroup(string GroupName)
+        {
+            lock (GroupCacheLock)
+            {
+                return _groupCache.FirstOrDefault(o => o.Name.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        public static Groups GetGroup(UUID GroupUUID)
+        {
+            lock (GroupCacheLock)
+            {
+                return _groupCache.FirstOrDefault(o => o.UUID.Equals(GroupUUID));
             }
         }
 
@@ -153,8 +231,7 @@ namespace wasOpenMetaverse
         /// <param name="o">the object to save</param>
         public static void Save<T>(string FileName, T o)
         {
-            using (
-                FileStream fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (FileStream fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
                 {

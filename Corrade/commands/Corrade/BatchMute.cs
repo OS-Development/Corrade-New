@@ -55,7 +55,7 @@ namespace Corrade
 
                                         // retrieve the current mute list
                                         if (!UUID.TryParse(o.Value, out targetUUID) ||
-                                            !GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                                            !Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                                         {
                                             lock (LockObject)
                                             {
@@ -131,15 +131,7 @@ namespace Corrade
                                         switch (succeeded)
                                         {
                                             case true:
-                                                // add the mute to the cache
-                                                Cache.MutesCache.Add(new MuteEntry
-                                                {
-                                                    Flags = (MuteFlags) muteFlags,
-                                                    ID = targetUUID,
-                                                    Name = o.Key,
-                                                    Type = muteType
-                                                });
-
+                                                Cache.AddMute((MuteFlags) muteFlags, targetUUID, o.Key, muteType);
                                                 break;
                                             case false:
                                                 lock (LockObject)
@@ -154,7 +146,7 @@ namespace Corrade
                                         UUID.TryParse(o.Value, out targetUUID);
 
                                         if (targetUUID.Equals(UUID.Zero) ||
-                                            !GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                                            !Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                                         {
                                             lock (LockObject)
                                             {
@@ -200,8 +192,7 @@ namespace Corrade
                                         {
                                             case true:
                                                 // remove the mute from the cache
-                                                Cache.MutesCache.Remove(mute);
-
+                                                Cache.RemoveMute(mute);
                                                 break;
                                             case false:
                                                 lock (LockObject)

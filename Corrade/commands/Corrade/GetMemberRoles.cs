@@ -30,7 +30,7 @@ namespace Corrade
                     }
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
-                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                        !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -93,7 +93,6 @@ namespace Corrade
                         string roleName = string.Empty;
                         switch (Resolvers.RoleUUIDToName(Client, o.Key, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,
-                            corradeConfiguration.DataTimeout,
                             ref roleName))
                         {
                             case true:

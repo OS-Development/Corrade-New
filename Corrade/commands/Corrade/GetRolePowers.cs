@@ -30,7 +30,7 @@ namespace Corrade
                     }
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
-                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                        !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);

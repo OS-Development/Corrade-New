@@ -21,9 +21,11 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     Resolves a group name to an UUID by using the directory search.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="GroupName">the name of the group to resolve</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <param name="GroupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
         private static bool directGroupNameToUUID(GridClient Client, string GroupName,
@@ -47,7 +49,7 @@ namespace wasOpenMetaverse
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
             Client.Directory.StartGroupSearch(GroupName, 0);
-            if (!alarm.Signal.WaitOne((int) millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
                 return false;
@@ -64,9 +66,11 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="GroupName">the name of the group to resolve</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <param name="GroupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
         public static bool GroupNameToUUID(GridClient Client, string GroupName, uint millisecondsTimeout,
@@ -76,7 +80,7 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceDirectoryLock)
             {
-                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.Name.Equals(GroupName));
+                Cache.Groups @group = Cache.GetGroup(GroupName);
 
                 if (!@group.Equals(default(Cache.Groups)))
                 {
@@ -89,11 +93,7 @@ namespace wasOpenMetaverse
 
                 if (succeeded)
                 {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = GroupName,
-                        UUID = GroupUUID
-                    });
+                    Cache.AddGroup(GroupName, GroupUUID);
                 }
             }
             return succeeded;
@@ -106,10 +106,12 @@ namespace wasOpenMetaverse
         ///     Resolves an agent name to an agent UUID by searching the directory
         ///     services.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="FirstName">the first name of the agent</param>
         /// <param name="LastName">the last name of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <param name="AgentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
         private static bool directAgentNameToUUID(GridClient Client, string FirstName, string LastName,
@@ -138,7 +140,7 @@ namespace wasOpenMetaverse
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
                 string.Format(Utils.EnUsCulture, "{0} {1}", FirstName, LastName), 0);
-            if (!alarm.Signal.WaitOne((int) millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
                 return false;
@@ -155,10 +157,12 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     A wrapper for looking up an agent name using Corrade's internal wasOpenMetaverse.Cache.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="FirstName">the first name of the agent</param>
         /// <param name="LastName">the last name of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <param name="AgentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
         public static bool AgentNameToUUID(GridClient Client, string FirstName, string LastName,
@@ -195,6 +199,7 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     Resolves a group name to an UUID by using the directory search.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="GroupName">a string to store the name to</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="GroupUUID">the UUID of the group to resolve</param>
@@ -212,7 +217,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(GroupUUID);
-            if (!GroupProfileReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!GroupProfileReceivedEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 return false;
@@ -229,6 +234,7 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="GroupName">a string to store the name to</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="GroupUUID">the UUID of the group to resolve</param>
@@ -239,7 +245,8 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceGroupsLock)
             {
-                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
+
+                Cache.Groups @group = Cache.GetGroup(GroupUUID);
 
                 if (!@group.Equals(default(Cache.Groups)))
                 {
@@ -251,11 +258,7 @@ namespace wasOpenMetaverse
 
                 if (succeeded)
                 {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = GroupName,
-                        UUID = GroupUUID
-                    });
+                    Cache.AddGroup(GroupName, GroupUUID);
                 }
             }
             return succeeded;
@@ -267,6 +270,7 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     Resolves an agent UUID to an agent name.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="AgentUUID">the UUID of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="AgentName">an object to store the name of the agent in</param>
@@ -285,7 +289,7 @@ namespace wasOpenMetaverse
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(AgentUUID);
-            if (!UUIDNameReplyEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
@@ -302,6 +306,7 @@ namespace wasOpenMetaverse
         /// <summary>
         ///     A wrapper for agent to UUID lookups using Corrade's internal cache.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="AgentUUID">the UUID of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="AgentName">an object to store the name of the agent in</param>
@@ -333,11 +338,11 @@ namespace wasOpenMetaverse
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-
-        /// ///
+        ///
         /// <summary>
         ///     Resolves a role name to a role UUID.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="RoleName">the name of the role to be resolved to an UUID</param>
         /// <param name="GroupUUID">the UUID of the group to query for the role UUID</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
@@ -366,7 +371,7 @@ namespace wasOpenMetaverse
             {
                 Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
                 Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                     return false;
@@ -384,18 +389,16 @@ namespace wasOpenMetaverse
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-
         /// <summary>
         ///     Resolves a role name to a role UUID.
         /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
         /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleName">a string object to store the role name in</param>
         /// <returns>true if the role could be resolved</returns>
         public static bool RoleUUIDToName(GridClient Client, UUID RoleUUID, UUID GroupUUID, uint millisecondsTimeout,
-            uint dataTimeout,
             ref string roleName)
         {
             switch (!RoleUUID.Equals(UUID.Zero))
@@ -415,7 +418,7 @@ namespace wasOpenMetaverse
             {
                 Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
                 Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                     return false;

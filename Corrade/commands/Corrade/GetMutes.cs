@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -25,7 +26,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
-                    if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                    if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                     }

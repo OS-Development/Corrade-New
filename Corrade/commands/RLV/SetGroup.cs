@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -28,7 +29,7 @@ namespace Corrade
                 }
                 IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                 if (
-                    !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                    !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                         ref currentGroups))
                     return;
                 UUID currentGroup =

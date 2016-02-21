@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -31,7 +32,7 @@ namespace Corrade
                     {
                         case Action.PURGE:
                             Client.Assets.Cache.BeginPrune();
-                            //wasOpenMetaverse.Cache.Purge();
+                            Cache.Purge();
                             break;
                         case Action.SAVE:
                             SaveCorradeCache.Invoke();

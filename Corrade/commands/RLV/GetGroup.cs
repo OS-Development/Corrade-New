@@ -26,7 +26,7 @@ namespace Corrade
                 UUID groupUUID = Client.Self.ActiveGroup;
                 IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                 if (
-                    !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                    !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                         ref currentGroups))
                     return;
                 string groupName = string.Empty;

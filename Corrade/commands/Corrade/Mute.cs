@@ -69,7 +69,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
 
                             // retrieve the current mute list
-                            GetMutes(corradeConfiguration.ServicesTimeout, ref mutes);
+                            Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
 
                             // check that the mute list does not already exist
                             if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(targetUUID) && o.Name.Equals(name)))
@@ -119,14 +119,7 @@ namespace Corrade
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             }
                             // add the mute to the cache
-                            Cache.MutesCache.Add(new MuteEntry
-                            {
-                                Flags = (MuteFlags) muteFlags,
-                                ID = targetUUID,
-                                Name = name,
-                                Type = muteType
-                            });
-
+                            Cache.AddMute((MuteFlags) muteFlags, targetUUID, name, muteType);
                             break;
                         case Action.UNMUTE:
                             UUID.TryParse(
@@ -142,7 +135,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_NAME_OR_UUID_PROVIDED);
 
                             // retrieve the current mute list
-                            GetMutes(corradeConfiguration.ServicesTimeout, ref mutes);
+                            Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
 
                             // find the mute either by name or by target
                             MuteEntry mute =
@@ -168,8 +161,7 @@ namespace Corrade
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             }
                             // remove the mute from the cache
-                            Cache.MutesCache.Remove(mute);
-
+                            Cache.RemoveMute(mute);
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
