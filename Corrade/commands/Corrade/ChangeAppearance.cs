@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -42,8 +43,9 @@ namespace Corrade
                     InventoryFolder inventoryFolder;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
-                        inventoryFolder = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder)
-                            .FirstOrDefault(o => o is InventoryFolder) as InventoryFolder;
+                        inventoryFolder =
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
+                                .FirstOrDefault(o => o is InventoryFolder) as InventoryFolder;
                     }
                     if (inventoryFolder == null)
                     {
@@ -55,8 +57,8 @@ namespace Corrade
                     {
                         equipItems.AddRange(
                             Client.Inventory.Store.GetContents(inventoryFolder)
-                                .Select(o => ResolveItemLink(o as InventoryItem))
-                                .Where(CanBeWorn));
+                                .Select(o => Inventory.ResolveItemLink(Client, o as InventoryItem))
+                                .Where(Inventory.CanBeWorn));
                     }
                     // Check if any items are left over.
                     if (!equipItems.Any())
@@ -87,18 +89,19 @@ namespace Corrade
                     List<UUID> removeItems = new List<UUID>();
                     object LockObject = new object();
                     Parallel.ForEach(
-                        GetCurrentOutfitFolderLinks(CurrentOutfitFolder), o =>
+                        Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder), o =>
                         {
-                            switch (IsBodyPart(o))
+                            switch (Inventory.IsBodyPart(Client, o))
                             {
                                 case true:
                                     if (
                                         equipItems.AsParallel()
-                                            .Where(IsBodyPart)
+                                            .Where(t => Inventory.IsBodyPart(Client, t))
                                             .Any(
                                                 p =>
                                                     ((InventoryWearable) p).WearableType.Equals(
-                                                        ((InventoryWearable) ResolveItemLink(o)).WearableType)))
+                                                        ((InventoryWearable) Inventory.ResolveItemLink(Client, o))
+                                                            .WearableType)))
                                         goto default;
                                     break;
                                 default:
@@ -118,7 +121,7 @@ namespace Corrade
                         // Add links to new items.
                         foreach (InventoryItem item in equipItems)
                         {
-                            AddLink(item, CurrentOutfitFolder);
+                            Inventory.AddLink(Client, item, CurrentOutfitFolder);
                         }
                     }
 
@@ -129,7 +132,15 @@ namespace Corrade
                     }
 
                     // Update inventory.
-                    UpdateInventoryRecursive(CurrentOutfitFolder);
+                    try
+                    {
+                        Inventory.UpdateInventoryRecursive(Client, CurrentOutfitFolder,
+                            corradeConfiguration.ServicesTimeout);
+                    }
+                    catch (Exception)
+                    {
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                    }
 
                     // Schedule a rebake.
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

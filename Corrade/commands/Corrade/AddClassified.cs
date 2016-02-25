@@ -14,6 +14,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -41,7 +42,7 @@ namespace Corrade
                     if (item != null)
                     {
                         InventoryBase inventoryBaseItem =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
@@ -85,7 +86,7 @@ namespace Corrade
                         }
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                     }
-                    if (IsSecondLife() &&
+                    if (Helpers.IsSecondLife(Client) &&
                         classifiedUUID.Equals(UUID.Zero) &&
                         classifiedCount >= Constants.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
                     {

@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -27,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     List<string> csv =
-                        GetWearables(CurrentOutfitFolder)
+                        Inventory.GetWearables(Client, CurrentOutfitFolder)
                             .Select(o => new[]
                             {
                                 (o as InventoryWearable).WearableType.ToString(),

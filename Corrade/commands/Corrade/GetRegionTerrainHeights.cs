@@ -5,10 +5,10 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
-using System.Linq;
 using wasSharp;
 
 namespace Corrade

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -25,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> attachments = GetAttachments(
+                    List<string> attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
                         .AsParallel()
                         .Select(o => new[]

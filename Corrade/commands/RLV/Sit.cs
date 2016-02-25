@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
 using wasOpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -29,9 +30,10 @@ namespace Corrade
                 }
                 Primitive primitive = null;
                 if (
-                    !FindPrimitive(sitTarget,
-                        Constants.LSL.SENSOR_RANGE,
-                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                    !Services.FindPrimitive(Client, sitTarget,
+                        Constants.LSL.SENSOR_RANGE, corradeConfiguration.Range,
+                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                 {
                     return;
                 }

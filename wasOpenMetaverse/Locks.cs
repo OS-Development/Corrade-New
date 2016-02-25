@@ -6,7 +6,7 @@
 
 namespace wasOpenMetaverse
 {
-    public class Locks
+    public static class Locks
     {
         public static readonly object ClientInstanceGroupsLock = new object();
         public static readonly object ClientInstanceInventoryLock = new object();

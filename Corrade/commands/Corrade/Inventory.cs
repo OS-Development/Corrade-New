@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -251,7 +252,15 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_CREATE_FOLDER);
                             }
-                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                            try
+                            {
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                            }
+                            catch (Exception)
+                            {
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                            }
                             break;
                         case Action.CHMOD:
                             string itemPermissions =
@@ -301,7 +310,15 @@ namespace Corrade
                                     }
                                     break;
                             }
-                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                            try
+                            {
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                            }
+                            catch (Exception)
+                            {
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                            }
                             break;
                         case Action.RM:
                             switch (!string.IsNullOrEmpty(path))
@@ -333,7 +350,15 @@ namespace Corrade
                                         Client.Inventory.FindFolderForType(AssetType.TrashFolder));
                                     break;
                             }
-                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                            try
+                            {
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                            }
+                            catch (Exception)
+                            {
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                            }
                             break;
                         case Action.CP:
                         case Action.MV:
@@ -433,7 +458,15 @@ namespace Corrade
                                         });
                                     break;
                             }
-                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                            try
+                            {
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                            }
+                            catch (Exception)
+                            {
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

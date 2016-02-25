@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -22,13 +23,13 @@ namespace Corrade
                     return;
                 }
                 KeyValuePair<Primitive, AttachmentPoint> attachment =
-                    GetAttachments(corradeConfiguration.DataTimeout)
+                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                         .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                 switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                 {
                     case true:
                         InventoryBase inventoryBase =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                                 attachment.Key.Properties.ItemID
                                 )
                                 .AsParallel().FirstOrDefault(
@@ -37,7 +38,8 @@ namespace Corrade
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                         if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
-                            Detach(inventoryBase as InventoryItem);
+                            Inventory.Detach(Client, CurrentOutfitFolder, inventoryBase as InventoryItem,
+                                corradeConfiguration.ServicesTimeout);
                         }
                         RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                         break;

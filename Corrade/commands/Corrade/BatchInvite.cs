@@ -41,8 +41,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, GroupPowers.Invite,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.Invite,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -75,9 +77,10 @@ namespace Corrade
                         roleUUIDs.Add(UUID.Zero);
                     }
                     if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.AssignMember,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }

@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -38,7 +39,7 @@ namespace Corrade
                     {
                         case true:
                             InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -119,14 +120,15 @@ namespace Corrade
                             }
                             Primitive primitive = null;
                             if (
-                                !FindPrimitive(
+                                !Services.FindPrimitive(Client,
                                     Helpers.StringOrUUID(wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message))),
-                                    range,
+                                    range, corradeConfiguration.Range,
                                     ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout))
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                             {
                                 throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                             }

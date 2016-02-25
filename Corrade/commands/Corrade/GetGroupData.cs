@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -27,7 +28,8 @@ namespace Corrade
                     }
                     Group dataGroup = new Group();
                     if (
-                        !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
+                        !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
                             ref dataGroup))
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);

@@ -6,7 +6,7 @@
 
 namespace wasSharp
 {
-    public class wasSharp
+    public static class wasSharp
     {
     }
 }

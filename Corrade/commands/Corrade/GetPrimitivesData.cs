@@ -49,8 +49,10 @@ namespace Corrade
                     {
                         case Entity.RANGE:
                             Parallel.ForEach(
-                                GetPrimitives(range, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout)
+                                Services.GetPrimitives(Client, range, corradeConfiguration.Range,
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                     .AsParallel()
                                     .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
                                 o =>
@@ -75,11 +77,12 @@ namespace Corrade
                             }
                             Parcel parcel = null;
                             if (
-                                !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
+                                    corradeConfiguration.ServicesTimeout, ref parcel))
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
-                            Parallel.ForEach(GetPrimitives(new[]
+                            Parallel.ForEach(Services.GetPrimitives(Client, new[]
                             {
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -87,13 +90,15 @@ namespace Corrade
                                     new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                 Vector3.Distance(Client.Self.SimPosition,
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                            }.Max(), corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout), o =>
-                            {
-                                lock (LockObject)
+                            }.Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)), o =>
                                 {
-                                    updatePrimitives.Add(o);
-                                }
-                            });
+                                    lock (LockObject)
+                                    {
+                                        updatePrimitives.Add(o);
+                                    }
+                                });
                             break;
                         case Entity.REGION:
                             // Get all sim parcels
@@ -118,7 +123,7 @@ namespace Corrade
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
                             Parallel.ForEach(
-                                GetPrimitives(
+                                Services.GetPrimitives(Client,
                                     Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
                                     {
                                         Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
@@ -127,8 +132,9 @@ namespace Corrade
                                             new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
                                         Vector3.Distance(Client.Self.SimPosition,
                                             new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                    }.Max()).Max(), corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout),
+                                    }.Max()).Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)),
                                 o =>
                                 {
                                     lock (LockObject)
@@ -162,15 +168,19 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            Avatar avatar = GetAvatars(range, corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout)
+                            Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                 .AsParallel()
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                             if (avatar == null)
                                 throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
                             HashSet<Primitive> objectsPrimitives =
-                                new HashSet<Primitive>(GetPrimitives(range, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout));
+                                new HashSet<Primitive>(Services.GetPrimitives(Client, range, corradeConfiguration.Range,
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)));
                             Parallel.ForEach(objectsPrimitives,
                                 o =>
                                 {
@@ -203,7 +213,7 @@ namespace Corrade
                     }
 
                     // allow partial results
-                    UpdatePrimitives(ref updatePrimitives, corradeConfiguration.DataTimeout);
+                    Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
 
                     List<string> data = new List<string>();
                     Parallel.ForEach(updatePrimitives, o =>

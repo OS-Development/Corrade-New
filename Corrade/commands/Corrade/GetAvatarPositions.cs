@@ -65,7 +65,8 @@ namespace Corrade
                             break;
                         case Entity.PARCEL:
                             if (
-                                !GetParcelAtPosition(simulator, position, ref parcel))
+                                !Services.GetParcelAtPosition(Client, simulator, position,
+                                    corradeConfiguration.ServicesTimeout, ref parcel))
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
@@ -90,7 +91,9 @@ namespace Corrade
                                 break;
                             case Entity.PARCEL:
                                 Parcel avatarParcel = null;
-                                if (!GetParcelAtPosition(simulator, p.Value, ref avatarParcel))
+                                if (
+                                    !Services.GetParcelAtPosition(Client, simulator, p.Value,
+                                        corradeConfiguration.ServicesTimeout, ref avatarParcel))
                                     return;
                                 if (!avatarParcel.LocalID.Equals(parcel.LocalID)) return;
                                 break;

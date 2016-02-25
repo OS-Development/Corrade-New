@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration.Install;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -27,19 +26,16 @@ using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Xml;
 using System.Xml.Serialization;
 using AIMLbot;
 using CorradeConfiguration;
 using OpenMetaverse;
-using OpenMetaverse.Imaging;
-using OpenMetaverse.Rendering;
 using wasOpenMetaverse;
 using wasSharp;
 using Group = OpenMetaverse.Group;
 using Helpers = OpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
-using Path = System.IO.Path;
 using ThreadState = System.Threading.ThreadState;
 
 #endregion
@@ -333,7 +329,8 @@ namespace Corrade
             [Status(06330)] [Reflection.DescriptionAttribute("no notice found")] NO_NOTICE_FOUND,
             [Status(20303)] [Reflection.DescriptionAttribute("notice does not contain attachment")] NOTICE_DOES_NOT_CONTAIN_ATTACHMENT,
             [Status(10522)] [Reflection.DescriptionAttribute("failed to read log file")] FAILED_TO_READ_LOG_FILE,
-            [Status(62646)] [Reflection.DescriptionAttribute("effect UUID belongs to different effect")] EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT
+            [Status(62646)] [Reflection.DescriptionAttribute("effect UUID belongs to different effect")] EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT,
+            [Status(25252)] [Reflection.DescriptionAttribute("no SQL string provided")] NO_SQL_STRING_PROVIDED
         }
 
         /// <summary>
@@ -599,7 +596,9 @@ namespace Corrade
             new Timer(ActivateCurrentLandGroup =>
             {
                 Parcel parcel = null;
-                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+                if (
+                    !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
+                        corradeConfiguration.ServicesTimeout, ref parcel)) return;
                 Configuration.Group landGroup =
                     corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
                 if (landGroup.UUID.Equals(UUID.Zero)) return;
@@ -709,57 +708,6 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Updates the inventory starting from a folder recursively.
-        /// </summary>
-        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
-        {
-            Thread updateInventoryRecursiveThread = new Thread(() =>
-            {
-                try
-                {
-                    // Create the queue of folders.
-                    BlockingQueue<InventoryFolder> inventoryFolders = new BlockingQueue<InventoryFolder>();
-                    //object LockObject = new object();
-                    // Enqueue the first folder (root).
-                    inventoryFolders.Enqueue(o);
-
-                    AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
-                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-                    {
-                        // Enqueue all the new folders.
-                        Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
-                        {
-                            if (r is InventoryFolder)
-                            {
-                                inventoryFolders.Enqueue(r as InventoryFolder);
-                            }
-                        });
-                        FolderUpdatedEvent.Set();
-                    };
-
-                    do
-                    {
-                        InventoryFolder folder = inventoryFolders.Dequeue();
-                        if (folder == null) continue;
-                        Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                        Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                            InventorySortOrder.ByDate);
-                        FolderUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
-                        Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                    } while (!inventoryFolders.Count.Equals(0));
-                }
-                catch (Exception)
-                {
-                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
-                }
-            })
-            {IsBackground = true};
-
-            updateInventoryRecursiveThread.Start();
-            updateInventoryRecursiveThread.Join(Timeout.Infinite);
-        };
-
-        /// <summary>
         ///     Loads the OpenMetaverse inventory cache.
         /// </summary>
         private static readonly System.Action LoadInventoryCache = () =>
@@ -813,7 +761,7 @@ namespace Corrade
                         ex.Message);
                 }
             })
-            { IsBackground = true }.Start();
+            {IsBackground = true}.Start();
 
             new Thread(() =>
             {
@@ -1568,147 +1516,6 @@ namespace Corrade
             }
         }
 
-        /// <summary>
-        ///     Can an inventory item be worn?
-        /// </summary>
-        /// <param name="item">item to check</param>
-        /// <returns>true if the inventory item can be worn</returns>
-        private static bool CanBeWorn(InventoryBase item)
-        {
-            return item is InventoryWearable || item is InventoryAttachment || item is InventoryObject;
-        }
-
-        /// <summary>
-        ///     Resolves inventory links and returns a real inventory item that
-        ///     the link is pointing to
-        /// </summary>
-        /// <param name="item">a link or inventory item</param>
-        /// <returns>the real inventory item</returns>
-        private static InventoryItem ResolveItemLink(InventoryItem item)
-        {
-            return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
-                   Client.Inventory.Store[item.AssetUUID] is InventoryItem
-                ? (InventoryItem) Client.Inventory.Store[item.AssetUUID]
-                : item;
-        }
-
-        /// <summary>
-        ///     Get current outfit folder links.
-        /// </summary>
-        /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
-        private static IEnumerable<InventoryItem> GetCurrentOutfitFolderLinks(InventoryFolder outfitFolder)
-        {
-            return Client.Inventory.Store.GetContents(outfitFolder)
-                .AsParallel()
-                .Where(o => CanBeWorn(o) && ((InventoryItem) o).AssetType == AssetType.Link)
-                .Select(o => o as InventoryItem);
-        }
-
-        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
-        {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                InventoryItem realItem = ResolveItemLink(item);
-                if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
-                Client.Appearance.Attach(realItem, point, replace);
-                AddLink(realItem, CurrentOutfitFolder);
-                UpdateInventoryRecursive(CurrentOutfitFolder);
-            }
-        }
-
-        private static void Detach(InventoryItem item)
-        {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                InventoryItem realItem = ResolveItemLink(item);
-                if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
-                RemoveLink(realItem, CurrentOutfitFolder);
-                Client.Appearance.Detach(realItem);
-                UpdateInventoryRecursive(CurrentOutfitFolder);
-            }
-        }
-
-        private static void Wear(InventoryItem item, bool replace)
-        {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                InventoryItem realItem = ResolveItemLink(item);
-                if (!(realItem is InventoryWearable)) return;
-                Client.Appearance.AddToOutfit(realItem, replace);
-                AddLink(realItem, CurrentOutfitFolder);
-                UpdateInventoryRecursive(CurrentOutfitFolder);
-            }
-        }
-
-        private static void UnWear(InventoryItem item)
-        {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                InventoryItem realItem = ResolveItemLink(item);
-                if (!(realItem is InventoryWearable)) return;
-                Client.Appearance.RemoveFromOutfit(realItem);
-                RemoveLink(realItem, CurrentOutfitFolder);
-                UpdateInventoryRecursive(CurrentOutfitFolder);
-            }
-        }
-
-        /// <summary>
-        ///     Is the item a body part?
-        /// </summary>
-        /// <param name="item">the item to check</param>
-        /// <returns>true if the item is a body part</returns>
-        private static bool IsBodyPart(InventoryItem item)
-        {
-            InventoryItem realItem = ResolveItemLink(item);
-            if (!(realItem is InventoryWearable)) return false;
-            WearableType t = ((InventoryWearable) realItem).WearableType;
-            return t.Equals(WearableType.Shape) ||
-                   t.Equals(WearableType.Skin) ||
-                   t.Equals(WearableType.Eyes) ||
-                   t.Equals(WearableType.Hair);
-        }
-
-        /// <summary>
-        ///     Creates a new current outfit folder link.
-        /// </summary>
-        /// <param name="item">item to be linked</param>
-        /// <param name="outfitFolder">the outfit folder</param>
-        private static void AddLink(InventoryItem item, InventoryFolder outfitFolder)
-        {
-            if (outfitFolder == null) return;
-
-            if (!GetCurrentOutfitFolderLinks(outfitFolder).AsParallel().Any(o => o.AssetUUID.Equals(item.UUID)))
-            {
-                Client.Inventory.CreateLink(outfitFolder.UUID, item.UUID, item.Name,
-                    item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item)
-                        ? $"@{(int) ((InventoryWearable) item).WearableType}{0:00}"
-                        : string.Empty, AssetType.Link, item.InventoryType, UUID.Random(), (success, newItem) =>
-                        {
-                            if (success)
-                            {
-                                Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                            }
-                        });
-            }
-        }
-
-        /// <summary>
-        ///     Remove current outfit folder links for multiple specified inventory item.
-        /// </summary>
-        /// <param name="item">the item whose link should be removed</param>
-        /// <param name="outfitFolder">the outfit folder</param>
-        private static void RemoveLink(InventoryItem item, InventoryFolder outfitFolder)
-        {
-            if (outfitFolder == null) return;
-
-            Client.Inventory.Remove(
-                GetCurrentOutfitFolderLinks(outfitFolder)
-                    .AsParallel()
-                    .Where(o => o.AssetUUID.Equals(item.UUID))
-                    .Select(o => o.UUID)
-                    .ToList(), null);
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -2213,7 +2020,7 @@ namespace Corrade
                     InventoryItem item = null;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
-                        item = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                        item = Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                             setting).FirstOrDefault() as InventoryItem;
                     }
                     if (item == null)
@@ -2569,116 +2376,6 @@ namespace Corrade
                 segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Determines whether an agent has a set of powers for a group.
-        /// </summary>
-        /// <param name="agentUUID">the agent UUID</param>
-        /// <param name="groupUUID">the UUID of the group</param>
-        /// <param name="powers">a GroupPowers structure</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout in millisecons for each data burst</param>
-        /// <returns>true if the agent has the powers</returns>
-        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, uint millisecondsTimeout,
-            uint dataTimeout)
-        {
-            List<AvatarGroup> avatarGroups = new List<AvatarGroup>();
-            Time.DecayingAlarm AvatarGroupsReceivedAlarm =
-                new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-            object LockObject = new object();
-            EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
-            {
-                AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
-                lock (LockObject)
-                {
-                    avatarGroups.AddRange(args.Groups);
-                }
-            };
-            lock (Locks.ClientInstanceAvatarsLock)
-            {
-                Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                Client.Avatars.RequestAvatarProperties(agentUUID);
-                if (!AvatarGroupsReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                    return false;
-                }
-                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-            }
-            return
-                avatarGroups.AsParallel()
-                    .Any(o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Attempts to join the group chat for a given group.
-        /// </summary>
-        /// <param name="groupUUID">the UUID of the group to join the group chat for</param>
-        /// <param name="millisecondsTimeout">timeout for joining the group chat</param>
-        /// <returns>true if the group chat was joined</returns>
-        private static bool JoinGroupChat(UUID groupUUID, uint millisecondsTimeout)
-        {
-            bool succeeded = false;
-            ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
-            EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
-                (sender, args) =>
-                {
-                    succeeded = args.Success;
-                    GroupChatJoinedEvent.Set();
-                };
-            lock (Locks.ClientInstanceSelfLock)
-            {
-                Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
-                Client.Self.RequestJoinGroupChat(groupUUID);
-                if (!GroupChatJoinedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                    return false;
-                }
-                Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Determines whether an agent referenced by an UUID is in a group
-        ///     referenced by an UUID.
-        /// </summary>
-        /// <param name="agentUUID">the UUID of the agent</param>
-        /// <param name="groupUUID">the UUID of the groupt</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, uint millisecondsTimeout)
-        {
-            ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
-            Dictionary<UUID, GroupMember> groupMembers = null;
-            EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-            {
-                groupMembers = args.Members;
-                groupMembersReceivedEvent.Set();
-            };
-            lock (Locks.ClientInstanceGroupsLock)
-            {
-                Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                Client.Groups.RequestGroupMembers(groupUUID);
-                if (!groupMembersReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                    return false;
-                }
-                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-            }
-            return groupMembers != null && groupMembers.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
-        }
-
         /// <summary>
         ///     Used to check whether a group name matches a group password.
         /// </summary>
@@ -2758,1084 +2455,6 @@ namespace Corrade
                 : corradeConfiguration.Groups.AsParallel().Any(
                     o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                          !(o.NotificationMask & notification).Equals(0));
-        }
-
-        /// <summary>
-        ///     Used to determine whether the current grid is Second Life.
-        /// </summary>
-        /// <returns>true if the connected grid is Second Life</returns>
-        private static bool IsSecondLife()
-        {
-            return Client.Network.CurrentSim.SimVersion.Contains(Constants.GRID.SECOND_LIFE);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Fetches a group.
-        /// </summary>
-        /// <param name="groupUUID">the UUID of the group</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="group">a group object to store the group profile</param>
-        /// <returns>true if the group was found and false otherwise</returns>
-        private static bool RequestGroup(UUID groupUUID, uint millisecondsTimeout, ref Group group)
-        {
-            Group localGroup = new Group();
-            ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
-            EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
-            {
-                localGroup = args.Group;
-                GroupProfileEvent.Set();
-            };
-            lock (Locks.ClientInstanceGroupsLock)
-            {
-                Client.Groups.GroupProfile += GroupProfileDelegate;
-                Client.Groups.RequestGroupProfile(groupUUID);
-                if (!GroupProfileEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupProfile -= GroupProfileDelegate;
-                    return false;
-                }
-                Client.Groups.GroupProfile -= GroupProfileDelegate;
-            }
-            group = localGroup;
-            return true;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Get the parcel of a simulator given a position.
-        /// </summary>
-        /// <param name="simulator">the simulator containing the parcel</param>
-        /// <param name="position">a position within the parcel</param>
-        /// <param name="parcel">a parcel object where to store the found parcel</param>
-        /// <returns>true if the parcel could be found</returns>
-        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
-            ref Parcel parcel)
-        {
-            ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
-            EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
-                (sender, args) => RequestAllSimParcelsEvent.Set();
-            lock (Locks.ClientInstanceParcelsLock)
-            {
-                Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-                switch (!simulator.IsParcelMapFull())
-                {
-                    case true:
-                        Client.Parcels.RequestAllSimParcels(simulator);
-                        break;
-                    default:
-                        RequestAllSimParcelsEvent.Set();
-                        break;
-                }
-                if (!RequestAllSimParcelsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                {
-                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
-                    return false;
-                }
-                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
-            }
-            HashSet<Parcel> localParcels = new HashSet<Parcel>();
-            object LockObject = new object();
-            simulator.Parcels.ForEach(o =>
-            {
-                if (!(position.X >= o.AABBMin.X) || !(position.X <= o.AABBMax.X) ||
-                    !(position.Y >= o.AABBMin.Y) || !(position.Y <= o.AABBMax.Y))
-                    return;
-                lock (LockObject)
-                {
-                    localParcels.Add(o);
-                }
-            });
-            Parcel localParcel = localParcels.OrderBy(o => Vector3.Distance(o.AABBMin, o.AABBMax)).FirstOrDefault();
-            switch (localParcel != null)
-            {
-                case true:
-                    parcel = localParcel;
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Determines whether a vector falls within a parcel.
-        /// </summary>
-        /// <param name="position">a 3D vector</param>
-        /// <param name="parcel">a parcel</param>
-        /// <returns>true if the vector falls within the parcel bounds</returns>
-        private static bool IsVectorInParcel(Vector3 position, Parcel parcel)
-        {
-            return position.X >= parcel.AABBMin.X && position.X <= parcel.AABBMax.X &&
-                   position.Y >= parcel.AABBMin.Y && position.Y <= parcel.AABBMax.Y;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Find a named primitive in range (whether attachment or in-world).
-        /// </summary>
-        /// <param name="item">the name or UUID of the primitive</param>
-        /// <param name="range">the range in meters to search for the object</param>
-        /// <param name="primitive">a primitive object to store the result</param>
-        /// <param name="millisecondsTimeout">the services timeout in milliseconds</param>
-        /// <param name="dataTimeout">the data timeout in milliseconds</param>
-        /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive<T>(T item, float range, ref Primitive primitive, uint millisecondsTimeout,
-            uint dataTimeout)
-        {
-            HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
-            Dictionary<uint, Primitive> objectsPrimitives =
-                new Dictionary<uint, Primitive>(
-                    GetPrimitives(range, millisecondsTimeout, dataTimeout).ToDictionary(o => o.LocalID, p => p));
-            Dictionary<uint, Avatar> objectsAvatars =
-                new Dictionary<uint, Avatar>(
-                    GetAvatars(range, millisecondsTimeout, dataTimeout).ToDictionary(o => o.LocalID, p => p));
-            object LockObject = new object();
-            Parallel.ForEach(objectsPrimitives.Values, o =>
-            {
-                // find the parent of the primitive
-                Primitive parent = o;
-                do
-                {
-                    Primitive ancestor = null;
-                    Primitive ancestorPrimitive;
-                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
-                    {
-                        ancestor = ancestorPrimitive;
-                    }
-                    Avatar ancestorAvatar;
-                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
-                    {
-                        ancestor = ancestorAvatar;
-                    }
-                    if (ancestor == null) break;
-                    parent = ancestor;
-                } while (!parent.ParentID.Equals(0));
-                // Ignore the object if the parent is out of range.
-                if (!(Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)) return;
-                if (item is UUID && o.ID.Equals(item))
-                {
-                    lock (LockObject)
-                    {
-                        selectedPrimitives.Add(o);
-                    }
-                    return;
-                }
-                if (item is string)
-                {
-                    lock (LockObject)
-                    {
-                        selectedPrimitives.Add(o);
-                    }
-                }
-            });
-            if (!selectedPrimitives.Any()) return false;
-            if (!UpdatePrimitives(ref selectedPrimitives, dataTimeout))
-                return false;
-            primitive =
-                selectedPrimitives.FirstOrDefault(
-                    o =>
-                        (item is UUID && o.ID.Equals(item)) ||
-                        (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
-            return primitive != null;
-        }
-
-        /// <summary>
-        ///     Creates a faceted mesh from a primitive.
-        /// </summary>
-        /// <param name="primitive">the primitive to convert</param>
-        /// <param name="mesher">the mesher to use</param>
-        /// <param name="facetedMesh">a reference to an output facted mesh object</param>
-        /// <param name="millisecondsTimeout">the services timeout</param>
-        /// <returns>true if the mesh could be created successfully</returns>
-        private static bool MakeFacetedMesh(Primitive primitive, MeshmerizerR mesher, ref FacetedMesh facetedMesh,
-            uint millisecondsTimeout)
-        {
-            if (primitive.Sculpt == null || primitive.Sculpt.SculptTexture.Equals(UUID.Zero))
-            {
-                facetedMesh = mesher.GenerateFacetedMesh(primitive, DetailLevel.Highest);
-                return true;
-            }
-            if (!primitive.Sculpt.Type.Equals(SculptType.Mesh))
-            {
-                byte[] assetData = null;
-                switch (!Client.Assets.Cache.HasAsset(primitive.Sculpt.SculptTexture))
-                {
-                    case true:
-                        lock (Locks.ClientInstanceAssetsLock)
-                        {
-                            ManualResetEvent ImageDownloadedEvent = new ManualResetEvent(false);
-                            Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
-                            {
-                                if (!state.Equals(TextureRequestState.Finished)) return;
-                                assetData = args.AssetData;
-                                ImageDownloadedEvent.Set();
-                            });
-                            if (!ImageDownloadedEvent.WaitOne((int) millisecondsTimeout, false))
-                                return false;
-                        }
-                        Client.Assets.Cache.SaveAssetToCache(primitive.Sculpt.SculptTexture, assetData);
-                        break;
-                    default:
-                        assetData = Client.Assets.Cache.GetCachedAssetBytes(primitive.Sculpt.SculptTexture);
-                        break;
-                }
-                Image image;
-                ManagedImage managedImage;
-                switch (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                {
-                    case true:
-                        return false;
-                    default:
-                        if ((managedImage.Channels & ManagedImage.ImageChannels.Alpha) != 0)
-                        {
-                            managedImage.ConvertChannels(managedImage.Channels & ~ManagedImage.ImageChannels.Alpha);
-                        }
-                        image = LoadTGAClass.LoadTGA(new MemoryStream(managedImage.ExportTGA()));
-                        break;
-                }
-                facetedMesh = mesher.GenerateFacetedSculptMesh(primitive, (Bitmap) image, DetailLevel.Highest);
-                return true;
-            }
-            FacetedMesh localFacetedMesh = null;
-            ManualResetEvent MeshDownloadedEvent = new ManualResetEvent(false);
-            lock (Locks.ClientInstanceAssetsLock)
-            {
-                Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
-                {
-                    FacetedMesh.TryDecodeFromAsset(primitive, meshAsset, DetailLevel.Highest, out localFacetedMesh);
-                    MeshDownloadedEvent.Set();
-                });
-
-                if (!MeshDownloadedEvent.WaitOne((int) millisecondsTimeout, false))
-                    return false;
-            }
-
-            switch (localFacetedMesh != null)
-            {
-                case true:
-                    facetedMesh = localFacetedMesh;
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /// <summary>
-        ///     Generates a Collada DAE XML Document.
-        /// </summary>
-        /// <param name="facetedMeshSet">the faceted meshes</param>
-        /// <param name="textures">a dictionary of UUID to texture names</param>
-        /// <param name="imageFormat">the image export format</param>
-        /// <returns>the DAE document</returns>
-        /// <remarks>
-        ///     This function is a branch-in of several functions of the Radegast Viewer with some changes by Wizardry and
-        ///     Steamworks.
-        /// </remarks>
-        private static XmlDocument GenerateCollada(IEnumerable<FacetedMesh> facetedMeshSet,
-            Dictionary<UUID, string> textures, string imageFormat)
-        {
-            List<MaterialInfo> AllMeterials = new List<MaterialInfo>();
-
-            XmlDocument Doc = new XmlDocument();
-            var root = Doc.AppendChild(Doc.CreateElement("COLLADA"));
-            root.Attributes.Append(Doc.CreateAttribute("xmlns")).Value = "http://www.collada.org/2005/11/COLLADASchema";
-            root.Attributes.Append(Doc.CreateAttribute("version")).Value = "1.4.1";
-
-            var asset = root.AppendChild(Doc.CreateElement("asset"));
-            var contributor = asset.AppendChild(Doc.CreateElement("contributor"));
-            contributor.AppendChild(Doc.CreateElement("author")).InnerText = "Radegast User";
-            contributor.AppendChild(Doc.CreateElement("authoring_tool")).InnerText = "Radegast Collada Export";
-
-            asset.AppendChild(Doc.CreateElement("created")).InnerText = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
-            asset.AppendChild(Doc.CreateElement("modified")).InnerText = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
-
-            var unit = asset.AppendChild(Doc.CreateElement("unit"));
-            unit.Attributes.Append(Doc.CreateAttribute("name")).Value = "meter";
-            unit.Attributes.Append(Doc.CreateAttribute("meter")).Value = "1";
-
-            asset.AppendChild(Doc.CreateElement("up_axis")).InnerText = "Z_UP";
-
-            var images = root.AppendChild(Doc.CreateElement("library_images"));
-            var geomLib = root.AppendChild(Doc.CreateElement("library_geometries"));
-            var effects = root.AppendChild(Doc.CreateElement("library_effects"));
-            var materials = root.AppendChild(Doc.CreateElement("library_materials"));
-            var scene = root.AppendChild(Doc.CreateElement("library_visual_scenes"))
-                .AppendChild(Doc.CreateElement("visual_scene"));
-            scene.Attributes.Append(Doc.CreateAttribute("id")).InnerText = "Scene";
-            scene.Attributes.Append(Doc.CreateAttribute("name")).InnerText = "Scene";
-
-            foreach (string name in textures.Values)
-            {
-                string colladaName = name + "_" + imageFormat.ToLower();
-                var image = images.AppendChild(Doc.CreateElement("image"));
-                image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
-                image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
-                image.AppendChild(Doc.CreateElement("init_from")).InnerText =
-                    Web.URIUnescapeDataString(name + "." + imageFormat.ToLower());
-            }
-
-            Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>
-            {
-                var source = mesh.AppendChild(Doc.CreateElement("source"));
-                source.Attributes.Append(Doc.CreateAttribute("id")).InnerText = src_id;
-                var src_array = source.AppendChild(Doc.CreateElement("float_array"));
-
-                src_array.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}", src_id,
-                    "array");
-                src_array.Attributes.Append(Doc.CreateAttribute("count")).InnerText = vals.Count.ToString();
-
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < vals.Count; i++)
-                {
-                    sb.Append(vals[i].ToString(Utils.EnUsCulture));
-                    if (i != vals.Count - 1)
-                    {
-                        sb.Append(" ");
-                    }
-                }
-                src_array.InnerText = sb.ToString();
-
-                var acc = source.AppendChild(Doc.CreateElement("technique_common"))
-                    .AppendChild(Doc.CreateElement("accessor"));
-                acc.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}", src_id,
-                    "array");
-                acc.Attributes.Append(Doc.CreateAttribute("count")).InnerText = (vals.Count/param.Length).ToString();
-                acc.Attributes.Append(Doc.CreateAttribute("stride")).InnerText = param.Length.ToString();
-
-                foreach (char c in param)
-                {
-                    var pX = acc.AppendChild(Doc.CreateElement("param"));
-                    pX.Attributes.Append(Doc.CreateAttribute("name")).InnerText = c.ToString();
-                    pX.Attributes.Append(Doc.CreateAttribute("type")).InnerText = "float";
-                }
-
-                return true;
-            };
-
-            Func<Primitive.TextureEntryFace, MaterialInfo> getMaterial = o =>
-            {
-                MaterialInfo ret = AllMeterials.FirstOrDefault(mat => mat.Matches(o));
-
-                if (ret != null) return ret;
-                ret = new MaterialInfo
-                {
-                    TextureID = o.TextureID,
-                    Color = o.RGBA,
-                    Name = string.Format("Material{0}", AllMeterials.Count)
-                };
-                AllMeterials.Add(ret);
-
-                return ret;
-            };
-
-            Func<FacetedMesh, List<MaterialInfo>> getMaterials = o =>
-            {
-                var ret = new List<MaterialInfo>();
-
-                for (int face_num = 0; face_num < o.Faces.Count; face_num++)
-                {
-                    var te = o.Faces[face_num].TextureFace;
-                    if (te.RGBA.A < 0.01f)
-                    {
-                        continue;
-                    }
-                    var mat = getMaterial.Invoke(te);
-                    if (!ret.Contains(mat))
-                    {
-                        ret.Add(mat);
-                    }
-                }
-                return ret;
-            };
-
-            Func<XmlNode, string, string, FacetedMesh, List<int>, bool> addPolygons =
-                (mesh, geomID, materialID, obj, faces_to_include) =>
-                {
-                    var polylist = mesh.AppendChild(Doc.CreateElement("polylist"));
-                    polylist.Attributes.Append(Doc.CreateAttribute("material")).InnerText = materialID;
-
-                    // Vertices semantic
-                    {
-                        var input = polylist.AppendChild(Doc.CreateElement("input"));
-                        input.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "VERTEX";
-                        input.Attributes.Append(Doc.CreateAttribute("offset")).InnerText = "0";
-                        input.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}",
-                            geomID, "vertices");
-                    }
-
-                    // Normals semantic
-                    {
-                        var input = polylist.AppendChild(Doc.CreateElement("input"));
-                        input.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "NORMAL";
-                        input.Attributes.Append(Doc.CreateAttribute("offset")).InnerText = "0";
-                        input.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}",
-                            geomID, "normals");
-                    }
-
-                    // UV semantic
-                    {
-                        var input = polylist.AppendChild(Doc.CreateElement("input"));
-                        input.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "TEXCOORD";
-                        input.Attributes.Append(Doc.CreateAttribute("offset")).InnerText = "0";
-                        input.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}",
-                            geomID, "map0");
-                    }
-
-                    // Save indices
-                    var vcount = polylist.AppendChild(Doc.CreateElement("vcount"));
-                    var p = polylist.AppendChild(Doc.CreateElement("p"));
-                    int index_offset = 0;
-                    int num_tris = 0;
-                    StringBuilder pBuilder = new StringBuilder();
-                    StringBuilder vcountBuilder = new StringBuilder();
-
-                    for (int face_num = 0; face_num < obj.Faces.Count; face_num++)
-                    {
-                        var face = obj.Faces[face_num];
-                        if (faces_to_include == null || faces_to_include.Contains(face_num))
-                        {
-                            for (int i = 0; i < face.Indices.Count; i++)
-                            {
-                                int index = index_offset + face.Indices[i];
-                                pBuilder.Append(index);
-                                pBuilder.Append(" ");
-                                if (i%3 == 0)
-                                {
-                                    vcountBuilder.Append("3 ");
-                                    num_tris++;
-                                }
-                            }
-                        }
-                        index_offset += face.Vertices.Count;
-                    }
-
-                    p.InnerText = pBuilder.ToString().TrimEnd();
-                    vcount.InnerText = vcountBuilder.ToString().TrimEnd();
-                    polylist.Attributes.Append(Doc.CreateAttribute("count")).InnerText = num_tris.ToString();
-
-                    return true;
-                };
-
-            Func<FacetedMesh, MaterialInfo, List<int>> getFacesWithMaterial = (obj, mat) =>
-            {
-                var ret = new List<int>();
-                for (int face_num = 0; face_num < obj.Faces.Count; face_num++)
-                {
-                    if (mat == getMaterial.Invoke(obj.Faces[face_num].TextureFace))
-                    {
-                        ret.Add(face_num);
-                    }
-                }
-                return ret;
-            };
-
-            Func<Vector3, Quaternion, Vector3, float[]> createSRTMatrix = (scale, q, pos) =>
-            {
-                float[] mat = new float[16];
-
-                // Transpose the quaternion (don't ask me why)
-                q.X = q.X*-1f;
-                q.Y = q.Y*-1f;
-                q.Z = q.Z*-1f;
-
-                float x2 = q.X + q.X;
-                float y2 = q.Y + q.Y;
-                float z2 = q.Z + q.Z;
-                float xx = q.X*x2;
-                float xy = q.X*y2;
-                float xz = q.X*z2;
-                float yy = q.Y*y2;
-                float yz = q.Y*z2;
-                float zz = q.Z*z2;
-                float wx = q.W*x2;
-                float wy = q.W*y2;
-                float wz = q.W*z2;
-
-                mat[0] = (1.0f - (yy + zz))*scale.X;
-                mat[1] = (xy - wz)*scale.X;
-                mat[2] = (xz + wy)*scale.X;
-                mat[3] = 0.0f;
-
-                mat[4] = (xy + wz)*scale.Y;
-                mat[5] = (1.0f - (xx + zz))*scale.Y;
-                mat[6] = (yz - wx)*scale.Y;
-                mat[7] = 0.0f;
-
-                mat[8] = (xz - wy)*scale.Z;
-                mat[9] = (yz + wx)*scale.Z;
-                mat[10] = (1.0f - (xx + yy))*scale.Z;
-                mat[11] = 0.0f;
-
-                //Positional parts
-                mat[12] = pos.X;
-                mat[13] = pos.Y;
-                mat[14] = pos.Z;
-                mat[15] = 1.0f;
-
-                return mat;
-            };
-
-            Func<XmlNode, bool> generateEffects = o =>
-            {
-                // Effects (face color, alpha)
-                foreach (var mat in AllMeterials)
-                {
-                    var color = mat.Color;
-                    var effect = effects.AppendChild(Doc.CreateElement("effect"));
-                    effect.Attributes.Append(Doc.CreateAttribute("id")).InnerText = mat.Name + "-fx";
-                    var profile = effect.AppendChild(Doc.CreateElement("profile_COMMON"));
-                    string colladaName = null;
-
-                    KeyValuePair<UUID, string> kvp = textures.FirstOrDefault(p => p.Key.Equals(mat.TextureID));
-
-                    if (!kvp.Equals(default(KeyValuePair<UUID, string>)))
-                    {
-                        UUID textID = kvp.Key;
-                        colladaName = textures[textID] + "_" + imageFormat.ToLower();
-                        var newparam = profile.AppendChild(Doc.CreateElement("newparam"));
-                        newparam.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = colladaName + "-surface";
-                        var surface = newparam.AppendChild(Doc.CreateElement("surface"));
-                        surface.Attributes.Append(Doc.CreateAttribute("type")).InnerText = "2D";
-                        surface.AppendChild(Doc.CreateElement("init_from")).InnerText = colladaName;
-                        newparam = profile.AppendChild(Doc.CreateElement("newparam"));
-                        newparam.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = colladaName + "-sampler";
-                        newparam.AppendChild(Doc.CreateElement("sampler2D"))
-                            .AppendChild(Doc.CreateElement("source"))
-                            .InnerText = colladaName + "-surface";
-                    }
-
-                    var t = profile.AppendChild(Doc.CreateElement("technique"));
-                    t.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = "common";
-                    var phong = t.AppendChild(Doc.CreateElement("phong"));
-
-                    var diffuse = phong.AppendChild(Doc.CreateElement("diffuse"));
-                    // Only one <color> or <texture> can appear inside diffuse element
-                    if (colladaName != null)
-                    {
-                        var txtr = diffuse.AppendChild(Doc.CreateElement("texture"));
-                        txtr.Attributes.Append(Doc.CreateAttribute("texture")).InnerText = colladaName + "-sampler";
-                        txtr.Attributes.Append(Doc.CreateAttribute("texcoord")).InnerText = colladaName;
-                    }
-                    else
-                    {
-                        var diffuseColor = diffuse.AppendChild(Doc.CreateElement("color"));
-                        diffuseColor.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = "diffuse";
-                        diffuseColor.InnerText = string.Format("{0} {1} {2} {3}",
-                            color.R.ToString(Utils.EnUsCulture),
-                            color.G.ToString(Utils.EnUsCulture),
-                            color.B.ToString(Utils.EnUsCulture),
-                            color.A.ToString(Utils.EnUsCulture));
-                    }
-
-                    phong.AppendChild(Doc.CreateElement("transparency"))
-                        .AppendChild(Doc.CreateElement("float"))
-                        .InnerText = color.A.ToString(Utils.EnUsCulture);
-                }
-
-                return true;
-            };
-
-            int prim_nr = 0;
-            foreach (var obj in facetedMeshSet)
-            {
-                int total_num_vertices = 0;
-                string name = string.Format("prim{0}", prim_nr++);
-                string geomID = name;
-
-                var geom = geomLib.AppendChild(Doc.CreateElement("geometry"));
-                geom.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}", geomID, "mesh");
-                var mesh = geom.AppendChild(Doc.CreateElement("mesh"));
-
-                List<float> position_data = new List<float>();
-                List<float> normal_data = new List<float>();
-                List<float> uv_data = new List<float>();
-
-                int num_faces = obj.Faces.Count;
-
-                for (int face_num = 0; face_num < num_faces; face_num++)
-                {
-                    var face = obj.Faces[face_num];
-                    total_num_vertices += face.Vertices.Count;
-
-                    foreach (var v in face.Vertices)
-                    {
-                        position_data.Add(v.Position.X);
-                        position_data.Add(v.Position.Y);
-                        position_data.Add(v.Position.Z);
-
-                        normal_data.Add(v.Normal.X);
-                        normal_data.Add(v.Normal.Y);
-                        normal_data.Add(v.Normal.Z);
-
-                        uv_data.Add(v.TexCoord.X);
-                        uv_data.Add(v.TexCoord.Y);
-                    }
-                }
-
-                addSource.Invoke(mesh, string.Format("{0}-{1}", geomID, "positions"), "XYZ", position_data);
-                addSource.Invoke(mesh, string.Format("{0}-{1}", geomID, "normals"), "XYZ", normal_data);
-                addSource.Invoke(mesh, string.Format("{0}-{1}", geomID, "map0"), "ST", uv_data);
-
-                // Add the <vertices> element
-                {
-                    var verticesNode = mesh.AppendChild(Doc.CreateElement("vertices"));
-                    verticesNode.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}",
-                        geomID, "vertices");
-                    var verticesInput = verticesNode.AppendChild(Doc.CreateElement("input"));
-                    verticesInput.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "POSITION";
-                    verticesInput.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format(
-                        "#{0}-{1}", geomID, "positions");
-                }
-
-                var objMaterials = getMaterials.Invoke(obj);
-
-                // Add triangles
-                foreach (var objMaterial in objMaterials)
-                {
-                    addPolygons.Invoke(mesh, geomID, objMaterial.Name + "-material", obj,
-                        getFacesWithMaterial.Invoke(obj, objMaterial));
-                }
-
-                var node = scene.AppendChild(Doc.CreateElement("node"));
-                node.Attributes.Append(Doc.CreateAttribute("type")).InnerText = "NODE";
-                node.Attributes.Append(Doc.CreateAttribute("id")).InnerText = geomID;
-                node.Attributes.Append(Doc.CreateAttribute("name")).InnerText = geomID;
-
-                // Set tranform matrix (node position, rotation and scale)
-                var matrix = node.AppendChild(Doc.CreateElement("matrix"));
-
-                var srt = createSRTMatrix.Invoke(obj.Prim.Scale, obj.Prim.Rotation, obj.Prim.Position);
-                string matrixVal = string.Empty;
-                for (int i = 0; i < 4; i++)
-                {
-                    for (int j = 0; j < 4; j++)
-                    {
-                        matrixVal += srt[j*4 + i].ToString(Utils.EnUsCulture) + " ";
-                    }
-                }
-                matrix.InnerText = matrixVal.TrimEnd();
-
-                // Geometry of the node
-                var nodeGeometry = node.AppendChild(Doc.CreateElement("instance_geometry"));
-
-                // Bind materials
-                var tq = nodeGeometry.AppendChild(Doc.CreateElement("bind_material"))
-                    .AppendChild(Doc.CreateElement("technique_common"));
-                foreach (var objMaterial in objMaterials)
-                {
-                    var instanceMaterial = tq.AppendChild(Doc.CreateElement("instance_material"));
-                    instanceMaterial.Attributes.Append(Doc.CreateAttribute("symbol")).InnerText =
-                        string.Format("{0}-{1}", objMaterial.Name, "material");
-                    instanceMaterial.Attributes.Append(Doc.CreateAttribute("target")).InnerText =
-                        string.Format("#{0}-{1}", objMaterial.Name, "material");
-                }
-
-                nodeGeometry.Attributes.Append(Doc.CreateAttribute("url")).InnerText = string.Format("#{0}-{1}", geomID,
-                    "mesh");
-            }
-
-            generateEffects.Invoke(effects);
-
-            // Materials
-            foreach (var objMaterial in AllMeterials)
-            {
-                var mat = materials.AppendChild(Doc.CreateElement("material"));
-                mat.Attributes.Append(Doc.CreateAttribute("id")).InnerText = objMaterial.Name + "-material";
-                var matEffect = mat.AppendChild(Doc.CreateElement("instance_effect"));
-                matEffect.Attributes.Append(Doc.CreateAttribute("url")).InnerText = string.Format("#{0}-{1}",
-                    objMaterial.Name, "fx");
-            }
-
-            root.AppendChild(Doc.CreateElement("scene"))
-                .AppendChild(Doc.CreateElement("instance_visual_scene"))
-                .Attributes.Append(Doc.CreateAttribute("url")).InnerText = "#Scene";
-
-            return Doc;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Fetches all the avatars in-range.
-        /// </summary>
-        /// <param name="range">the range to extend or contract to</param>
-        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
-        /// <param name="dataTimeout">the data timeout in milliseconds</param>
-        /// <returns>the avatars in range</returns>
-        private static IEnumerable<Avatar> GetAvatars(float range, uint millisecondsTimeout, uint dataTimeout)
-        {
-            switch (Client.Self.Movement.Camera.Far < range)
-            {
-                case true:
-                    IEnumerable<Avatar> avatars;
-                    Time.DecayingAlarm RangeUpdateAlarm =
-                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    EventHandler<AvatarUpdateEventArgs> AvatarUpdateEventHandler =
-                        (sender, args) =>
-                        {
-                            // ignore if this is not a new avatar being added
-                            if (!args.IsNew) return;
-                            RangeUpdateAlarm.Alarm(dataTimeout);
-                        };
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.AvatarUpdate += AvatarUpdateEventHandler;
-                        lock (Locks.ClientInstanceConfigurationLock)
-                        {
-                            Client.Self.Movement.Camera.Far = range;
-                        }
-                        RangeUpdateAlarm.Alarm(dataTimeout);
-                        RangeUpdateAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
-                        avatars =
-                            Client.Network.Simulators.AsParallel().Select(o => o.ObjectsAvatars)
-                                .Select(o => o.Copy().Values)
-                                .SelectMany(o => o);
-                        lock (Locks.ClientInstanceConfigurationLock)
-                        {
-                            Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
-                        }
-                        Client.Objects.AvatarUpdate -= AvatarUpdateEventHandler;
-                    }
-                    return avatars;
-                default:
-                    return Client.Network.Simulators.AsParallel().Select(o => o.ObjectsAvatars)
-                        .Select(o => o.Copy().Values)
-                        .SelectMany(o => o);
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Fetches all the primitives in-range.
-        /// </summary>
-        /// <param name="range">the range to extend or contract to</param>
-        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
-        /// <param name="dataTimeout">the data timeout in milliseconds</param>
-        /// <returns>the primitives in range</returns>
-        private static IEnumerable<Primitive> GetPrimitives(float range, uint millisecondsTimeout, uint dataTimeout)
-        {
-            switch (Client.Self.Movement.Camera.Far < range)
-            {
-                case true:
-                    IEnumerable<Primitive> primitives;
-                    Time.DecayingAlarm RangeUpdateAlarm =
-                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    EventHandler<PrimEventArgs> ObjectUpdateEventHandler =
-                        (sender, args) =>
-                        {
-                            // ignore if this is not a new primitive being added
-                            if (!args.IsNew) return;
-                            RangeUpdateAlarm.Alarm(dataTimeout);
-                        };
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                        lock (Locks.ClientInstanceConfigurationLock)
-                        {
-                            Client.Self.Movement.Camera.Far = range;
-                        }
-                        RangeUpdateAlarm.Alarm(dataTimeout);
-                        RangeUpdateAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
-                        primitives =
-                            Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
-                                .Select(o => o.Copy().Values).ToList()
-                                .SelectMany(o => o);
-                        lock (Locks.ClientInstanceConfigurationLock)
-                        {
-                            Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
-                        }
-                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                    }
-                    return primitives;
-                default:
-                    return Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
-                        .Select(o => o.Copy().Values).ToList()
-                        .SelectMany(o => o);
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Updates a set of primitives by scanning their properties.
-        /// </summary>
-        /// <param name="primitives">a list of primitives to update</param>
-        /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
-        /// <returns>a list of updated primitives</returns>
-        private static bool UpdatePrimitives(ref HashSet<Primitive> primitives, uint dataTimeout)
-        {
-            int primitiveUpdatesCount = 0;
-            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
-            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
-                (sender, args) =>
-                {
-                    Interlocked.Increment(ref primitiveUpdatesCount);
-                    ObjectPropertiesEvent.Set();
-                };
-            BlockingQueue<Primitive> primitiveQueue = new BlockingQueue<Primitive>(primitives);
-            do
-            {
-                Primitive updatePrimitive = primitiveQueue.Dequeue();
-                lock (Locks.ClientInstanceObjectsLock)
-                {
-                    Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                    ObjectPropertiesEvent.Reset();
-                    Client.Objects.SelectObject(Client.Network.Simulators.AsParallel()
-                        .FirstOrDefault(p => p.Handle.Equals(updatePrimitive.RegionHandle)), updatePrimitive.LocalID,
-                        true);
-                    ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
-                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                }
-            } while (primitiveQueue.Any());
-            return primitiveUpdatesCount.Equals(primitives.Count);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Updates a set of avatars by scanning their profile data.
-        /// </summary>
-        /// <param name="avatars">a list of avatars to update</param>
-        /// <param name="millisecondsTimeout">the amount of time in milliseconds to timeout</param>
-        /// <param name="dataTimeout">the data timeout</param>
-        /// <returns>true if any avatars were updated</returns>
-        private static bool UpdateAvatars(ref HashSet<Avatar> avatars, uint millisecondsTimeout,
-            uint dataTimeout)
-        {
-            HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
-            Dictionary<UUID, Time.DecayingAlarm> avatarAlarms =
-                new Dictionary<UUID, Time.DecayingAlarm>(scansAvatars.AsParallel()
-                    .ToDictionary(o => o.ID, p => new Time.DecayingAlarm(corradeConfiguration.DataDecayType)));
-            Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
-                .ToDictionary(o => o.ID, p => p));
-            object LockObject = new object();
-            EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
-            {
-                lock (LockObject)
-                {
-                    avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                    avatarUpdates[args.AvatarID].ProfileInterests = args.Interests;
-                }
-            };
-            EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
-                (sender, args) =>
-                {
-                    lock (LockObject)
-                    {
-                        avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                        avatarUpdates[args.AvatarID].ProfileProperties = args.Properties;
-                    }
-                };
-            EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
-            {
-                lock (LockObject)
-                {
-                    avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                    avatarUpdates[args.AvatarID].Groups.AddRange(args.Groups.Select(o => o.GroupID));
-                }
-            };
-            EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
-                (sender, args) =>
-                {
-                    lock (LockObject)
-                    {
-                        avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                    }
-                };
-            EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
-                (sender, args) =>
-                {
-                    lock (LockObject)
-                    {
-                        avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                    }
-                };
-            lock (Locks.ClientInstanceAvatarsLock)
-            {
-                Parallel.ForEach(scansAvatars, o =>
-                {
-                    Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
-                    Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
-                    Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                    Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                    Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                    Client.Avatars.RequestAvatarProperties(o.ID);
-                    Client.Avatars.RequestAvatarPicks(o.ID);
-                    Client.Avatars.RequestAvatarClassified(o.ID);
-                    Time.DecayingAlarm avatarAlarm;
-                    lock (LockObject)
-                    {
-                        avatarAlarm = avatarAlarms[o.ID];
-                    }
-                    avatarAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
-                    Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
-                    Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
-                    Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                    Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                    Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                });
-            }
-
-            switch (
-                avatarUpdates.Values.AsParallel()
-                    .Any(
-                        o =>
-                            o != null && !o.ProfileInterests.Equals(default(Avatar.Interests)) &&
-                            !o.ProfileProperties.Equals(default(Avatar.AvatarProperties))))
-            {
-                case true:
-                    avatars = new HashSet<Avatar>(avatarUpdates.Values);
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Get all worn attachments.
-        /// </summary>
-        /// <param name="dataTimeout">the alarm timeout for receiving object properties</param>
-        /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(uint dataTimeout)
-        {
-            HashSet<Primitive> selectedPrimitives =
-                new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.Copy()
-                    .Values
-                    .AsParallel()
-                    .Where(o => o.ParentID.Equals(Client.Self.LocalID)));
-            if (!selectedPrimitives.Any() || !UpdatePrimitives(ref selectedPrimitives, dataTimeout))
-                return Enumerable.Empty<KeyValuePair<Primitive, AttachmentPoint>>();
-            return selectedPrimitives
-                .AsParallel()
-                .Select(o => new KeyValuePair<Primitive, AttachmentPoint>(o,
-                    (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
-                                       ((o.PrimData.State & ~0xF0) << 4))));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets the inventory wearables that are currently being worn.
-        /// </summary>
-        /// <param name="outfitFolder">the folder to start the search from</param>
-        /// <returns>the worn inventory itemse</returns>
-        private static IEnumerable<InventoryItem> GetWearables(InventoryFolder outfitFolder)
-        {
-            return outfitFolder != null
-                ? GetCurrentOutfitFolderLinks(outfitFolder)
-                    .AsParallel()
-                    .Select(ResolveItemLink)
-                    .Where(o => o is InventoryWearable)
-                    .Select(o => o)
-                : Enumerable.Empty<InventoryItem>();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// ///
-        /// <summary>
-        ///     Fetches items by searching the inventory starting with an inventory
-        ///     node where the search criteria finds:
-        ///     - name as string
-        ///     - name as Regex
-        ///     - UUID as UUID
-        /// </summary>
-        /// <param name="root">the node to start the search from</param>
-        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
-        /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> FindInventory<T>(InventoryNode root, object criteria)
-        {
-            if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
-                (criteria is string &&
-                 (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
-                (criteria is UUID &&
-                 (criteria.Equals(root.Data.UUID) ||
-                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))))
-            {
-                if (typeof (T) == typeof (InventoryNode))
-                {
-                    yield return (T) (object) root;
-                }
-                if (typeof (T) == typeof (InventoryBase))
-                {
-                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
-                }
-            }
-            foreach (T item in root.Nodes.Values.AsParallel().SelectMany(node => FindInventory<T>(node, criteria)))
-            {
-                yield return item;
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// ///
-        /// <summary>
-        ///     Fetches items and their full path from the inventory starting with
-        ///     an inventory node where the search criteria finds:
-        ///     - name as string
-        ///     - name as Regex
-        ///     - UUID as UUID
-        /// </summary>
-        /// <param name="root">the node to start the search from</param>
-        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
-        /// <param name="prefix">any prefix to append to the found paths</param>
-        /// <returns>items matching criteria and their full inventoy path</returns>
-        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(
-            InventoryNode root, object criteria, LinkedList<string> prefix)
-        {
-            if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
-                (criteria is string &&
-                 (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
-                (criteria is UUID &&
-                 (criteria.Equals(root.Data.UUID) ||
-                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))))
-            {
-                if (typeof (T) == typeof (InventoryBase))
-                {
-                    yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
-                            new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
-                }
-                if (typeof (T) == typeof (InventoryNode))
-                {
-                    yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
-                            new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
-                }
-            }
-            foreach (
-                KeyValuePair<T, LinkedList<string>> o in
-                    root.Nodes.Values.AsParallel()
-                        .SelectMany(o => FindInventoryPath<T>(o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] {root.Data.Name})))))
-            {
-                yield return o;
-            }
         }
 
         /// <summary>
@@ -4661,10 +3280,11 @@ namespace Corrade
 
             // Join group chat if possible.
             if (!Client.Self.GroupChatSessions.ContainsKey(e.GroupID) &&
-                HasGroupPowers(Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
-                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                Services.HasGroupPowers(Client, Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
+                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
             {
-                JoinGroupChat(e.GroupID, corradeConfiguration.ServicesTimeout);
+                Services.JoinGroupChat(Client, e.GroupID, corradeConfiguration.ServicesTimeout);
             }
         }
 
@@ -5241,9 +3861,16 @@ namespace Corrade
             {
                 e.Accept = true;
                 // It is accepted, so update the inventory.
-                UpdateInventoryRecursive.Invoke(
-                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                        InventoryFolder);
+                try
+                {
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                            InventoryFolder, corradeConfiguration.ServicesTimeout);
+                }
+                catch (Exception)
+                {
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                }
                 return;
             }
 
@@ -5256,21 +3883,30 @@ namespace Corrade
             }
 
             // It is temporary, so update the inventory.
-            UpdateInventoryRecursive.Invoke(
-                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                    InventoryFolder);
+            try
+            {
+                Inventory.UpdateInventoryRecursive(Client,
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                        InventoryFolder, corradeConfiguration.ServicesTimeout);
+            }
+            catch (Exception)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+            }
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                inventoryBaseItem = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
-                {
-                    GroupCollection groups =
-                        CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
-                    return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
-                }))()
-                    ).FirstOrDefault();
+                inventoryBaseItem =
+                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                        ((Func<string>) (() =>
+                        {
+                            GroupCollection groups =
+                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
+                            return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
+                        }))()
+                        ).FirstOrDefault();
             }
 
             if (inventoryBaseItem != null)
@@ -5301,7 +3937,8 @@ namespace Corrade
                         {
                             // Locate the folder and move.
                             inventoryBaseFolder =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    e.FolderID
                                     ).FirstOrDefault();
                             if (inventoryBaseFolder != null)
                             {
@@ -5310,7 +3947,8 @@ namespace Corrade
                         }
                         if (inventoryBaseFolder != null)
                         {
-                            UpdateInventoryRecursive.Invoke(inventoryBaseFolder as InventoryFolder);
+                            Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
+                                corradeConfiguration.ServicesTimeout);
                         }
                         break;
                     default:
@@ -5321,9 +3959,16 @@ namespace Corrade
                                 Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
                                     InventoryFolder);
                         }
-                        UpdateInventoryRecursive.Invoke(
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                InventoryFolder);
+                        try
+                        {
+                            Inventory.UpdateInventoryRecursive(Client,
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                    InventoryFolder, corradeConfiguration.ServicesTimeout);
+                        }
+                        catch (Exception)
+                        {
+                            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                        }
                         break;
                 }
             }
@@ -5416,11 +4061,20 @@ namespace Corrade
                         // First load the caches.
                         LoadInventoryCache.Invoke();
                         // Update the inventory.
-                        UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
-                        // Get COF.
-                        CurrentOutfitFolder =
-                            Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                                InventoryFolder;
+                        try
+                        {
+                            Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                corradeConfiguration.ServicesTimeout);
+                            // Get COF.
+                            CurrentOutfitFolder =
+                                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
+                                    ] as
+                                    InventoryFolder;
+                        }
+                        catch (Exception)
+                        {
+                            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                        }
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
@@ -5583,7 +4237,7 @@ namespace Corrade
                             RLVRules.AsParallel()
                                 .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
-                            if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
+                            if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
                             {
                                 // or fail and append the fail message.
                                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
@@ -5625,7 +4279,7 @@ namespace Corrade
                                         o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
-                    if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
                     {
                         // or fail and append the fail message.
                         Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
@@ -5652,7 +4306,9 @@ namespace Corrade
                 // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
                     Group inviteGroup = new Group();
-                    if (!RequestGroup(args.IM.FromAgentID, corradeConfiguration.ServicesTimeout, ref inviteGroup))
+                    if (
+                        !Services.RequestGroup(Client, args.IM.FromAgentID, corradeConfiguration.ServicesTimeout,
+                            ref inviteGroup))
                         return;
                     // Add the group to the cache.
                     Cache.AddGroup(inviteGroup.Name, inviteGroup.ID);
@@ -5701,7 +4357,7 @@ namespace Corrade
                 case InstantMessageDialog.GroupNotice:
                     Group noticeGroup = new Group();
                     if (
-                        !RequestGroup(
+                        !Services.RequestGroup(Client,
                             args.IM.BinaryBucket.Length >= 18 ? new UUID(args.IM.BinaryBucket, 2) : args.IM.FromAgentID,
                             corradeConfiguration.ServicesTimeout, ref noticeGroup))
                         return;
@@ -6124,7 +4780,7 @@ namespace Corrade
              * resolve args.IM.FromAgentID to a name, which is what Second Life does, otherwise it just sets
              * the name to the name of the primitive sending the message.
              */
-            if (IsSecondLife())
+            if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
             {
                 UUID fromAgentID;
                 if (UUID.TryParse(identifier, out fromAgentID))
@@ -7363,22 +6019,6 @@ namespace Corrade
 
             // Client Identification Tag.
             Client.Settings.CLIENT_IDENTIFICATION_TAG = corradeConfiguration.ClientIdentificationTag;
-        }
-
-        /// <summary>
-        ///     Material information for Collada DAE Export.
-        /// </summary>
-        /// <remarks>This class is taken from the Radegast Viewer with changes by Wizardry and Steamworks.</remarks>
-        private class MaterialInfo
-        {
-            public Color4 Color;
-            public string Name;
-            public UUID TextureID;
-
-            public bool Matches(Primitive.TextureEntryFace TextureEntry)
-            {
-                return TextureID.Equals(TextureEntry.TextureID) && Color.Equals(TextureEntry.RGBA);
-            }
         }
 
         /// <summary>
@@ -8818,6 +7458,7 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("SQL")] SQL,
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=logs>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<group|message|local|region>>&<action=<get|search>>&entity=group|message|local|region,action=get:[from=<DateTime>]&entity=group|message|local|region,action=get:[to=<DateTime>]&entity=group|message|local|region,action=get:[firstname=<STRING>]&entity=group|message|local|region,action=get:[lastname=<STRING>]&entity=group|message|local|region,action=get:[message=<STRING>]&entity=local|region,action=get:[region=<STRING>]&entity=local:[type=<ChatType>]&action=search:<data=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("logs")] [Reflection.NameAttribute("logs")] LOGS,
@@ -9547,7 +8188,7 @@ namespace Corrade
             [Reflection.NameAttribute("value")] VALUE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set|delete>>&action=get|delete:<key=<STRING>>&action=set:<key=<STRING>>&action=set:<value=<STRING>>&[callback=<STRING>]"
+                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<SQL>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Database)] [CorradeCommand("database")] [Reflection.NameAttribute("database")] DATABASE,
             [Reflection.NameAttribute("text")] TEXT,
             [Reflection.NameAttribute("quorum")] QUORUM,

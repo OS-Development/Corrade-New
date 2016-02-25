@@ -109,7 +109,9 @@ namespace Corrade
                                     break;
                                 case true:
                                     Parcel parcel = null;
-                                    if (!GetParcelAtPosition(simulator, position, ref parcel))
+                                    if (
+                                        !Services.GetParcelAtPosition(Client, simulator, position,
+                                            corradeConfiguration.ServicesTimeout, ref parcel))
                                     {
                                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                                     }
@@ -154,9 +156,11 @@ namespace Corrade
                                                 break;
                                         }
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                            !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                                corradeCommandParameters.Group.UUID,
                                                 power,
-                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                         {
                                             throw new Exception(
                                                 Reflection.GetNameFromEnumValue(

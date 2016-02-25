@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -29,11 +30,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     HashSet<InventoryItem> items =
-                        new HashSet<InventoryItem>(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message)))
-                            ).Cast<InventoryItem>());
+                        new HashSet<InventoryItem>(
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                Helpers.StringOrUUID(wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                                    corradeCommandParameters.Message)))
+                                ).Cast<InventoryItem>());
                     if (!items.Any())
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -29,7 +30,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     InventoryBase inventoryBaseItem =
-                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                             Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message)))
@@ -49,7 +50,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
-                    if (IsSecondLife() &&
+                    if (Helpers.IsSecondLife(Client) &&
                         position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
                         throw new Exception(
@@ -82,7 +83,9 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
-                    if (!GetParcelAtPosition(simulator, position, ref parcel))
+                    if (
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                            ref parcel))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
@@ -97,9 +100,11 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                                 if (
-                                    !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        corradeCommandParameters.Group.UUID,
                                         GroupPowers.AllowRez,
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }

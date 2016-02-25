@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -24,7 +25,7 @@ namespace Corrade
                     return;
                 }
                 InventoryNode RLVFolder =
-                    FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -46,13 +47,13 @@ namespace Corrade
                         if (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             attachment =
-                                GetAttachments(corradeConfiguration.DataTimeout)
+                                Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                     .AsParallel()
                                     .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
                             switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                             {
                                 case true:
-                                    inventoryBase = FindInventory<InventoryBase>(
+                                    inventoryBase = Inventory.FindInventory<InventoryBase>(Client,
                                         RLVFolder, attachment.Key.Properties.ItemID
                                         )
                                         .AsParallel().FirstOrDefault(
@@ -81,7 +82,7 @@ namespace Corrade
                                 return;
                             }
                             InventoryBase wearable =
-                                GetWearables(RLVFolder.Data as InventoryFolder)
+                                Inventory.GetWearables(Client, RLVFolder.Data as InventoryFolder)
                                     .AsParallel()
                                     .FirstOrDefault(
                                         o =>
@@ -94,12 +95,12 @@ namespace Corrade
                         break;
                     default:
                         attachment =
-                            GetAttachments(corradeConfiguration.DataTimeout)
+                            Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                 .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                         switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                         {
                             case true:
-                                inventoryBase = FindInventory<InventoryBase>(
+                                inventoryBase = Inventory.FindInventory<InventoryBase>(Client,
                                     Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID
                                     )
                                     .AsParallel().FirstOrDefault(
@@ -116,7 +117,7 @@ namespace Corrade
                     return;
                 }
                 KeyValuePair<InventoryBase, LinkedList<string>> path =
-                    FindInventoryPath<InventoryBase>(RLVFolder, inventoryBase.Name,
+                    Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder, inventoryBase.Name,
                         new LinkedList<string>()).FirstOrDefault();
                 switch (!path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))
                 {

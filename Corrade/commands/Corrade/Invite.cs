@@ -28,8 +28,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, GroupPowers.Invite,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.Invite,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -54,7 +56,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    if (AgentInGroup(agentUUID, corradeCommandParameters.Group.UUID,
+                    if (Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                         corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
@@ -87,9 +89,10 @@ namespace Corrade
                         roleUUIDs.Add(UUID.Zero);
                     }
                     if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.AssignMember,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }

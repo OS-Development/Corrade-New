@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -25,7 +26,7 @@ namespace Corrade
                     return;
                 }
                 HashSet<Primitive> attachments = new HashSet<Primitive>(
-                    GetAttachments(corradeConfiguration.DataTimeout)
+                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                         .AsParallel()
                         .Select(o => o.Key));
                 StringBuilder response = new StringBuilder();

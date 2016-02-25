@@ -5,8 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -50,12 +50,13 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     if (
-                        !FindPrimitive(
+                        !Services.FindPrimitive(Client,
                             Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
-                            range,
-                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            range, corradeConfiguration.Range,
+                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
@@ -75,7 +76,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_SCALE);
                     }
-                    if (IsSecondLife() &&
+                    if (Helpers.IsSecondLife(Client) &&
                         ((scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
                           scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
                           scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||

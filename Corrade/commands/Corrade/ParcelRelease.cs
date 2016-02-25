@@ -5,10 +5,11 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -50,7 +51,9 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
-                    if (!GetParcelAtPosition(simulator, position, ref parcel))
+                    if (
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                            ref parcel))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
@@ -63,9 +66,11 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
                             if (
-                                !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                    corradeCommandParameters.Group.UUID,
                                     GroupPowers.LandRelease,
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }

@@ -6,8 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.IO;
-using System.Text;
+using System.Linq;
 using CorradeConfiguration;
 using wasSharp;
 
@@ -31,148 +32,53 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_DATABASE_FILE_CONFIGURED);
                     }
+                    string sql = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SQL)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(sql))
+                    {
+                        throw new ScriptException(ScriptError.NO_SQL_STRING_PROVIDED);
+                    }
+                    // if the database does not exist...
                     if (!File.Exists(corradeCommandParameters.Group.DatabaseFile))
                     {
-                        // create the file and close it
-                        File.Create(corradeCommandParameters.Group.DatabaseFile).Close();
+                        // ...create the database
+                        SQLiteConnection.CreateFile(corradeCommandParameters.Group.DatabaseFile);
                     }
-                    switch (
-                        Reflection.GetEnumValueFromName<Action>(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
-                                    corradeCommandParameters.Message)).ToLowerInvariant()))
+                    List<string> data = new List<string>();
+                    using (
+                        SQLiteConnection sqlConnection =
+                            new SQLiteConnection("Data Source=" + corradeCommandParameters.Group.DatabaseFile +
+                                                 ";Version=3;New=True;Compress=True;"))
                     {
-                        case Action.GET:
-                            string databaseGetkey =
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
-                                        corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(databaseGetkey))
+                        sqlConnection.Open();
+                        using (SQLiteCommand sqlCommand = sqlConnection.CreateCommand())
+                        {
+                            using (SQLiteTransaction sqlTransaction = sqlConnection.BeginTransaction())
                             {
-                                throw new ScriptException(ScriptError.NO_DATABASE_KEY_SPECIFIED);
-                            }
-                            lock (DatabaseFileLock)
-                            {
-                                if (!DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
+                                sqlCommand.CommandText = sql;
+                                using (SQLiteDataReader sqlDataReader = sqlCommand.ExecuteReader())
                                 {
-                                    DatabaseLocks.Add(corradeCommandParameters.Group.Name, new object());
-                                }
-                            }
-                            lock (DatabaseLocks[corradeCommandParameters.Group.Name])
-                            {
-                                string databaseGetValue = KeyValue.Get(databaseGetkey,
-                                    File.ReadAllText(corradeCommandParameters.Group.DatabaseFile, Encoding.UTF8));
-                                if (!string.IsNullOrEmpty(databaseGetValue))
-                                {
-                                    result.Add(databaseGetkey,
-                                        wasInput(databaseGetValue));
-                                }
-                            }
-                            lock (DatabaseFileLock)
-                            {
-                                if (DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
-                                {
-                                    DatabaseLocks.Remove(corradeCommandParameters.Group.Name);
-                                }
-                            }
-                            break;
-                        case Action.SET:
-                            string databaseSetKey =
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
-                                        corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(databaseSetKey))
-                            {
-                                throw new ScriptException(ScriptError.NO_DATABASE_KEY_SPECIFIED);
-                            }
-                            string databaseSetValue =
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VALUE)),
-                                        corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(databaseSetValue))
-                            {
-                                throw new ScriptException(ScriptError.NO_DATABASE_VALUE_SPECIFIED);
-                            }
-                            lock (DatabaseFileLock)
-                            {
-                                if (!DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
-                                {
-                                    DatabaseLocks.Add(corradeCommandParameters.Group.Name, new object());
-                                }
-                            }
-                            lock (DatabaseLocks[corradeCommandParameters.Group.Name])
-                            {
-                                string contents = File.ReadAllText(corradeCommandParameters.Group.DatabaseFile,
-                                    Encoding.UTF8);
-                                using (
-                                    FileStream fileStream = File.Open(corradeCommandParameters.Group.DatabaseFile,
-                                        FileMode.Create,
-                                        FileAccess.Write, FileShare.None))
-                                {
-                                    using (StreamWriter recreateDatabase = new StreamWriter(fileStream, Encoding.UTF8))
+                                    if (sqlDataReader.HasRows)
                                     {
-                                        recreateDatabase.Write(KeyValue.Set(databaseSetKey,
-                                            databaseSetValue, contents));
-                                        recreateDatabase.Flush();
+                                        while (sqlDataReader.Read())
+                                        {
+                                            for (int i = 0; i < sqlDataReader.FieldCount; ++i)
+                                            {
+                                                data.Add(sqlDataReader.GetName(i));
+                                                data.Add(sqlDataReader.GetValue(i).ToString());
+                                            }
+                                        }
                                     }
                                 }
+                                sqlTransaction.Commit();
                             }
-                            lock (DatabaseFileLock)
-                            {
-                                if (DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
-                                {
-                                    DatabaseLocks.Remove(corradeCommandParameters.Group.Name);
-                                }
-                            }
-                            break;
-                        case Action.DELETE:
-                            string databaseDeleteKey =
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
-                                        corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(databaseDeleteKey))
-                            {
-                                throw new ScriptException(ScriptError.NO_DATABASE_KEY_SPECIFIED);
-                            }
-                            lock (DatabaseFileLock)
-                            {
-                                if (!DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
-                                {
-                                    DatabaseLocks.Add(corradeCommandParameters.Group.Name, new object());
-                                }
-                            }
-                            lock (DatabaseLocks[corradeCommandParameters.Group.Name])
-                            {
-                                string contents = File.ReadAllText(corradeCommandParameters.Group.DatabaseFile,
-                                    Encoding.UTF8);
-                                using (
-                                    FileStream fileStream = File.Open(corradeCommandParameters.Group.DatabaseFile,
-                                        FileMode.Create,
-                                        FileAccess.Write, FileShare.None))
-                                {
-                                    using (StreamWriter recreateDatabase = new StreamWriter(fileStream, Encoding.UTF8))
-                                    {
-                                        recreateDatabase.Write(KeyValue.Delete(databaseDeleteKey, contents));
-                                        recreateDatabase.Flush();
-                                        //recreateDatabase.Close();
-                                    }
-                                }
-                            }
-                            lock (DatabaseFileLock)
-                            {
-                                if (DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
-                                {
-                                    DatabaseLocks.Remove(corradeCommandParameters.Group.Name);
-                                }
-                            }
-                            break;
-                        default:
-                            throw new ScriptException(ScriptError.UNKNOWN_DATABASE_ACTION);
+                        }
+                    }
+                    if (data.Any())
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -41,14 +42,16 @@ namespace Corrade
                         attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, Helpers.StringOrUUID(o)
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    Helpers.StringOrUUID(o)
                                     )
                                     .AsParallel().FirstOrDefault(
                                         p =>
                                             p is InventoryObject || p is InventoryAttachment);
                             if (inventoryBaseItem == null)
                                 return;
-                            Detach(inventoryBaseItem as InventoryItem);
+                            Inventory.Detach(Client, CurrentOutfitFolder, inventoryBaseItem as InventoryItem,
+                                corradeConfiguration.ServicesTimeout);
                         });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

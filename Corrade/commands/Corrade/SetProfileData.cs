@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -66,7 +67,7 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     wasCSVToStructure(fields, ref properties);
-                    if (IsSecondLife())
+                    if (Helpers.IsSecondLife(Client))
                     {
                         if (Encoding.UTF8.GetByteCount(properties.AboutText) >
                             Constants.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)

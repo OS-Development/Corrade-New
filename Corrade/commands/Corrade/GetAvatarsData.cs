@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -49,8 +50,10 @@ namespace Corrade
                     {
                         case Entity.RANGE:
                             Parallel.ForEach(
-                                GetAvatars(range, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout)
+                                Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                     .AsParallel()
                                     .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
                                 o =>
@@ -75,11 +78,12 @@ namespace Corrade
                             }
                             Parcel parcel = null;
                             if (
-                                !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
+                                    corradeConfiguration.ServicesTimeout, ref parcel))
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
-                            Parallel.ForEach(GetAvatars(new[]
+                            Parallel.ForEach(Services.GetAvatars(Client, new[]
                             {
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -87,9 +91,11 @@ namespace Corrade
                                     new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                 Vector3.Distance(Client.Self.SimPosition,
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                            }.Max(), corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
+                            }.Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                 .AsParallel()
-                                .Where(o => IsVectorInParcel(o.Position, parcel)), o =>
+                                .Where(o => Helpers.IsVectorInParcel(o.Position, parcel)), o =>
                                 {
                                     lock (LockObject)
                                     {
@@ -121,20 +127,20 @@ namespace Corrade
                             }
                             HashSet<Parcel> regionParcels =
                                 new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
-                            Parallel.ForEach(
-                                GetAvatars(
-                                    regionParcels.AsParallel().Select(o => new[]
-                                    {
-                                        Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
-                                        Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
-                                        Vector3.Distance(Client.Self.SimPosition,
-                                            new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
-                                        Vector3.Distance(Client.Self.SimPosition,
-                                            new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                    }.Max()).Max(), corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout)
-                                    .AsParallel()
-                                    .Where(o => regionParcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p))),
+                            Parallel.ForEach(Services.GetAvatars(Client,
+                                regionParcels.AsParallel().Select(o => new[]
+                                {
+                                    Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
+                                    Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
+                                }.Max()).Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .AsParallel()
+                                .Where(o => regionParcels.AsParallel().Any(p => Helpers.IsVectorInParcel(o.Position, p))),
                                 o =>
                                 {
                                     lock (LockObject)
@@ -168,8 +174,10 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            Avatar avatar = GetAvatars(range, corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout)
+                            Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                 .AsParallel()
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                             if (avatar == null)
@@ -181,8 +189,8 @@ namespace Corrade
                     }
 
                     // allow partial results
-                    UpdateAvatars(ref avatars, corradeConfiguration.ServicesTimeout,
-                        corradeConfiguration.DataTimeout);
+                    Services.UpdateAvatars(Client, ref avatars, corradeConfiguration.ServicesTimeout,
+                        corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType));
 
                     List<string> data = new List<string>();
 

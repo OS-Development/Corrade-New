@@ -14,6 +14,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -39,7 +40,7 @@ namespace Corrade
                     if (item != null)
                     {
                         InventoryBase inventoryBaseItem =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
@@ -83,7 +84,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message));
-                    if (IsSecondLife())
+                    if (Helpers.IsSecondLife(Client))
                     {
                         if (pickUUID.Equals(UUID.Zero) &&
                             pickCount >= Constants.AVATARS.PICKS.MAXIMUM_PICKS)

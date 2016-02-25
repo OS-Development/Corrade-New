@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -62,8 +63,9 @@ namespace Corrade
                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
                     List<string> csv = new List<string>();
-                    Parallel.ForEach(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, search
-                        ),
+                    Parallel.ForEach(
+                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search
+                            ),
                         o =>
                         {
                             InventoryItem inventoryItem = o as InventoryItem;

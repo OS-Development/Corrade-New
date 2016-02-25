@@ -54,12 +54,13 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     if (
-                        !FindPrimitive(
+                        !Services.FindPrimitive(Client,
                             Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
-                            range,
-                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            range, corradeConfiguration.Range,
+                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }

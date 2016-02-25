@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -23,7 +24,7 @@ namespace Corrade
                     return;
                 }
                 InventoryNode RLVFolder =
-                    FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -36,8 +37,8 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        KeyValuePair<InventoryNode, LinkedList<string>> folderPath = FindInventoryPath
-                            <InventoryNode>(
+                        KeyValuePair<InventoryNode, LinkedList<string>> folderPath = Inventory.FindInventoryPath
+                            <InventoryNode>(Client,
                                 RLVFolder,
                                 CORRADE_CONSTANTS.OneOrMoRegex,
                                 new LinkedList<string>())
@@ -61,7 +62,8 @@ namespace Corrade
                         break;
                 }
                 HashSet<string> csv =
-                    new HashSet<string>(FindInventory<InventoryBase>(optionFolderNode, CORRADE_CONSTANTS.OneOrMoRegex)
+                    new HashSet<string>(Inventory.FindInventory<InventoryBase>(Client, optionFolderNode,
+                        CORRADE_CONSTANTS.OneOrMoRegex)
                         .AsParallel()
                         .Where(o => o is InventoryFolder && !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                         .Skip(1)

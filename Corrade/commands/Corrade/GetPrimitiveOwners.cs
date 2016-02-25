@@ -51,7 +51,9 @@ namespace Corrade
                     {
                         case true:
                             Parcel parcel = null;
-                            if (!GetParcelAtPosition(simulator, position, ref parcel))
+                            if (
+                                !Services.GetParcelAtPosition(Client, simulator, position,
+                                    corradeConfiguration.ServicesTimeout, ref parcel))
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
@@ -100,8 +102,10 @@ namespace Corrade
                                     GroupPowers.ReturnNonGroup
                                 }, p =>
                                 {
-                                    if (HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, p,
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                    if (Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        corradeCommandParameters.Group.UUID, p,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                     {
                                         permissions = true;
                                     }

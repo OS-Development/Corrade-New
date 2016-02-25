@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -53,13 +54,13 @@ namespace Corrade
                     Dictionary<string, string> items = CSV.ToKeyValue(attachments)
                         .ToDictionary(o => o.Key, o => o.Value);
                     // if this is SecondLife, check that the additional attachments would not exceed the maximum attachment limit
-                    if (IsSecondLife())
+                    if (Helpers.IsSecondLife(Client))
                     {
                         switch (replace)
                         {
                             case true:
                                 if (
-                                    GetAttachments(corradeConfiguration.DataTimeout)
+                                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .Count() + items.Count() -
                                     typeof (AttachmentPoint).GetFields(
                                         BindingFlags.Public | BindingFlags.Static)
@@ -73,7 +74,7 @@ namespace Corrade
                                 break;
                             default:
                                 if (items.Count +
-                                    GetAttachments(corradeConfiguration.DataTimeout)
+                                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .Count() >
                                     Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
@@ -93,15 +94,16 @@ namespace Corrade
                             q =>
                             {
                                 InventoryBase inventoryBaseItem =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                                         Helpers.StringOrUUID(o.Value)
                                         )
                                         .AsParallel().FirstOrDefault(
                                             r => r is InventoryObject || r is InventoryAttachment);
                                 if (inventoryBaseItem == null)
                                     return;
-                                Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
-                                    replace);
+                                Inventory.Attach(Client, CurrentOutfitFolder, inventoryBaseItem as InventoryItem,
+                                    (AttachmentPoint) q.GetValue(null),
+                                    replace, corradeConfiguration.ServicesTimeout);
                             }));
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

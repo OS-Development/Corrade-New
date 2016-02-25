@@ -20,6 +20,7 @@ using OpenMetaverse.Imaging;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -69,7 +70,8 @@ namespace Corrade
                     {
                         case true:
                             InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item).FirstOrDefault();
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

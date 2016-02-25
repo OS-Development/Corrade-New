@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -34,21 +35,23 @@ namespace Corrade
                             break;
                         }
                         InventoryItem wearable =
-                            GetWearables(CurrentOutfitFolder)
+                            Inventory.GetWearables(Client, CurrentOutfitFolder)
                                 .AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        !IsBodyPart(o) &&
+                                        !Inventory.IsBodyPart(Client, o) &&
                                         (o as InventoryWearable).WearableType.Equals(
                                             (WearableType) wearTypeInfo.GetValue(null)));
                         if (wearable != null)
                         {
-                            UnWear(wearable);
+                            Inventory.UnWear(Client, CurrentOutfitFolder, wearable, corradeConfiguration.ServicesTimeout);
                         }
                         break;
                     default:
                         Parallel.ForEach(
-                            GetWearables(CurrentOutfitFolder).Where(o => !IsBodyPart(o as InventoryWearable)), UnWear);
+                            Inventory.GetWearables(Client, CurrentOutfitFolder)
+                                .Where(o => !Inventory.IsBodyPart(Client, o as InventoryWearable)),
+                            o => Inventory.UnWear(Client, CurrentOutfitFolder, o, corradeConfiguration.ServicesTimeout));
                         break;
                 }
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

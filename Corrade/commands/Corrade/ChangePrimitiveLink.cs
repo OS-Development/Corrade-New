@@ -61,7 +61,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
                     }
-                    if (IsSecondLife())
+                    if (Helpers.IsSecondLife(Client))
                     {
                         if (items.Count > Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
                         {
@@ -74,11 +74,13 @@ namespace Corrade
                     {
                         Primitive primitive = null;
                         if (
-                            !FindPrimitive(
+                            !Services.FindPrimitive(Client,
                                 Helpers.StringOrUUID(items[o]),
                                 range,
+                                corradeConfiguration.Range,
                                 ref primitive, corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout))
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                         {
                             succeeded = false;
                             state.Break();

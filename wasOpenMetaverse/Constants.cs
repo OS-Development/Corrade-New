@@ -9,7 +9,7 @@ namespace wasOpenMetaverse
     /// <summary>
     ///     Linden constants.
     /// </summary>
-    public class Constants
+    public static class Constants
     {
         public struct ALERTS
         {

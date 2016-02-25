@@ -58,10 +58,11 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    Avatar avatar =
-                        GetAvatars(range, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
-                            .AsParallel()
-                            .FirstOrDefault(o => o.ID.Equals(agentUUID));
+                    Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                        .AsParallel()
+                        .FirstOrDefault(o => o.ID.Equals(agentUUID));
                     if (avatar == null)
                         throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
                     Time.DecayingAlarm ProfileDataReceivedAlarm =

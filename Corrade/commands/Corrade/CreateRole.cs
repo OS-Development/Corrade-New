@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -41,8 +42,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, GroupPowers.CreateRole,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.CreateRole,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -64,7 +67,7 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     }
-                    if (IsSecondLife() && roleCount >= Constants.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
+                    if (Helpers.IsSecondLife(Client) && roleCount >= Constants.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
                     {
                         throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED);
                     }
@@ -86,16 +89,17 @@ namespace Corrade
                                     .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => { powers |= ((ulong) q.GetValue(null)); }));
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.ChangeActions,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     string title = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TITLE)),
                         corradeCommandParameters.Message));
-                    if (IsSecondLife() && title.Length > Constants.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
+                    if (Helpers.IsSecondLife(Client) && title.Length > Constants.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE);
                     }

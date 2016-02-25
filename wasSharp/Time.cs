@@ -296,6 +296,11 @@ namespace wasSharp
                     alarm = null;
                 }
             }
+
+            public DecayingAlarm Clone()
+            {
+                return new DecayingAlarm(decay);
+            }
         }
     }
 }

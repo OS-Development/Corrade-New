@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -57,7 +58,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                             }
-                            if (IsSecondLife() &&
+                            if (Helpers.IsSecondLife(Client) &&
                                 (name.Length > Constants.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
                                  name.Length < Constants.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
                             {

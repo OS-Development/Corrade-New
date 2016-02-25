@@ -13,6 +13,7 @@ using OpenMetaverse;
 using OpenMetaverse.Assets;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -32,7 +33,7 @@ namespace Corrade
                     string text =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
-                    if (IsSecondLife() &&
+                    if (Helpers.IsSecondLife(Client) &&
                         Encoding.UTF8.GetByteCount(text) >
                         Constants.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
                     {

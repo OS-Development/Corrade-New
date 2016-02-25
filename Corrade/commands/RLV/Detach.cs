@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -23,7 +24,7 @@ namespace Corrade
                     return;
                 }
                 InventoryNode RLVFolder =
-                    FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -41,19 +42,21 @@ namespace Corrade
                         {
                             case true: // detach by attachment point
                                 Parallel.ForEach(
-                                    GetAttachments(corradeConfiguration.DataTimeout)
+                                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .AsParallel()
                                         .Where(o => o.Value.Equals(RLVattachment.AttachmentPoint))
                                         .SelectMany(
                                             p =>
-                                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                                Inventory.FindInventory<InventoryBase>(Client,
+                                                    Client.Inventory.Store.RootNode,
                                                     p.Key.Properties.Name)
                                                     .AsParallel().Where(
                                                         o =>
                                                             o is InventoryAttachment || o is InventoryObject))
                                         .Where(o => o != null)
-                                        .Select(o => o as InventoryItem),
-                                    Detach);
+                                        .Select(o => o as InventoryItem), o =>
+                                            Inventory.Detach(Client, CurrentOutfitFolder, o,
+                                                corradeConfiguration.ServicesTimeout));
                                 break;
                             default: // detach by folder(s) name
                                 if (string.IsNullOrEmpty(rule.Option)) break;
@@ -61,7 +64,7 @@ namespace Corrade
                                     rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                                         .AsParallel().Select(
                                             p =>
-                                                FindInventory<InventoryBase>(RLVFolder,
+                                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
                                                     new Regex(Regex.Escape(p),
                                                         RegexOptions.Compiled | RegexOptions.IgnoreCase)
                                                     ).AsParallel().FirstOrDefault(o => o is InventoryFolder))
@@ -69,16 +72,18 @@ namespace Corrade
                                         .SelectMany(
                                             o =>
                                                 Client.Inventory.Store.GetContents(o as InventoryFolder)
-                                                    .AsParallel().Where(CanBeWorn)), o =>
+                                                    .AsParallel().Where(Inventory.CanBeWorn)), o =>
                                                     {
                                                         if (o is InventoryWearable)
                                                         {
-                                                            UnWear(o as InventoryItem);
+                                                            Inventory.UnWear(Client, CurrentOutfitFolder,
+                                                                o as InventoryItem, corradeConfiguration.ServicesTimeout);
                                                             return;
                                                         }
                                                         if (o is InventoryAttachment || o is InventoryObject)
                                                         {
-                                                            Detach(o as InventoryItem);
+                                                            Inventory.Detach(Client, CurrentOutfitFolder,
+                                                                o as InventoryItem, corradeConfiguration.ServicesTimeout);
                                                         }
                                                     });
                                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
@@ -87,7 +92,7 @@ namespace Corrade
                         break;
                     default:
                         Parallel.ForEach(
-                            GetAttachments(corradeConfiguration.DataTimeout)
+                            Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                 .AsParallel()
                                 .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value)))
                                 .SelectMany(
@@ -98,7 +103,9 @@ namespace Corrade
                                                 UUID itemUUID;
                                                 if (UUID.TryParse(o.Value.ToString(), out itemUUID))
                                                 {
-                                                    Detach(Client.Inventory.Store.Items[itemUUID].Data as InventoryItem);
+                                                    Inventory.Detach(Client, CurrentOutfitFolder,
+                                                        Client.Inventory.Store.Items[itemUUID].Data as InventoryItem,
+                                                        corradeConfiguration.ServicesTimeout);
                                                 }
                                             });
                         break;

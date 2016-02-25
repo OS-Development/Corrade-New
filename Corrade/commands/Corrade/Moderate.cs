@@ -27,9 +27,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.ModerateChat,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }

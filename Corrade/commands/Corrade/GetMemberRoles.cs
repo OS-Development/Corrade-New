@@ -61,7 +61,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
                     if (
-                        !AgentInGroup(agentUUID, corradeCommandParameters.Group.UUID,
+                        !Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_IN_GROUP);

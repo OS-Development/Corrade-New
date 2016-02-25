@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -61,7 +62,7 @@ namespace Corrade
                     {
                         case true:
                             InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {

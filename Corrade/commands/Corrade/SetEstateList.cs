@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -84,7 +85,7 @@ namespace Corrade
                             {
                                 case Action.ADD:
                                     // if this is SecondLife check that we would not exeed the maximum amount of bans
-                                    if (IsSecondLife())
+                                    if (Helpers.IsSecondLife(Client))
                                     {
                                         EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler =
                                             (sender, args) =>
@@ -162,7 +163,7 @@ namespace Corrade
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:
-                                    if (IsSecondLife())
+                                    if (Helpers.IsSecondLife(Client))
                                     {
                                         EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                             (sender, args) =>
@@ -246,7 +247,7 @@ namespace Corrade
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:
-                                    if (IsSecondLife())
+                                    if (Helpers.IsSecondLife(Client))
                                     {
                                         EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                             (sender, args) =>
@@ -329,7 +330,7 @@ namespace Corrade
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:
-                                    if (IsSecondLife())
+                                    if (Helpers.IsSecondLife(Client))
                                     {
                                         EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                             (sender, args) =>

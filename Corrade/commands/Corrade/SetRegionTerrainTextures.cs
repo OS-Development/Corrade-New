@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -54,7 +55,8 @@ namespace Corrade
                                             break;
                                         default:
                                             InventoryBase inventoryBaseItem =
-                                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, data[o]
+                                                Inventory.FindInventory<InventoryBase>(Client,
+                                                    Client.Inventory.Store.RootNode, data[o]
                                                     ).FirstOrDefault();
                                             switch (inventoryBaseItem is InventoryTexture)
                                             {

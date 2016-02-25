@@ -40,11 +40,14 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, GroupPowers.DeleteRole,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout) ||
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.DeleteRole,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.RemoveMember,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -65,7 +68,8 @@ namespace Corrade
                     }
                     Group targetGroup = new Group();
                     if (
-                        !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
+                        !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);

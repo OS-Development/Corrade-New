@@ -54,22 +54,25 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     if (
-                        !FindPrimitive(
+                        !Services.FindPrimitive(Client,
                             Helpers.StringOrUUID(wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
-                            range,
-                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            range, corradeConfiguration.Range,
+                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
 
                     // if the primitive is not an object (the root) or the primitive
                     // is not an object as an avatar attachment then do not export it.
-                    if (!primitive.ParentID.Equals(0) && !GetAvatars(range, corradeConfiguration.ServicesTimeout,
-                        corradeConfiguration.DataTimeout)
-                        .AsParallel()
-                        .Any(o => o.LocalID.Equals(primitive.ParentID)))
+                    if (!primitive.ParentID.Equals(0) &&
+                        !Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                            corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                            .AsParallel()
+                            .Any(o => o.LocalID.Equals(primitive.ParentID)))
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
@@ -81,8 +84,11 @@ namespace Corrade
                     object LockObject = new object();
 
                     // find all the children that have the object as parent.
-                    Parallel.ForEach(GetPrimitives(range, corradeConfiguration.ServicesTimeout,
-                        corradeConfiguration.DataTimeout), o =>
+                    Parallel.ForEach(
+                        Services.GetPrimitives(Client, range, corradeConfiguration.Range,
+                            corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType)),
+                        o =>
                         {
                             if (!o.ParentID.Equals(root.LocalID))
                                 return;
@@ -96,7 +102,7 @@ namespace Corrade
                         });
 
                     // update the primitives in the link set
-                    if (!UpdatePrimitives(ref exportPrimitivesSet, corradeConfiguration.DataTimeout))
+                    if (!Services.UpdatePrimitives(Client, ref exportPrimitivesSet, corradeConfiguration.DataTimeout))
                         throw new ScriptException(ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES);
 
                     // add all the textures to export
@@ -243,7 +249,7 @@ namespace Corrade
                     Parallel.ForEach(exportPrimitivesSet, o =>
                     {
                         FacetedMesh mesh = null;
-                        if (!MakeFacetedMesh(o, mesher, ref mesh, corradeConfiguration.ServicesTimeout))
+                        if (!global::wasOpenMetaverse.Mesh.MakeFacetedMesh(Client, o, mesher, ref mesh, corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_MESHMERIZE_OBJECT);
                         }
@@ -317,7 +323,7 @@ namespace Corrade
                                     XMLTextWriter.Formatting = Formatting.Indented;
                                     XMLTextWriter.WriteProcessingInstruction("xml",
                                         "version=\"1.0\" encoding=\"utf-8\"");
-                                    GenerateCollada(exportMeshSet, exportMeshTextures, format)
+                                    global::wasOpenMetaverse.Mesh.GenerateCollada(exportMeshSet, exportMeshTextures, format)
                                         .WriteContentTo(XMLTextWriter);
                                     XMLTextWriter.Flush();
                                 }

@@ -40,7 +40,8 @@ namespace Corrade
                     }
                     Group targetGroup = new Group();
                     if (
-                        !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
+                        !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);

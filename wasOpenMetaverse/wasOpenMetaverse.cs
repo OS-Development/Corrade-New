@@ -6,7 +6,7 @@
 
 namespace wasOpenMetaverse
 {
-    public class wasOpenMetaverse
+    public static class wasOpenMetaverse
     {
     }
 }

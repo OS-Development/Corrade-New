@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -24,7 +25,8 @@ namespace Corrade
                 {
                     return;
                 }
-                HashSet<InventoryBase> wearables = new HashSet<InventoryBase>(GetWearables(CurrentOutfitFolder));
+                HashSet<InventoryBase> wearables =
+                    new HashSet<InventoryBase>(Inventory.GetWearables(Client, CurrentOutfitFolder));
                 StringBuilder response = new StringBuilder();
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {

@@ -29,11 +29,14 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, GroupPowers.Eject,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout) ||
-                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.Eject,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.RemoveMember,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -59,14 +62,15 @@ namespace Corrade
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
                     if (
-                        !AgentInGroup(agentUUID, corradeCommandParameters.Group.UUID,
+                        !Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     Group targetGroup = new Group();
                     if (
-                        !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
+                        !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);

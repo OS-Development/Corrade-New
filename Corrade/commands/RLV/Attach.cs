@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using OpenMetaverse;
+using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -23,7 +24,7 @@ namespace Corrade
                     return;
                 }
                 InventoryNode RLVFolder =
-                    FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -35,7 +36,7 @@ namespace Corrade
                     rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                         .AsParallel().Select(
                             p =>
-                                FindInventory<InventoryBase>(RLVFolder,
+                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
                                     new Regex(Regex.Escape(p),
                                         RegexOptions.Compiled | RegexOptions.IgnoreCase)
                                     ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))).Where(o => o != null)
@@ -43,16 +44,18 @@ namespace Corrade
                             o =>
                                 Client.Inventory.Store.GetContents(o as InventoryFolder)
                                     .AsParallel()
-                                    .Where(CanBeWorn)), o =>
+                                    .Where(Inventory.CanBeWorn)), o =>
                                     {
                                         if (o is InventoryWearable)
                                         {
-                                            Wear(o as InventoryItem, true);
+                                            Inventory.Wear(Client, CurrentOutfitFolder, o as InventoryItem, true,
+                                                corradeConfiguration.ServicesTimeout);
                                             return;
                                         }
                                         if (o is InventoryObject || o is InventoryAttachment)
                                         {
-                                            Attach(o as InventoryItem, AttachmentPoint.Default, true);
+                                            Inventory.Attach(Client, CurrentOutfitFolder, o as InventoryItem,
+                                                AttachmentPoint.Default, true, corradeConfiguration.ServicesTimeout);
                                         }
                                     });
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

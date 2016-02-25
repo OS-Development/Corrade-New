@@ -13,7 +13,7 @@ using OpenMetaverse;
 
 namespace wasOpenMetaverse
 {
-    public class Helpers
+    public static class Helpers
     {
         public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
             RegexOptions.Compiled);
@@ -55,11 +55,11 @@ namespace wasOpenMetaverse
                 return null;
             }
             UUID @UUID;
-            if (!UUID.TryParse(data, out @UUID))
+            if (!UUID.TryParse(data, out UUID))
             {
                 return data;
             }
-            return @UUID;
+            return UUID;
         }
 
         /// <summary>
@@ -90,6 +90,31 @@ namespace wasOpenMetaverse
                            })
                : null;
 #endif
+        }
+
+        /// <summary>
+        ///     Used to determine whether the current grid is Second Life.
+        /// </summary>
+        /// <returns>true if the connected grid is Second Life</returns>
+        public static bool IsSecondLife(GridClient Client)
+        {
+            return Client.Network.CurrentSim.SimVersion.Contains(Constants.GRID.SECOND_LIFE);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+
+        /// <summary>
+        ///     Determines whether a vector falls within a parcel.
+        /// </summary>
+        /// <param name="position">a 3D vector</param>
+        /// <param name="parcel">a parcel</param>
+        /// <returns>true if the vector falls within the parcel bounds</returns>
+        public static bool IsVectorInParcel(Vector3 position, Parcel parcel)
+        {
+            return position.X >= parcel.AABBMin.X && position.X <= parcel.AABBMax.X &&
+                   position.Y >= parcel.AABBMin.Y && position.Y <= parcel.AABBMax.Y;
         }
     }
 }

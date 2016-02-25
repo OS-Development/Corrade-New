@@ -69,7 +69,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
                             if (string.IsNullOrEmpty(data) ||
-                                (IsSecondLife() &&
+                                (Helpers.IsSecondLife(Client) &&
                                  Encoding.UTF8.GetByteCount(data) >
                                  Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {
@@ -140,7 +140,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NOT_IN_GROUP);
                             }
-                            if (string.IsNullOrEmpty(data) || (IsSecondLife() &&
+                            if (string.IsNullOrEmpty(data) || (Helpers.IsSecondLife(Client) &&
                                                                Encoding.UTF8.GetByteCount(data) >
                                                                Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {
@@ -149,15 +149,17 @@ namespace Corrade
                             if (!Client.Self.GroupChatSessions.ContainsKey(corradeCommandParameters.Group.UUID))
                             {
                                 if (
-                                    !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        corradeCommandParameters.Group.UUID,
                                         GroupPowers.JoinChat,
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
 
                                 if (
-                                    !JoinGroupChat(corradeCommandParameters.Group.UUID,
+                                    !Services.JoinGroupChat(Client, corradeCommandParameters.Group.UUID,
                                         corradeConfiguration.ServicesTimeout))
                                 {
                                     throw new ScriptException(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
@@ -206,7 +208,7 @@ namespace Corrade
                                 });
                             break;
                         case Entity.LOCAL:
-                            if (string.IsNullOrEmpty(data) || (IsSecondLife() &&
+                            if (string.IsNullOrEmpty(data) || (Helpers.IsSecondLife(Client) &&
                                                                Encoding.UTF8.GetByteCount(data) >
                                                                Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {

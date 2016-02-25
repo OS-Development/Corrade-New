@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -107,7 +108,7 @@ namespace Corrade
                                 break;
                         }
                     };
-                    if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
+                    if (Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
                     {
                         throw new ScriptException(ScriptError.TELEPORT_THROTTLED);
                     }

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -40,9 +41,18 @@ namespace Corrade
                                 fullName.First());
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                 fullName.Last());
+
+                            UUID agentUUID = UUID.Zero;
+                            if (Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
+                            {
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
+                                    agentUUID.ToString());
+                            }
                         }
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
+                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
                         notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                     lock (GroupInviteLock)
                     {

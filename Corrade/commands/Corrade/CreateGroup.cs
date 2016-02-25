@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -27,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     // if the grid is SecondLife and the group name length exceeds the allowed length...
-                    if (IsSecondLife() &&
+                    if (Helpers.IsSecondLife(Client) &&
                         corradeCommandParameters.Group.Name.Length > Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);

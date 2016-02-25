@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -49,9 +50,11 @@ namespace Corrade
                     {
                         case Action.SEND:
                             if (
-                                !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                    corradeCommandParameters.Group.UUID,
                                     GroupPowers.SendNotices, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout))
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
@@ -59,7 +62,8 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
-                            if (IsSecondLife() && body.Length > Constants.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
+                            if (Helpers.IsSecondLife(Client) &&
+                                body.Length > Constants.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE);
                             }
@@ -81,7 +85,7 @@ namespace Corrade
                             if (item != null)
                             {
                                 InventoryBase inventoryBaseItem =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                         ).FirstOrDefault();
                                 if (inventoryBaseItem == null)
                                 {

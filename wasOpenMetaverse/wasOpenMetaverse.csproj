@@ -33,11 +33,15 @@
     <Reference Include="OpenMetaverse">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.dll</HintPath>
     </Reference>
+    <Reference Include="OpenMetaverse.Rendering.Meshmerizer">
+      <HintPath>..\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmerizer.dll</HintPath>
+    </Reference>
     <Reference Include="OpenMetaverseTypes">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -52,7 +56,9 @@
     <Compile Include="Cache.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Helpers.cs" />
+    <Compile Include="Inventory.cs" />
     <Compile Include="Locks.cs" />
+    <Compile Include="Mesh.cs" />
     <Compile Include="Resolvers.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="wasOpenMetaverse.cs" />
