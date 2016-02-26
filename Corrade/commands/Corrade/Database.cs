@@ -6,10 +6,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
-using System.IO;
+using System.Data;
 using System.Linq;
 using CorradeConfiguration;
+using Mono.Data.Sqlite;
 using wasSharp;
 
 namespace Corrade
@@ -39,42 +39,33 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_SQL_STRING_PROVIDED);
                     }
-                    // if the database does not exist...
-                    if (!File.Exists(corradeCommandParameters.Group.DatabaseFile))
-                    {
-                        // ...create the database
-                        SQLiteConnection.CreateFile(corradeCommandParameters.Group.DatabaseFile);
-                    }
                     List<string> data = new List<string>();
-                    using (
-                        SQLiteConnection sqlConnection =
-                            new SQLiteConnection("Data Source=" + corradeCommandParameters.Group.DatabaseFile +
-                                                 ";Version=3;New=True;Compress=True;"))
+
+                    using (IDbConnection dbcon =
+                        new SqliteConnection(@"URI=file:" + corradeCommandParameters.Group.DatabaseFile))
                     {
-                        sqlConnection.Open();
-                        using (SQLiteCommand sqlCommand = sqlConnection.CreateCommand())
+                        dbcon.Open();
+                        using (IDbCommand dbcmd = dbcon.CreateCommand())
                         {
-                            using (SQLiteTransaction sqlTransaction = sqlConnection.BeginTransaction())
+                            dbcmd.CommandText = sql;
+                            using (IDbTransaction dbtransaction = dbcon.BeginTransaction())
                             {
-                                sqlCommand.CommandText = sql;
-                                using (SQLiteDataReader sqlDataReader = sqlCommand.ExecuteReader())
+                                using (IDataReader reader = dbcmd.ExecuteReader())
                                 {
-                                    if (sqlDataReader.HasRows)
+                                    while (reader.Read())
                                     {
-                                        while (sqlDataReader.Read())
+                                        for (int i = 0; i < reader.FieldCount; ++i)
                                         {
-                                            for (int i = 0; i < sqlDataReader.FieldCount; ++i)
-                                            {
-                                                data.Add(sqlDataReader.GetName(i));
-                                                data.Add(sqlDataReader.GetValue(i).ToString());
-                                            }
+                                            data.Add(reader.GetName(i));
+                                            data.Add(reader.GetValue(i).ToString());
                                         }
                                     }
                                 }
-                                sqlTransaction.Commit();
+                                dbtransaction.Commit();
                             }
                         }
                     }
+
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
