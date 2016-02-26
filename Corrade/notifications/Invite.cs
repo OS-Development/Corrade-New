@@ -52,8 +52,6 @@ namespace Corrade
                             }
                         }
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                        notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                     lock (GroupInviteLock)
                     {
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
