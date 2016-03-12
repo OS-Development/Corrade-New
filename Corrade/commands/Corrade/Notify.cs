@@ -267,7 +267,7 @@ namespace Corrade
                                                 HashSet<string> URLs =
                                                     new HashSet<string>(
                                                         p.Value.AsParallel()
-                                                            .Where(q => !q.Equals(url, StringComparison.Ordinal)));
+                                                            .Where(q => !string.Equals(url, q, StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)
                                                 {

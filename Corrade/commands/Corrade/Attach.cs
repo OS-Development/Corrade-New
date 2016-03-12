@@ -90,7 +90,7 @@ namespace Corrade
                             typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().Where(
                                     p =>
-                                        p.Name.Equals(o.Key, StringComparison.Ordinal)),
+                                        string.Equals(o.Key, p.Name, StringComparison.Ordinal)),
                             q =>
                             {
                                 InventoryBase inventoryBaseItem =

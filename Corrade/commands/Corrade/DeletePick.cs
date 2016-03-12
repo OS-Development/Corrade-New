@@ -40,7 +40,7 @@ namespace Corrade
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
                         KeyValuePair<UUID, string> pick = args.Picks.AsParallel().FirstOrDefault(
-                            o => o.Value.Equals(input, StringComparison.Ordinal));
+                            o => string.Equals(input, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();

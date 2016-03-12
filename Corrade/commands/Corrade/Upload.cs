@@ -48,7 +48,7 @@ namespace Corrade
                         o =>
                             Parallel.ForEach(
                                 typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                 q => { permissions |= ((uint) q.GetValue(null)); }));
                     FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                            BindingFlags.Static)

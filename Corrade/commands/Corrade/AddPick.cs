@@ -63,7 +63,7 @@ namespace Corrade
                         pickCount = args.Picks.Count;
                         KeyValuePair<UUID, string> pick =
                             args.Picks.AsParallel()
-                                .FirstOrDefault(o => o.Value.Equals(name, StringComparison.Ordinal));
+                                .FirstOrDefault(o => string.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();

@@ -37,7 +37,7 @@ namespace Corrade
                     case true:
                         RLVAttachment RLVattachment =
                             RLVAttachments.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             case true: // detach by attachment point
@@ -98,7 +98,7 @@ namespace Corrade
                                 .SelectMany(
                                     o =>
                                         o.Key.NameValues.AsParallel()
-                                            .Where(p => p.Name.Equals("AttachItemID", StringComparison.Ordinal))), o =>
+                                            .Where(p => string.Equals("AttachItemID", p.Name, StringComparison.Ordinal))), o =>
                                             {
                                                 UUID itemUUID;
                                                 if (UUID.TryParse(o.Value.ToString(), out itemUUID))

@@ -63,7 +63,7 @@ namespace Corrade
                         o =>
                             Parallel.ForEach(
                                 typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                 q =>
                                 {
                                     ScriptPermission permission = (ScriptPermission) q.GetValue(null);
@@ -132,7 +132,7 @@ namespace Corrade
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
                     Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                        o => o.Name.Equals(region, StringComparison.OrdinalIgnoreCase));
+                        o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);

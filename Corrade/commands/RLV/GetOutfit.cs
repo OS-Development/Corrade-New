@@ -33,7 +33,7 @@ namespace Corrade
                     case true:
                         RLVWearable RLVwearable = RLVWearables.AsParallel()
                             .FirstOrDefault(
-                                o => o.Name.Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVwearable.Equals(default(RLVWearable)))
                         {
                             case true:

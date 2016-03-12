@@ -63,7 +63,7 @@ namespace Corrade
                         o =>
                             Parallel.ForEach(
                                 typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                 q => { rights |= ((int) q.GetValue(null)); }));
                     Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
                 };

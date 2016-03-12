@@ -29,7 +29,7 @@ namespace Corrade
                         FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                                  BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
-                                p => p.Name.Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                p => string.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (wearTypeInfo == null)
                         {
                             break;

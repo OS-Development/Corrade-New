@@ -155,7 +155,7 @@ namespace wasOpenMetaverse
         /// <param name="Client">the grid client to use</param>
         /// <param name="item">the item whose link should be removed</param>
         /// <param name="outfitFolder">the outfit folder</param>
-        public static void RemoveLink(GridClient Client, InventoryItem item, InventoryFolder outfitFolder)
+        private static void RemoveLink(GridClient Client, InventoryItem item, InventoryFolder outfitFolder)
         {
             if (outfitFolder == null) return;
 
@@ -326,12 +326,9 @@ namespace wasOpenMetaverse
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
             {
                 // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(q.FolderID).AsParallel().ForAll(r =>
+                Client.Inventory.Store.GetContents(q.FolderID).AsParallel().Where(r => r is InventoryFolder).ForAll(r =>
                 {
-                    if (r is InventoryFolder)
-                    {
-                        inventoryFolders.Enqueue(r as InventoryFolder);
-                    }
+                    inventoryFolders.Enqueue(r as InventoryFolder);
                 });
                 FolderUpdatedEvent.Set();
             };

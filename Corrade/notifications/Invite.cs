@@ -52,9 +52,11 @@ namespace Corrade
                             }
                         }
                     }
+                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
+                        notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                     lock (GroupInviteLock)
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
+                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                             GroupInvites.AsParallel().FirstOrDefault(
                                 p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
                                 .Group);

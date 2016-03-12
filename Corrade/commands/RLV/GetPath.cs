@@ -43,7 +43,7 @@ namespace Corrade
                         // Try attachments
                         RLVAttachment RLVattachment =
                             RLVAttachments.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             attachment =
@@ -68,7 +68,7 @@ namespace Corrade
                         }
                         RLVWearable RLVwearable =
                             RLVWearables.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (!RLVwearable.Equals(default(RLVWearable)))
                         {
                             FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |

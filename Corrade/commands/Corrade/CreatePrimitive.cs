@@ -159,7 +159,7 @@ namespace Corrade
                         o =>
                             Parallel.ForEach(
                                 typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                 q => { primFlags |= ((uint) q.GetValue(null)); }));
 
                     // Finally, add the primitive to the simulator.

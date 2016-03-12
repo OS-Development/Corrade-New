@@ -75,6 +75,9 @@ namespace Corrade
         ///     Removals: 11869 - timeout getting primitive data
         ///     Removals: 20238 - parcel must be owned
         ///     Removals: 22961 - could not add mute entry
+        ///     Removals: 12181 - no database key specified
+        ///     Removals: 44994 - no database value specified
+        ///     Removals: 19142 - unknown database action
         /// </remarks>
         public enum ScriptError : uint
         {
@@ -123,9 +126,6 @@ namespace Corrade
             [Status(64123)] [Reflection.DescriptionAttribute("invalid mute target")] INVALID_MUTE_TARGET,
             [Status(59526)] [Reflection.DescriptionAttribute("unknown action")] UNKNOWN_ACTION,
             [Status(28087)] [Reflection.DescriptionAttribute("no database file configured")] NO_DATABASE_FILE_CONFIGURED,
-            [Status(12181)] [Reflection.DescriptionAttribute("no database key specified")] NO_DATABASE_KEY_SPECIFIED,
-            [Status(44994)] [Reflection.DescriptionAttribute("no database value specified")] NO_DATABASE_VALUE_SPECIFIED,
-            [Status(19142)] [Reflection.DescriptionAttribute("unknown database action")] UNKNOWN_DATABASE_ACTION,
             [Status(01253)] [Reflection.DescriptionAttribute("cannot remove owner role")] CANNOT_REMOVE_OWNER_ROLE,
             [Status(47808)] [Reflection.DescriptionAttribute("cannot remove user from owner role")] CANNOT_REMOVE_USER_FROM_OWNER_ROLE,
             [Status(47469)] [Reflection.DescriptionAttribute("timeout getting picks")] TIMEOUT_GETTING_PICKS,
@@ -376,15 +376,13 @@ namespace Corrade
         private static readonly object LocalLogFileLock = new object();
         private static readonly object RegionLogFileLock = new object();
         private static readonly object InstantMessageLogFileLock = new object();
-        private static readonly object DatabaseFileLock = new object();
 
         private static readonly Time.TimedThrottle TimedTeleportThrottle =
             new Time.TimedThrottle(Constants.TELEPORTS.THROTTLE.MAX_TELEPORTS,
                 Constants.TELEPORTS.THROTTLE.GRACE_SECONDS);
-
-        private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
+        
         private static readonly object GroupNotificationsLock = new object();
-        public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
+        private static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
         private static readonly Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
             InventoryOffers =
@@ -1854,7 +1852,7 @@ namespace Corrade
                             {
                                 Parallel.ForEach(
                                     typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                     p => { parcelFlags |= ((uint) p.GetValue(null)); });
                             });
                         break;
@@ -1874,7 +1872,7 @@ namespace Corrade
                             {
                                 Parallel.ForEach(
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                     p => { groupPowers |= ((uint) p.GetValue(null)); });
                             });
                         break;
@@ -1891,7 +1889,7 @@ namespace Corrade
                         FieldInfo attachmentPointFieldInfo =
                             typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                                .FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (attachmentPointFieldInfo == null) break;
                         attachmentPoint = (byte) attachmentPointFieldInfo.GetValue(null);
                         break;
@@ -1907,7 +1905,7 @@ namespace Corrade
                     case true:
                         FieldInfo treeFieldInfo = typeof (Tree).GetFields(BindingFlags.Public |
                                                                           BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                            .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (treeFieldInfo == null) break;
                         tree = (byte) treeFieldInfo.GetValue(null);
                         break;
@@ -1923,7 +1921,7 @@ namespace Corrade
                     case true:
                         FieldInfo materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
                                                                                   BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                            .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (materialFieldInfo == null) break;
                         material = (byte) materialFieldInfo.GetValue(null);
                         break;
@@ -1939,7 +1937,7 @@ namespace Corrade
                     case true:
                         FieldInfo pathCurveFieldInfo = typeof (PathCurve).GetFields(BindingFlags.Public |
                                                                                     BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                            .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (pathCurveFieldInfo == null) break;
                         pathCurve = (byte) pathCurveFieldInfo.GetValue(null);
                         break;
@@ -1954,7 +1952,7 @@ namespace Corrade
                 {
                     case true:
                         FieldInfo pCodeFieldInfo = typeof (PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                            .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (pCodeFieldInfo == null) break;
                         pCode = (byte) pCodeFieldInfo.GetValue(null);
                         break;
@@ -1971,7 +1969,7 @@ namespace Corrade
                         FieldInfo profileCurveFieldInfo =
                             typeof (ProfileCurve).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                                .FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (profileCurveFieldInfo == null) break;
                         profileCurve = (byte) profileCurveFieldInfo.GetValue(null);
                         break;
@@ -1987,7 +1985,7 @@ namespace Corrade
                     case true:
                         FieldInfo holeTypeFieldInfo = typeof (HoleType).GetFields(BindingFlags.Public |
                                                                                   BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                            .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (holeTypeFieldInfo == null) break;
                         holeType = (byte) holeTypeFieldInfo.GetValue(null);
                         break;
@@ -2003,7 +2001,7 @@ namespace Corrade
                     case true:
                         FieldInfo sculptTypeFieldInfo = typeof (SculptType).GetFields(BindingFlags.Public |
                                                                                       BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                            .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (sculptTypeFieldInfo == null) break;
                         sculptType = (byte) sculptTypeFieldInfo.GetValue(null);
                         break;
@@ -2389,15 +2387,15 @@ namespace Corrade
                 ? corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         groupUUID.Equals(o.UUID) &&
-                        (password.Equals(o.Password, StringComparison.Ordinal) ||
+                        (string.Equals(o.Password, password, StringComparison.Ordinal) ||
                          Utils.MD5String(password)
                              .Equals(Utils.MD5String(o.Password), StringComparison.OrdinalIgnoreCase) ||
                          Utils.SHA1String(password)
                              .Equals(Utils.SHA1String(o.Password), StringComparison.OrdinalIgnoreCase)))
                 : corradeConfiguration.Groups.AsParallel().Any(
                     o =>
-                        o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
-                        (password.Equals(o.Password, StringComparison.Ordinal) ||
+                        string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                        (string.Equals(o.Password, password, StringComparison.Ordinal) ||
                          Utils.MD5String(password)
                              .Equals(Utils.MD5String(o.Password), StringComparison.OrdinalIgnoreCase) ||
                          Utils.SHA1String(password)
@@ -2418,7 +2416,7 @@ namespace Corrade
                     .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
                 : corradeConfiguration.Groups.AsParallel().Any(
                     o =>
-                        o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                         !(o.PermissionMask & permission).Equals(0));
         }
 
@@ -2436,7 +2434,7 @@ namespace Corrade
             return UUID.TryParse(group, out groupUUID)
                 ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
                 : corradeConfiguration.Groups.AsParallel()
-                    .FirstOrDefault(o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -2453,7 +2451,7 @@ namespace Corrade
                     o => groupUUID.Equals(o.UUID) &&
                          !(o.NotificationMask & notification).Equals(0))
                 : corradeConfiguration.Groups.AsParallel().Any(
-                    o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
+                    o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                          !(o.NotificationMask & notification).Equals(0));
         }
 
@@ -3363,7 +3361,7 @@ namespace Corrade
                 if (httpContext.Request == null) throw new HTTPCommandException();
                 httpRequest = httpContext.Request;
                 // only accept POST requests
-                if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(WebRequestMethods.Http.Post, httpRequest.HttpMethod, StringComparison.OrdinalIgnoreCase))
                     throw new HTTPCommandException();
                 // only accept connected remote endpoints
                 if (httpRequest.RemoteEndPoint == null) throw new HTTPCommandException();
@@ -3540,7 +3538,7 @@ namespace Corrade
                                 o =>
                                     !(o.NotificationMask & (uint) notification).Equals(0) &&
                                     corradeConfiguration.Groups.AsParallel().Any(
-                                        p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
+                                        p => string.Equals(o.GroupName, p.Name, StringComparison.OrdinalIgnoreCase) &&
                                              !(p.NotificationMask & (uint) notification).Equals(0))));
                         break;
                     default:
@@ -3857,7 +3855,7 @@ namespace Corrade
             if (
                 corradeConfiguration.Masters.AsParallel().Select(
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
-                    .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
+                    .Any(p => string.Equals(e.Offer.FromAgentName, p, StringComparison.OrdinalIgnoreCase)))
             {
                 e.Accept = true;
                 // It is accepted, so update the inventory.
@@ -4209,8 +4207,8 @@ namespace Corrade
                     if (
                         !corradeConfiguration.Masters.AsParallel().Any(
                             o =>
-                                o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
-                                o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
+                                string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
                         return;
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP),
                         args.IM.FromAgentName);
@@ -4275,8 +4273,8 @@ namespace Corrade
                             !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
-                                        o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
-                                        o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
+                                        string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                        string.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
@@ -4347,8 +4345,8 @@ namespace Corrade
                             !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
-                                        o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
-                                        o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
+                                        string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                        string.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
                     Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
@@ -4462,7 +4460,7 @@ namespace Corrade
                             Parallel.ForEach(
                                 corradeConfiguration.Groups.AsParallel().Where(
                                     o =>
-                                        o.Name.Equals(messageGroup.Name, StringComparison.OrdinalIgnoreCase) &&
+                                        string.Equals(messageGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase) &&
                                         o.ChatLogEnabled),
                                 o =>
                                 {
@@ -4511,6 +4509,7 @@ namespace Corrade
                         case false:
                             // Add the agent to the cache.
                             Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
+                            // Send instant message notification.
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                 () => SendNotification(Configuration.Notifications.InstantMessage, args),
                                 corradeConfiguration.MaximumNotificationThreads);
@@ -4708,7 +4707,7 @@ namespace Corrade
                                     RLVrule.Behaviour,
                                     StringComparison.OrdinalIgnoreCase) &&
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
-                                o.Option.Equals(RLVrule.Option, StringComparison.OrdinalIgnoreCase));
+                                string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
                     }
                     goto CONTINUE;
                 case RLV_CONSTANTS.N:
@@ -4720,7 +4719,7 @@ namespace Corrade
                                 o.Behaviour.Equals(
                                     RLVrule.Behaviour,
                                     StringComparison.OrdinalIgnoreCase) &&
-                                o.Option.Equals(RLVrule.Option, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase) &&
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID));
                         RLVRules.Add(RLVrule);
                     }
@@ -4811,7 +4810,7 @@ namespace Corrade
             }
 
             Configuration.Group configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
-                o => o.Name.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase));
+                o => string.Equals(commandGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase));
             if (configuredGroup.Equals(default(Configuration.Group)))
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_GROUP),
@@ -4837,7 +4836,7 @@ namespace Corrade
             // Increment the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[commandGroup.Name] = ((uint) GroupWorkers[commandGroup.Name]) + 1;
+                GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] + 1;
             }
             // Perform the command.
             Dictionary<string, string> result = ProcessCommand(new CorradeCommandParameters
@@ -4923,14 +4922,14 @@ namespace Corrade
                     !string.IsNullOrEmpty(data))
                 {
                     case true:
-                        data = CSV.FromEnumerable((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
+                        data = CSV.FromEnumerable(new Regex(pattern, RegexOptions.Compiled).Matches(data)
                             .AsParallel()
                             .Cast<Match>()
-                            .Select(m => m.Groups)).SelectMany(
+                            .Select(m => m.Groups).SelectMany(
                                 matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
                                 (matchGroups, i) => new {matchGroups, i})
                             .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
-                                (@t, j) => @t.matchGroups[@t.i].Captures[j].Value)));
+                                (@t, j) => @t.matchGroups[@t.i].Captures[j].Value));
                         switch (!string.IsNullOrEmpty(data))
                         {
                             case true:
@@ -5010,7 +5009,7 @@ namespace Corrade
             {
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name).AsParallel()
-                        .FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
+                        .FirstOrDefault(o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 lock (LockObject)
                 {
@@ -5024,7 +5023,7 @@ namespace Corrade
 
                 KeyValuePair<PropertyInfo, object> pi =
                     wasGetProperties(structure, structure.GetType().Name).AsParallel().FirstOrDefault(
-                        o => o.Key.Name.Equals(name, StringComparison.Ordinal));
+                        o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 lock (LockObject)
                 {
@@ -5937,8 +5936,8 @@ namespace Corrade
                                         HTTPListener.Start();
                                         while (runHTTPServer && HTTPListener.IsListening)
                                         {
-                                            (HTTPListener.BeginGetContext(ProcessHTTPRequest,
-                                                HTTPListener)).AsyncWaitHandle.WaitOne(
+                                            HTTPListener.BeginGetContext(ProcessHTTPRequest,
+                                                HTTPListener).AsyncWaitHandle.WaitOne(
                                                     (int) configuration.HTTPServerTimeout,
                                                     false);
                                         }
@@ -8188,7 +8187,7 @@ namespace Corrade
             [Reflection.NameAttribute("value")] VALUE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<SQL>>&[callback=<STRING>]"
+                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<string>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Database)] [CorradeCommand("database")] [Reflection.NameAttribute("database")] DATABASE,
             [Reflection.NameAttribute("text")] TEXT,
             [Reflection.NameAttribute("quorum")] QUORUM,

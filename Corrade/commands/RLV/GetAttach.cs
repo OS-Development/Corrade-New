@@ -42,7 +42,7 @@ namespace Corrade
                 {
                     case true:
                         RLVAttachment RLVattachment = RLVAttachments.AsParallel().FirstOrDefault(
-                            o => o.Name.Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
+                            o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             case true:

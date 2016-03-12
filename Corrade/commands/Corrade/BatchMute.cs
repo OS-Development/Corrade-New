@@ -109,7 +109,7 @@ namespace Corrade
                                                     typeof (MuteFlags).GetFields(BindingFlags.Public |
                                                                                  BindingFlags.Static)
                                                         .AsParallel()
-                                                        .Where(q => q.Name.Equals(p, StringComparison.Ordinal)),
+                                                        .Where(q => string.Equals(p, q.Name, StringComparison.Ordinal)),
                                                     r => { muteFlags |= ((int) r.GetValue(null)); }));
                                         succeeded = true;
                                         lock (Locks.ClientInstanceSelfLock)

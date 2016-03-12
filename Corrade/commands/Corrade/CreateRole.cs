@@ -86,7 +86,7 @@ namespace Corrade
                         o =>
                             Parallel.ForEach(
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
                                 q => { powers |= ((ulong) q.GetValue(null)); }));
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
