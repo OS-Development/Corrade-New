@@ -727,6 +727,9 @@
     <Compile Include="commands\Corrade\Touch.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Turn.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\TurnTo.cs">
       <SubType>Component</SubType>
     </Compile>

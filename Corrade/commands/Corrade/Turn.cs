@@ -1,0 +1,77 @@
+﻿///////////////////////////////////////////////////////////////////////////
+//  Copyright (C) Wizardry and Steamworks 2013 - License: GNU GPLv3      //
+//  Please see: http://www.gnu.org/licenses/gpl.html for legal details,  //
+//  rights of fair usage, the disclaimer and warranty conditions.        //
+///////////////////////////////////////////////////////////////////////////
+
+using System;
+using System.Collections.Generic;
+using CorradeConfiguration;
+using OpenMetaverse;
+using wasSharp;
+
+namespace Corrade
+{
+    public partial class Corrade
+    {
+        public partial class CorradeCommands
+        {
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> turn =
+                (corradeCommandParameters, result) =>
+                {
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int)Configuration.Permissions.Movement))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    float angle;
+                    if (!float.TryParse(wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ANGLE)),
+                            corradeCommandParameters.Message)), out angle))
+                    {
+                        throw new ScriptException(ScriptError.INVALID_ANGLE_PROVIDED);
+                    }
+                    switch (Reflection.GetEnumValueFromName<Direction>(
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION)),
+                            corradeCommandParameters.Message))
+                            .ToLowerInvariant()))
+                    {
+                        case Direction.LEFT:
+                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
+                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
+                            Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
+                                AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
+                                Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                Client.Self.Movement.Camera.UpAxis,
+                                Client.Self.Movement.BodyRotation,
+                                Client.Self.Movement.HeadRotation,
+                                Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                AgentState.None, false);
+                            break;
+                        case Direction.RIGHT:
+                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -angle);
+                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -angle);
+                            Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
+                                AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
+                                Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                Client.Self.Movement.Camera.UpAxis,
+                                Client.Self.Movement.BodyRotation,
+                                Client.Self.Movement.HeadRotation,
+                                Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                AgentState.None, false);
+                            break;
+                        default:
+                            throw new ScriptException(ScriptError.UNKNOWN_DIRECTION);
+                    }
+                    // Set the camera on the avatar.
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
+                };
+        }
+    }
+}

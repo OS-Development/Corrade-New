@@ -330,7 +330,8 @@ namespace Corrade
             [Status(20303)] [Reflection.DescriptionAttribute("notice does not contain attachment")] NOTICE_DOES_NOT_CONTAIN_ATTACHMENT,
             [Status(10522)] [Reflection.DescriptionAttribute("failed to read log file")] FAILED_TO_READ_LOG_FILE,
             [Status(62646)] [Reflection.DescriptionAttribute("effect UUID belongs to different effect")] EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT,
-            [Status(25252)] [Reflection.DescriptionAttribute("no SQL string provided")] NO_SQL_STRING_PROVIDED
+            [Status(25252)] [Reflection.DescriptionAttribute("no SQL string provided")] NO_SQL_STRING_PROVIDED,
+            [Status(45173)] [Reflection.DescriptionAttribute("invalid angle provided")] INVALID_ANGLE_PROVIDED
         }
 
         /// <summary>
@@ -7456,6 +7457,18 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [Reflection.NameAttribute("angle")]
+            ANGLE,
+
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=turn>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((uint)Configuration.Permissions.Movement)]
+            [CorradeCommand("turn")]
+            [Reflection.NameAttribute("turn")]
+            TURN,
 
             [Reflection.NameAttribute("SQL")] SQL,
             [IsCorradeCommand(true)] [CommandInputSyntax(
