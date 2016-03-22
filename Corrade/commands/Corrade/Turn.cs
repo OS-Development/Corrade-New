@@ -25,11 +25,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    float angle;
+                    float degrees;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ANGLE)),
-                            corradeCommandParameters.Message)), out angle))
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEGREES)),
+                            corradeCommandParameters.Message)), out degrees))
                     {
                         throw new ScriptException(ScriptError.INVALID_ANGLE_PROVIDED);
                     }
@@ -40,8 +40,8 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Direction.LEFT:
-                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
-                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
+                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
+                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
                             Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
                                 AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -52,8 +52,8 @@ namespace Corrade
                                 AgentState.None, false);
                             break;
                         case Direction.RIGHT:
-                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -angle);
-                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -angle);
+                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
+                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
                             Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
                                 AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,

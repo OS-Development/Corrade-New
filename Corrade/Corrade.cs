@@ -381,7 +381,7 @@ namespace Corrade
         private static readonly Time.TimedThrottle TimedTeleportThrottle =
             new Time.TimedThrottle(Constants.TELEPORTS.THROTTLE.MAX_TELEPORTS,
                 Constants.TELEPORTS.THROTTLE.GRACE_SECONDS);
-        
+
         private static readonly object GroupNotificationsLock = new object();
         private static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
@@ -3362,7 +3362,9 @@ namespace Corrade
                 if (httpContext.Request == null) throw new HTTPCommandException();
                 httpRequest = httpContext.Request;
                 // only accept POST requests
-                if (!string.Equals(WebRequestMethods.Http.Post, httpRequest.HttpMethod, StringComparison.OrdinalIgnoreCase))
+                if (
+                    !string.Equals(WebRequestMethods.Http.Post, httpRequest.HttpMethod,
+                        StringComparison.OrdinalIgnoreCase))
                     throw new HTTPCommandException();
                 // only accept connected remote endpoints
                 if (httpRequest.RemoteEndPoint == null) throw new HTTPCommandException();
@@ -4912,25 +4914,16 @@ namespace Corrade
                 // Execute the command.
                 execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
-                // Sift the results
-                string pattern =
-                    wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
-                        corradeCommandParameters.Message));
-                string data = string.Empty;
-                switch (
-                    !string.IsNullOrEmpty(pattern) &&
-                    result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
-                    !string.IsNullOrEmpty(data))
+                string data;
+                if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data))
                 {
-                    case true:
-                        data = CSV.FromEnumerable(new Regex(pattern, RegexOptions.Compiled).Matches(data)
-                            .AsParallel()
-                            .Cast<Match>()
-                            .Select(m => m.Groups).SelectMany(
-                                matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
-                                (matchGroups, i) => new {matchGroups, i})
-                            .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
-                                (@t, j) => @t.matchGroups[@t.i].Captures[j].Value));
+                    // Take a specified amount from the results if requested.
+                    int take;
+                    if (!string.IsNullOrEmpty(data) &&
+                        int.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TAKE)),
+                            corradeCommandParameters.Message)), out take))
+                    {
+                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take(take));
                         switch (!string.IsNullOrEmpty(data))
                         {
                             case true:
@@ -4940,7 +4933,69 @@ namespace Corrade
                                 result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
                                 break;
                         }
-                        break;
+                    }
+
+                    // Skip a number of elements if requested.
+                    int skip;
+                    if (!string.IsNullOrEmpty(data) &&
+                        int.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SKIP)),
+                            corradeCommandParameters.Message)), out skip))
+                    {
+                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip(skip));
+                        switch (!string.IsNullOrEmpty(data))
+                        {
+                            case true:
+                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
+                                break;
+                            default:
+                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
+                                break;
+                        }
+                    }
+
+                    // Return a stride in case it was requested.
+                    int each;
+                    if (!string.IsNullOrEmpty(data) &&
+                        int.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EACH)),
+                            corradeCommandParameters.Message)), out each))
+                    {
+                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i%each == 0));
+                        switch (!string.IsNullOrEmpty(data))
+                        {
+                            case true:
+                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
+                                break;
+                            default:
+                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
+                                break;
+                        }
+                    }
+
+                    // Sift the results if requested.
+                    string sift =
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
+                            corradeCommandParameters.Message));
+                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(sift))
+                    {
+                        data =
+                            CSV.FromEnumerable(new Regex(sift, RegexOptions.Compiled).Matches(data)
+                                .AsParallel()
+                                .Cast<Match>()
+                                .Select(m => m.Groups).SelectMany(
+                                    matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
+                                    (matchGroups, i) => new {matchGroups, i})
+                                .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
+                                    (@t, j) => @t.matchGroups[@t.i].Captures[j].Value));
+                        switch (!string.IsNullOrEmpty(data))
+                        {
+                            case true:
+                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
+                                break;
+                            default:
+                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
+                                break;
+                        }
+                    }
                 }
 
                 success = true;
@@ -7458,19 +7513,16 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
-            [Reflection.NameAttribute("angle")]
-            ANGLE,
+            [Reflection.NameAttribute("each")] EACH,
+            [Reflection.NameAttribute("skip")] SKIP,
+            [Reflection.NameAttribute("degrees")] DEGREES,
 
-            [IsCorradeCommand(true)]
-            [CommandInputSyntax(
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=turn>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((uint)Configuration.Permissions.Movement)]
-            [CorradeCommand("turn")]
-            [Reflection.NameAttribute("turn")]
-            TURN,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("turn")] [Reflection.NameAttribute("turn")] TURN,
 
             [Reflection.NameAttribute("SQL")] SQL,
+
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=logs>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<group|message|local|region>>&<action=<get|search>>&entity=group|message|local|region,action=get:[from=<DateTime>]&entity=group|message|local|region,action=get:[to=<DateTime>]&entity=group|message|local|region,action=get:[firstname=<STRING>]&entity=group|message|local|region,action=get:[lastname=<STRING>]&entity=group|message|local|region,action=get:[message=<STRING>]&entity=local|region,action=get:[region=<STRING>]&entity=local:[type=<ChatType>]&action=search:<data=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("logs")] [Reflection.NameAttribute("logs")] LOGS,
