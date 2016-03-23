@@ -33,6 +33,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_ANGLE_PROVIDED);
                     }
+                    AgentManager.ControlFlags flags = AgentManager.ControlFlags.NONE;
+                    if (Client.Self.Movement.Fly)
+                        flags |= AgentManager.ControlFlags.AGENT_CONTROL_FLY;
                     switch (Reflection.GetEnumValueFromName<Direction>(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION)),
@@ -43,7 +46,7 @@ namespace Corrade
                             Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
                             Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
                             Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
-                                AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
+                                AGENT_CONTROL_TURN_LEFT | flags, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation,
@@ -55,7 +58,7 @@ namespace Corrade
                             Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
                             Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
                             Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
-                                AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
+                                AGENT_CONTROL_TURN_RIGHT | flags, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation,
