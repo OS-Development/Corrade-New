@@ -21,7 +21,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int)Configuration.Permissions.Movement))
+                            (int) Configuration.Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -33,9 +33,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_ANGLE_PROVIDED);
                     }
-                    AgentManager.ControlFlags flags = AgentManager.ControlFlags.NONE;
-                    if (Client.Self.Movement.Fly)
-                        flags |= AgentManager.ControlFlags.AGENT_CONTROL_FLY;
                     switch (Reflection.GetEnumValueFromName<Direction>(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION)),
@@ -45,26 +42,30 @@ namespace Corrade
                         case Direction.LEFT:
                             Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
                             Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
-                            Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
-                                AGENT_CONTROL_TURN_LEFT | flags, Client.Self.Movement.Camera.Position,
+                            Client.Self.Movement.SendManualUpdate(
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.
+                                    AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation,
                                 Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None,
-                                AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                Client.Self.Movement.State, false);
                             break;
                         case Direction.RIGHT:
                             Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
                             Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
-                            Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
-                                AGENT_CONTROL_TURN_RIGHT | flags, Client.Self.Movement.Camera.Position,
+                            Client.Self.Movement.SendManualUpdate(
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.
+                                    AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation,
                                 Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None,
-                                AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                Client.Self.Movement.State, false);
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_DIRECTION);

@@ -25,9 +25,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    AgentManager.ControlFlags flags = AgentManager.ControlFlags.NONE;
-                    if (Client.Self.Movement.Fly)
-                        flags |= AgentManager.ControlFlags.AGENT_CONTROL_FLY;
                     switch (Reflection.GetEnumValueFromName<Direction>(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION)),
@@ -36,54 +33,62 @@ namespace Corrade
                     {
                         case Direction.BACK:
                             Client.Self.Movement.SendManualUpdate(
-                                AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG | flags,
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG,
                                 Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None, AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags, Client.Self.Movement.State, false);
                             break;
                         case Direction.FORWARD:
                             Client.Self.Movement.SendManualUpdate(
-                                AgentManager.ControlFlags.AGENT_CONTROL_AT_POS | flags,
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.AGENT_CONTROL_AT_POS,
                                 Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None,
-                                AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                Client.Self.Movement.State, false);
                             break;
                         case Direction.LEFT:
-                            Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
-                                AGENT_CONTROL_LEFT_POS | flags, Client.Self.Movement.Camera.Position,
+                            Client.Self.Movement.SendManualUpdate(
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.
+                                    AGENT_CONTROL_LEFT_POS, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None,
-                                AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                Client.Self.Movement.State, false);
                             break;
                         case Direction.RIGHT:
-                            Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
-                                AGENT_CONTROL_LEFT_NEG | flags, Client.Self.Movement.Camera.Position,
+                            Client.Self.Movement.SendManualUpdate(
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.
+                                    AGENT_CONTROL_LEFT_NEG, Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None,
-                                AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                Client.Self.Movement.State, false);
                             break;
                         case Direction.UP:
                             Client.Self.Movement.SendManualUpdate(
-                                AgentManager.ControlFlags.AGENT_CONTROL_UP_POS | flags,
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.AGENT_CONTROL_UP_POS,
                                 Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, AgentFlags.None,
-                                AgentState.None, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                Client.Self.Movement.State, false);
                             break;
                         case Direction.DOWN:
                             Client.Self.Movement.SendManualUpdate(
-                                AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG | flags,
+                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG,
                                 Client.Self.Movement.Camera.Position,
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
