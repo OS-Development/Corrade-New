@@ -39,7 +39,8 @@ namespace Corrade
                                 Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
                                 Client.Self.Movement.Camera.UpAxis,
                                 Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags, Client.Self.Movement.State, false);
+                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags, Client.Self.Movement.State,
+                                false);
                             break;
                         case Direction.FORWARD:
                             Client.Self.Movement.SendManualUpdate(

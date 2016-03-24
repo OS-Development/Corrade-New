@@ -126,10 +126,10 @@ namespace Corrade
                         Client.Objects.TerseObjectUpdate += TerseObjectUpdateEvent;
                         Client.Self.Movement.AtPos = false;
                         Client.Self.Movement.AtNeg = false;
-                        Client.Self.Movement.UpPos = false;
                         Client.Self.Movement.UpNeg = false;
                         Client.Self.Fly(true);
-                        Client.Self.Movement.NudgeUpPos = true;
+                        // Initial thrust.
+                        Client.Self.Movement.UpPos = true;
                         if (!PositionReachedEvent.WaitOne((int) duration, false))
                             succeeded = false;
                         Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
