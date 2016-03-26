@@ -705,7 +705,7 @@ namespace wasOpenMetaverse
             if (!UpdatePrimitives(Client, ref selectedPrimitives, dataTimeout))
                 return false;
             primitive =
-                selectedPrimitives.FirstOrDefault(
+                selectedPrimitives.AsParallel().FirstOrDefault(
                     o =>
                         (item is UUID && o.ID.Equals(item)) ||
                         (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));

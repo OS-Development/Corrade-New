@@ -80,7 +80,9 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "debug")] [Reflection.NameAttribute("debug")] DebugMessage = 33554432,
             [XmlEnum(Name = "avatars")] [Reflection.NameAttribute("avatars")] RadarAvatars = 67108864,
             [XmlEnum(Name = "primitives")] [Reflection.NameAttribute("primitives")] RadarPrimitives = 134217728,
-            [XmlEnum(Name = "control")] [Reflection.NameAttribute("control")] ScriptControl = 268435456
+            [XmlEnum(Name = "control")] [Reflection.NameAttribute("control")] ScriptControl = 268435456,
+            [XmlEnum(Name = "sit")] [Reflection.NameAttribute("sit")] SitChanged = 536870912,
+            [XmlEnum(Name = "animation")] [Reflection.NameAttribute("animation")] AnimationsChanged = 1073741824
         }
 
         /// <summary>

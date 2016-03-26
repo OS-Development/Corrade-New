@@ -415,6 +415,9 @@ namespace Corrade
         private static readonly List<ScriptDialog> ScriptDialogs = new List<ScriptDialog>();
         private static readonly object ScriptDialogLock = new object();
 
+        private static Dictionary<UUID, int> CurrentAnimations = new Dictionary<UUID, int>();
+        private static readonly object CurrentAnimationsLock = new object();
+
         private static readonly Collections.SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
             new Collections.SerializableDictionary<UUID, HashSet<UUID>>();
 
@@ -3004,6 +3007,7 @@ namespace Corrade
             Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
             Client.Objects.ObjectUpdate -= HandleObjectUpdate;
             Client.Objects.KillObject -= HandleKillObject;
+            Client.Self.AnimationsChanged -= HandleAnimationsChanged;
             Client.Self.LoadURL -= HandleLoadURL;
             Client.Self.ScriptControlChange -= HandleScriptControlChange;
             Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
@@ -3015,6 +3019,7 @@ namespace Corrade
             Client.Avatars.ViewerEffect -= HandleViewerEffect;
             Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
             Client.Self.ScriptDialog -= HandleScriptDialog;
+            Client.Objects.AvatarSitChanged -= HandleAvatarSitChanged;
             Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
             Client.Self.MoneyBalance -= HandleMoneyBalance;
             Client.Self.AlertMessage -= HandleAlertMessage;
@@ -3688,6 +3693,30 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
+        private static void HandleAvatarSitChanged(object sender, AvatarSitChangedEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.SitChanged, e),
+                corradeConfiguration.MaximumNotificationThreads);
+        }
+
+        private static void HandleAnimationsChanged(object sender, AnimationsChangedEventArgs e)
+        {
+            lock (CurrentAnimationsLock)
+            {
+                Dictionary<UUID, int> changedAnimations =
+                    e.Animations.Copy()
+                        .Where(o => !CurrentAnimations.ContainsKey(o.Key))
+                        .ToDictionary(o => o.Key, o => o.Value);
+                if (changedAnimations.Count.Equals(0))
+                    return;
+                CurrentAnimations = changedAnimations;
+            }
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.AnimationsChanged, e),
+                corradeConfiguration.MaximumNotificationThreads);
+        }
+
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
         {
             // Check if message is from muted agent or object and ignore it.
@@ -4293,14 +4322,12 @@ namespace Corrade
                             Client.Self.Stand();
                         }
                         // stop all non-built-in animations
-                        HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
+                        Client.Self.Animate(new Dictionary<UUID, bool>(typeof (Animations).GetFields(
                             BindingFlags.Public |
-                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                        Parallel.ForEach(
-                            Client.Self.SignaledAnimations.Copy()
-                                .Keys.AsParallel()
-                                .Where(o => !lindenAnimations.Contains(o)),
-                            o => { Client.Self.AnimationStop(o, true); });
+                            BindingFlags.Static)
+                            .AsParallel()
+                            .Select(o => new {k = (UUID) o.GetValue(null), v = false})
+                            .ToDictionary(o => o.k, o => o.v)), true);
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                     }
                     return;
@@ -5362,6 +5389,17 @@ namespace Corrade
                         !(p.NotificationMask & (uint) o).Equals(0));
                 switch (o)
                 {
+                    case Configuration.Notifications.AnimationsChanged:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.AnimationsChanged += HandleAnimationsChanged;
+                                break;
+                            default:
+                                Client.Self.AnimationsChanged -= HandleAnimationsChanged;
+                                break;
+                        }
+                        break;
                     case Configuration.Notifications.GroupMembership:
                         switch (enabled)
                         {
@@ -5446,6 +5484,17 @@ namespace Corrade
                                 break;
                             default:
                                 Client.Self.ScriptDialog -= HandleScriptDialog;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.SitChanged:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Objects.AvatarSitChanged += HandleAvatarSitChanged;
+                                break;
+                            default:
+                                Client.Objects.AvatarSitChanged -= HandleAvatarSitChanged;
                                 break;
                         }
                         break;

@@ -844,6 +844,9 @@
     <Compile Include="notifications\Alert.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Animation.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Avatars.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -917,6 +920,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="notifications\RLV.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Sit.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="notifications\Terse.cs">

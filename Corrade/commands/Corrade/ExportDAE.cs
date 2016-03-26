@@ -24,6 +24,7 @@ using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Helpers = wasOpenMetaverse.Helpers;
+using Mesh = wasOpenMetaverse.Mesh;
 using Parallel = System.Threading.Tasks.Parallel;
 using Path = System.IO.Path;
 
@@ -249,7 +250,7 @@ namespace Corrade
                     Parallel.ForEach(exportPrimitivesSet, o =>
                     {
                         FacetedMesh mesh = null;
-                        if (!global::wasOpenMetaverse.Mesh.MakeFacetedMesh(Client, o, mesher, ref mesh, corradeConfiguration.ServicesTimeout))
+                        if (!Mesh.MakeFacetedMesh(Client, o, mesher, ref mesh, corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_MESHMERIZE_OBJECT);
                         }
@@ -323,7 +324,7 @@ namespace Corrade
                                     XMLTextWriter.Formatting = Formatting.Indented;
                                     XMLTextWriter.WriteProcessingInstruction("xml",
                                         "version=\"1.0\" encoding=\"utf-8\"");
-                                    global::wasOpenMetaverse.Mesh.GenerateCollada(exportMeshSet, exportMeshTextures, format)
+                                    Mesh.GenerateCollada(exportMeshSet, exportMeshTextures, format)
                                         .WriteContentTo(XMLTextWriter);
                                     XMLTextWriter.Flush();
                                 }

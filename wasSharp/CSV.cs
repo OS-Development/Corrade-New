@@ -23,6 +23,18 @@ namespace wasSharp
                     .Select(o => o.IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1) ? o : "\"" + o + "\""))))
                 .Compile();
 
+        private static readonly Func<Dictionary<string, string>, string> directFromDictionary =
+            ((Expression<Func<Dictionary<string, string>, string>>) (
+                data => string.Join(",", data.Keys.Zip(data.Values,
+                    (o, p) =>
+                        string.Join(",",
+                            o.Replace("\"", "\"\"").IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1)
+                                ? o
+                                : "\"" + o + "\"",
+                            p.Replace("\"", "\"\"").IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1)
+                                ? p
+                                : "\"" + p + "\""))))).Compile();
+
         private static readonly Func<string, IEnumerable<KeyValuePair<string, string>>> directToKeyValue =
             ((Expression<Func<string, IEnumerable<KeyValuePair<string, string>>>>)
                 (csv => ToEnumerable(csv).AsParallel().Select((o, p) => new {o, p})
@@ -50,6 +62,31 @@ namespace wasSharp
                 input
                     .Select(o => o.Replace("\"", "\"\""))
                     .Select(o => o.IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1) ? o : "\"" + o + "\""));
+#endif
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a dictionary of strings to a comma-separated values string.
+        /// </summary>
+        /// <returns>a commma-separated list of values</returns>
+        /// <remarks>compliant with RFC 4180</remarks>
+        public static string FromDictionary(Dictionary<string, string> input)
+        {
+#if !__MonoCS__
+            return directFromDictionary(input);
+#else
+            return string.Join(",", input.Keys.Zip(input.Values,
+                (o, p) =>
+                    string.Join(",",
+                        o.Replace("\"", "\"\"").IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1)
+                            ? o
+                            : "\"" + o + "\"",
+                        p.Replace("\"", "\"\"").IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1)
+                            ? p
+                            : "\"" + p + "\"")));
 #endif
         }
 

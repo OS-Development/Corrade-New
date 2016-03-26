@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -28,14 +27,12 @@ namespace Corrade
                     Client.Self.Stand();
                 }
                 // stop all non-built-in animations
-                HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
+                Client.Self.Animate(new Dictionary<UUID, bool>(typeof (Animations).GetFields(
                     BindingFlags.Public |
-                    BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                Parallel.ForEach(
-                    Client.Self.SignaledAnimations.Copy()
-                        .Keys.AsParallel()
-                        .Where(o => !lindenAnimations.Contains(o)),
-                    o => { Client.Self.AnimationStop(o, true); });
+                    BindingFlags.Static)
+                    .AsParallel()
+                    .Select(o => new {k = (UUID) o.GetValue(null), v = false})
+                    .ToDictionary(o => o.k, o => o.v)), true);
                 // Set the camera on the avatar.
                 Client.Self.Movement.Camera.LookAt(
                     Client.Self.SimPosition,

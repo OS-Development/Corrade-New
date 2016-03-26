@@ -98,16 +98,17 @@ namespace Corrade
                                 .SelectMany(
                                     o =>
                                         o.Key.NameValues.AsParallel()
-                                            .Where(p => string.Equals("AttachItemID", p.Name, StringComparison.Ordinal))), o =>
-                                            {
-                                                UUID itemUUID;
-                                                if (UUID.TryParse(o.Value.ToString(), out itemUUID))
-                                                {
-                                                    Inventory.Detach(Client, CurrentOutfitFolder,
-                                                        Client.Inventory.Store.Items[itemUUID].Data as InventoryItem,
-                                                        corradeConfiguration.ServicesTimeout);
-                                                }
-                                            });
+                                            .Where(p => string.Equals("AttachItemID", p.Name, StringComparison.Ordinal))),
+                            o =>
+                            {
+                                UUID itemUUID;
+                                if (UUID.TryParse(o.Value.ToString(), out itemUUID))
+                                {
+                                    Inventory.Detach(Client, CurrentOutfitFolder,
+                                        Client.Inventory.Store.Items[itemUUID].Data as InventoryItem,
+                                        corradeConfiguration.ServicesTimeout);
+                                }
+                            });
                         break;
                 }
             };
