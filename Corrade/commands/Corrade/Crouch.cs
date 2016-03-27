@@ -11,6 +11,7 @@ using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -50,12 +51,14 @@ namespace Corrade
                             {
                                 case true:
                                     // stop all non-built-in animations
-                                    Client.Self.Animate(new Dictionary<UUID, bool>(typeof (Animations).GetFields(
+                                    HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
                                         BindingFlags.Public |
-                                        BindingFlags.Static)
-                                        .AsParallel()
-                                        .Select(o => new {k = (UUID) o.GetValue(null), v = false})
-                                        .ToDictionary(o => o.k, o => o.v)), true);
+                                        BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
+                                    Parallel.ForEach(
+                                        Client.Self.SignaledAnimations.Copy()
+                                            .Keys.AsParallel()
+                                            .Where(o => !lindenAnimations.Contains(o)),
+                                        o => { Client.Self.AnimationStop(o, true); });
                                     break;
                             }
                             Client.Self.Crouch(action.Equals(Action.START));
