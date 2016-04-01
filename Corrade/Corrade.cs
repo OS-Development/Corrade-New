@@ -331,7 +331,8 @@ namespace Corrade
             [Status(10522)] [Reflection.DescriptionAttribute("failed to read log file")] FAILED_TO_READ_LOG_FILE,
             [Status(62646)] [Reflection.DescriptionAttribute("effect UUID belongs to different effect")] EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT,
             [Status(25252)] [Reflection.DescriptionAttribute("no SQL string provided")] NO_SQL_STRING_PROVIDED,
-            [Status(45173)] [Reflection.DescriptionAttribute("invalid angle provided")] INVALID_ANGLE_PROVIDED
+            [Status(45173)] [Reflection.DescriptionAttribute("invalid angle provided")] INVALID_ANGLE_PROVIDED,
+            [Status(32453)] [Reflection.DescriptionAttribute("could not get parcel info data")] COULD_NOT_GET_PARCEL_INFO
         }
 
         /// <summary>
@@ -7563,6 +7564,27 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            /// <remarks>
+            ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.
+            /// </remarks>
+            /* [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=setparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((uint)Configuration.Permissions.Land)]
+            [CorradeCommand("setparcellist")]
+            [Reflection.NameAttribute("setparcellist")]
+            SETPARCELLIST, */
+
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((uint)Configuration.Permissions.Land)]
+            [CorradeCommand("getparcelinfodata")]
+            [Reflection.NameAttribute("getparcelinfodata")]
+            GETPARCELINFODATA,
 
             [Reflection.NameAttribute("each")] EACH,
             [Reflection.NameAttribute("skip")] SKIP,

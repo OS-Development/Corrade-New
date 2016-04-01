@@ -52,13 +52,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    Parcel parcel = null;
-                    if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
-                            ref parcel))
-                    {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
-                    }
                     bool forGroup;
                     if (
                         !bool.TryParse(
@@ -88,12 +81,26 @@ namespace Corrade
                     {
                         removeContribution = true;
                     }
+                    Parcel parcel = null;
+                    if (
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                            ref parcel))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                    }
+                    UUID parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
+                        UUID.Zero);
+                    if (parcelUUID.Equals(UUID.Zero))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                    }
                     ManualResetEvent ParcelInfoEvent = new ManualResetEvent(false);
-                    UUID parcelUUID = UUID.Zero;
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                     {
-                        parcelUUID = args.Parcel.ID;
-                        ParcelInfoEvent.Set();
+                        if (args.Parcel.ID.Equals(parcelUUID))
+                        {
+                            ParcelInfoEvent.Set();
+                        }
                     };
                     lock (Locks.ClientInstanceParcelsLock)
                     {
@@ -109,20 +116,23 @@ namespace Corrade
                     bool forSale = false;
                     int handledEvents = 0;
                     int counter = 1;
-                    ManualResetEvent DirLandReplyEvent = new ManualResetEvent(false);
+                    Time.DecayingAlarm DirectorySearchResultsAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                         (sender, args) =>
                         {
+                            DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                             handledEvents += args.DirParcels.Count;
                             Parallel.ForEach(args.DirParcels, o =>
                             {
                                 if (o.ID.Equals(parcelUUID))
                                 {
                                     forSale = o.ForSale;
-                                    DirLandReplyEvent.Set();
+                                    DirectorySearchResultsAlarm.Signal.Set();
                                 }
                             });
-                            if (((handledEvents - counter)%
+                            if (handledEvents > Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
+                                ((handledEvents - counter)%
                                  Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                             {
                                 ++counter;
@@ -130,21 +140,22 @@ namespace Corrade
                                     DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue,
                                     handledEvents);
                             }
-                            DirLandReplyEvent.Set();
                         };
                     lock (Locks.ClientInstanceDirectoryLock)
                     {
                         Client.Directory.DirLandReply += DirLandReplyEventArgs;
                         Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                             DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                        if (!DirLandReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (
+                            !DirectorySearchResultsAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                false))
                         {
                             Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                             throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
                         Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                     }
-                    if (!forSale)
+                    if (!forSale && !parcel.AuthBuyerID.Equals(Client.Self.AgentID))
                     {
                         throw new ScriptException(ScriptError.PARCEL_NOT_FOR_SALE);
                     }

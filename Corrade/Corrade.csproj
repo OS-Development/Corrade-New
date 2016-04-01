@@ -352,6 +352,9 @@
     <Compile Include="commands\Corrade\GetParcelData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetParcelInfoData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetParcelList.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -635,6 +638,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetParcelData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\SetParcelList.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetPrimitiveDescription.cs">
