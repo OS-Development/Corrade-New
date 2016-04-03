@@ -4264,8 +4264,11 @@
             // 
             this.GroupPassword.Location = new System.Drawing.Point(7, 19);
             this.GroupPassword.Name = "GroupPassword";
+            this.GroupPassword.PasswordChar = '*';
             this.GroupPassword.Size = new System.Drawing.Size(184, 22);
             this.GroupPassword.TabIndex = 0;
+            this.GroupPassword.UseSystemPasswordChar = true;
+            this.GroupPassword.Click += new System.EventHandler(this.ClearGroupPasswordRequested);
             this.GroupPassword.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox22

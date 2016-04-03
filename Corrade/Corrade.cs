@@ -432,7 +432,7 @@ namespace Corrade
         private static readonly HashSet<SphereEffect> SphereEffects = new HashSet<SphereEffect>();
         private static readonly object SphereEffectsLock = new object();
         private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
-        private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
+        private static readonly Dictionary<uint, Primitive> RadarObjects = new Dictionary<uint, Primitive>();
         private static readonly object LookAtEffectsLock = new object();
         private static readonly object PointAtEffectsLock = new object();
         private static readonly object RadarObjectsLock = new object();
@@ -2183,202 +2183,6 @@ namespace Corrade
             }
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sets permissions on inventory items using the [WaS] permission mask format.
-        /// </summary>
-        /// <param name="inventoryItem">an inventory item</param>
-        /// <param name="wasPermissions">the string permissions to set</param>
-        /// <returns>true in case the permissions were set successfully</returns>
-        private static bool wasSetInventoryItemPermissions(InventoryItem inventoryItem, string wasPermissions)
-        {
-            // Update the object.
-            Permissions permissions = wasStringToPermissions(wasPermissions);
-            inventoryItem.Permissions = permissions;
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                Client.Inventory.RequestUpdateItem(inventoryItem);
-            }
-            // Now check that the permissions were set.
-            bool succeeded = false;
-            ManualResetEvent ItemReceivedEvent = new ManualResetEvent(false);
-            EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
-                (sender, args) =>
-                {
-                    if (!args.Item.UUID.Equals(inventoryItem.UUID)) return;
-                    succeeded = args.Item.Permissions.Equals(permissions);
-                    ItemReceivedEvent.Set();
-                };
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                Client.Inventory.ItemReceived += ItemReceivedEventHandler;
-                Client.Inventory.RequestFetchInventory(inventoryItem.UUID, inventoryItem.OwnerID);
-                if (
-                    !ItemReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                {
-                    Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
-                    succeeded = false;
-                }
-                Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Converts Linden item permissions to a formatted string:
-        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
-        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
-        /// </summary>
-        /// <param name="permissions">the item permissions</param>
-        /// <returns>the literal permissions for an item</returns>
-        private static string wasPermissionsToString(Permissions permissions)
-        {
-            Func<PermissionMask, string> segment = o =>
-            {
-                StringBuilder seg = new StringBuilder();
-
-                switch (!((uint) o & (uint) PermissionMask.Copy).Equals(0))
-                {
-                    case true:
-                        seg.Append("c");
-                        break;
-                    default:
-                        seg.Append("-");
-                        break;
-                }
-
-                switch (!((uint) o & (uint) PermissionMask.Damage).Equals(0))
-                {
-                    case true:
-                        seg.Append("d");
-                        break;
-                    default:
-                        seg.Append("-");
-                        break;
-                }
-
-                switch (!((uint) o & (uint) PermissionMask.Export).Equals(0))
-                {
-                    case true:
-                        seg.Append("e");
-                        break;
-                    default:
-                        seg.Append("-");
-                        break;
-                }
-
-                switch (!((uint) o & (uint) PermissionMask.Modify).Equals(0))
-                {
-                    case true:
-                        seg.Append("m");
-                        break;
-                    default:
-                        seg.Append("-");
-                        break;
-                }
-
-                switch (!((uint) o & (uint) PermissionMask.Move).Equals(0))
-                {
-                    case true:
-                        seg.Append("v");
-                        break;
-                    default:
-                        seg.Append("-");
-                        break;
-                }
-
-                switch (!((uint) o & (uint) PermissionMask.Transfer).Equals(0))
-                {
-                    case true:
-                        seg.Append("t");
-                        break;
-                    default:
-                        seg.Append("-");
-                        break;
-                }
-
-                return seg.ToString();
-            };
-
-            StringBuilder x = new StringBuilder();
-            x.Append(segment(permissions.BaseMask));
-            x.Append(segment(permissions.EveryoneMask));
-            x.Append(segment(permissions.GroupMask));
-            x.Append(segment(permissions.NextOwnerMask));
-            x.Append(segment(permissions.OwnerMask));
-            return x.ToString();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Converts a formatted string to item permissions:
-        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
-        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
-        /// </summary>
-        /// <param name="permissions">the item permissions</param>
-        /// <returns>the permissions for an item</returns>
-        private static Permissions wasStringToPermissions(string permissions)
-        {
-            Func<string, uint> segment = o =>
-            {
-                uint r = 0;
-                switch (!char.ToLower(o[0]).Equals('c'))
-                {
-                    case false:
-                        r |= (uint) PermissionMask.Copy;
-                        break;
-                }
-
-                switch (!char.ToLower(o[1]).Equals('d'))
-                {
-                    case false:
-                        r |= (uint) PermissionMask.Damage;
-                        break;
-                }
-
-                switch (!char.ToLower(o[2]).Equals('e'))
-                {
-                    case false:
-                        r |= (uint) PermissionMask.Export;
-                        break;
-                }
-
-                switch (!char.ToLower(o[3]).Equals('m'))
-                {
-                    case false:
-                        r |= (uint) PermissionMask.Modify;
-                        break;
-                }
-
-                switch (!char.ToLower(o[4]).Equals('v'))
-                {
-                    case false:
-                        r |= (uint) PermissionMask.Move;
-                        break;
-                }
-
-                switch (!char.ToLower(o[5]).Equals('t'))
-                {
-                    case false:
-                        r |= (uint) PermissionMask.Transfer;
-                        break;
-                }
-
-                return r;
-            };
-
-            return new Permissions(segment(permissions.Substring(0, 6)),
-                segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
-                segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
-        }
-
         /// <summary>
         ///     Used to check whether a group name matches a group password.
         /// </summary>
@@ -2393,18 +2197,14 @@ namespace Corrade
                     o =>
                         groupUUID.Equals(o.UUID) &&
                         (string.Equals(o.Password, password, StringComparison.Ordinal) ||
-                         Utils.MD5String(password)
-                             .Equals(Utils.MD5String(o.Password), StringComparison.OrdinalIgnoreCase) ||
                          Utils.SHA1String(password)
-                             .Equals(Utils.SHA1String(o.Password), StringComparison.OrdinalIgnoreCase)))
+                             .Equals(o.Password, StringComparison.OrdinalIgnoreCase)))
                 : corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                         (string.Equals(o.Password, password, StringComparison.Ordinal) ||
-                         Utils.MD5String(password)
-                             .Equals(Utils.MD5String(o.Password), StringComparison.OrdinalIgnoreCase) ||
                          Utils.SHA1String(password)
-                             .Equals(Utils.SHA1String(o.Password), StringComparison.OrdinalIgnoreCase)));
+                             .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <summary>
@@ -2846,7 +2646,6 @@ namespace Corrade
             Client.Settings.OBJECT_TRACKING = true;
             Client.Settings.PARCEL_TRACKING = true;
             Client.Settings.ALWAYS_REQUEST_PARCEL_DWELL = true;
-            Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
             Client.Settings.SEND_AGENT_UPDATES = true;
             // Smoother movement for autopilot.
             Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
@@ -3252,28 +3051,22 @@ namespace Corrade
 
         private static void HandleKillObject(object sender, KillObjectEventArgs e)
         {
-            KeyValuePair<UUID, Primitive> tracked;
+            Primitive primitive;
             lock (RadarObjectsLock)
             {
-                tracked =
-                    RadarObjects.AsParallel().FirstOrDefault(o => o.Value.LocalID.Equals(e.ObjectLocalID));
+                if (!RadarObjects.TryGetValue(e.ObjectLocalID, out primitive)) return;
             }
-            switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+            switch (primitive is Avatar)
             {
                 case true:
-                    switch (tracked.Value is Avatar)
-                    {
-                        case true:
-                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Configuration.Notifications.RadarAvatars, e),
-                                corradeConfiguration.MaximumNotificationThreads);
-                            break;
-                        default:
-                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Configuration.Notifications.RadarPrimitives, e),
-                                corradeConfiguration.MaximumNotificationThreads);
-                            break;
-                    }
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Configuration.Notifications.RadarAvatars, e),
+                        corradeConfiguration.MaximumNotificationThreads);
+                    break;
+                default:
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Configuration.Notifications.RadarPrimitives, e),
+                        corradeConfiguration.MaximumNotificationThreads);
                     break;
             }
         }
@@ -3618,54 +3411,57 @@ namespace Corrade
                 // Enqueue the notification for the group.
                 if (z.NotificationURLDestination != null && z.NotificationURLDestination.Any())
                 {
-                    Parallel.ForEach(
-                        z.NotificationURLDestination.AsParallel()
-                            .Where(p => p.Key.Equals(notification))
-                            .SelectMany(p => p.Value), p =>
+                    HashSet<string> URLdestinations;
+                    if (z.NotificationURLDestination.TryGetValue(notification, out URLdestinations))
+                    {
+                        Parallel.ForEach(URLdestinations, p =>
+                        {
+                            // Check that the notification queue is not already full.
+                            switch (NotificationQueue.Count <= corradeConfiguration.NotificationQueueLength)
                             {
-                                // Check that the notification queue is not already full.
-                                switch (NotificationQueue.Count <= corradeConfiguration.NotificationQueueLength)
-                                {
-                                    case true:
-                                        NotificationQueue.Enqueue(new NotificationQueueElement
-                                        {
-                                            URL = p,
-                                            message = KeyValue.Escape(notificationData, wasOutput)
-                                        });
-                                        break;
-                                    default:
-                                        Feedback(
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                ConsoleError.NOTIFICATION_THROTTLED));
-                                        break;
-                                }
-                            });
+                                case true:
+                                    NotificationQueue.Enqueue(new NotificationQueueElement
+                                    {
+                                        URL = p,
+                                        message = KeyValue.Escape(notificationData, wasOutput)
+                                    });
+                                    break;
+                                default:
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ConsoleError.NOTIFICATION_THROTTLED));
+                                    break;
+                            }
+                        });
+                    }
                 }
 
                 // Enqueue the TCP notification for the group.
                 if (z.NotificationTCPDestination != null && z.NotificationTCPDestination.Any())
                 {
-                    Parallel.ForEach(
-                        z.NotificationTCPDestination.AsParallel()
-                            .Where(p => p.Key.Equals(notification))
-                            .SelectMany(p => p.Value), p =>
+                    HashSet<IPEndPoint> TCPdestinations;
+                    if (z.NotificationTCPDestination.TryGetValue(notification, out TCPdestinations))
+                    {
+                        Parallel.ForEach(TCPdestinations, p =>
+                        {
+                            switch (
+                                NotificationTCPQueue.Count <= corradeConfiguration.TCPNotificationQueueLength)
                             {
-                                switch (NotificationTCPQueue.Count <= corradeConfiguration.TCPNotificationQueueLength)
-                                {
-                                    case true:
-                                        NotificationTCPQueue.Enqueue(new NotificationTCPQueueElement
-                                        {
-                                            message = KeyValue.Escape(notificationData, wasOutput),
-                                            IPEndPoint = p
-                                        });
-                                        break;
-                                    default:
-                                        Feedback(
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                ConsoleError.TCP_NOTIFICATION_THROTTLED));
-                                        break;
-                                }
-                            });
+                                case true:
+                                    NotificationTCPQueue.Enqueue(new NotificationTCPQueueElement
+                                    {
+                                        message = KeyValue.Escape(notificationData, wasOutput),
+                                        IPEndPoint = p
+                                    });
+                                    break;
+                                default:
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ConsoleError.TCP_NOTIFICATION_THROTTLED));
+                                    break;
+                            }
+                        });
+                    }
                 }
             });
         }
@@ -3703,14 +3499,18 @@ namespace Corrade
 
         private static void HandleAnimationsChanged(object sender, AnimationsChangedEventArgs e)
         {
+            Dictionary<UUID, int> changedAnimations = new Dictionary<UUID, int>();
             lock (CurrentAnimationsLock)
             {
-                Dictionary<UUID, int> changedAnimations =
-                    e.Animations.Copy()
+                changedAnimations =
+                    e.Animations.Copy().AsParallel()
                         .Where(o => !CurrentAnimations.ContainsKey(o.Key))
                         .ToDictionary(o => o.Key, o => o.Value);
-                if (changedAnimations.Count.Equals(0))
-                    return;
+            }
+            if (changedAnimations.Count.Equals(0))
+                return;
+            lock (CurrentAnimationsLock)
+            {
                 CurrentAnimations = changedAnimations;
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -4209,8 +4009,7 @@ namespace Corrade
             if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(args.IM.FromAgentID)))
                 return;
             List<string> fullName =
-                new List<string>(
-                    wasOpenMetaverse.Helpers.GetAvatarNames(args.IM.FromAgentName));
+                new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(args.IM.FromAgentName));
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
@@ -5185,7 +4984,7 @@ namespace Corrade
                 request.Method = WebRequestMethods.Http.Post;
                 request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                 // set the content type based on chosen output filers
-                switch (corradeConfiguration.OutputFilters.Last())
+                switch (corradeConfiguration.OutputFilters.LastOrDefault())
                 {
                     case Configuration.Filter.RFC1738:
                         request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
@@ -5211,7 +5010,7 @@ namespace Corrade
                         {
                             using (StreamReader streamReader = new StreamReader(responseStream))
                             {
-                                return streamReader?.ReadToEnd();
+                                return streamReader.ReadToEnd();
                             }
                         }
                     }
@@ -5249,6 +5048,13 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.RegionCrossed, e),
                 corradeConfiguration.MaximumNotificationThreads);
+
+            // Set the camera on the avatar.
+            Client.Self.Movement.Camera.LookAt(
+                Client.Self.SimPosition,
+                Client.Self.SimPosition
+                );
+            SaveMovementState.Invoke();
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
@@ -7079,7 +6885,7 @@ namespace Corrade
                 if (!(inventoryBase is InventoryItem)) return item;
 
                 InventoryItem inventoryItem = inventoryBase as InventoryItem;
-                item.Permissions = wasPermissionsToString(inventoryItem.Permissions);
+                item.Permissions = Inventory.wasPermissionsToString(inventoryItem.Permissions);
 
                 if (inventoryItem is InventoryWearable)
                 {
@@ -7576,15 +7382,9 @@ namespace Corrade
             [CorradeCommand("setparcellist")]
             [Reflection.NameAttribute("setparcellist")]
             SETPARCELLIST, */
-
-            [IsCorradeCommand(true)]
-            [CommandInputSyntax(
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((uint)Configuration.Permissions.Land)]
-            [CorradeCommand("getparcelinfodata")]
-            [Reflection.NameAttribute("getparcelinfodata")]
-            GETPARCELINFODATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,
 
             [Reflection.NameAttribute("each")] EACH,
             [Reflection.NameAttribute("skip")] SKIP,

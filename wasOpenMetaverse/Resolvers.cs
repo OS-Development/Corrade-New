@@ -430,5 +430,76 @@ namespace wasOpenMetaverse
             }
             return false;
         }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves a role name to a role UUID.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="name">the name of the region</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="regionHandle">the found region handle</param>
+        /// <returns>true if the role could be resolved</returns>
+        private static bool directRegionNameToHandle(GridClient Client, string name, uint millisecondsTimeout,
+            ref ulong regionHandle)
+        {
+            ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
+            ulong localRegionHandle = 0;
+            EventHandler<GridRegionEventArgs> GridRegionEventHandler =
+                (sender, args) =>
+                {
+                    if (!string.Equals(name, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                        return;
+                    localRegionHandle = args.Region.RegionHandle;
+                    GridRegionEvent.Set();
+                };
+            Client.Grid.GridRegion += GridRegionEventHandler;
+            Client.Grid.RequestMapRegion(name, GridLayerType.Objects);
+            if (!GridRegionEvent.WaitOne((int) millisecondsTimeout, false))
+            {
+                Client.Grid.GridRegion -= GridRegionEventHandler;
+                return false;
+            }
+            Client.Grid.GridRegion -= GridRegionEventHandler;
+            if (!localRegionHandle.Equals(0))
+            {
+                regionHandle = localRegionHandle;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        ///     A wrapper for region name to region handle lookups using caching.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="name">the name of the region</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="regionHandle">the found region handle</param>
+        /// <returns>true if the role could be resolved</returns>
+        public static bool RegionNameToHandle(GridClient Client, string name, uint millisecondsTimeout,
+            ref ulong regionHandle)
+        {
+            bool succeeded;
+            lock (Locks.ClientInstanceGridLock)
+            {
+                Cache.Regions region = Cache.GetRegion(name);
+                if (!region.Equals(default(Cache.Regions)))
+                {
+                    regionHandle = region.Handle;
+                    return true;
+                }
+
+                succeeded = directRegionNameToHandle(Client, name, millisecondsTimeout, ref regionHandle);
+
+                if (succeeded)
+                {
+                    Cache.AddRegion(name, regionHandle);
+                }
+            }
+            return succeeded;
+        }
     }
 }

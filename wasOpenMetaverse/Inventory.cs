@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
@@ -343,6 +344,205 @@ namespace wasOpenMetaverse
                 FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             } while (!inventoryFolders.Count.Equals(0));
+        }
+
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts Linden item permissions to a formatted string:
+        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
+        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
+        /// </summary>
+        /// <param name="permissions">the item permissions</param>
+        /// <returns>the literal permissions for an item</returns>
+        public static string wasPermissionsToString(Permissions permissions)
+        {
+            Func<PermissionMask, string> segment = o =>
+            {
+                StringBuilder seg = new StringBuilder();
+
+                switch (!((uint)o & (uint)PermissionMask.Copy).Equals(0))
+                {
+                    case true:
+                        seg.Append("c");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint)o & (uint)PermissionMask.Damage).Equals(0))
+                {
+                    case true:
+                        seg.Append("d");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint)o & (uint)PermissionMask.Export).Equals(0))
+                {
+                    case true:
+                        seg.Append("e");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint)o & (uint)PermissionMask.Modify).Equals(0))
+                {
+                    case true:
+                        seg.Append("m");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint)o & (uint)PermissionMask.Move).Equals(0))
+                {
+                    case true:
+                        seg.Append("v");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint)o & (uint)PermissionMask.Transfer).Equals(0))
+                {
+                    case true:
+                        seg.Append("t");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                return seg.ToString();
+            };
+
+            StringBuilder x = new StringBuilder();
+            x.Append(segment(permissions.BaseMask));
+            x.Append(segment(permissions.EveryoneMask));
+            x.Append(segment(permissions.GroupMask));
+            x.Append(segment(permissions.NextOwnerMask));
+            x.Append(segment(permissions.OwnerMask));
+            return x.ToString();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a formatted string to item permissions:
+        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
+        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
+        /// </summary>
+        /// <param name="permissions">the item permissions</param>
+        /// <returns>the permissions for an item</returns>
+        public static Permissions wasStringToPermissions(string permissions)
+        {
+            Func<string, uint> segment = o =>
+            {
+                uint r = 0;
+                switch (!char.ToLower(o[0]).Equals('c'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Copy;
+                        break;
+                }
+
+                switch (!char.ToLower(o[1]).Equals('d'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Damage;
+                        break;
+                }
+
+                switch (!char.ToLower(o[2]).Equals('e'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Export;
+                        break;
+                }
+
+                switch (!char.ToLower(o[3]).Equals('m'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Modify;
+                        break;
+                }
+
+                switch (!char.ToLower(o[4]).Equals('v'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Move;
+                        break;
+                }
+
+                switch (!char.ToLower(o[5]).Equals('t'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Transfer;
+                        break;
+                }
+
+                return r;
+            };
+
+            return new Permissions(segment(permissions.Substring(0, 6)),
+                segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
+                segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Sets permissions on inventory items using the [WaS] permission mask format.
+        /// </summary>
+        /// <param name="Client">the grid client to use to set permissions</param>
+        /// <param name="inventoryItem">an inventory item</param>
+        /// <param name="wasPermissions">the string permissions to set</param>
+        /// <param name="millisecondsTimeout">the services timeout</param>
+        /// <returns>true in case the permissions were set successfully</returns>
+        public static bool wasSetInventoryItemPermissions(GridClient Client, InventoryItem inventoryItem, string wasPermissions, uint millisecondsTimeout)
+        {
+            // Update the object.
+            Permissions permissions = wasStringToPermissions(wasPermissions);
+            inventoryItem.Permissions = permissions;
+            lock (Locks.ClientInstanceInventoryLock)
+            {
+                Client.Inventory.RequestUpdateItem(inventoryItem);
+            }
+            // Now check that the permissions were set.
+            bool succeeded = false;
+            ManualResetEvent ItemReceivedEvent = new ManualResetEvent(false);
+            EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
+                (sender, args) =>
+                {
+                    if (!args.Item.UUID.Equals(inventoryItem.UUID)) return;
+                    succeeded = args.Item.Permissions.Equals(permissions);
+                    ItemReceivedEvent.Set();
+                };
+            lock (Locks.ClientInstanceInventoryLock)
+            {
+                Client.Inventory.ItemReceived += ItemReceivedEventHandler;
+                Client.Inventory.RequestFetchInventory(inventoryItem.UUID, inventoryItem.OwnerID);
+                if (
+                    !ItemReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+                {
+                    Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
+                    succeeded = false;
+                }
+                Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
+            }
+            return succeeded;
         }
     }
 }

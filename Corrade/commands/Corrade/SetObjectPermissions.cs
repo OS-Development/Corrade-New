@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -65,7 +66,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_PERMISSIONS_PROVIDED);
                     }
-                    Permissions permissions = wasStringToPermissions(itemPermissions);
+                    Permissions permissions = Inventory.wasStringToPermissions(itemPermissions);
                     Client.Objects.SetPermissions(
                         Client.Network.Simulators.AsParallel()
                             .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),

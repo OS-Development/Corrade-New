@@ -26,8 +26,8 @@ namespace Corrade
                             (PrimEventArgs) corradeNotificationParameters.Event;
                         lock (RadarObjectsLock)
                         {
-                            if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
-                            RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
+                            if (RadarObjects.ContainsKey(primEventArgs.Prim.LocalID)) return;
+                            RadarObjects.Add(primEventArgs.Prim.LocalID, primEventArgs.Prim);
                         }
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -56,17 +56,13 @@ namespace Corrade
                     {
                         KillObjectEventArgs killObjectEventArgs =
                             (KillObjectEventArgs) corradeNotificationParameters.Event;
-                        Primitive prim;
+                        Primitive primitive;
                         lock (RadarObjectsLock)
                         {
-                            KeyValuePair<UUID, Primitive> tracked =
-                                RadarObjects.AsParallel().FirstOrDefault(
-                                    p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                            switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                            switch (RadarObjects.TryGetValue(killObjectEventArgs.ObjectLocalID, out primitive))
                             {
                                 case true:
-                                    RadarObjects.Remove(tracked.Key);
-                                    prim = tracked.Value;
+                                    RadarObjects.Remove(killObjectEventArgs.ObjectLocalID);
                                     break;
                                 default:
                                     return;
@@ -82,15 +78,15 @@ namespace Corrade
                             return;
                         }
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                            prim.OwnerID.ToString());
+                            primitive.OwnerID.ToString());
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                            prim.ID.ToString());
+                            primitive.ID.ToString());
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                            prim.Position.ToString());
+                            primitive.Position.ToString());
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                            prim.Rotation.ToString());
+                            primitive.Rotation.ToString());
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                            prim.PrimData.PCode.ToString());
+                            primitive.PrimData.PCode.ToString());
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
                             Reflection.GetNameFromEnumValue(Action.VANISH));
                     }

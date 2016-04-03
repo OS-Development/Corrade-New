@@ -69,28 +69,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.DESTINATION_TOO_CLOSE);
                     }
-                    ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
                     ulong regionHandle = 0;
-                    EventHandler<GridRegionEventArgs> GridRegionEventHandler =
-                        (sender, args) =>
-                        {
-                            if (!string.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
-                                return;
-                            regionHandle = args.Region.RegionHandle;
-                            GridRegionEvent.Set();
-                        };
-                    lock (Locks.ClientInstanceGridLock)
-                    {
-                        Client.Grid.GridRegion += GridRegionEventHandler;
-                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                        if (!GridRegionEvent.WaitOne(Client.Settings.MAP_REQUEST_TIMEOUT, false))
-                        {
-                            Client.Grid.GridRegion -= GridRegionEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_REGION);
-                        }
-                        Client.Grid.GridRegion -= GridRegionEventHandler;
-                    }
-                    if (regionHandle.Equals(0))
+                    if (
+                        !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
+                            ref regionHandle))
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
@@ -149,6 +131,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.TELEPORT_FAILED);
                     }
+                    // If the teleport succeeded, cache the region handle.
+                    Cache.RegionCache.Add(new Cache.Regions
+                    {
+                        Name = Client.Network.CurrentSim.Name,
+                        Handle = Client.Network.CurrentSim.Handle
+                    });
                     bool fly;
                     // perform the post-action
                     switch (bool.TryParse(wasInput(

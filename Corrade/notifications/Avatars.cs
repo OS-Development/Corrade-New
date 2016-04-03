@@ -26,8 +26,8 @@ namespace Corrade
                             (AvatarUpdateEventArgs) corradeNotificationParameters.Event;
                         lock (RadarObjectsLock)
                         {
-                            if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
-                            RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
+                            if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.LocalID)) return;
+                            RadarObjects.Add(avatarUpdateEventArgs.Avatar.LocalID, avatarUpdateEventArgs.Avatar);
                         }
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -61,19 +61,17 @@ namespace Corrade
                         Avatar avatar;
                         lock (RadarObjectsLock)
                         {
-                            KeyValuePair<UUID, Primitive> tracked =
-                                RadarObjects.AsParallel().FirstOrDefault(
-                                    p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                            switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                            Primitive primitive;
+                            switch (RadarObjects.TryGetValue(killObjectEventArgs.ObjectLocalID, out primitive))
                             {
                                 case true:
-                                    RadarObjects.Remove(tracked.Key);
+                                    RadarObjects.Remove(killObjectEventArgs.ObjectLocalID);
                                     break;
                                 default:
                                     return;
                             }
-                            if (!(tracked.Value is Avatar)) return;
-                            avatar = tracked.Value as Avatar;
+                            if (!(primitive is Avatar)) return;
+                            avatar = primitive as Avatar;
                         }
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&

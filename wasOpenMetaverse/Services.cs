@@ -684,7 +684,7 @@ namespace wasOpenMetaverse
                     parent = ancestor;
                 } while (!parent.ParentID.Equals(0));
                 // Ignore the object if the parent is out of range.
-                if (!(Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)) return;
+                if (Vector3.Distance(parent.Position, Client.Self.SimPosition) > range) return;
                 if (item is UUID && o.ID.Equals(item))
                 {
                     lock (LockObject)

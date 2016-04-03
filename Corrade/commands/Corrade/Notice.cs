@@ -109,7 +109,9 @@ namespace Corrade
                                         corradeCommandParameters.Message));
                                 if (!string.IsNullOrEmpty(permissions))
                                 {
-                                    if (!wasSetInventoryItemPermissions(inventoryItem, permissions))
+                                    if (
+                                        !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
+                                            corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
                                     }

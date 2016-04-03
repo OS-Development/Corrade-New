@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
 using System.Xml;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -480,6 +481,20 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, out outUint))
             {
                 corradeConfiguration.LogoutGrace = outUint;
+            }
+
+            // Hash the group passwords using SHA1
+            foreach (ListViewItem item in mainForm.Groups.Items)
+            {
+                Configuration.Group group = (Configuration.Group) item.Tag;
+                switch (Regex.IsMatch(group.Password, "[a-fA-F0-9]{40}"))
+                {
+                    case false:
+                        corradeConfiguration.Groups.Remove(group);
+                        group.Password = Utils.SHA1String(group.Password);
+                        corradeConfiguration.Groups.Add(group);
+                        break;
+                }
             }
         };
 
@@ -1240,10 +1255,45 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
         }
+        private void ClearGroupPasswordRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() => { mainForm.GroupPassword.Text = string.Empty; }));
+        }
 
         private void CorradeConfiguratorShown(object sender, EventArgs e)
         {
-            mainForm.Version.Text = @"v" + CORRADE_CONSTANTS.CONFIGURATOR_VERSION;
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                mainForm.Version.Text = @"v" +
+                                        CORRADE_CONSTANTS
+                                            .CONFIGURATOR_VERSION;
+            }));
+
+            if (File.Exists("Corrade.ini"))
+            {
+                new Thread(() =>
+                {
+                    mainForm.BeginInvoke((MethodInvoker)(() =>
+                    {
+                        try
+                        {
+                            mainForm.StatusText.Text = @"loading configuration...";
+                            mainForm.StatusProgress.Value = 0;
+                            corradeConfiguration.Load("Corrade.ini", ref corradeConfiguration);
+                            mainForm.StatusProgress.Value = 50;
+                            mainForm.StatusText.Text = @"applying settings...";
+                            GetUserConfiguration.Invoke();
+                            mainForm.StatusText.Text = @"configuration loaded";
+                            mainForm.StatusProgress.Value = 100;
+                        }
+                        catch (Exception ex)
+                        {
+                            mainForm.StatusText.Text = ex.Message;
+                        }
+                    }));
+                })
+                { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+            }
         }
 
         private void GenerateAESKeyIVRequested(object sender, EventArgs e)

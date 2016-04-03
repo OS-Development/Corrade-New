@@ -11,6 +11,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -56,7 +57,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
                     result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                        wasPermissionsToString(primitive.Properties.Permissions));
+                        Inventory.wasPermissionsToString(primitive.Properties.Permissions));
                 };
         }
     }

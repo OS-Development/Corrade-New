@@ -11,19 +11,41 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 using OpenMetaverse;
+using OpenMetaverse.Assets;
 
 namespace wasOpenMetaverse
 {
     public static class Cache
     {
+        private static HashSet<Regions> _regionCache = new HashSet<Regions>(); 
         private static HashSet<Agents> _agentCache = new HashSet<Agents>();
         private static HashSet<Groups> _groupCache = new HashSet<Groups>();
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
         private static HashSet<MuteEntry> _mutesCache;
+        private static readonly object RegionCacheLock = new object();
         private static readonly object AgentCacheLock = new object();
         private static readonly object GroupCacheLock = new object();
         private static readonly object CurrentGroupsCacheLock = new object();
         private static readonly object MutesCacheLock = new object();
+
+
+        public static HashSet<Regions> RegionCache
+        {
+            get
+            {
+                lock (RegionCacheLock)
+                {
+                    return _regionCache;
+                }
+            }
+            set
+            {
+                lock (RegionCacheLock)
+                {
+                    _regionCache = value;
+                }
+            }
+        }
 
         public static HashSet<Agents> AgentCache
         {
@@ -99,6 +121,10 @@ namespace wasOpenMetaverse
 
         public static void Purge()
         {
+            lock (RegionCacheLock)
+            {
+                _regionCache.Clear();
+            }
             lock (AgentCacheLock)
             {
                 _agentCache.Clear();
@@ -114,6 +140,33 @@ namespace wasOpenMetaverse
             lock (MutesCacheLock)
             {
                 _mutesCache.Clear();
+            }
+        }
+
+        public static void AddRegion(string name, ulong handle)
+        {
+            Regions region = new Regions
+            {
+                Name = name,
+                Handle = handle
+            };
+
+            lock (RegionCacheLock)
+            {
+                if (!_regionCache.Contains(region))
+                {
+                    _regionCache.Add(region);
+                }
+            }
+        }
+
+        public static Regions GetRegion(string name)
+        {
+            lock (RegionCacheLock)
+            {
+                return
+                    _regionCache.AsParallel()
+                        .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -260,6 +313,12 @@ namespace wasOpenMetaverse
                     return (T) serializer.Deserialize(streamReader);
                 }
             }
+        }
+
+        public struct Regions
+        {
+            public string Name;
+            public ulong Handle;
         }
 
         public struct Agents

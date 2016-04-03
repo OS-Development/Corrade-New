@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -37,26 +36,9 @@ namespace Corrade
                         region = Client.Network.CurrentSim.Name;
                     }
                     ulong regionHandle = 0;
-                    ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
-                    EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
-                    {
-                        if (!string.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
-                            return;
-                        regionHandle = args.Region.RegionHandle;
-                        GridRegionEvent.Set();
-                    };
-                    lock (Locks.ClientInstanceGridLock)
-                    {
-                        Client.Grid.GridRegion += GridRegionEventHandler;
-                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                        if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Grid.GridRegion -= GridRegionEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_REGION);
-                        }
-                        Client.Grid.GridRegion -= GridRegionEventHandler;
-                    }
-                    if (regionHandle.Equals(0))
+                    if (
+                        !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
+                            ref regionHandle))
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }

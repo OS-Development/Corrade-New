@@ -298,13 +298,16 @@ namespace Corrade
                                         .OfType<InventoryItem>()
                                         .Any(
                                             inventoryItem =>
-                                                !wasSetInventoryItemPermissions(inventoryItem, itemPermissions)))
+                                                !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem,
+                                                    itemPermissions, corradeConfiguration.ServicesTimeout)))
                                     {
                                         throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
                                     }
                                     break;
                                 default:
-                                    if (!wasSetInventoryItemPermissions((item as InventoryItem), itemPermissions))
+                                    if (
+                                        !Inventory.wasSetInventoryItemPermissions(Client, (item as InventoryItem),
+                                            itemPermissions, corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
                                     }
