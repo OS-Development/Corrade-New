@@ -603,7 +603,7 @@ namespace Corrade
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
                         corradeConfiguration.ServicesTimeout, ref parcel)) return;
                 Configuration.Group landGroup =
-                    corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
+                    corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
                 if (landGroup.UUID.Equals(UUID.Zero)) return;
                 Client.Groups.ActivateGroup(landGroup.UUID);
             });
@@ -872,9 +872,9 @@ namespace Corrade
                         {
                             ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
                                 (new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>)))
-                                    .Deserialize(streamReader)).ToArray()
-                                .AsParallel()
-                                .Where(o => corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
+                                    .Deserialize(streamReader))
+                                .ToArray().AsParallel()
+                                .Where(o => corradeConfiguration.Groups.ToArray().AsParallel().Any(p => p.UUID.Equals(o.Key)))
                                 .ForAll(o =>
                                 {
                                     lock (GroupMembersLock)
@@ -949,8 +949,7 @@ namespace Corrade
                         {
                             ((HashSet<GroupSchedule>)
                                 (new XmlSerializer(typeof (HashSet<GroupSchedule>))).Deserialize(streamReader))
-                                .ToArray()
-                                .AsParallel()
+                                .ToArray().AsParallel()
                                 .Where(o => corradeConfiguration.Groups.ToArray().AsParallel()
                                     .Any(
                                         p =>
@@ -1032,11 +1031,10 @@ namespace Corrade
                         {
                             ((HashSet<Notification>)
                                 (new XmlSerializer(typeof (HashSet<Notification>))).Deserialize(streamReader))
-                                .ToArray()
-                                .AsParallel()
+                                .ToArray().AsParallel()
                                 .Where(
                                     o =>
-                                        corradeConfiguration.Groups.AsParallel()
+                                        corradeConfiguration.Groups.ToArray().AsParallel()
                                             .Any(
                                                 p =>
                                                     string.Equals(p.Name, o.GroupName,
@@ -2192,13 +2190,13 @@ namespace Corrade
         {
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.AsParallel().Any(
+                ? corradeConfiguration.Groups.ToArray().AsParallel().Any(
                     o =>
                         groupUUID.Equals(o.UUID) &&
                         (string.Equals(o.Password, password, StringComparison.Ordinal) ||
                          Utils.SHA1String(password)
                              .Equals(o.Password, StringComparison.OrdinalIgnoreCase)))
-                : corradeConfiguration.Groups.AsParallel().Any(
+                : corradeConfiguration.Groups.ToArray().AsParallel().Any(
                     o =>
                         string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                         (string.Equals(o.Password, password, StringComparison.Ordinal) ||
@@ -2216,9 +2214,9 @@ namespace Corrade
         {
             UUID groupUUID;
             return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.AsParallel()
+                ? corradeConfiguration.Groups.ToArray().AsParallel()
                     .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
-                : corradeConfiguration.Groups.AsParallel().Any(
+                : corradeConfiguration.Groups.ToArray().AsParallel().Any(
                     o =>
                         string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                         !(o.PermissionMask & permission).Equals(0));
@@ -2236,8 +2234,8 @@ namespace Corrade
                     message));
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
-                : corradeConfiguration.Groups.AsParallel()
+                ? corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
+                : corradeConfiguration.Groups.ToArray().AsParallel()
                     .FirstOrDefault(o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -2251,10 +2249,10 @@ namespace Corrade
         {
             UUID groupUUID;
             return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.AsParallel().Any(
+                ? corradeConfiguration.Groups.ToArray().AsParallel().Any(
                     o => groupUUID.Equals(o.UUID) &&
                          !(o.NotificationMask & notification).Equals(0))
-                : corradeConfiguration.Groups.AsParallel().Any(
+                : corradeConfiguration.Groups.ToArray().AsParallel().Any(
                     o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                          !(o.NotificationMask & notification).Equals(0));
         }
@@ -2520,6 +2518,8 @@ namespace Corrade
         // Main entry point.
         public void Program()
         {
+            // Set the MTA to above normal for connection consistency.
+            Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             // Load the configuration file.
@@ -3338,7 +3338,7 @@ namespace Corrade
                             .Where(
                                 o =>
                                     !(o.NotificationMask & (uint) notification).Equals(0) &&
-                                    corradeConfiguration.Groups.AsParallel().Any(
+                                    corradeConfiguration.Groups.ToArray().AsParallel().Any(
                                         p => string.Equals(o.GroupName, p.Name, StringComparison.OrdinalIgnoreCase) &&
                                              !(p.NotificationMask & (uint) notification).Equals(0))));
                         break;
@@ -3685,7 +3685,7 @@ namespace Corrade
 
             // Accept anything from master avatars.
             if (
-                corradeConfiguration.Masters.AsParallel().Select(
+                corradeConfiguration.Masters.ToArray().AsParallel().Select(
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => string.Equals(e.Offer.FromAgentName, p, StringComparison.OrdinalIgnoreCase)))
             {
@@ -3693,9 +3693,12 @@ namespace Corrade
                 // It is accepted, so update the inventory.
                 try
                 {
-                    Inventory.UpdateInventoryRecursive(Client,
-                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                            InventoryFolder, corradeConfiguration.ServicesTimeout);
+                    lock (Locks.ClientInstanceInventoryLock)
+                    {
+                        Inventory.UpdateInventoryRecursive(Client,
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                InventoryFolder, corradeConfiguration.ServicesTimeout);
+                    }
                 }
                 catch (Exception)
                 {
@@ -3715,9 +3718,12 @@ namespace Corrade
             // It is temporary, so update the inventory.
             try
             {
-                Inventory.UpdateInventoryRecursive(Client,
-                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                        InventoryFolder, corradeConfiguration.ServicesTimeout);
+                lock (Locks.ClientInstanceInventoryLock)
+                {
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                            InventoryFolder, corradeConfiguration.ServicesTimeout);
+                }
             }
             catch (Exception)
             {
@@ -3777,8 +3783,11 @@ namespace Corrade
                         }
                         if (inventoryBaseFolder != null)
                         {
-                            Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
-                                corradeConfiguration.ServicesTimeout);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                            }
                         }
                         break;
                     default:
@@ -3791,9 +3800,13 @@ namespace Corrade
                         }
                         try
                         {
-                            Inventory.UpdateInventoryRecursive(Client,
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                    InventoryFolder, corradeConfiguration.ServicesTimeout);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Inventory.UpdateInventoryRecursive(Client,
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data
+                                        as
+                                        InventoryFolder, corradeConfiguration.ServicesTimeout);
+                            }
                         }
                         catch (Exception)
                         {
@@ -3843,7 +3856,7 @@ namespace Corrade
             lock (RLVRulesLock)
             {
                 if (
-                    !RLVRules.AsParallel()
+                    !RLVRules.ToArray().AsParallel()
                         .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                     return;
                 lock (Locks.ClientInstanceSelfLock)
@@ -3893,13 +3906,17 @@ namespace Corrade
                         // Update the inventory.
                         try
                         {
-                            Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                corradeConfiguration.ServicesTimeout);
-                            // Get COF.
-                            CurrentOutfitFolder =
-                                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
-                                    ] as
-                                    InventoryFolder;
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                                // Get COF.
+                                CurrentOutfitFolder =
+                                    Client.Inventory.Store[
+                                        Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
+                                        ] as
+                                        InventoryFolder;
+                            }
                         }
                         catch (Exception)
                         {
@@ -3908,14 +3925,14 @@ namespace Corrade
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
-                    {IsBackground = true}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
                         if (!corradeConfiguration.AutoActivateGroup) return;
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     })
-                    {IsBackground = true}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
@@ -3924,7 +3941,7 @@ namespace Corrade
                             Client.Self.RetrieveInstantMessages();
                         }
                     })
-                    {IsBackground = true}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Request the mute list.
                     new Thread(() =>
                     {
@@ -3933,7 +3950,7 @@ namespace Corrade
                             return;
                         Cache.MutesCache.UnionWith(mutes);
                     })
-                    {IsBackground = true}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -4036,7 +4053,7 @@ namespace Corrade
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Accept friendships only from masters (for the time being)
                     if (
-                        !corradeConfiguration.Masters.AsParallel().Any(
+                        !corradeConfiguration.Masters.ToArray().AsParallel().Any(
                             o =>
                                 string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
                                 string.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
@@ -4063,7 +4080,7 @@ namespace Corrade
                     lock (RLVRulesLock)
                     {
                         if (
-                            RLVRules.AsParallel()
+                            RLVRules.ToArray().AsParallel()
                                 .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
                             if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
@@ -4101,7 +4118,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (
-                            !corradeConfiguration.Masters.AsParallel()
+                            !corradeConfiguration.Masters.ToArray().AsParallel()
                                 .Any(
                                     o =>
                                         string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
@@ -4125,7 +4142,7 @@ namespace Corrade
                             BindingFlags.Public |
                             BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                         Client.Self.SignaledAnimations.Copy()
-                            .Keys.ToArray().AsParallel()
+                            .Keys.AsParallel()
                             .Where(o => !lindenAnimations.Contains(o))
                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
@@ -4172,7 +4189,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (
-                            !corradeConfiguration.Masters.AsParallel()
+                            !corradeConfiguration.Masters.ToArray().AsParallel()
                                 .Any(
                                     o =>
                                         string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
@@ -4265,7 +4282,7 @@ namespace Corrade
                     if (new HashSet<UUID>(currentGroups).Contains(args.IM.IMSessionID))
                     {
                         Configuration.Group messageGroup =
-                            corradeConfiguration.Groups.AsParallel()
+                            corradeConfiguration.Groups.ToArray().AsParallel()
                                 .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Configuration.Group)))
                         {
@@ -4637,7 +4654,7 @@ namespace Corrade
                 }
             }
 
-            Configuration.Group configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
+            Configuration.Group configuredGroup = corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(
                 o => string.Equals(commandGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase));
             if (configuredGroup.Equals(default(Configuration.Group)))
             {
@@ -4848,20 +4865,22 @@ namespace Corrade
 
             // build afterburn
             object AfterBurnLock = new object();
+            // remove keys that are script keys, result keys or invalid key-value pairs
             HashSet<string> resultKeys = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
             HashSet<string> scriptKeys = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
-            KeyValue.Decode(corradeCommandParameters.Message).ToArray().AsParallel().ForAll(o =>
-            {
-                // remove keys that are script keys, result keys or invalid key-value pairs
-                if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(wasInput(o.Key)) ||
-                    scriptKeys.Contains(wasInput(o.Key)) ||
-                    string.IsNullOrEmpty(o.Value))
-                    return;
-                lock (AfterBurnLock)
+            KeyValue.Decode(corradeCommandParameters.Message)
+                .AsParallel()
+                .Where(
+                    o =>
+                        !string.IsNullOrEmpty(o.Key) && !resultKeys.Contains(wasInput(o.Key)) &&
+                        !scriptKeys.Contains(wasInput(o.Key)) && !string.IsNullOrEmpty(o.Value))
+                .ForAll(o =>
                 {
-                    result.Add(o.Key, o.Value);
-                }
-            });
+                    lock (AfterBurnLock)
+                    {
+                        result.Add(o.Key, o.Value);
+                    }
+                });
 
             return result;
         }
@@ -4889,7 +4908,7 @@ namespace Corrade
             CSV.ToEnumerable(query).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
             {
                 KeyValuePair<FieldInfo, object> fi =
-                    wasGetFields(structure, structure.GetType().Name).AsParallel()
+                    wasGetFields(structure, structure.GetType().Name).ToArray().AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 lock (LockObject)
@@ -4903,7 +4922,7 @@ namespace Corrade
                 }
 
                 KeyValuePair<PropertyInfo, object> pi =
-                    wasGetProperties(structure, structure.GetType().Name).AsParallel().FirstOrDefault(
+                    wasGetProperties(structure, structure.GetType().Name).ToArray().AsParallel().FirstOrDefault(
                         o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 lock (LockObject)
@@ -4937,6 +4956,7 @@ namespace Corrade
                 KeyValuePair<string, string> localMatch = match;
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name)
+                    .ToArray()
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Key.Name.Equals(localMatch.Key,
@@ -4946,6 +4966,7 @@ namespace Corrade
 
                 KeyValuePair<PropertyInfo, object> pi =
                     wasGetProperties(structure, structure.GetType().Name)
+                    .ToArray()
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Key.Name.Equals(localMatch.Key,
@@ -5070,7 +5091,7 @@ namespace Corrade
         public static void UpdateDynamicConfiguration(Configuration configuration)
         {
             // Enable the group scheduling thread if permissions were granted to groups.
-            switch (configuration.Groups.AsParallel()
+            switch (configuration.Groups.ToArray().AsParallel()
                 .Any(
                     o =>
                         !(o.PermissionMask & (uint) Configuration.Permissions.Schedule).Equals(0) &&
@@ -5189,7 +5210,7 @@ namespace Corrade
             // Dynamically disable or enable notifications.
             Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
             {
-                bool enabled = configuration.Groups.AsParallel().Any(
+                bool enabled = configuration.Groups.ToArray().AsParallel().Any(
                     p =>
                         !(p.NotificationMask & (uint) o).Equals(0));
                 switch (o)
@@ -5381,7 +5402,7 @@ namespace Corrade
             // Depending on whether groups have bound to the viewer effects notification,
             // start or stop the viwer effect expiration thread.
             switch (
-                configuration.Groups.AsParallel()
+                configuration.Groups.ToArray().AsParallel()
                     .Any(o => !(o.NotificationMask & (uint) Configuration.Notifications.ViewerEffect).Equals(0)))
             {
                 case true:
@@ -5439,7 +5460,7 @@ namespace Corrade
             // Depending on whether any group has bound either the avatar radar notification,
             // or the primitive radar notification, install or uinstall the listeners.
             switch (
-                configuration.Groups.AsParallel().Any(
+                configuration.Groups.ToArray().AsParallel().Any(
                     o =>
                         !(o.NotificationMask & (uint) Configuration.Notifications.RadarAvatars).Equals(0) ||
                         !(o.NotificationMask & (uint) Configuration.Notifications.RadarPrimitives).Equals(0)))
@@ -5533,7 +5554,7 @@ namespace Corrade
                                                 lock (GroupNotificationsLock)
                                                 {
                                                     notification =
-                                                        GroupNotifications.AsParallel().FirstOrDefault(
+                                                        GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                                             o =>
                                                                 o.GroupName.Equals(commandGroup.Name,
                                                                     StringComparison.OrdinalIgnoreCase));

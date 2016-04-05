@@ -89,7 +89,7 @@ namespace Corrade
                         typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
-                                    string.Equals(o.Key, p.Name, StringComparison.Ordinal)).AsParallel().ForAll(
+                                    string.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
                                             InventoryBase inventoryBaseItem =
@@ -97,7 +97,7 @@ namespace Corrade
                                                     Client.Inventory.Store.RootNode,
                                                     Helpers.StringOrUUID(o.Value)
                                                     )
-                                                    .AsParallel().FirstOrDefault(
+                                                    .ToArray().AsParallel().FirstOrDefault(
                                                         r => r is InventoryObject || r is InventoryAttachment);
                                             if (inventoryBaseItem == null)
                                                 return;

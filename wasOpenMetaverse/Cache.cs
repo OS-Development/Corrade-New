@@ -165,7 +165,7 @@ namespace wasOpenMetaverse
             lock (RegionCacheLock)
             {
                 return
-                    _regionCache.ToArray().AsParallel()
+                    _regionCache.AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
             }
         }

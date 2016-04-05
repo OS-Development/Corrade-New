@@ -49,27 +49,25 @@ namespace Corrade
                     }
                     // Get the roles to invite to.
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
-                    foreach (
-                        string role in
-                            CSV.ToEnumerable(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
-                                        corradeCommandParameters.Message)))
-                                .AsParallel().Where(o => !string.IsNullOrEmpty(o)))
-                    {
-                        UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) &&
-                            !Resolvers.RoleNameToUUID(Client, role, corradeCommandParameters.Group.UUID,
-                                corradeConfiguration.ServicesTimeout, ref roleUUID))
+                    CSV.ToEnumerable(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
+                                corradeCommandParameters.Message)))
+                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
-                            throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
-                        }
-                        if (!roleUUIDs.Contains(roleUUID))
-                        {
-                            roleUUIDs.Add(roleUUID);
-                        }
-                    }
+                            UUID roleUUID;
+                            if (!UUID.TryParse(o, out roleUUID) &&
+                                !Resolvers.RoleNameToUUID(Client, o, corradeCommandParameters.Group.UUID,
+                                    corradeConfiguration.ServicesTimeout, ref roleUUID))
+                            {
+                                throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
+                            }
+                            if (!roleUUIDs.Contains(roleUUID))
+                            {
+                                roleUUIDs.Add(roleUUID);
+                            }
+                        });
                     // No roles specified, so assume everyone role.
                     if (!roleUUIDs.Any())
                     {

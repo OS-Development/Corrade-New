@@ -65,7 +65,7 @@ namespace Corrade
 
                                         // check that the mute list does not already exist
                                         if (
-                                            mutes.ToList()
+                                            mutes.ToArray()
                                                 .AsParallel()
                                                 .Any(p => p.ID.Equals(targetUUID) && p.Name.Equals(o.Key)))
                                         {
@@ -156,7 +156,7 @@ namespace Corrade
 
                                         // find the mute either by name or by target
                                         MuteEntry mute =
-                                            mutes.ToList().AsParallel()
+                                            mutes.ToArray().AsParallel()
                                                 .FirstOrDefault(
                                                     p =>
                                                         p.Name.Equals(o.Key) ||

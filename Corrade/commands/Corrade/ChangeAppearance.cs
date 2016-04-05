@@ -78,7 +78,7 @@ namespace Corrade
                                 BindingFlags.Public |
                                 BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                             Client.Self.SignaledAnimations.Copy()
-                                .Keys.ToArray().AsParallel()
+                                .Keys.AsParallel()
                                 .Where(o => !lindenAnimations.Contains(o))
                                 .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             break;
@@ -87,8 +87,8 @@ namespace Corrade
                     // Create a list of links that should be removed.
                     List<UUID> removeItems = new List<UUID>();
                     object LockObject = new object();
-                    Parallel.ForEach(
-                        Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder), o =>
+                    Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder).ToArray().AsParallel().ForAll(
+                        o =>
                         {
                             switch (Inventory.IsBodyPart(Client, o))
                             {
@@ -133,8 +133,11 @@ namespace Corrade
                     // Update inventory.
                     try
                     {
-                        Inventory.UpdateInventoryRecursive(Client, CurrentOutfitFolder,
-                            corradeConfiguration.ServicesTimeout);
+                        lock (Locks.ClientInstanceInventoryLock)
+                        {
+                            Inventory.UpdateInventoryRecursive(Client, CurrentOutfitFolder,
+                                corradeConfiguration.ServicesTimeout);
+                        }
                     }
                     catch (Exception)
                     {

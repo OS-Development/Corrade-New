@@ -99,7 +99,7 @@ namespace Corrade
                                 .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
                         {
                             case true:
-                                rolesMembers.ToArray().AsParallel().Where(
+                                rolesMembers.AsParallel().Where(
                                     o => o.Value.Equals(agentUUID))
                                     .ForAll(
                                         o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,

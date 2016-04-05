@@ -129,7 +129,7 @@ namespace Corrade
                             HashSet<Parcel> regionParcels =
                                 new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
                             Services.GetAvatars(Client,
-                                regionParcels.AsParallel().Select(o => new[]
+                                regionParcels.ToArray().AsParallel().Select(o => new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
@@ -142,7 +142,7 @@ namespace Corrade
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                 .ToArray()
                                 .AsParallel()
-                                .Where(o => regionParcels.AsParallel().Any(p => Helpers.IsVectorInParcel(o.Position, p)))
+                                .Where(o => regionParcels.ToArray().AsParallel().Any(p => Helpers.IsVectorInParcel(o.Position, p)))
                                 .ForAll(
                                     o =>
                                     {

@@ -61,6 +61,7 @@ namespace Corrade
                     Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                        .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.ID.Equals(agentUUID));
                     if (avatar == null)

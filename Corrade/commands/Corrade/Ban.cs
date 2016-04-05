@@ -186,7 +186,7 @@ namespace Corrade
                                             }
                                             Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                         }
-                                        groupMembers.ToArray()
+                                        groupMembers
                                             .AsParallel()
                                             .Where(o => avatars.ContainsKey(o.Value.ID))
                                             .ForAll(
@@ -194,7 +194,7 @@ namespace Corrade
                                                 {
                                                     // Check their status.
                                                     switch (
-                                                        !groupRolesMembers.ToArray().AsParallel()
+                                                        !groupRolesMembers.AsParallel()
                                                             .Any(
                                                                 p =>
                                                                     p.Key.Equals(targetGroup.OwnerRole) &&
@@ -209,7 +209,7 @@ namespace Corrade
                                                             return;
                                                     }
                                                     // Demote them.
-                                                    groupRolesMembers.ToArray().AsParallel().Where(
+                                                    groupRolesMembers.AsParallel().Where(
                                                         p => p.Value.Equals(o.Value.ID)).ForAll(p =>
                                                             Client.Groups.RemoveFromRole(
                                                                 corradeCommandParameters.Group.UUID, p.Key,

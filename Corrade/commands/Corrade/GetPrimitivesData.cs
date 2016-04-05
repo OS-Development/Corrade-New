@@ -127,7 +127,7 @@ namespace Corrade
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
                             Services.GetPrimitives(Client,
-                                Client.Network.CurrentSim.Parcels.Copy().Values.ToArray().AsParallel().Select(o => new[]
+                                Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMax),

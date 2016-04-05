@@ -94,7 +94,7 @@ namespace Corrade
                                 BindingFlags.Public |
                                 BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                             Client.Self.SignaledAnimations.Copy()
-                                .Keys.ToArray().AsParallel()
+                                .Keys.AsParallel()
                                 .Where(o => !lindenAnimations.Contains(o))
                                 .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             break;

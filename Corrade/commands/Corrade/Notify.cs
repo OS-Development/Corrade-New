@@ -65,7 +65,7 @@ namespace Corrade
                             lock (GroupNotificationsLock)
                             {
                                 notification =
-                                    GroupNotifications.AsParallel().FirstOrDefault(
+                                    GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                         o =>
                                             o.GroupName.Equals(corradeCommandParameters.Group.Name,
                                                 StringComparison.OrdinalIgnoreCase));
@@ -275,7 +275,7 @@ namespace Corrade
                                             default:
                                                 HashSet<string> URLs =
                                                     new HashSet<string>(
-                                                        p.Value.AsParallel()
+                                                        p.Value.ToArray().AsParallel()
                                                             .Where(q => !string.Equals(url, q, StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)
@@ -312,7 +312,7 @@ namespace Corrade
                             lock (GroupNotificationsLock)
                             {
                                 Notification groupNotification =
-                                    GroupNotifications.AsParallel().FirstOrDefault(
+                                    GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                         o =>
                                             o.GroupName.Equals(corradeCommandParameters.Group.Name,
                                                 StringComparison.OrdinalIgnoreCase));
@@ -392,7 +392,7 @@ namespace Corrade
                             lock (GroupNotificationsLock)
                             {
                                 Notification groupNotification =
-                                    GroupNotifications.AsParallel().FirstOrDefault(
+                                    GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                         o =>
                                             o.GroupName.Equals(corradeCommandParameters.Group.Name,
                                                 StringComparison.OrdinalIgnoreCase));

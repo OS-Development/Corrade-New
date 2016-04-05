@@ -213,7 +213,7 @@ namespace wasOpenMetaverse
                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
             }
             return
-                avatarGroups.ToArray().AsParallel()
+                avatarGroups.AsParallel()
                     .Any(o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
         }
 
@@ -420,7 +420,7 @@ namespace wasOpenMetaverse
                         alarm.Alarm(dataTimeout);
                         alarm.Signal.WaitOne((int) millisecondsTimeout, false);
                         primitives =
-                            Client.Network.Simulators.ToArray().AsParallel().Select(o => o.ObjectsPrimitives)
+                            Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
                                 .Select(o => o.Copy().Values).ToList()
                                 .SelectMany(o => o);
                         lock (Locks.ClientInstanceConfigurationLock)
@@ -465,7 +465,7 @@ namespace wasOpenMetaverse
                 {
                     Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
                     ObjectPropertiesEvent.Reset();
-                    Client.Objects.SelectObject(Client.Network.Simulators.ToArray().AsParallel()
+                    Client.Objects.SelectObject(Client.Network.Simulators.AsParallel()
                         .FirstOrDefault(p => p.Handle.Equals(updatePrimitive.RegionHandle)), updatePrimitive.LocalID,
                         true);
                     ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
@@ -513,7 +513,7 @@ namespace wasOpenMetaverse
                         alarm.Alarm(dataTimeout);
                         alarm.Signal.WaitOne((int) millisecondsTimeout, false);
                         avatars =
-                            Client.Network.Simulators.ToArray().AsParallel().Select(o => o.ObjectsAvatars)
+                            Client.Network.Simulators.AsParallel().Select(o => o.ObjectsAvatars)
                                 .Select(o => o.Copy().Values)
                                 .SelectMany(o => o);
                         lock (Locks.ClientInstanceConfigurationLock)
@@ -629,9 +629,8 @@ namespace wasOpenMetaverse
                 case true:
                     avatars = new HashSet<Avatar>(avatarUpdates.Values);
                     return true;
-                default:
-                    return false;
             }
+            return false;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -653,16 +652,35 @@ namespace wasOpenMetaverse
             ref Primitive primitive, uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
-            HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
-            Dictionary<uint, Primitive> objectsPrimitives =
-                new Dictionary<uint, Primitive>(
-                    GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
-                        .ToDictionary(o => o.LocalID, p => p));
-            Dictionary<uint, Avatar> objectsAvatars =
+            Dictionary<uint, Primitive> objectsPrimitives = null;
+            ManualResetEvent[] semaphore =
+            {
+                new ManualResetEvent(false),
+                new ManualResetEvent(false)
+            };
+            new Thread(() =>
+            {
+                objectsPrimitives =
+                    new Dictionary<uint, Primitive>(
+                        GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                            .ToDictionary(o => o.LocalID, p => p));
+                semaphore[0].Set();
+            })
+            { IsBackground = true}.Start();
+            Dictionary<uint, Avatar> objectsAvatars = null;
+            new Thread(() =>
+            {
+                objectsAvatars =
                 new Dictionary<uint, Avatar>(
                     GetAvatars(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
                         .ToDictionary(o => o.LocalID, p => p));
+                semaphore[1].Set();
+            })
+            { IsBackground = true}.Start();
+            if (!WaitHandle.WaitAll(semaphore.Select(o => (WaitHandle) o).ToArray(), (int) millisecondsTimeout, false))
+                return false;
             object LockObject = new object();
+            HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
             Parallel.ForEach(objectsPrimitives.Values, o =>
             {
                 // find the parent of the primitive

@@ -153,7 +153,7 @@ namespace Corrade
                                     return;
                             }
                             // Demote them.
-                            groupRolesMembers.ToArray().AsParallel().Where(
+                            groupRolesMembers.AsParallel().Where(
                                 p => p.Value.Equals(agentUUID))
                                 .ForAll(
                                     p =>

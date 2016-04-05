@@ -70,6 +70,7 @@ namespace Corrade
                         !Services.GetAvatars(Client, range, corradeConfiguration.Range,
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                            .ToArray()
                             .AsParallel()
                             .Any(o => o.LocalID.Equals(primitive.ParentID)))
                     {

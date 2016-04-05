@@ -52,7 +52,7 @@ namespace Corrade
                     }
                     List<string> data =
                         Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                            (int) corradeConfiguration.ServicesTimeout).AsParallel().Select(o => new[]
+                            (int) corradeConfiguration.ServicesTimeout).ToArray().AsParallel().Select(o => new[]
                             {
                                 o.Name,
                                 o.UUID.ToString()

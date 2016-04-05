@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -254,8 +255,11 @@ namespace Corrade
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                    corradeConfiguration.ServicesTimeout);
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                        corradeConfiguration.ServicesTimeout);
+                                }
                             }
                             catch (Exception)
                             {
@@ -315,8 +319,11 @@ namespace Corrade
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                    corradeConfiguration.ServicesTimeout);
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                        corradeConfiguration.ServicesTimeout);
+                                }
                             }
                             catch (Exception)
                             {
@@ -355,8 +362,11 @@ namespace Corrade
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                    corradeConfiguration.ServicesTimeout);
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                        corradeConfiguration.ServicesTimeout);
+                                }
                             }
                             catch (Exception)
                             {
@@ -463,8 +473,11 @@ namespace Corrade
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                    corradeConfiguration.ServicesTimeout);
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                        corradeConfiguration.ServicesTimeout);
+                                }
                             }
                             catch (Exception)
                             {
