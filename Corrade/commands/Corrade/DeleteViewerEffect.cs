@@ -45,7 +45,9 @@ namespace Corrade
                             lock (LookAtEffectsLock)
                             {
                                 lookAtEffect =
-                                    LookAtEffects.ToArray().AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                    LookAtEffects.ToArray()
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Effect.Equals(effectUUID));
                             }
                             switch (!lookAtEffect.Equals(default(LookAtEffect)))
                             {
@@ -61,7 +63,9 @@ namespace Corrade
                             lock (PointAtEffectsLock)
                             {
                                 pointAtEffect =
-                                    PointAtEffects.ToArray().AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                    PointAtEffects.ToArray()
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Effect.Equals(effectUUID));
                             }
                             switch (!pointAtEffect.Equals(default(PointAtEffect)))
                             {
@@ -80,7 +84,8 @@ namespace Corrade
                             BeamEffect beamEffect;
                             lock (BeamEffectsLock)
                             {
-                                beamEffect = BeamEffects.ToArray().AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                beamEffect =
+                                    BeamEffects.ToArray().AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
                             }
                             switch (!beamEffect.Equals(default(BeamEffect)))
                             {
@@ -100,7 +105,9 @@ namespace Corrade
                             lock (SphereEffectsLock)
                             {
                                 sphereEffect =
-                                    SphereEffects.ToArray().AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                    SphereEffects.ToArray()
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Effect.Equals(effectUUID));
                             }
                             switch (!sphereEffect.Equals(default(SphereEffect)))
                             {

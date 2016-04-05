@@ -8,8 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
-using wasOpenMetaverse;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 

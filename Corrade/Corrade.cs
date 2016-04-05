@@ -603,7 +603,9 @@ namespace Corrade
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
                         corradeConfiguration.ServicesTimeout, ref parcel)) return;
                 Configuration.Group landGroup =
-                    corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
+                    corradeConfiguration.Groups.ToArray()
+                        .AsParallel()
+                        .FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
                 if (landGroup.UUID.Equals(UUID.Zero)) return;
                 Client.Groups.ActivateGroup(landGroup.UUID);
             });
@@ -874,7 +876,11 @@ namespace Corrade
                                 (new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>)))
                                     .Deserialize(streamReader))
                                 .ToArray().AsParallel()
-                                .Where(o => corradeConfiguration.Groups.ToArray().AsParallel().Any(p => p.UUID.Equals(o.Key)))
+                                .Where(
+                                    o =>
+                                        corradeConfiguration.Groups.ToArray()
+                                            .AsParallel()
+                                            .Any(p => p.UUID.Equals(o.Key)))
                                 .ForAll(o =>
                                 {
                                     lock (GroupMembersLock)
@@ -4956,7 +4962,7 @@ namespace Corrade
                 KeyValuePair<string, string> localMatch = match;
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name)
-                    .ToArray()
+                        .ToArray()
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Key.Name.Equals(localMatch.Key,
@@ -4966,7 +4972,7 @@ namespace Corrade
 
                 KeyValuePair<PropertyInfo, object> pi =
                     wasGetProperties(structure, structure.GetType().Name)
-                    .ToArray()
+                        .ToArray()
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Key.Name.Equals(localMatch.Key,

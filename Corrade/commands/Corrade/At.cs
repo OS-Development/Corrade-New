@@ -35,7 +35,10 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.ADD:
-                            if (GroupSchedules.ToArray().AsParallel().Count(o => o.Group.Equals(corradeCommandParameters.Group)) +
+                            if (
+                                GroupSchedules.ToArray()
+                                    .AsParallel()
+                                    .Count(o => o.Group.Equals(corradeCommandParameters.Group)) +
                                 1 > corradeCommandParameters.Group.Schedules)
                             {
                                 throw new ScriptException(ScriptError.GROUP_SCHEDULES_EXCEEDED);

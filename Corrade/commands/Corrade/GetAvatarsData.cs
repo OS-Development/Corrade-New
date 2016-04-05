@@ -142,7 +142,11 @@ namespace Corrade
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                                 .ToArray()
                                 .AsParallel()
-                                .Where(o => regionParcels.ToArray().AsParallel().Any(p => Helpers.IsVectorInParcel(o.Position, p)))
+                                .Where(
+                                    o =>
+                                        regionParcels.ToArray()
+                                            .AsParallel()
+                                            .Any(p => Helpers.IsVectorInParcel(o.Position, p)))
                                 .ForAll(
                                     o =>
                                     {
