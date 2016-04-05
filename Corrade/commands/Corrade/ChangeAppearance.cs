@@ -77,11 +77,10 @@ namespace Corrade
                             HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                            Parallel.ForEach(
-                                Client.Self.SignaledAnimations.Copy()
-                                    .Keys.AsParallel()
-                                    .Where(o => !lindenAnimations.Contains(o)),
-                                o => { Client.Self.AnimationStop(o, true); });
+                            Client.Self.SignaledAnimations.Copy()
+                                .Keys.ToArray().AsParallel()
+                                .Where(o => !lindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             break;
                     }
 

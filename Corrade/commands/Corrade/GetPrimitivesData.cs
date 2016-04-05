@@ -48,20 +48,20 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Entity.RANGE:
-                            Parallel.ForEach(
-                                Services.GetPrimitives(Client, range, corradeConfiguration.Range,
-                                    corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
-                                    .AsParallel()
-                                    .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
-                                o =>
-                                {
-                                    lock (LockObject)
+                            Services.GetPrimitives(Client, range, corradeConfiguration.Range,
+                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .ToArray()
+                                .AsParallel()
+                                .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range).ForAll(
+                                    o =>
                                     {
-                                        updatePrimitives.Add(o);
-                                    }
-                                });
+                                        lock (LockObject)
+                                        {
+                                            updatePrimitives.Add(o);
+                                        }
+                                    });
                             break;
                         case Entity.PARCEL:
                             Vector3 position;
@@ -82,7 +82,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
-                            Parallel.ForEach(Services.GetPrimitives(Client, new[]
+                            Services.GetPrimitives(Client, new[]
                             {
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -92,13 +92,17 @@ namespace Corrade
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
                             }.Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)), o =>
-                                {
-                                    lock (LockObject)
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .ToArray()
+                                .AsParallel()
+                                .ForAll(
+                                    o =>
                                     {
-                                        updatePrimitives.Add(o);
-                                    }
-                                });
+                                        lock (LockObject)
+                                        {
+                                            updatePrimitives.Add(o);
+                                        }
+                                    });
                             break;
                         case Entity.REGION:
                             // Get all sim parcels
@@ -122,26 +126,28 @@ namespace Corrade
                                 }
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
-                            Parallel.ForEach(
-                                Services.GetPrimitives(Client,
-                                    Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
-                                    {
-                                        Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
-                                        Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
-                                        Vector3.Distance(Client.Self.SimPosition,
-                                            new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
-                                        Vector3.Distance(Client.Self.SimPosition,
-                                            new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                    }.Max()).Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)),
-                                o =>
+                            Services.GetPrimitives(Client,
+                                Client.Network.CurrentSim.Parcels.Copy().Values.ToArray().AsParallel().Select(o => new[]
                                 {
-                                    lock (LockObject)
+                                    Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
+                                    Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
+                                }.Max()).Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .ToArray()
+                                .AsParallel()
+                                .ForAll(
+                                    o =>
                                     {
-                                        updatePrimitives.Add(o);
-                                    }
-                                });
+                                        lock (LockObject)
+                                        {
+                                            updatePrimitives.Add(o);
+                                        }
+                                    });
                             break;
                         case Entity.AVATAR:
                             UUID agentUUID = UUID.Zero;

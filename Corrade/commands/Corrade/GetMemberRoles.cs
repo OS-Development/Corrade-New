@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -88,7 +87,7 @@ namespace Corrade
                     }
                     // now resolve the roles
                     object LockObject = new object();
-                    Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)), o =>
+                    groupRolesMembers.ToArray().AsParallel().Where(o => o.Value.Equals(agentUUID)).ForAll(o =>
                     {
                         string roleName = string.Empty;
                         switch (Resolvers.RoleUUIDToName(Client, o.Key, corradeCommandParameters.Group.UUID,

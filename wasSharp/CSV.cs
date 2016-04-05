@@ -37,7 +37,7 @@ namespace wasSharp
 
         private static readonly Func<string, IEnumerable<KeyValuePair<string, string>>> directToKeyValue =
             ((Expression<Func<string, IEnumerable<KeyValuePair<string, string>>>>)
-                (csv => ToEnumerable(csv).AsParallel().Select((o, p) => new {o, p})
+                (csv => ToEnumerable(csv).ToArray().AsParallel().Select((o, p) => new {o, p})
                     .GroupBy(q => q.p/2, q => q.o)
                     .Select(o => o.ToArray())
                     .TakeWhile(o => o.Length%2 == 0)
@@ -102,7 +102,7 @@ namespace wasSharp
 #if !__MonoCS__
             return directToKeyValue(input);
 #else
-            return ToEnumerable(input).AsParallel().Select((o, p) => new {o, p})
+            return ToEnumerable(input).ToArray().AsParallel().Select((o, p) => new {o, p})
                     .GroupBy(q => q.p/2, q => q.o)
                     .Select(o => o.ToArray())
                     .TakeWhile(o => o.Length%2 == 0)

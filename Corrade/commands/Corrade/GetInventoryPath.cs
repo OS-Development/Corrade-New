@@ -13,7 +13,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -32,19 +31,21 @@ namespace Corrade
                     }
                     HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                     object LockObject = new object();
-                    Parallel.ForEach(CSV.ToEnumerable(
+                    CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
-                            corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                        o => Parallel.ForEach(
-                            typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                            q =>
-                            {
-                                lock (LockObject)
+                            corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .ForAll(
+                            o => typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(q =>
                                 {
-                                    assetTypes.Add((AssetType) q.GetValue(null));
-                                }
-                            }));
+                                    lock (LockObject)
+                                    {
+                                        assetTypes.Add((AssetType) q.GetValue(null));
+                                    }
+                                }));
                     string pattern =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATTERN)),
@@ -63,9 +64,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
                     List<string> csv = new List<string>();
-                    Parallel.ForEach(Inventory.FindInventoryPath<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                        search, new LinkedList<string>()).AsParallel().Select(o => o.Value),
-                        o =>
+                    Inventory.FindInventoryPath<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                        search, new LinkedList<string>()).ToArray().AsParallel().Select(o => o.Value).ForAll(o =>
                         {
                             lock (LockObject)
                             {

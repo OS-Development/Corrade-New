@@ -40,7 +40,7 @@ namespace wasSharp
                 if (wasEmpty)
                     return;
 
-                while (reader.NodeType != XmlNodeType.EndElement)
+                while (!reader.NodeType.Equals(XmlNodeType.EndElement))
                 {
                     reader.ReadStartElement("Item");
 

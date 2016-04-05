@@ -13,7 +13,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -36,10 +35,10 @@ namespace Corrade
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();
 
-                    Parallel.ForEach(CSV.ToKeyValue(
+                    CSV.ToKeyValue(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MUTES)),
-                            corradeCommandParameters.Message))), o =>
+                            corradeCommandParameters.Message))).ToArray().AsParallel().ForAll(o =>
                             {
                                 IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
                                 UUID targetUUID;
@@ -97,20 +96,20 @@ namespace Corrade
                                             : MuteType.ByName;
                                         // Get the mute flags - default is "Default" equivalent to 0
                                         int muteFlags = 0;
-                                        Parallel.ForEach(CSV.ToEnumerable(
+                                        CSV.ToEnumerable(
                                             wasInput(
                                                 KeyValue.Get(
                                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
                                                     corradeCommandParameters.Message)))
+                                            .ToArray()
                                             .AsParallel()
-                                            .Where(p => !string.IsNullOrEmpty(p)),
-                                            p =>
-                                                Parallel.ForEach(
-                                                    typeof (MuteFlags).GetFields(BindingFlags.Public |
-                                                                                 BindingFlags.Static)
-                                                        .AsParallel()
-                                                        .Where(q => string.Equals(p, q.Name, StringComparison.Ordinal)),
-                                                    r => { muteFlags |= ((int) r.GetValue(null)); }));
+                                            .Where(p => !string.IsNullOrEmpty(p)).ForAll(p =>
+                                                typeof (MuteFlags).GetFields(BindingFlags.Public |
+                                                                             BindingFlags.Static)
+                                                    .AsParallel()
+                                                    .Where(q => string.Equals(p, q.Name, StringComparison.Ordinal))
+                                                    .ForAll(
+                                                        r => { muteFlags |= ((int) r.GetValue(null)); }));
                                         succeeded = true;
                                         lock (Locks.ClientInstanceSelfLock)
                                         {

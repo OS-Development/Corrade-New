@@ -14,7 +14,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -79,15 +78,18 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ROLE_NAME_SPECIFIED);
                     }
                     ulong powers = 0;
-                    Parallel.ForEach(CSV.ToEnumerable(
+                    CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POWERS)),
-                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                        o =>
-                            Parallel.ForEach(
+                                corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .ForAll(
+                            o =>
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                                q => { powers |= ((ulong) q.GetValue(null)); }));
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                        q => { powers |= ((ulong) q.GetValue(null)); }));
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.ChangeActions,

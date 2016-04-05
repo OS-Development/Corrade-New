@@ -13,7 +13,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -62,7 +61,7 @@ namespace Corrade
                     // First resolve the all the role names to role UUIDs
                     Hashtable roleUUIDNames = new Hashtable(groupRolesMembers.Count);
                     object LockObject = new object();
-                    Parallel.ForEach(groupRolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key),
+                    groupRolesMembers.ToArray().AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key).ForAll(
                         o =>
                         {
                             string roleName = string.Empty;
@@ -80,7 +79,7 @@ namespace Corrade
                         });
                     // Next, associate role names with agent names and UUIDs.
                     List<string> csv = new List<string>();
-                    Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => roleUUIDNames.ContainsKey(o.Key)), o =>
+                    groupRolesMembers.ToArray().AsParallel().Where(o => roleUUIDNames.ContainsKey(o.Key)).ForAll(o =>
                     {
                         string agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value, corradeConfiguration.ServicesTimeout,

@@ -44,14 +44,15 @@ namespace Corrade
                 HashSet<string> parts =
                     new HashSet<string>(rule.Option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
                 object LockObject = new object();
-                Parallel.ForEach(Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder,
+                Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder,
                     CORRADE_CONSTANTS.OneOrMoRegex,
                     new LinkedList<string>())
+                    .ToArray()
                     .AsParallel().Where(
                         o =>
                             o.Key is InventoryFolder &&
                             !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.DOT_MARKER) &&
-                            !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.TILDE_MARKER)), o =>
+                            !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.TILDE_MARKER)).ForAll(o =>
                             {
                                 int count = 0;
                                 Parallel.ForEach(parts, p => Parallel.ForEach(o.Value, q =>

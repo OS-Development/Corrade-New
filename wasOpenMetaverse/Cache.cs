@@ -165,7 +165,7 @@ namespace wasOpenMetaverse
             lock (RegionCacheLock)
             {
                 return
-                    _regionCache.AsParallel()
+                    _regionCache.ToArray().AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
             }
         }
@@ -219,7 +219,7 @@ namespace wasOpenMetaverse
         {
             lock (AgentCacheLock)
             {
-                return _agentCache.AsParallel().FirstOrDefault(
+                return _agentCache.ToArray().AsParallel().FirstOrDefault(
                     o =>
                         o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
                         o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
@@ -230,7 +230,7 @@ namespace wasOpenMetaverse
         {
             lock (AgentCacheLock)
             {
-                return _agentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+                return _agentCache.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
             }
         }
 
@@ -265,7 +265,7 @@ namespace wasOpenMetaverse
         {
             lock (GroupCacheLock)
             {
-                return _groupCache.FirstOrDefault(o => o.Name.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
+                return _groupCache.ToArray().AsParallel().FirstOrDefault(o => o.Name.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -273,7 +273,7 @@ namespace wasOpenMetaverse
         {
             lock (GroupCacheLock)
             {
-                return _groupCache.FirstOrDefault(o => o.UUID.Equals(GroupUUID));
+                return _groupCache.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
             }
         }
 

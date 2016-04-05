@@ -11,7 +11,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -63,10 +62,10 @@ namespace Corrade
                     }
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                     object LockObject = new object();
-                    Parallel.ForEach(CSV.ToEnumerable(
+                    CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message)))
-                        .AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(o, out roleUUID) &&

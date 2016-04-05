@@ -12,7 +12,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -42,33 +41,32 @@ namespace Corrade
                         return;
                     }
                     HashSet<string> data = new HashSet<string>();
-                    Parallel.ForEach(CSV.ToEnumerable(avatars).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                        o =>
+                    CSV.ToEnumerable(avatars).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                    {
+                        UUID agentUUID;
+                        switch (!UUID.TryParse(o, out agentUUID))
                         {
-                            UUID agentUUID;
-                            switch (!UUID.TryParse(o, out agentUUID))
-                            {
-                                case true:
-                                    List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
-                                    switch (
-                                        !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
-                                            corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout,
-                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
-                                    {
-                                        case true: // the name could not be resolved to an UUID so add it to the return
-                                            data.Add(o);
-                                            break;
-                                        default: // the name could be resolved so send them home
-                                            Client.Estate.TeleportHomeUser(agentUUID);
-                                            break;
-                                    }
-                                    break;
-                                default:
-                                    Client.Estate.TeleportHomeUser(agentUUID);
-                                    break;
-                            }
-                        });
+                            case true:
+                                List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                switch (
+                                    !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                        corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
+                                {
+                                    case true: // the name could not be resolved to an UUID so add it to the return
+                                        data.Add(o);
+                                        break;
+                                    default: // the name could be resolved so send them home
+                                        Client.Estate.TeleportHomeUser(agentUUID);
+                                        break;
+                                }
+                                break;
+                            default:
+                                Client.Estate.TeleportHomeUser(agentUUID);
+                                break;
+                        }
+                    });
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

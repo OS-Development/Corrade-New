@@ -12,7 +12,6 @@ using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -38,13 +37,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
                     }
-                    Parallel.ForEach(CSV.ToEnumerable(
-                        attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                    CSV.ToEnumerable(
+                        attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             InventoryBase inventoryBaseItem =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                                     Helpers.StringOrUUID(o)
                                     )
+                                    .ToArray()
                                     .AsParallel().FirstOrDefault(
                                         p =>
                                             p is InventoryObject || p is InventoryAttachment);

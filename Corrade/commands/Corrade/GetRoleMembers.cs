@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -76,7 +75,7 @@ namespace Corrade
                     }
                     List<string> csv = new List<string>();
                     object LockObject = new object();
-                    Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)), o =>
+                    groupRolesMembers.ToArray().AsParallel().Where(o => o.Key.Equals(roleUUID)).ForAll(o =>
                     {
                         string agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value, corradeConfiguration.ServicesTimeout,

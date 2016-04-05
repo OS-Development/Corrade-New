@@ -870,15 +870,13 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer =
-                                new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
-                            Parallel.ForEach(
-                                (Collections.SerializableDictionary<UUID, HashSet<UUID>>)
-                                    serializer.Deserialize(streamReader),
-                                o =>
+                            ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
+                                (new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>)))
+                                    .Deserialize(streamReader)).ToArray()
+                                .AsParallel()
+                                .Where(o => corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
+                                .ForAll(o =>
                                 {
-                                    if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
-                                        return;
                                     lock (GroupMembersLock)
                                     {
                                         if (!GroupMembers.Contains(o))
@@ -949,27 +947,26 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
-                            Parallel.ForEach((HashSet<GroupSchedule>) serializer.Deserialize(streamReader),
-                                o =>
-                                {
-                                    if (
-                                        !corradeConfiguration.Groups.AsParallel()
-                                            .Any(
-                                                p =>
-                                                    p.UUID.Equals(o.Group.UUID) &&
-                                                    !(p.PermissionMask & (uint) Configuration.Permissions.Schedule)
-                                                        .Equals(0) &&
-                                                    !p.Schedules.Equals(0)))
-                                        return;
-                                    lock (GroupSchedulesLock)
-                                    {
-                                        if (!GroupSchedules.Contains(o))
-                                        {
-                                            GroupSchedules.Add(o);
-                                        }
-                                    }
-                                });
+                            ((HashSet<GroupSchedule>)
+                                (new XmlSerializer(typeof (HashSet<GroupSchedule>))).Deserialize(streamReader))
+                                .ToArray()
+                                .AsParallel()
+                                .Where(o => corradeConfiguration.Groups.ToArray().AsParallel()
+                                    .Any(
+                                        p =>
+                                            p.UUID.Equals(o.Group.UUID) &&
+                                            !(p.PermissionMask & (uint) Configuration.Permissions.Schedule)
+                                                .Equals(0) &&
+                                            !p.Schedules.Equals(0))).ForAll(o =>
+                                            {
+                                                lock (GroupSchedulesLock)
+                                                {
+                                                    if (!GroupSchedules.Contains(o))
+                                                    {
+                                                        GroupSchedules.Add(o);
+                                                    }
+                                                }
+                                            });
                         }
                     }
                 }
@@ -1033,12 +1030,19 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                            Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(streamReader),
-                                o =>
+                            ((HashSet<Notification>)
+                                (new XmlSerializer(typeof (HashSet<Notification>))).Deserialize(streamReader))
+                                .ToArray()
+                                .AsParallel()
+                                .Where(
+                                    o =>
+                                        corradeConfiguration.Groups.AsParallel()
+                                            .Any(
+                                                p =>
+                                                    string.Equals(p.Name, o.GroupName,
+                                                        StringComparison.OrdinalIgnoreCase)))
+                                .ForAll(o =>
                                 {
-                                    if (!corradeConfiguration.Groups.AsParallel().Any(p => p.Name.Equals(o.GroupName)))
-                                        return;
                                     lock (GroupNotificationsLock)
                                     {
                                         if (!GroupNotifications.Contains(o))
@@ -1323,16 +1327,15 @@ namespace Corrade
                 groupUUIDs.Clear();
                 object LockObject = new object();
                 HashSet<UUID> currentGroups = new HashSet<UUID>(groups);
-                Parallel.ForEach(
-                    corradeConfiguration.Groups.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
-                        .Where(p => currentGroups.Contains(p.groupUUID))
-                        .Select(o => o.group), o =>
+                corradeConfiguration.Groups.ToArray().AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
+                    .Where(p => currentGroups.Contains(p.groupUUID))
+                    .Select(o => o.group).ForAll(o =>
+                    {
+                        lock (LockObject)
                         {
-                            lock (LockObject)
-                            {
-                                groupUUIDs.Enqueue(o.UUID);
-                            }
-                        });
+                            groupUUIDs.Enqueue(o.UUID);
+                        }
+                    });
 
 
                 // Bail if no configured groups are also joined.
@@ -1342,11 +1345,11 @@ namespace Corrade
                 memberCount.Clear();
                 lock (GroupMembersLock)
                 {
-                    Parallel.ForEach(GroupMembers.AsParallel().SelectMany(
+                    GroupMembers.AsParallel().SelectMany(
                         members => groupUUIDs,
                         (members, groupUUID) => new {members, groupUUID})
                         .Where(o => o.groupUUID.Equals(o.members.Key))
-                        .Select(p => p.members), o =>
+                        .Select(p => p.members).ForAll(o =>
                         {
                             lock (LockObject)
                             {
@@ -1851,14 +1854,12 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out parcelFlags))
                 {
                     case true:
-                        Parallel.ForEach(
-                            CSV.ToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                        CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
-                                Parallel.ForEach(
-                                    typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                                    p => { parcelFlags |= ((uint) p.GetValue(null)); });
+                                typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                        p => { parcelFlags |= ((uint) p.GetValue(null)); });
                             });
                         break;
                 }
@@ -1871,14 +1872,12 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out groupPowers))
                 {
                     case true:
-                        Parallel.ForEach(
-                            CSV.ToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                        CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
-                                Parallel.ForEach(
-                                    typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                                    p => { groupPowers |= ((uint) p.GetValue(null)); });
+                                typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                        p => { groupPowers |= ((uint) p.GetValue(null)); });
                             });
                         break;
                 }
@@ -3335,7 +3334,7 @@ namespace Corrade
                 switch (GroupNotifications.Any())
                 {
                     case true:
-                        notifyGroups.AddRange(GroupNotifications.AsParallel()
+                        notifyGroups.AddRange(GroupNotifications.ToArray().AsParallel()
                             .Where(
                                 o =>
                                     !(o.NotificationMask & (uint) notification).Equals(0) &&
@@ -4125,11 +4124,10 @@ namespace Corrade
                         HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
                             BindingFlags.Public |
                             BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                        Parallel.ForEach(
-                            Client.Self.SignaledAnimations.Copy()
-                                .Keys.AsParallel()
-                                .Where(o => !lindenAnimations.Contains(o)),
-                            o => { Client.Self.AnimationStop(o, true); });
+                        Client.Self.SignaledAnimations.Copy()
+                            .Keys.ToArray().AsParallel()
+                            .Where(o => !lindenAnimations.Contains(o))
+                            .ForAll(o => { Client.Self.AnimationStop(o, true); });
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                     }
                     return;
@@ -4289,49 +4287,47 @@ namespace Corrade
                                     }),
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Log group messages
-                            Parallel.ForEach(
-                                corradeConfiguration.Groups.AsParallel().Where(
-                                    o =>
-                                        string.Equals(messageGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                                        o.ChatLogEnabled),
+                            corradeConfiguration.Groups.ToArray().AsParallel().Where(
                                 o =>
-                                {
-                                    // Attempt to write to log file,
-                                    CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
+                                    string.Equals(messageGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                                    o.ChatLogEnabled).ForAll(o =>
                                     {
-                                        try
+                                        // Attempt to write to log file,
+                                        CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                         {
-                                            lock (GroupLogFileLock)
+                                            try
                                             {
-                                                using (
-                                                    FileStream fileStream = File.Open(o.ChatLog, FileMode.Append,
-                                                        FileAccess.Write, FileShare.None))
+                                                lock (GroupLogFileLock)
                                                 {
                                                     using (
-                                                        StreamWriter logWriter = new StreamWriter(fileStream,
-                                                            Encoding.UTF8))
+                                                        FileStream fileStream = File.Open(o.ChatLog, FileMode.Append,
+                                                            FileAccess.Write, FileShare.None))
                                                     {
-                                                        logWriter.WriteLine(
-                                                            CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                Utils.EnUsCulture.DateTimeFormat),
-                                                            fullName.First(),
-                                                            fullName.Last(),
-                                                            args.IM.Message);
+                                                        using (
+                                                            StreamWriter logWriter = new StreamWriter(fileStream,
+                                                                Encoding.UTF8))
+                                                        {
+                                                            logWriter.WriteLine(
+                                                                CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                    Utils.EnUsCulture.DateTimeFormat),
+                                                                fullName.First(),
+                                                                fullName.Last(),
+                                                                args.IM.Message);
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            // or fail and append the fail message.
-                                            Feedback(
-                                                Reflection.GetDescriptionFromEnumValue(
-                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                ex.Message);
-                                        }
-                                    }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                                });
+                                            catch (Exception ex)
+                                            {
+                                                // or fail and append the fail message.
+                                                Feedback(
+                                                    Reflection.GetDescriptionFromEnumValue(
+                                                        ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                    ex.Message);
+                                            }
+                                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                                    });
                         }
                         return;
                     }
@@ -4854,7 +4850,7 @@ namespace Corrade
             object AfterBurnLock = new object();
             HashSet<string> resultKeys = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
             HashSet<string> scriptKeys = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
-            Parallel.ForEach(KeyValue.Decode(corradeCommandParameters.Message), o =>
+            KeyValue.Decode(corradeCommandParameters.Message).ToArray().AsParallel().ForAll(o =>
             {
                 // remove keys that are script keys, result keys or invalid key-value pairs
                 if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(wasInput(o.Key)) ||
@@ -4890,7 +4886,7 @@ namespace Corrade
             }
             List<string> data;
             object LockObject = new object();
-            Parallel.ForEach(CSV.ToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)), name =>
+            CSV.ToEnumerable(query).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
             {
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name).AsParallel()
@@ -5095,7 +5091,7 @@ namespace Corrade
                             lock (GroupSchedulesLock)
                             {
                                 groupSchedules =
-                                    new HashSet<GroupSchedule>(GroupSchedules.AsParallel()
+                                    new HashSet<GroupSchedule>(GroupSchedules.ToArray().AsParallel()
                                         .Where(
                                             o =>
                                                 DateTime.Compare(DateTime.Now.ToUniversalTime(),
@@ -5191,7 +5187,7 @@ namespace Corrade
             }
 
             // Dynamically disable or enable notifications.
-            Parallel.ForEach(Reflection.GetEnumValues<Configuration.Notifications>(), o =>
+            Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
             {
                 bool enabled = configuration.Groups.AsParallel().Any(
                     p =>
@@ -5552,11 +5548,10 @@ namespace Corrade
                                                 object LockObject = new object();
                                                 if (!string.IsNullOrEmpty(fields))
                                                 {
-                                                    Parallel.ForEach(
-                                                        CSV.ToEnumerable(fields)
-                                                            .AsParallel()
-                                                            .Where(o => !string.IsNullOrEmpty(o)),
-                                                        o =>
+                                                    CSV.ToEnumerable(fields)
+                                                        .ToArray()
+                                                        .AsParallel()
+                                                        .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                                                         {
                                                             lock (LockObject)
                                                             {
@@ -5599,6 +5594,7 @@ namespace Corrade
                                                 bool succeeded = true;
                                                 Parallel.ForEach(CSV.ToEnumerable(
                                                     notificationTypes)
+                                                    .ToArray()
                                                     .AsParallel()
                                                     .Where(o => !string.IsNullOrEmpty(o)),
                                                     (o, state) =>
@@ -5715,7 +5711,7 @@ namespace Corrade
                                         lock (GroupNotificationsLock)
                                         {
                                             Notification notification =
-                                                GroupNotifications.FirstOrDefault(
+                                                GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                                     o =>
                                                         o.GroupName.Equals(commandGroup.Name,
                                                             StringComparison.OrdinalIgnoreCase));

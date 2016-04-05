@@ -49,20 +49,20 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Entity.RANGE:
-                            Parallel.ForEach(
-                                Services.GetAvatars(Client, range, corradeConfiguration.Range,
-                                    corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
-                                    .AsParallel()
-                                    .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
-                                o =>
-                                {
-                                    lock (LockObject)
+                            Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .ToArray()
+                                .AsParallel()
+                                .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range).ForAll(
+                                    o =>
                                     {
-                                        avatars.Add(o);
-                                    }
-                                });
+                                        lock (LockObject)
+                                        {
+                                            avatars.Add(o);
+                                        }
+                                    });
                             break;
                         case Entity.PARCEL:
                             Vector3 position;
@@ -83,7 +83,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
-                            Parallel.ForEach(Services.GetAvatars(Client, new[]
+                            Services.GetAvatars(Client, new[]
                             {
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -94,8 +94,9 @@ namespace Corrade
                             }.Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .ToArray()
                                 .AsParallel()
-                                .Where(o => Helpers.IsVectorInParcel(o.Position, parcel)), o =>
+                                .Where(o => Helpers.IsVectorInParcel(o.Position, parcel)).ForAll(o =>
                                 {
                                     lock (LockObject)
                                     {
@@ -127,7 +128,7 @@ namespace Corrade
                             }
                             HashSet<Parcel> regionParcels =
                                 new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
-                            Parallel.ForEach(Services.GetAvatars(Client,
+                            Services.GetAvatars(Client,
                                 regionParcels.AsParallel().Select(o => new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
@@ -139,15 +140,17 @@ namespace Corrade
                                 }.Max()).Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                .ToArray()
                                 .AsParallel()
-                                .Where(o => regionParcels.AsParallel().Any(p => Helpers.IsVectorInParcel(o.Position, p))),
-                                o =>
-                                {
-                                    lock (LockObject)
+                                .Where(o => regionParcels.AsParallel().Any(p => Helpers.IsVectorInParcel(o.Position, p)))
+                                .ForAll(
+                                    o =>
                                     {
-                                        avatars.Add(o);
-                                    }
-                                });
+                                        lock (LockObject)
+                                        {
+                                            avatars.Add(o);
+                                        }
+                                    });
                             break;
                         case Entity.AVATAR:
                             UUID agentUUID;

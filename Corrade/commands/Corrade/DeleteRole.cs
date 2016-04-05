@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -82,8 +81,12 @@ namespace Corrade
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
-                        Parallel.ForEach(args.RolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)),
-                            o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, roleUUID, o.Value));
+                        args.RolesMembers.ToArray()
+                            .AsParallel()
+                            .Where(o => o.Key.Equals(roleUUID))
+                            .ForAll(
+                                o =>
+                                    Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, roleUUID, o.Value));
                         GroupRoleMembersReplyEvent.Set();
                     };
                     lock (Locks.ClientInstanceGroupsLock)

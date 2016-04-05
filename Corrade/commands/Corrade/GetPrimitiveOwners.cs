@@ -85,7 +85,7 @@ namespace Corrade
                             break;
                     }
                     bool succeeded = true;
-                    Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
+                    Parallel.ForEach(parcels.ToArray().AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
                         (o, state) =>
                         {
                             if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))

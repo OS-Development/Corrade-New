@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -31,11 +30,9 @@ namespace Corrade
                 HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
                     BindingFlags.Public |
                     BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                Parallel.ForEach(
-                    Client.Self.SignaledAnimations.Copy()
-                        .Keys.AsParallel()
-                        .Where(o => !lindenAnimations.Contains(o)),
-                    o => { Client.Self.AnimationStop(o, true); });
+                Client.Self.SignaledAnimations.Copy()
+                    .Keys.ToArray().AsParallel()
+                    .Where(o => !lindenAnimations.Contains(o)).ForAll(o => { Client.Self.AnimationStop(o, true); });
                 // Set the camera on the avatar.
                 Client.Self.Movement.Camera.LookAt(
                     Client.Self.SimPosition,

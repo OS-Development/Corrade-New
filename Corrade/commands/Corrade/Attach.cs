@@ -86,25 +86,26 @@ namespace Corrade
                         }
                     }
                     Parallel.ForEach(items, o =>
-                        Parallel.ForEach(
-                            typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(
-                                    p =>
-                                        string.Equals(o.Key, p.Name, StringComparison.Ordinal)),
-                            q =>
-                            {
-                                InventoryBase inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                        Helpers.StringOrUUID(o.Value)
-                                        )
-                                        .AsParallel().FirstOrDefault(
-                                            r => r is InventoryObject || r is InventoryAttachment);
-                                if (inventoryBaseItem == null)
-                                    return;
-                                Inventory.Attach(Client, CurrentOutfitFolder, inventoryBaseItem as InventoryItem,
-                                    (AttachmentPoint) q.GetValue(null),
-                                    replace, corradeConfiguration.ServicesTimeout);
-                            }));
+                        typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
+                            .AsParallel().Where(
+                                p =>
+                                    string.Equals(o.Key, p.Name, StringComparison.Ordinal)).AsParallel().ForAll(
+                                        q =>
+                                        {
+                                            InventoryBase inventoryBaseItem =
+                                                Inventory.FindInventory<InventoryBase>(Client,
+                                                    Client.Inventory.Store.RootNode,
+                                                    Helpers.StringOrUUID(o.Value)
+                                                    )
+                                                    .AsParallel().FirstOrDefault(
+                                                        r => r is InventoryObject || r is InventoryAttachment);
+                                            if (inventoryBaseItem == null)
+                                                return;
+                                            Inventory.Attach(Client, CurrentOutfitFolder,
+                                                inventoryBaseItem as InventoryItem,
+                                                (AttachmentPoint) q.GetValue(null),
+                                                replace, corradeConfiguration.ServicesTimeout);
+                                        }));
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };
         }

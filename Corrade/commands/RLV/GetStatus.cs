@@ -8,7 +8,6 @@ using System;
 using System.Linq;
 using System.Text;
 using OpenMetaverse;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -41,9 +40,9 @@ namespace Corrade
                 lock (RLVRulesLock)
                 {
                     object LockObject = new object();
-                    Parallel.ForEach(RLVRules.AsParallel().Where(o =>
+                    RLVRules.ToArray().AsParallel().Where(o =>
                         o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
-                        ), o =>
+                        ).ForAll(o =>
                         {
                             lock (LockObject)
                             {

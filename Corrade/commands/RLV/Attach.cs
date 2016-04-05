@@ -9,7 +9,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using OpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -32,32 +31,31 @@ namespace Corrade
                 {
                     return;
                 }
-                Parallel.ForEach(
-                    rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
-                        .AsParallel().Select(
-                            p =>
-                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
-                                    new Regex(Regex.Escape(p),
-                                        RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                    ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))).Where(o => o != null)
-                        .SelectMany(
-                            o =>
-                                Client.Inventory.Store.GetContents(o as InventoryFolder)
-                                    .AsParallel()
-                                    .Where(Inventory.CanBeWorn)), o =>
+                rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
+                    .AsParallel().Select(
+                        p =>
+                            Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
+                                new Regex(Regex.Escape(p),
+                                    RegexOptions.Compiled | RegexOptions.IgnoreCase)
+                                ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))).Where(o => o != null)
+                    .SelectMany(
+                        o =>
+                            Client.Inventory.Store.GetContents(o as InventoryFolder)
+                                .AsParallel()
+                                .Where(Inventory.CanBeWorn)).ForAll(o =>
+                                {
+                                    if (o is InventoryWearable)
                                     {
-                                        if (o is InventoryWearable)
-                                        {
-                                            Inventory.Wear(Client, CurrentOutfitFolder, o as InventoryItem, true,
-                                                corradeConfiguration.ServicesTimeout);
-                                            return;
-                                        }
-                                        if (o is InventoryObject || o is InventoryAttachment)
-                                        {
-                                            Inventory.Attach(Client, CurrentOutfitFolder, o as InventoryItem,
-                                                AttachmentPoint.Default, true, corradeConfiguration.ServicesTimeout);
-                                        }
-                                    });
+                                        Inventory.Wear(Client, CurrentOutfitFolder, o as InventoryItem, true,
+                                            corradeConfiguration.ServicesTimeout);
+                                        return;
+                                    }
+                                    if (o is InventoryObject || o is InventoryAttachment)
+                                    {
+                                        Inventory.Attach(Client, CurrentOutfitFolder, o as InventoryItem,
+                                            AttachmentPoint.Default, true, corradeConfiguration.ServicesTimeout);
+                                    }
+                                });
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
             };
         }

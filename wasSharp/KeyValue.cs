@@ -19,8 +19,7 @@ namespace wasSharp
             ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2))
-                .Where(o => o[0].Equals(key))
+                .Where(o => o.Length.Equals(2) && o[0].Equals(key))
                 .Select(o => o[1])
                 .FirstOrDefault())).Compile();
 
@@ -29,16 +28,14 @@ namespace wasSharp
                 ((key, value, data) => string.Join("&", string.Join("&", data.Split('&')
                     .AsParallel()
                     .Select(o => o.Split('='))
-                    .Where(o => o.Length.Equals(2))
-                    .Where(o => !o[0].Equals(key))
+                    .Where(o => o.Length.Equals(2) && !o[0].Equals(key))
                     .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value)))).Compile();
 
         private static readonly Func<string, string, string> directDelete =
             ((Expression<Func<string, string, string>>) ((key, data) => string.Join("&", data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2))
-                .Where(o => !o[0].Equals(key))
+                .Where(o => o.Length.Equals(2) && !o[0].Equals(key))
                 .Select(o => string.Join("=", o[0], o[1]))
                 .ToArray()))).Compile();
 

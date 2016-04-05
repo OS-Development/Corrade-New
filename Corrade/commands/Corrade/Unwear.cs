@@ -12,7 +12,6 @@ using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -37,8 +36,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.EMPTY_WEARABLES);
                     }
-                    Parallel.ForEach(CSV.ToEnumerable(
-                        wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                    CSV.ToEnumerable(
+                        wearables).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             InventoryBase inventoryBaseItem =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,

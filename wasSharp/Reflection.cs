@@ -38,7 +38,7 @@ namespace wasSharp
         /// <returns>a list of attributes</returns>
         public static IEnumerable<T> GetEnumAttributes<T>(Enum e) where T : Attribute
         {
-            return e.GetType().GetRuntimeFields()
+            return e.GetType().GetRuntimeFields().ToArray()
                 .AsParallel()
                 .Select(o => GetAttributeFromEnumValue<T>((Enum) o.GetValue(Activator.CreateInstance<T>())));
         }
@@ -53,7 +53,7 @@ namespace wasSharp
         public static IEnumerable<string> GetEnumNames<T>()
         {
             return
-                typeof (T).GetRuntimeFields()
+                typeof (T).GetRuntimeFields().ToArray()
                     .AsParallel()
                     .Select(o => o.GetCustomAttribute(typeof (NameAttribute), false))
                     .Select(o => (o as NameAttribute)?.Name)
@@ -118,7 +118,7 @@ namespace wasSharp
         /// <returns>the value or the default of T if case no name attribute found</returns>
         public static T GetEnumValueFromName<T>(string name)
         {
-            var field = typeof (T).GetRuntimeFields()
+            var field = typeof (T).GetRuntimeFields().ToArray()
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(
                     typeof (NameAttribute), false), (
                         f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((NameAttribute) a.Att)
@@ -138,7 +138,7 @@ namespace wasSharp
         /// <returns>the description or the empty string</returns>
         public static string GetStructureMemberName<T>(T structure, object item) where T : struct
         {
-            var field = typeof (T).GetRuntimeFields()
+            var field = typeof (T).GetRuntimeFields().ToArray()
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(typeof (NameAttribute), false),
                     (f, a) => new {Field = f, Att = a}).SingleOrDefault(f => f.Field.GetValue(structure).Equals(item));
             return field != null ? ((NameAttribute) field.Att).Name : string.Empty;

@@ -13,7 +13,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -94,19 +93,20 @@ namespace Corrade
                                 : MuteType.ByName;
                             // Get the mute flags - default is "Default" equivalent to 0
                             int muteFlags = 0;
-                            Parallel.ForEach(CSV.ToEnumerable(
+                            CSV.ToEnumerable(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
                                         corradeCommandParameters.Message)))
+                                .ToArray()
                                 .AsParallel()
-                                .Where(o => !string.IsNullOrEmpty(o)),
-                                o =>
-                                    Parallel.ForEach(
-                                        typeof (MuteFlags).GetFields(BindingFlags.Public |
-                                                                     BindingFlags.Static)
-                                            .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                                        q => { muteFlags |= ((int) q.GetValue(null)); }));
+                                .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                                    typeof (MuteFlags).GetFields(BindingFlags.Public |
+                                                                 BindingFlags.Static)
+                                        .AsParallel()
+                                        .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
+                                        .ForAll(
+                                            q => { muteFlags |= ((int) q.GetValue(null)); }));
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;

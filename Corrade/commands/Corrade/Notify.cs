@@ -80,20 +80,24 @@ namespace Corrade
                                 new Collections.SerializableDictionary<string, string>();
                             if (!string.IsNullOrEmpty(afterBurnData))
                             {
+                                // remove keys that are script keys, result keys or invalid key-value pairs
                                 HashSet<string> results = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
                                 HashSet<string> scripts = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
-                                Parallel.ForEach(CSV.ToKeyValue(afterBurnData), o =>
-                                {
-                                    // remove keys that are script keys, result keys or invalid key-value pairs
-                                    if (string.IsNullOrEmpty(o.Key) || results.Contains(wasInput(o.Key)) ||
-                                        scripts.Contains(wasInput(o.Key)) ||
-                                        string.IsNullOrEmpty(o.Value))
-                                        return;
-                                    lock (LockObject)
-                                    {
-                                        afterburn.Add(o.Key, o.Value);
-                                    }
-                                });
+                                CSV.ToKeyValue(afterBurnData)
+                                    .ToArray()
+                                    .AsParallel()
+                                    .Where(
+                                        o =>
+                                            !string.IsNullOrEmpty(o.Key) && !results.Contains(wasInput(o.Key)) &&
+                                            !string.IsNullOrEmpty(o.Value) && !scripts.Contains(wasInput(o.Key)))
+                                    .ForAll(
+                                        o =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                afterburn.Add(o.Key, o.Value);
+                                            }
+                                        });
                             }
                             // Build any requested data for raw notifications.
                             string fields =
@@ -104,15 +108,18 @@ namespace Corrade
                             HashSet<string> data = new HashSet<string>();
                             if (!string.IsNullOrEmpty(fields))
                             {
-                                Parallel.ForEach(
-                                    CSV.ToEnumerable(fields).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                                    o =>
-                                    {
-                                        lock (LockObject)
+                                CSV.ToEnumerable(fields)
+                                    .ToArray()
+                                    .AsParallel()
+                                    .Where(o => !string.IsNullOrEmpty(o))
+                                    .ForAll(
+                                        o =>
                                         {
-                                            data.Add(o);
-                                        }
-                                    });
+                                            lock (LockObject)
+                                            {
+                                                data.Add(o);
+                                            }
+                                        });
                             }
                             switch (!notification.Equals(default(Notification)))
                             {
@@ -146,7 +153,7 @@ namespace Corrade
                             }
                             bool succeeded = true;
                             Parallel.ForEach(CSV.ToEnumerable(
-                                notificationTypes).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                                notificationTypes).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                                 (o, state) =>
                                 {
                                     uint notificationValue =
@@ -225,6 +232,7 @@ namespace Corrade
                                 Parallel.ForEach(GroupNotifications, o =>
                                 {
                                     if ((!CSV.ToEnumerable(notificationTypes)
+                                        .ToArray()
                                         .AsParallel()
                                         .Where(p => !string.IsNullOrEmpty(p))
                                         .Any(p => !(o.NotificationMask &
@@ -250,6 +258,7 @@ namespace Corrade
                                     Parallel.ForEach(o.NotificationURLDestination, p =>
                                     {
                                         switch (!CSV.ToEnumerable(notificationTypes)
+                                            .ToArray()
                                             .AsParallel()
                                             .Where(q => !string.IsNullOrEmpty(q))
                                             .Any(
@@ -346,6 +355,7 @@ namespace Corrade
                                             Parallel.ForEach(o.NotificationURLDestination, p =>
                                             {
                                                 switch (!CSV.ToEnumerable(notificationTypes)
+                                                    .ToArray()
                                                     .AsParallel()
                                                     .Where(q => !string.IsNullOrEmpty(q))
                                                     .Any(

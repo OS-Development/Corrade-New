@@ -131,7 +131,7 @@ namespace wasSharp
         ///     another lined-up event. This is mostly used to check that throttles
         ///     are being respected.
         /// </summary>
-        public class TimedThrottle : IDisposable
+        public sealed class TimedThrottle : IDisposable
         {
             private readonly uint EventsAllowed;
             private readonly object LockObject = new object();
@@ -164,13 +164,18 @@ namespace wasSharp
                 }
             }
 
+            ~TimedThrottle()
+            {
+                Dispose(false);
+            }
+
             public void Dispose()
             {
                 Dispose(true);
                 GC.SuppressFinalize(this);
             }
 
-            protected virtual void Dispose(bool dispose)
+            private void Dispose(bool dispose)
             {
                 if (timer != null)
                 {
@@ -190,7 +195,7 @@ namespace wasSharp
         /// <remarks>
         ///     (C) Wizardry and Steamworks 2013 - License: GNU GPLv3
         /// </remarks>
-        public class DecayingAlarm : IDisposable
+        public sealed class DecayingAlarm : IDisposable
         {
             [Flags]
             public enum DECAY_TYPE
@@ -214,6 +219,11 @@ namespace wasSharp
             public DecayingAlarm()
             {
                 Signal = new ManualResetEvent(false);
+            }
+
+            ~DecayingAlarm()
+            {
+                Dispose(false);
             }
 
             /// <summary>
@@ -288,7 +298,7 @@ namespace wasSharp
                 }
             }
 
-            protected virtual void Dispose(bool dispose)
+            private void Dispose(bool dispose)
             {
                 if (alarm != null)
                 {

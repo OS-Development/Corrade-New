@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -100,10 +99,11 @@ namespace Corrade
                                 .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
                         {
                             case true:
-                                Parallel.ForEach(rolesMembers.AsParallel().Where(
-                                    o => o.Value.Equals(agentUUID)),
-                                    o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
-                                        agentUUID));
+                                rolesMembers.ToArray().AsParallel().Where(
+                                    o => o.Value.Equals(agentUUID))
+                                    .ForAll(
+                                        o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
+                                            agentUUID));
                                 break;
                             default:
                                 throw new ScriptException(ScriptError.CANNOT_EJECT_OWNERS);

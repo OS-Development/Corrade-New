@@ -13,7 +13,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -152,15 +151,18 @@ namespace Corrade
                         ref constructionData);
                     // Get any primitive flags.
                     uint primFlags = 0;
-                    Parallel.ForEach(CSV.ToEnumerable(
+                    CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
-                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                        o =>
-                            Parallel.ForEach(
+                                corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .ForAll(
+                            o =>
                                 typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                                q => { primFlags |= ((uint) q.GetValue(null)); }));
+                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                        q => { primFlags |= ((uint) q.GetValue(null)); }));
 
                     // Finally, add the primitive to the simulator.
                     Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID, position,

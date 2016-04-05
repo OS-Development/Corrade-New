@@ -32,19 +32,22 @@ namespace Corrade
                     }
                     HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                     object LockObject = new object();
-                    Parallel.ForEach(CSV.ToEnumerable(
+                    CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
-                            corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                        o => Parallel.ForEach(
-                            typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                            q =>
-                            {
-                                lock (LockObject)
-                                {
-                                    assetTypes.Add((AssetType) q.GetValue(null));
-                                }
-                            }));
+                            corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .ForAll(
+                            o => typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                    q =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            assetTypes.Add((AssetType) q.GetValue(null));
+                                        }
+                                    }));
                     string pattern =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATTERN)),

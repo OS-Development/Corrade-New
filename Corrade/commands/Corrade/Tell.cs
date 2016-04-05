@@ -15,7 +15,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -166,46 +165,45 @@ namespace Corrade
                                 }
                             }
                             Client.Self.InstantMessageGroup(corradeCommandParameters.Group.UUID, data);
-                            Parallel.ForEach(
-                                corradeConfiguration.Groups.AsParallel().Where(
-                                    o => o.UUID.Equals(corradeCommandParameters.Group.UUID) && o.ChatLogEnabled),
-                                o =>
-                                {
-                                    CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
+                            corradeConfiguration.Groups.ToArray().AsParallel().Where(
+                                o => o.UUID.Equals(corradeCommandParameters.Group.UUID) && o.ChatLogEnabled).ForAll(
+                                    o =>
                                     {
-                                        // Attempt to write to log file,
-                                        try
+                                        CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                         {
-                                            lock (GroupLogFileLock)
+                                            // Attempt to write to log file,
+                                            try
                                             {
-                                                using (FileStream fileStream = File.Open(o.ChatLog,
-                                                    FileMode.Append, FileAccess.Write, FileShare.None))
+                                                lock (GroupLogFileLock)
                                                 {
-                                                    using (
-                                                        StreamWriter logWriter = new StreamWriter(fileStream,
-                                                            Encoding.UTF8)
-                                                        )
+                                                    using (FileStream fileStream = File.Open(o.ChatLog,
+                                                        FileMode.Append, FileAccess.Write, FileShare.None))
                                                     {
-                                                        logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                Utils.EnUsCulture.DateTimeFormat),
-                                                            myName.First(),
-                                                            myName.Last(),
-                                                            data);
+                                                        using (
+                                                            StreamWriter logWriter = new StreamWriter(fileStream,
+                                                                Encoding.UTF8)
+                                                            )
+                                                        {
+                                                            logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                    Utils.EnUsCulture.DateTimeFormat),
+                                                                myName.First(),
+                                                                myName.Last(),
+                                                                data);
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            // or fail and append the fail message.
-                                            Feedback(
-                                                Reflection.GetNameFromEnumValue(
-                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                ex.Message);
-                                        }
-                                    }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                                });
+                                            catch (Exception ex)
+                                            {
+                                                // or fail and append the fail message.
+                                                Feedback(
+                                                    Reflection.GetNameFromEnumValue(
+                                                        ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                    ex.Message);
+                                            }
+                                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                                    });
                             break;
                         case Entity.LOCAL:
                             if (string.IsNullOrEmpty(data) || (Helpers.IsSecondLife(Client) &&

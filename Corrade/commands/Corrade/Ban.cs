@@ -64,39 +64,39 @@ namespace Corrade
                             object AvatarsLock = new object();
                             Dictionary<UUID, string> avatars = new Dictionary<UUID, string>();
                             HashSet<string> data = new HashSet<string>();
-                            Parallel.ForEach(
-                                CSV.ToEnumerable(
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
-                                            corradeCommandParameters.Message)))
-                                    .AsParallel()
-                                    .Where(o => !string.IsNullOrEmpty(o)), o =>
+                            CSV.ToEnumerable(
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                        corradeCommandParameters.Message)))
+                                .ToArray()
+                                .AsParallel()
+                                .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                                {
+                                    UUID agentUUID;
+                                    if (!UUID.TryParse(o, out agentUUID))
                                     {
-                                        UUID agentUUID;
-                                        if (!UUID.TryParse(o, out agentUUID))
+                                        List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                        if (
+                                            !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                                corradeConfiguration.ServicesTimeout,
+                                                corradeConfiguration.DataTimeout,
+                                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                ref agentUUID))
                                         {
-                                            List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
-                                            if (
-                                                !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
-                                                    corradeConfiguration.ServicesTimeout,
-                                                    corradeConfiguration.DataTimeout,
-                                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
-                                                    ref agentUUID))
+                                            // Add all the unrecognized agents to the returned list.
+                                            lock (LockObject)
                                             {
-                                                // Add all the unrecognized agents to the returned list.
-                                                lock (LockObject)
-                                                {
-                                                    data.Add(o);
-                                                }
-                                                return;
+                                                data.Add(o);
                                             }
+                                            return;
                                         }
-                                        lock (AvatarsLock)
-                                        {
-                                            avatars.Add(agentUUID, o);
-                                        }
-                                    });
+                                    }
+                                    lock (AvatarsLock)
+                                    {
+                                        avatars.Add(agentUUID, o);
+                                    }
+                                });
                             if (!avatars.Any())
                                 throw new ScriptException(ScriptError.NO_AVATARS_TO_BAN_OR_UNBAN);
                             // ban or unban the avatars
@@ -186,62 +186,62 @@ namespace Corrade
                                             }
                                             Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                         }
-                                        Parallel.ForEach(
-                                            groupMembers.AsParallel().Where(o => avatars.ContainsKey(o.Value.ID)),
-                                            o =>
-                                            {
-                                                // Check their status.
-                                                switch (
-                                                    !groupRolesMembers.AsParallel()
-                                                        .Any(
-                                                            p =>
-                                                                p.Key.Equals(targetGroup.OwnerRole) &&
-                                                                p.Value.Equals(o.Value.ID))
-                                                    )
+                                        groupMembers.ToArray()
+                                            .AsParallel()
+                                            .Where(o => avatars.ContainsKey(o.Value.ID))
+                                            .ForAll(
+                                                o =>
                                                 {
-                                                    case false: // cannot demote owners
-                                                        lock (LockObject)
-                                                        {
-                                                            data.Add(avatars[o.Value.ID]);
-                                                        }
-                                                        return;
-                                                }
-                                                // Demote them.
-                                                Parallel.ForEach(
-                                                    groupRolesMembers.AsParallel().Where(
-                                                        p => p.Value.Equals(o.Value.ID)),
-                                                    p =>
-                                                        Client.Groups.RemoveFromRole(
-                                                            corradeCommandParameters.Group.UUID, p.Key,
-                                                            o.Value.ID));
-                                                ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
-                                                EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
-                                                    (sender, args) =>
+                                                    // Check their status.
+                                                    switch (
+                                                        !groupRolesMembers.ToArray().AsParallel()
+                                                            .Any(
+                                                                p =>
+                                                                    p.Key.Equals(targetGroup.OwnerRole) &&
+                                                                    p.Value.Equals(o.Value.ID))
+                                                        )
                                                     {
-                                                        succeeded = args.Success;
-                                                        GroupEjectEvent.Set();
-                                                    };
-                                                lock (Locks.ClientInstanceGroupsLock)
-                                                {
-                                                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                                                    Client.Groups.EjectUser(corradeCommandParameters.Group.UUID,
-                                                        o.Value.ID);
-                                                    GroupEjectEvent.WaitOne(
-                                                        (int) corradeConfiguration.ServicesTimeout,
-                                                        false);
-                                                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                                }
-                                                // If the eject was not successful, add them to the output.
-                                                switch (succeeded)
-                                                {
-                                                    case false:
-                                                        lock (LockObject)
+                                                        case false: // cannot demote owners
+                                                            lock (LockObject)
+                                                            {
+                                                                data.Add(avatars[o.Value.ID]);
+                                                            }
+                                                            return;
+                                                    }
+                                                    // Demote them.
+                                                    groupRolesMembers.ToArray().AsParallel().Where(
+                                                        p => p.Value.Equals(o.Value.ID)).ForAll(p =>
+                                                            Client.Groups.RemoveFromRole(
+                                                                corradeCommandParameters.Group.UUID, p.Key,
+                                                                o.Value.ID));
+                                                    ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
+                                                    EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
+                                                        (sender, args) =>
                                                         {
-                                                            data.Add(avatars[o.Value.ID]);
-                                                        }
-                                                        break;
-                                                }
-                                            });
+                                                            succeeded = args.Success;
+                                                            GroupEjectEvent.Set();
+                                                        };
+                                                    lock (Locks.ClientInstanceGroupsLock)
+                                                    {
+                                                        Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                                        Client.Groups.EjectUser(corradeCommandParameters.Group.UUID,
+                                                            o.Value.ID);
+                                                        GroupEjectEvent.WaitOne(
+                                                            (int) corradeConfiguration.ServicesTimeout,
+                                                            false);
+                                                        Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                                    }
+                                                    // If the eject was not successful, add them to the output.
+                                                    switch (succeeded)
+                                                    {
+                                                        case false:
+                                                            lock (LockObject)
+                                                            {
+                                                                data.Add(avatars[o.Value.ID]);
+                                                            }
+                                                            break;
+                                                    }
+                                                });
                                     }
                                     break;
                             }

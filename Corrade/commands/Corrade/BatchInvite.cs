@@ -13,7 +13,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -105,15 +104,14 @@ namespace Corrade
                     }
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
-                    Parallel.ForEach(
-                        CSV.ToEnumerable(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
-                                    corradeCommandParameters.Message)))
-                            .AsParallel()
-                            .Where(o => !string.IsNullOrEmpty(o)),
-                        o =>
+                    CSV.ToEnumerable(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))

@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -56,15 +55,17 @@ namespace Corrade
                         throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
                     }
                     int rights = 0;
-                    Parallel.ForEach(CSV.ToEnumerable(
+                    CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RIGHTS)),
-                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
-                        o =>
-                            Parallel.ForEach(
-                                typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)),
-                                q => { rights |= ((int) q.GetValue(null)); }));
+                                corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .ForAll(
+                            o => typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                    q => { rights |= ((int) q.GetValue(null)); }));
                     Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
                 };
         }

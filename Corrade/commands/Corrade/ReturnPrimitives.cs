@@ -133,40 +133,45 @@ namespace Corrade
                                 : ObjectReturnType.Other;
                             if (!simulator.IsEstateManager)
                             {
-                                Parallel.ForEach(
-                                    parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
-                                    {
-                                        if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                                parcels.ToArray()
+                                    .AsParallel()
+                                    .Where(o => !o.OwnerID.Equals(Client.Self.AgentID))
+                                    .ForAll(
+                                        o =>
                                         {
-                                            throw new Exception(
-                                                Reflection.GetNameFromEnumValue(
-                                                    ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                        }
-                                        GroupPowers power = new GroupPowers();
-                                        switch (returnType)
-                                        {
-                                            case ObjectReturnType.Other:
-                                                power = GroupPowers.ReturnNonGroup;
-                                                break;
-                                            case ObjectReturnType.Group:
-                                                power = GroupPowers.ReturnGroupSet;
-                                                break;
-                                            case ObjectReturnType.Owner:
-                                                power = GroupPowers.ReturnGroupOwned;
-                                                break;
-                                        }
-                                        if (
-                                            !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                                corradeCommandParameters.Group.UUID,
-                                                power,
-                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                        {
-                                            throw new Exception(
-                                                Reflection.GetNameFromEnumValue(
-                                                    ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                        }
-                                    });
+                                            if (!o.IsGroupOwned ||
+                                                !o.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                                            {
+                                                throw new Exception(
+                                                    Reflection.GetNameFromEnumValue(
+                                                        ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                            }
+                                            GroupPowers power = new GroupPowers();
+                                            switch (returnType)
+                                            {
+                                                case ObjectReturnType.Other:
+                                                    power = GroupPowers.ReturnNonGroup;
+                                                    break;
+                                                case ObjectReturnType.Group:
+                                                    power = GroupPowers.ReturnGroupSet;
+                                                    break;
+                                                case ObjectReturnType.Owner:
+                                                    power = GroupPowers.ReturnGroupOwned;
+                                                    break;
+                                            }
+                                            if (
+                                                !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                                    corradeCommandParameters.Group.UUID,
+                                                    power,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
+                                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                            {
+                                                throw new Exception(
+                                                    Reflection.GetNameFromEnumValue(
+                                                        ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                            }
+                                        });
                             }
                             Parallel.ForEach(parcels,
                                 o =>

@@ -13,7 +13,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -100,15 +99,14 @@ namespace Corrade
                     }
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
-                    Parallel.ForEach(
-                        CSV.ToEnumerable(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
-                                    corradeCommandParameters.Message)))
-                            .AsParallel()
-                            .Where(o => !string.IsNullOrEmpty(o)),
-                        o =>
+                    CSV.ToEnumerable(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))
@@ -155,10 +153,14 @@ namespace Corrade
                                     return;
                             }
                             // Demote them.
-                            Parallel.ForEach(
-                                groupRolesMembers.AsParallel().Where(
-                                    p => p.Value.Equals(agentUUID)),
-                                p => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, p.Key, agentUUID));
+                            groupRolesMembers.ToArray().AsParallel().Where(
+                                p => p.Value.Equals(agentUUID))
+                                .ForAll(
+                                    p =>
+                                    {
+                                        Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, p.Key,
+                                            agentUUID);
+                                    });
                             // And eject them.
                             ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
                             bool succeeded = false;
