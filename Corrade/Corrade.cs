@@ -416,7 +416,9 @@ namespace Corrade
         private static readonly List<ScriptDialog> ScriptDialogs = new List<ScriptDialog>();
         private static readonly object ScriptDialogLock = new object();
 
-        private static Dictionary<UUID, int> CurrentAnimations = new Dictionary<UUID, int>();
+        private static readonly HashSet<KeyValuePair<UUID, int>> CurrentAnimations =
+            new HashSet<KeyValuePair<UUID, int>>();
+
         private static readonly object CurrentAnimationsLock = new object();
 
         private static readonly Collections.SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
@@ -3334,19 +3336,25 @@ namespace Corrade
         private static void SendNotification(Configuration.Notifications notification, object args)
         {
             // Create a list of groups that have the notification installed.
-            List<Notification> notifyGroups = new List<Notification>();
+            HashSet<Notification> notifyGroups = new HashSet<Notification>();
             lock (GroupNotificationsLock)
             {
                 switch (GroupNotifications.Any())
                 {
                     case true:
-                        notifyGroups.AddRange(GroupNotifications.ToArray().AsParallel()
+                        HashSet<UUID> groupUUIDs =
+                            new HashSet<UUID>(
+                                corradeConfiguration.Groups.ToArray()
+                                    .AsParallel()
+                                    .Where(o => !(o.NotificationMask & (uint) notification).Equals(0))
+                                    .Select(o => o.UUID));
+
+                        notifyGroups.UnionWith(GroupNotifications.ToArray()
+                            .AsParallel()
                             .Where(
                                 o =>
                                     !(o.NotificationMask & (uint) notification).Equals(0) &&
-                                    corradeConfiguration.Groups.ToArray().AsParallel().Any(
-                                        p => string.Equals(o.GroupName, p.Name, StringComparison.OrdinalIgnoreCase) &&
-                                             !(p.NotificationMask & (uint) notification).Equals(0))));
+                                    groupUUIDs.Contains(o.GroupUUID)));
                         break;
                     default:
                         return;
@@ -3504,19 +3512,12 @@ namespace Corrade
 
         private static void HandleAnimationsChanged(object sender, AnimationsChangedEventArgs e)
         {
-            Dictionary<UUID, int> changedAnimations = new Dictionary<UUID, int>();
             lock (CurrentAnimationsLock)
             {
-                changedAnimations =
-                    e.Animations.Copy().AsParallel()
-                        .Where(o => !CurrentAnimations.ContainsKey(o.Key))
-                        .ToDictionary(o => o.Key, o => o.Value);
-            }
-            if (changedAnimations.Count.Equals(0))
-                return;
-            lock (CurrentAnimationsLock)
-            {
-                CurrentAnimations = changedAnimations;
+                if (!e.Animations.Copy().Except(CurrentAnimations).Any())
+                    return;
+                CurrentAnimations.Clear();
+                CurrentAnimations.UnionWith(e.Animations.Copy());
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.AnimationsChanged, e),
@@ -5586,7 +5587,7 @@ namespace Corrade
                                                             }
                                                         });
                                                 }
-                                                switch (!notification.Equals(default(Notification)))
+                                                switch (notification != null)
                                                 {
                                                     case false:
                                                         notification = new Notification
@@ -5742,7 +5743,7 @@ namespace Corrade
                                                     o =>
                                                         o.GroupName.Equals(commandGroup.Name,
                                                             StringComparison.OrdinalIgnoreCase));
-                                            if (!notification.Equals(default(Notification)))
+                                            if (notification != null)
                                             {
                                                 Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
                                                     notificationTCPDestination =
@@ -7249,7 +7250,7 @@ namespace Corrade
         ///     A Corrade notification.
         /// </summary>
         [Serializable]
-        public struct Notification
+        public class Notification
         {
             public Collections.SerializableDictionary<string, string> Afterburn;
             public HashSet<string> Data;

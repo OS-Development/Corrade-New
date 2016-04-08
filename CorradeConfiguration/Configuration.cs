@@ -183,7 +183,7 @@ namespace CorradeConfiguration
         private uint _schedulerExpiration = 60000;
         private uint _schedulesResolution = 1000;
         private uint _servicesTimeout = 60000;
-        private string _startLocation = "last";
+        private string _startLocation = @"last";
         private uint _TCPnotificationQueueLength = 100;
         private string _TCPNotificationsServerAddress = @"0.0.0.0";
         private uint _TCPNotificationsServerPort = 8095;

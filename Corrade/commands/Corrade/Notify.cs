@@ -121,7 +121,7 @@ namespace Corrade
                                             }
                                         });
                             }
-                            switch (!notification.Equals(default(Notification)))
+                            switch (notification != null)
                             {
                                 case false:
                                     notification = new Notification
@@ -316,7 +316,7 @@ namespace Corrade
                                         o =>
                                             o.GroupName.Equals(corradeCommandParameters.Group.Name,
                                                 StringComparison.OrdinalIgnoreCase));
-                                if (!groupNotification.Equals(default(Notification)))
+                                if (groupNotification != null)
                                 {
                                     Parallel.ForEach(Reflection.GetEnumNames<Configuration.Notifications>(), o =>
                                     {
@@ -396,7 +396,7 @@ namespace Corrade
                                         o =>
                                             o.GroupName.Equals(corradeCommandParameters.Group.Name,
                                                 StringComparison.OrdinalIgnoreCase));
-                                if (!groupNotification.Equals(default(Notification)))
+                                if (groupNotification != null)
                                 {
                                     GroupNotifications.Remove(groupNotification);
                                 }

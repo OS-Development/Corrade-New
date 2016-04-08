@@ -4,7 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
@@ -23,6 +26,36 @@ namespace wasSharp
             : Dictionary<TKey, TValue>, IXmlSerializable
         {
             #region IXmlSerializable Members
+
+            /// <summary>
+            ///     Deep-clones the serializable dictionary.
+            /// </summary>
+            /// <returns>a deep clone of the original dictionary</returns>
+            public SerializableDictionary<TKey, TValue> Clone()
+            {
+                SerializableDictionary<TKey, TValue> clone;
+                try
+                {
+                    using (MemoryStream writer = new MemoryStream())
+                    {
+                        XmlSerializer serializer =
+                            new XmlSerializer(
+                                typeof (SerializableDictionary<TKey, TValue>));
+                        serializer.Serialize(writer, this);
+                        writer.Seek(0, SeekOrigin.Begin);
+                        clone = (SerializableDictionary<TKey, TValue>)
+                            new XmlSerializer(
+                                typeof (SerializableDictionary<TKey, TValue>))
+                                .Deserialize(writer);
+                    }
+                }
+                /* cloning failed so return an empty dictionary */
+                catch (Exception)
+                {
+                    clone = new SerializableDictionary<TKey, TValue>();
+                }
+                return clone;
+            }
 
             public XmlSchema GetSchema()
             {
