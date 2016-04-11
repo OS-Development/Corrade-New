@@ -46,12 +46,10 @@ namespace Corrade
                     Client.Self.Stand();
                 }
                 // stop all non-built-in animations
-                HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
-                    BindingFlags.Public |
-                    BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                 Client.Self.SignaledAnimations.Copy()
                     .Keys.AsParallel()
-                    .Where(o => !lindenAnimations.Contains(o)).ForAll(o => { Client.Self.AnimationStop(o, true); });
+                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
                 lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;

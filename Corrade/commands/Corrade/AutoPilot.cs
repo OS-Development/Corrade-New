@@ -59,12 +59,9 @@ namespace Corrade
                             {
                                 case true:
                                     // stop all non-built-in animations
-                                    HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
-                                        BindingFlags.Public |
-                                        BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                                     Client.Self.SignaledAnimations.Copy()
                                         .Keys.AsParallel()
-                                        .Where(o => !lindenAnimations.Contains(o))
+                                        .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                         .ForAll(o => { Client.Self.AnimationStop(o, true); });
                                     break;
                             }

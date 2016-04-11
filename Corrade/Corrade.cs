@@ -44,6 +44,55 @@ namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
+
+        public partial class CorradeNotifications
+        {
+            private static readonly
+                Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications
+                    = typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                        .AsParallel()
+                        .Where(
+                            o =>
+                                o.FieldType ==
+                                typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
+                        .ToDictionary(o => o.Name,
+                            o => (Action<CorradeNotificationParameters, Dictionary<string, string>>) o?.GetValue(null),
+                            StringComparer.OrdinalIgnoreCase);
+
+            public Action<CorradeNotificationParameters, Dictionary<string, string>> this[string name] 
+            {
+                get
+                {
+                    Action<CorradeNotificationParameters, Dictionary<string, string>> action;
+                    return notifications.TryGetValue(name, out action) ? action : null;
+                }
+            }
+        }
+
+        public partial class CorradeCommands
+        {
+            private static readonly
+                Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications
+                    = typeof(CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                        .AsParallel()
+                        .Where(
+                            o =>
+                                o.FieldType ==
+                                typeof(Action<CorradeNotificationParameters, Dictionary<string, string>>))
+                        .ToDictionary(o => o.Name,
+                            o => (Action<CorradeNotificationParameters, Dictionary<string, string>>)o?.GetValue(null),
+                            StringComparer.OrdinalIgnoreCase);
+
+            public Action<CorradeNotificationParameters, Dictionary<string, string>> this[string name]
+            {
+                get
+                {
+                    Action<CorradeNotificationParameters, Dictionary<string, string>> action;
+                    return notifications.TryGetValue(name, out action) ? action : null;
+                }
+            }
+        }
+
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
@@ -445,6 +494,8 @@ namespace Corrade
         private static readonly object GroupSchedulesLock = new object();
         private static volatile bool AIMLBotBrainCompiled;
 
+        private static readonly CorradeNotifications corradeNotifications = new CorradeNotifications();
+
         /// <summary>
         ///     The various types of threads created by Corrade.
         /// </summary>
@@ -604,12 +655,9 @@ namespace Corrade
                 if (
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
                         corradeConfiguration.ServicesTimeout, ref parcel)) return;
-                Configuration.Group landGroup =
-                    corradeConfiguration.Groups.ToArray()
-                        .AsParallel()
-                        .FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
-                if (landGroup.UUID.Equals(UUID.Zero)) return;
-                Client.Groups.ActivateGroup(landGroup.UUID);
+                HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                if (!groups.Contains(parcel.GroupID)) return;
+                Client.Groups.ActivateGroup(parcel.GroupID);
             });
 
         public static EventHandler ConsoleEventHandler;
@@ -874,15 +922,13 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
+                            HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
                                 (new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>)))
                                     .Deserialize(streamReader))
                                 .ToArray().AsParallel()
                                 .Where(
-                                    o =>
-                                        corradeConfiguration.Groups.ToArray()
-                                            .AsParallel()
-                                            .Any(p => p.UUID.Equals(o.Key)))
+                                    o => groups.Contains(o.Key))
                                 .ForAll(o =>
                                 {
                                     lock (GroupMembersLock)
@@ -1037,16 +1083,12 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
+                            HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             ((HashSet<Notification>)
                                 (new XmlSerializer(typeof (HashSet<Notification>))).Deserialize(streamReader))
                                 .ToArray().AsParallel()
                                 .Where(
-                                    o =>
-                                        corradeConfiguration.Groups.ToArray().AsParallel()
-                                            .Any(
-                                                p =>
-                                                    string.Equals(p.Name, o.GroupName,
-                                                        StringComparison.OrdinalIgnoreCase)))
+                                    o => groups.Contains(o.GroupUUID))
                                 .ForAll(o =>
                                 {
                                     lock (GroupNotificationsLock)
@@ -3353,8 +3395,8 @@ namespace Corrade
                             .AsParallel()
                             .Where(
                                 o =>
-                                    !(o.NotificationMask & (uint) notification).Equals(0) &&
-                                    groupUUIDs.Contains(o.GroupUUID)));
+                                    groupUUIDs.Contains(o.GroupUUID) &&
+                                    !(o.NotificationMask & (uint) notification).Equals(0)));
                         break;
                     default:
                         return;
@@ -3368,7 +3410,7 @@ namespace Corrade
             Action<CorradeNotificationParameters, Dictionary<string, string>> CorradeNotification = null;
             try
             {
-                FieldInfo fi =
+                /*FieldInfo fi =
                     typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
                         .AsParallel()
                         .Where(
@@ -3377,7 +3419,8 @@ namespace Corrade
                                 typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
                         .SingleOrDefault(o => o.Name.Equals(Reflection.GetNameFromEnumValue(notification)));
                 CorradeNotification =
-                    (Action<CorradeNotificationParameters, Dictionary<string, string>>) fi?.GetValue(null);
+                    (Action<CorradeNotificationParameters, Dictionary<string, string>>) fi?.GetValue(null);*/
+                CorradeNotification = corradeNotifications[Reflection.GetNameFromEnumValue(notification)];
                 if (CorradeNotification == null)
                     throw new Exception(
                         Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
@@ -4145,12 +4188,9 @@ namespace Corrade
                             Client.Self.Stand();
                         }
                         // stop all non-built-in animations
-                        HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
-                            BindingFlags.Public |
-                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                         Client.Self.SignaledAnimations.Copy()
                             .Keys.AsParallel()
-                            .Where(o => !lindenAnimations.Contains(o))
+                            .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                     }
