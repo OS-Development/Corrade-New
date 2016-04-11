@@ -45,54 +45,6 @@ namespace Corrade
     public partial class Corrade : ServiceBase
     {
 
-        public partial class CorradeNotifications
-        {
-            private static readonly
-                Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications
-                    = typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
-                        .AsParallel()
-                        .Where(
-                            o =>
-                                o.FieldType ==
-                                typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
-                        .ToDictionary(o => o.Name,
-                            o => (Action<CorradeNotificationParameters, Dictionary<string, string>>) o?.GetValue(null),
-                            StringComparer.OrdinalIgnoreCase);
-
-            public Action<CorradeNotificationParameters, Dictionary<string, string>> this[string name] 
-            {
-                get
-                {
-                    Action<CorradeNotificationParameters, Dictionary<string, string>> action;
-                    return notifications.TryGetValue(name, out action) ? action : null;
-                }
-            }
-        }
-
-        public partial class CorradeCommands
-        {
-            private static readonly
-                Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications
-                    = typeof(CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
-                        .AsParallel()
-                        .Where(
-                            o =>
-                                o.FieldType ==
-                                typeof(Action<CorradeNotificationParameters, Dictionary<string, string>>))
-                        .ToDictionary(o => o.Name,
-                            o => (Action<CorradeNotificationParameters, Dictionary<string, string>>)o?.GetValue(null),
-                            StringComparer.OrdinalIgnoreCase);
-
-            public Action<CorradeNotificationParameters, Dictionary<string, string>> this[string name]
-            {
-                get
-                {
-                    Action<CorradeNotificationParameters, Dictionary<string, string>> action;
-                    return notifications.TryGetValue(name, out action) ? action : null;
-                }
-            }
-        }
-
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
@@ -495,6 +447,7 @@ namespace Corrade
         private static volatile bool AIMLBotBrainCompiled;
 
         private static readonly CorradeNotifications corradeNotifications = new CorradeNotifications();
+        private static readonly CorradeCommands corradeCommands = new CorradeCommands();
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -3407,27 +3360,13 @@ namespace Corrade
             if (!notifyGroups.Any()) return;
 
             // Find the notification action.
-            Action<CorradeNotificationParameters, Dictionary<string, string>> CorradeNotification = null;
-            try
+            Action<CorradeNotificationParameters, Dictionary<string, string>> CorradeNotification =
+                corradeNotifications[Reflection.GetNameFromEnumValue(notification)];
+            if (CorradeNotification == null)
             {
-                /*FieldInfo fi =
-                    typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
-                        .AsParallel()
-                        .Where(
-                            o =>
-                                o.FieldType ==
-                                typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
-                        .SingleOrDefault(o => o.Name.Equals(Reflection.GetNameFromEnumValue(notification)));
-                CorradeNotification =
-                    (Action<CorradeNotificationParameters, Dictionary<string, string>>) fi?.GetValue(null);*/
-                CorradeNotification = corradeNotifications[Reflection.GetNameFromEnumValue(notification)];
-                if (CorradeNotification == null)
-                    throw new Exception(
-                        Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE),
+                    Reflection.GetNameFromEnumValue(notification));
                 return;
             }
 
@@ -8425,15 +8364,72 @@ namespace Corrade
         {
             public CorradeCommandAttribute(string command)
             {
-                FieldInfo fi =
-                    typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
-                        .AsParallel()
-                        .Where(o => o.FieldType == typeof (Action<CorradeCommandParameters, Dictionary<string, string>>))
-                        .SingleOrDefault(o => o.Name.Equals(command));
-                CorradeCommand = (Action<CorradeCommandParameters, Dictionary<string, string>>) fi?.GetValue(null);
+                CorradeCommand = corradeCommands[command];
             }
 
             public Action<CorradeCommandParameters, Dictionary<string, string>> CorradeCommand { get; }
+        }
+
+        public partial class CorradeNotifications
+        {
+
+            private static readonly
+                Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications =
+                    new Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>>(
+                        StringComparer.OrdinalIgnoreCase);
+
+            public CorradeNotifications()
+            {
+                typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                    .AsParallel()
+                    .Where(
+                        o =>
+                            o.FieldType ==
+                            typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
+                    .ForAll(
+                        o =>
+                            notifications.Add(o.Name,
+                                (Action<CorradeNotificationParameters, Dictionary<string, string>>) o.GetValue(null)));
+            }
+
+            public Action<CorradeNotificationParameters, Dictionary<string, string>> this[string name]
+            {
+                get
+                {
+                    Action<CorradeNotificationParameters, Dictionary<string, string>> action;
+                    return notifications.TryGetValue(name, out action) ? action : null;
+                }
+            }
+        }
+
+        public partial class CorradeCommands
+        {
+
+            private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
+                commands = new Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>();
+
+            public CorradeCommands()
+            {
+                typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
+                    .AsParallel()
+                    .Where(
+                        o =>
+                            o.FieldType ==
+                            typeof (Action<CorradeCommandParameters, Dictionary<string, string>>))
+                    .ForAll(
+                        o =>
+                            commands.Add(o.Name,
+                                (Action<CorradeCommandParameters, Dictionary<string, string>>) o?.GetValue(null)));
+            }
+
+            public Action<CorradeCommandParameters, Dictionary<string, string>> this[string name]
+            {
+                get
+                {
+                    Action<CorradeCommandParameters, Dictionary<string, string>> command;
+                    return commands.TryGetValue(name, out command) ? command : null;
+                }
+            }
         }
 
         private class RLVBehaviourAttribute : Attribute
