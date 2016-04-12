@@ -7,12 +7,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
-using wasSharp = wasSharp.wasSharp;
 
 namespace wasOpenMetaverse
 {
@@ -668,17 +666,17 @@ namespace wasOpenMetaverse
                             .ToDictionary(o => o.LocalID, p => p));
                 semaphore[0].Set();
             })
-            { IsBackground = true}.Start();
+            {IsBackground = true}.Start();
             Dictionary<uint, Avatar> objectsAvatars = null;
             new Thread(() =>
             {
                 objectsAvatars =
-                new Dictionary<uint, Avatar>(
-                    GetAvatars(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
-                        .ToDictionary(o => o.LocalID, p => p));
+                    new Dictionary<uint, Avatar>(
+                        GetAvatars(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                            .ToDictionary(o => o.LocalID, p => p));
                 semaphore[1].Set();
             })
-            { IsBackground = true}.Start();
+            {IsBackground = true}.Start();
             if (!WaitHandle.WaitAll(semaphore.Select(o => (WaitHandle) o).ToArray(), (int) millisecondsTimeout, false))
                 return false;
             object LockObject = new object();
@@ -705,7 +703,7 @@ namespace wasOpenMetaverse
                 } while (!parent.ParentID.Equals(0));
                 // Ignore the object if the parent is out of range.
                 if (Vector3.Distance(parent.Position, Client.Self.SimPosition) > range) return;
-                if (typeof(T) == typeof(UUID) && o.ID.Equals(item))
+                if (item is UUID && o.ID.Equals(item))
                 {
                     lock (LockObject)
                     {
@@ -713,7 +711,7 @@ namespace wasOpenMetaverse
                     }
                     return;
                 }
-                if (typeof(T) == typeof(string))
+                if (item is string)
                 {
                     lock (LockObject)
                     {

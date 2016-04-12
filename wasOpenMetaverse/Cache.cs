@@ -11,13 +11,12 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 using OpenMetaverse;
-using OpenMetaverse.Assets;
 
 namespace wasOpenMetaverse
 {
     public static class Cache
     {
-        private static HashSet<Regions> _regionCache = new HashSet<Regions>(); 
+        private static HashSet<Regions> _regionCache = new HashSet<Regions>();
         private static HashSet<Agents> _agentCache = new HashSet<Agents>();
         private static HashSet<Groups> _groupCache = new HashSet<Groups>();
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
@@ -265,7 +264,10 @@ namespace wasOpenMetaverse
         {
             lock (GroupCacheLock)
             {
-                return _groupCache.ToArray().AsParallel().FirstOrDefault(o => o.Name.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
+                return
+                    _groupCache.ToArray()
+                        .AsParallel()
+                        .FirstOrDefault(o => o.Name.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
             }
         }
 

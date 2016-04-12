@@ -448,9 +448,39 @@ namespace Corrade
         private static readonly object GroupSchedulesLock = new object();
         private static volatile bool AIMLBotBrainCompiled;
 
-        private static readonly CorradeNotifications corradeNotifications = new CorradeNotifications();
-        private static readonly CorradeCommands corradeCommands = new CorradeCommands();
-        private static readonly RLVBehaviours rlvBehaviours = new RLVBehaviours();
+        private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
+            corradeCommands = typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .AsParallel()
+                .Where(
+                    o =>
+                        o.FieldType ==
+                        typeof (Action<CorradeCommandParameters, Dictionary<string, string>>))
+                .ToDictionary(
+                    o => o.Name, o =>
+                        (Action<CorradeCommandParameters, Dictionary<string, string>>) o.GetValue(null));
+
+        private static readonly Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>>
+            corradeNotifications =
+                typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                    .AsParallel()
+                    .Where(
+                        o =>
+                            o.FieldType ==
+                            typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
+                    .ToDictionary(
+                        o => o.Name, o =>
+                            (Action<CorradeNotificationParameters, Dictionary<string, string>>) o.GetValue(null));
+
+        private static readonly Dictionary<string, Action<string, RLVRule, UUID>>
+            rlvBehaviours = typeof (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .AsParallel()
+                .Where(
+                    o =>
+                        o.FieldType ==
+                        typeof (Action<string, RLVRule, UUID>))
+                .ToDictionary(
+                    o => o.Name, o =>
+                        (Action<string, RLVRule, UUID>) o.GetValue(null));
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -8404,68 +8434,6 @@ namespace Corrade
             public Action<CorradeCommandParameters, Dictionary<string, string>> CorradeCommand { get; }
         }
 
-        public partial class CorradeNotifications
-        {
-            private static readonly
-                Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications =
-                    new Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>>(
-                        StringComparer.OrdinalIgnoreCase);
-
-            public CorradeNotifications()
-            {
-                typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
-                    .AsParallel()
-                    .Where(
-                        o =>
-                            o.FieldType ==
-                            typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
-                    .ForAll(
-                        o =>
-                            notifications.Add(o.Name,
-                                (Action<CorradeNotificationParameters, Dictionary<string, string>>) o.GetValue(null)));
-            }
-
-            public Action<CorradeNotificationParameters, Dictionary<string, string>> this[string name]
-            {
-                get
-                {
-                    Action<CorradeNotificationParameters, Dictionary<string, string>> action;
-                    return notifications.TryGetValue(name, out action) ? action : null;
-                }
-            }
-        }
-
-        public partial class CorradeCommands
-        {
-            private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
-                commands =
-                    new Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>(
-                        StringComparer.OrdinalIgnoreCase);
-
-            public CorradeCommands()
-            {
-                typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
-                    .AsParallel()
-                    .Where(
-                        o =>
-                            o.FieldType ==
-                            typeof (Action<CorradeCommandParameters, Dictionary<string, string>>))
-                    .ForAll(
-                        o =>
-                            commands.Add(o.Name,
-                                (Action<CorradeCommandParameters, Dictionary<string, string>>) o?.GetValue(null)));
-            }
-
-            public Action<CorradeCommandParameters, Dictionary<string, string>> this[string name]
-            {
-                get
-                {
-                    Action<CorradeCommandParameters, Dictionary<string, string>> command;
-                    return commands.TryGetValue(name, out command) ? command : null;
-                }
-            }
-        }
-
         private class RLVBehaviourAttribute : Attribute
         {
             public RLVBehaviourAttribute(string behaviour)
@@ -8474,35 +8442,6 @@ namespace Corrade
             }
 
             public Action<string, RLVRule, UUID> RLVBehaviour { get; }
-        }
-
-        public partial class RLVBehaviours
-        {
-            private static readonly Dictionary<string, Action<string, RLVRule, UUID>>
-                behaviours = new Dictionary<string, Action<string, RLVRule, UUID>>(StringComparer.OrdinalIgnoreCase);
-
-            public RLVBehaviours()
-            {
-                typeof (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
-                    .AsParallel()
-                    .Where(
-                        o =>
-                            o.FieldType ==
-                            typeof (Action<string, RLVRule, UUID>))
-                    .ForAll(
-                        o =>
-                            behaviours.Add(o.Name,
-                                (Action<string, RLVRule, UUID>) o?.GetValue(null)));
-            }
-
-            public Action<string, RLVRule, UUID> this[string name]
-            {
-                get
-                {
-                    Action<string, RLVRule, UUID> behaviour;
-                    return behaviours.TryGetValue(name, out behaviour) ? behaviour : null;
-                }
-            }
         }
 
         /// <summary>

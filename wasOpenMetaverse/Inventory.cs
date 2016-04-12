@@ -327,10 +327,10 @@ namespace wasOpenMetaverse
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
             {
                 // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(q.FolderID).AsParallel().Where(r => r is InventoryFolder).ForAll(r =>
-                {
-                    inventoryFolders.Enqueue(r as InventoryFolder);
-                });
+                Client.Inventory.Store.GetContents(q.FolderID)
+                    .AsParallel()
+                    .Where(r => r is InventoryFolder)
+                    .ForAll(r => { inventoryFolders.Enqueue(r as InventoryFolder); });
                 FolderUpdatedEvent.Set();
             };
 
@@ -363,7 +363,7 @@ namespace wasOpenMetaverse
             {
                 StringBuilder seg = new StringBuilder();
 
-                switch (!((uint)o & (uint)PermissionMask.Copy).Equals(0))
+                switch (!((uint) o & (uint) PermissionMask.Copy).Equals(0))
                 {
                     case true:
                         seg.Append("c");
@@ -373,7 +373,7 @@ namespace wasOpenMetaverse
                         break;
                 }
 
-                switch (!((uint)o & (uint)PermissionMask.Damage).Equals(0))
+                switch (!((uint) o & (uint) PermissionMask.Damage).Equals(0))
                 {
                     case true:
                         seg.Append("d");
@@ -383,7 +383,7 @@ namespace wasOpenMetaverse
                         break;
                 }
 
-                switch (!((uint)o & (uint)PermissionMask.Export).Equals(0))
+                switch (!((uint) o & (uint) PermissionMask.Export).Equals(0))
                 {
                     case true:
                         seg.Append("e");
@@ -393,7 +393,7 @@ namespace wasOpenMetaverse
                         break;
                 }
 
-                switch (!((uint)o & (uint)PermissionMask.Modify).Equals(0))
+                switch (!((uint) o & (uint) PermissionMask.Modify).Equals(0))
                 {
                     case true:
                         seg.Append("m");
@@ -403,7 +403,7 @@ namespace wasOpenMetaverse
                         break;
                 }
 
-                switch (!((uint)o & (uint)PermissionMask.Move).Equals(0))
+                switch (!((uint) o & (uint) PermissionMask.Move).Equals(0))
                 {
                     case true:
                         seg.Append("v");
@@ -413,7 +413,7 @@ namespace wasOpenMetaverse
                         break;
                 }
 
-                switch (!((uint)o & (uint)PermissionMask.Transfer).Equals(0))
+                switch (!((uint) o & (uint) PermissionMask.Transfer).Equals(0))
                 {
                     case true:
                         seg.Append("t");
@@ -453,42 +453,42 @@ namespace wasOpenMetaverse
                 switch (!char.ToLower(o[0]).Equals('c'))
                 {
                     case false:
-                        r |= (uint)PermissionMask.Copy;
+                        r |= (uint) PermissionMask.Copy;
                         break;
                 }
 
                 switch (!char.ToLower(o[1]).Equals('d'))
                 {
                     case false:
-                        r |= (uint)PermissionMask.Damage;
+                        r |= (uint) PermissionMask.Damage;
                         break;
                 }
 
                 switch (!char.ToLower(o[2]).Equals('e'))
                 {
                     case false:
-                        r |= (uint)PermissionMask.Export;
+                        r |= (uint) PermissionMask.Export;
                         break;
                 }
 
                 switch (!char.ToLower(o[3]).Equals('m'))
                 {
                     case false:
-                        r |= (uint)PermissionMask.Modify;
+                        r |= (uint) PermissionMask.Modify;
                         break;
                 }
 
                 switch (!char.ToLower(o[4]).Equals('v'))
                 {
                     case false:
-                        r |= (uint)PermissionMask.Move;
+                        r |= (uint) PermissionMask.Move;
                         break;
                 }
 
                 switch (!char.ToLower(o[5]).Equals('t'))
                 {
                     case false:
-                        r |= (uint)PermissionMask.Transfer;
+                        r |= (uint) PermissionMask.Transfer;
                         break;
                 }
 
@@ -511,7 +511,8 @@ namespace wasOpenMetaverse
         /// <param name="wasPermissions">the string permissions to set</param>
         /// <param name="millisecondsTimeout">the services timeout</param>
         /// <returns>true in case the permissions were set successfully</returns>
-        public static bool wasSetInventoryItemPermissions(GridClient Client, InventoryItem inventoryItem, string wasPermissions, uint millisecondsTimeout)
+        public static bool wasSetInventoryItemPermissions(GridClient Client, InventoryItem inventoryItem,
+            string wasPermissions, uint millisecondsTimeout)
         {
             // Update the object.
             Permissions permissions = wasStringToPermissions(wasPermissions);
@@ -535,7 +536,7 @@ namespace wasOpenMetaverse
                 Client.Inventory.ItemReceived += ItemReceivedEventHandler;
                 Client.Inventory.RequestFetchInventory(inventoryItem.UUID, inventoryItem.OwnerID);
                 if (
-                    !ItemReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+                    !ItemReceivedEvent.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
                     succeeded = false;
