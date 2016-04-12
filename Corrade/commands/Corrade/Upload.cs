@@ -26,7 +26,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -86,7 +86,7 @@ namespace Corrade
                         case AssetType.Animation:
                             // the holy asset trinity is charged money
                             if (
-                                !HasCorradePermission(corradeCommandParameters.Group.Name,
+                                !HasCorradePermission(corradeCommandParameters.Group.UUID,
                                     (int) Configuration.Permissions.Economy))
                             {
                                 throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

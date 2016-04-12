@@ -20,7 +20,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> lure =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                         (int) Configuration.Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

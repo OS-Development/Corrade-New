@@ -387,6 +387,9 @@ namespace Corrade
         private static readonly object GroupNotificationsLock = new object();
         private static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
+        private static Dictionary<uint, HashSet<Notification>> GroupNotificationsCache =
+            new Dictionary<uint, HashSet<Notification>>();
+
         private static readonly Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
             InventoryOffers =
                 new Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
@@ -448,6 +451,7 @@ namespace Corrade
 
         private static readonly CorradeNotifications corradeNotifications = new CorradeNotifications();
         private static readonly CorradeCommands corradeCommands = new CorradeCommands();
+        private static readonly RLVBehaviours rlvBehaviours = new RLVBehaviours();
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -545,10 +549,7 @@ namespace Corrade
             new Timer(NotificationsChanged =>
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
-                lock (GroupNotificationsLock)
-                {
-                    LoadNotificationState.Invoke();
-                }
+                LoadNotificationState.Invoke();
             });
 
         /// <summary>
@@ -954,25 +955,28 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
+                            HashSet<UUID> groups =
+                                new HashSet<UUID>(
+                                    corradeConfiguration.Groups.ToArray()
+                                        .AsParallel()
+                                        .Where(
+                                            o =>
+                                                !o.Schedules.Equals(0) &&
+                                                !(o.PermissionMask & (uint) Configuration.Permissions.Schedule).Equals(0))
+                                        .Select(o => o.UUID));
                             ((HashSet<GroupSchedule>)
                                 (new XmlSerializer(typeof (HashSet<GroupSchedule>))).Deserialize(streamReader))
                                 .ToArray().AsParallel()
-                                .Where(o => corradeConfiguration.Groups.ToArray().AsParallel()
-                                    .Any(
-                                        p =>
-                                            p.UUID.Equals(o.Group.UUID) &&
-                                            !(p.PermissionMask & (uint) Configuration.Permissions.Schedule)
-                                                .Equals(0) &&
-                                            !p.Schedules.Equals(0))).ForAll(o =>
-                                            {
-                                                lock (GroupSchedulesLock)
-                                                {
-                                                    if (!GroupSchedules.Contains(o))
-                                                    {
-                                                        GroupSchedules.Add(o);
-                                                    }
-                                                }
-                                            });
+                                .Where(o => groups.Contains(o.Group.UUID)).ForAll(o =>
+                                {
+                                    lock (GroupSchedulesLock)
+                                    {
+                                        if (!GroupSchedules.Contains(o))
+                                        {
+                                            GroupSchedules.Add(o);
+                                        }
+                                    }
+                                });
                         }
                     }
                 }
@@ -1028,6 +1032,7 @@ namespace Corrade
                 CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
             if (File.Exists(groupNotificationsStateFile))
             {
+                HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                 try
                 {
                     using (
@@ -1036,7 +1041,7 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                            
                             ((HashSet<Notification>)
                                 (new XmlSerializer(typeof (HashSet<Notification>))).Deserialize(streamReader))
                                 .ToArray().AsParallel()
@@ -1061,6 +1066,32 @@ namespace Corrade
                         Reflection.GetDescriptionFromEnumValue(
                             ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
                         ex.Message);
+                }
+
+                // Build the group notification cache.
+                lock (GroupNotificationsLock)
+                {
+                    GroupNotificationsCache.Clear();
+                    Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
+                    {
+                        GroupNotifications.ToArray()
+                            .AsParallel()
+                            .Where(p => !((uint) o & p.NotificationMask).Equals(0))
+                            .ForAll(p =>
+                            {
+                                switch (GroupNotificationsCache.ContainsKey((uint) o))
+                                {
+                                    case true:
+                                        GroupNotificationsCache[(uint) o].Add(p);
+                                        break;
+                                    default:
+                                        GroupNotificationsCache.Add((uint) o, new HashSet<Notification> {p});
+                                        break;
+                                }
+
+                            });
+
+                    });
                 }
             }
         };
@@ -1855,12 +1886,17 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out parcelFlags))
                 {
                     case true:
+                        Dictionary<string, uint> allFlags =
+                            typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .ToDictionary(o => o.Name, o => (uint) o.GetValue(null));
                         CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
-                                typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        p => { parcelFlags |= ((uint) p.GetValue(null)); });
+                                uint parcelFlag;
+                                if (allFlags.TryGetValue(o, out parcelFlag))
+                                {
+                                    parcelFlags |= parcelFlag;
+                                }
                             });
                         break;
                 }
@@ -1873,12 +1909,17 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out groupPowers))
                 {
                     case true:
+                        Dictionary<string, uint> allPowers =
+                            typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .ToDictionary(o => o.Name, o => (uint)o.GetValue(null));
                         CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
-                                typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        p => { groupPowers |= ((uint) p.GetValue(null)); });
+                                uint groupPower;
+                                if (allPowers.TryGetValue(o, out groupPower))
+                                {
+                                    groupPowers |= groupPower;
+                                }
                             });
                         break;
                 }
@@ -2191,20 +2232,28 @@ namespace Corrade
         /// <returns>true if the agent has authenticated</returns>
         private static bool Authenticate(string group, string password)
         {
-            UUID groupUUID;
-            return UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.ToArray().AsParallel().Any(
-                    o =>
-                        groupUUID.Equals(o.UUID) &&
-                        (string.Equals(o.Password, password, StringComparison.Ordinal) ||
-                         Utils.SHA1String(password)
-                             .Equals(o.Password, StringComparison.OrdinalIgnoreCase)))
-                : corradeConfiguration.Groups.ToArray().AsParallel().Any(
-                    o =>
-                        string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                        (string.Equals(o.Password, password, StringComparison.Ordinal) ||
-                         Utils.SHA1String(password)
-                             .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
+            return corradeConfiguration.Groups.ToArray().AsParallel().Any(
+                o =>
+                    string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                    (string.Equals(o.Password, password, StringComparison.Ordinal) ||
+                     Utils.SHA1String(password)
+                         .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        /// <summary>
+        ///     Used to check whether a group UUID matches a group password.
+        /// </summary>
+        /// <param name="group">the UUID of the group</param>
+        /// <param name="password">the password for the group</param>
+        /// <returns>true if the agent has authenticated</returns>
+        private static bool Authenticate(UUID group, string password)
+        {
+            return corradeConfiguration.Groups.ToArray().AsParallel().Any(
+                o =>
+                    group.Equals(o.UUID) &&
+                    (string.Equals(o.Password, password, StringComparison.Ordinal) ||
+                     Utils.SHA1String(password)
+                         .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <summary>
@@ -2215,14 +2264,22 @@ namespace Corrade
         /// <returns>true if the group has permission</returns>
         private static bool HasCorradePermission(string group, int permission)
         {
-            UUID groupUUID;
-            return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.ToArray().AsParallel()
-                    .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
-                : corradeConfiguration.Groups.ToArray().AsParallel().Any(
-                    o =>
-                        string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                        !(o.PermissionMask & permission).Equals(0));
+            return !permission.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel().Any(
+                o =>
+                    string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                    !(o.PermissionMask & permission).Equals(0));
+        }
+
+        /// <summary>
+        ///     Used to check whether a group has certain permissions for Corrade.
+        /// </summary>
+        /// <param name="group">the UUID of the group</param>
+        /// <param name="permission">the numeric Corrade permission</param>
+        /// <returns>true if the group has permission</returns>
+        private static bool HasCorradePermission(UUID group, int permission)
+        {
+            return !permission.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel()
+                .Any(o => group.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0));
         }
 
         /// <summary>
@@ -2250,14 +2307,22 @@ namespace Corrade
         /// <returns>true if the group has the notification</returns>
         private static bool GroupHasNotification(string group, uint notification)
         {
-            UUID groupUUID;
-            return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.ToArray().AsParallel().Any(
-                    o => groupUUID.Equals(o.UUID) &&
-                         !(o.NotificationMask & notification).Equals(0))
-                : corradeConfiguration.Groups.ToArray().AsParallel().Any(
-                    o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                         !(o.NotificationMask & notification).Equals(0));
+            return !notification.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel().Any(
+                o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                     !(o.NotificationMask & notification).Equals(0));
+        }
+
+        /// <summary>
+        ///     Used to check whether a group has a certain notification for Corrade.
+        /// </summary>
+        /// <param name="group">the UUID of the group</param>
+        /// <param name="notification">the numeric Corrade notification</param>
+        /// <returns>true if the group has the notification</returns>
+        private static bool GroupHasNotification(UUID group, uint notification)
+        {
+            return !notification.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel().Any(
+                o => group.Equals(o.UUID) &&
+                     !(o.NotificationMask & notification).Equals(0));
         }
 
         /// <summary>
@@ -3331,33 +3396,12 @@ namespace Corrade
         private static void SendNotification(Configuration.Notifications notification, object args)
         {
             // Create a list of groups that have the notification installed.
-            HashSet<Notification> notifyGroups = new HashSet<Notification>();
+            HashSet<Notification> notifications = new HashSet<Notification>();
             lock (GroupNotificationsLock)
             {
-                switch (GroupNotifications.Any())
-                {
-                    case true:
-                        HashSet<UUID> groupUUIDs =
-                            new HashSet<UUID>(
-                                corradeConfiguration.Groups.ToArray()
-                                    .AsParallel()
-                                    .Where(o => !(o.NotificationMask & (uint) notification).Equals(0))
-                                    .Select(o => o.UUID));
-
-                        notifyGroups.UnionWith(GroupNotifications.ToArray()
-                            .AsParallel()
-                            .Where(
-                                o =>
-                                    groupUUIDs.Contains(o.GroupUUID) &&
-                                    !(o.NotificationMask & (uint) notification).Equals(0)));
-                        break;
-                    default:
-                        return;
-                }
+                if (!GroupNotificationsCache.TryGetValue((uint) notification, out notifications) || !notifications.Any())
+                    return;
             }
-
-            // No groups to notify so bail directly.
-            if (!notifyGroups.Any()) return;
 
             // Find the notification action.
             Action<CorradeNotificationParameters, Dictionary<string, string>> CorradeNotification =
@@ -3371,7 +3415,7 @@ namespace Corrade
             }
 
             // For each group build the notification.
-            Parallel.ForEach(notifyGroups, z =>
+            Parallel.ForEach(notifications, z =>
             {
                 // Create the notification data storage for this notification.
                 Dictionary<string, string> notificationData = new Dictionary<string, string>();
@@ -4292,7 +4336,7 @@ namespace Corrade
                             // Log group messages
                             corradeConfiguration.Groups.ToArray().AsParallel().Where(
                                 o =>
-                                    string.Equals(messageGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                                    messageGroup.UUID.Equals(o.UUID) &&
                                     o.ChatLogEnabled).ForAll(o =>
                                     {
                                         // Attempt to write to log file,
@@ -4596,7 +4640,7 @@ namespace Corrade
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
-            if (!Authenticate(commandGroup.Name, password))
+            if (!Authenticate(commandGroup.UUID, password))
             {
                 Feedback(commandGroup.Name, Reflection.GetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
                 return null;
@@ -4641,7 +4685,7 @@ namespace Corrade
             }
 
             Configuration.Group configuredGroup = corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(
-                o => string.Equals(commandGroup.Name, o.Name, StringComparison.OrdinalIgnoreCase));
+                o => commandGroup.UUID.Equals(o.UUID));
             if (configuredGroup.Equals(default(Configuration.Group)))
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_GROUP),
@@ -5088,21 +5132,21 @@ namespace Corrade
                     if (GroupSchedulesThread != null) return;
                     // Start the group expiration thread.
                     runGroupSchedulesThread = true;
+                    HashSet<GroupSchedule> groupSchedules = new HashSet<GroupSchedule>();
                     GroupSchedulesThread = new Thread(() =>
                     {
                         do
                         {
                             // Check schedules with a one second resolution.
                             Thread.Sleep((int) corradeConfiguration.SchedulesResolution);
-                            HashSet<GroupSchedule> groupSchedules;
                             lock (GroupSchedulesLock)
                             {
-                                groupSchedules =
-                                    new HashSet<GroupSchedule>(GroupSchedules.ToArray().AsParallel()
-                                        .Where(
-                                            o =>
-                                                DateTime.Compare(DateTime.Now.ToUniversalTime(),
-                                                    o.At) >= 0));
+                                groupSchedules.Clear();
+                                groupSchedules.UnionWith(GroupSchedules.ToArray().AsParallel()
+                                    .Where(
+                                        o =>
+                                            DateTime.Compare(DateTime.Now.ToUniversalTime(),
+                                                o.At) >= 0));
                             }
                             if (groupSchedules.Any())
                             {
@@ -5507,7 +5551,7 @@ namespace Corrade
                                             {
                                                 commandGroup = GetCorradeGroupFromMessage(receiveLine);
                                                 switch (!commandGroup.Equals(default(Configuration.Group)) &&
-                                                        Authenticate(commandGroup.Name,
+                                                        Authenticate(commandGroup.UUID,
                                                             wasInput(
                                                                 KeyValue.Get(
                                                                     wasOutput(
@@ -5542,8 +5586,7 @@ namespace Corrade
                                                     notification =
                                                         GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                                             o =>
-                                                                o.GroupName.Equals(commandGroup.Name,
-                                                                    StringComparison.OrdinalIgnoreCase));
+                                                                o.GroupUUID.Equals(commandGroup.UUID));
                                                 }
                                                 // Build any requested data for raw notifications.
                                                 string fields =
@@ -5612,7 +5655,7 @@ namespace Corrade
                                                                     .GetEnumValueFromName
                                                                     <Configuration.Notifications>(o);
                                                         if (
-                                                            !GroupHasNotification(commandGroup.Name,
+                                                            !GroupHasNotification(commandGroup.UUID,
                                                                 notificationValue))
                                                         {
                                                             // one of the notification was not allowed, so abort
@@ -5651,8 +5694,7 @@ namespace Corrade
                                                             // Replace notification.
                                                             GroupNotifications.RemoveWhere(
                                                                 o =>
-                                                                    o.GroupName.Equals(commandGroup.Name,
-                                                                        StringComparison.OrdinalIgnoreCase));
+                                                                    o.GroupUUID.Equals(commandGroup.UUID));
                                                             GroupNotifications.Add(notification);
                                                         }
                                                         // Save the notifications state.
@@ -5720,8 +5762,7 @@ namespace Corrade
                                             Notification notification =
                                                 GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                                     o =>
-                                                        o.GroupName.Equals(commandGroup.Name,
-                                                            StringComparison.OrdinalIgnoreCase));
+                                                        o.GroupUUID.Equals(commandGroup.UUID));
                                             if (notification != null)
                                             {
                                                 Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
@@ -8406,7 +8447,9 @@ namespace Corrade
         {
 
             private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
-                commands = new Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>();
+                commands =
+                    new Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>(
+                        StringComparer.OrdinalIgnoreCase);
 
             public CorradeCommands()
             {
@@ -8436,15 +8479,40 @@ namespace Corrade
         {
             public RLVBehaviourAttribute(string behaviour)
             {
-                FieldInfo fi =
-                    typeof (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
-                        .AsParallel()
-                        .Where(o => o.FieldType == typeof (Action<string, RLVRule, UUID>))
-                        .SingleOrDefault(o => o.Name.Equals(behaviour));
-                RLVBehaviour = (Action<string, RLVRule, UUID>) fi?.GetValue(null);
+                RLVBehaviour = rlvBehaviours[behaviour];
             }
 
             public Action<string, RLVRule, UUID> RLVBehaviour { get; }
+        }
+
+        public partial class RLVBehaviours
+        {
+
+            private static readonly Dictionary<string, Action<string, RLVRule, UUID>>
+                behaviours = new Dictionary<string, Action<string, RLVRule, UUID>>(StringComparer.OrdinalIgnoreCase);
+
+            public RLVBehaviours()
+            {
+                typeof(RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
+                    .AsParallel()
+                    .Where(
+                        o =>
+                            o.FieldType ==
+                            typeof(Action<string, RLVRule, UUID>))
+                    .ForAll(
+                        o =>
+                            behaviours.Add(o.Name,
+                                (Action<string, RLVRule, UUID>)o?.GetValue(null)));
+            }
+
+            public Action<string, RLVRule, UUID> this[string name]
+            {
+                get
+                {
+                    Action<string, RLVRule, UUID> behaviour;
+                    return behaviours.TryGetValue(name, out behaviour) ? behaviour : null;
+                }
+            }
         }
 
         /// <summary>

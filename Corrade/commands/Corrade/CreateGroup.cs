@@ -23,7 +23,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -42,7 +42,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                     }
                     if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

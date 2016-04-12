@@ -24,7 +24,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> logs =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                         (int) Configuration.Permissions.Talk))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

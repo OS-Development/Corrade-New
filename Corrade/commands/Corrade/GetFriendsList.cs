@@ -20,7 +20,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Friendship))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

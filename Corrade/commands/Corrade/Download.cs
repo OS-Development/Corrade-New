@@ -32,7 +32,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -117,7 +117,7 @@ namespace Corrade
                                 case AssetType.LSLText:
                                 case AssetType.Notecard:
                                     if (
-                                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                                             (int) Configuration.Permissions.Inventory))
                                     {
                                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -265,7 +265,7 @@ namespace Corrade
                         return;
                     }
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

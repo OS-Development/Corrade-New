@@ -23,7 +23,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> parcelbuy =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -168,7 +168,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                     }
                     if (!parcel.SalePrice.Equals(0) &&
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

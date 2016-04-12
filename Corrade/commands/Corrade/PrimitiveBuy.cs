@@ -23,7 +23,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -55,7 +55,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOR_SALE);
                     }
                     if (!primitive.Properties.SalePrice.Equals(0) &&
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

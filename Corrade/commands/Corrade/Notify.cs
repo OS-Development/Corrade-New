@@ -22,7 +22,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Notifications))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -67,8 +67,7 @@ namespace Corrade
                                 notification =
                                     GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                         o =>
-                                            o.GroupName.Equals(corradeCommandParameters.Group.Name,
-                                                StringComparison.OrdinalIgnoreCase));
+                                            o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                             }
                             // Get any afterburn data.
                             string afterBurnData =
@@ -158,7 +157,7 @@ namespace Corrade
                                 {
                                     uint notificationValue =
                                         (uint) Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
-                                    if (!GroupHasNotification(corradeCommandParameters.Group.Name, notificationValue))
+                                    if (!GroupHasNotification(corradeCommandParameters.Group.UUID, notificationValue))
                                     {
                                         // one of the notification was not allowed, so abort
                                         succeeded = false;
@@ -219,8 +218,7 @@ namespace Corrade
                                 // Replace notification.
                                 GroupNotifications.RemoveWhere(
                                     o =>
-                                        o.GroupName.Equals(corradeCommandParameters.Group.Name,
-                                            StringComparison.OrdinalIgnoreCase));
+                                        o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                                 GroupNotifications.Add(notification);
                             }
                             // Save the notifications state.
@@ -241,8 +239,7 @@ namespace Corrade
                                                             p))
                                             .Equals(0)) &&
                                          !o.NotificationURLDestination.Values.Any(p => p.Contains(url))) ||
-                                        !o.GroupName.Equals(corradeCommandParameters.Group.Name,
-                                            StringComparison.OrdinalIgnoreCase))
+                                        !o.GroupUUID.Equals(corradeCommandParameters.Group.UUID))
                                     {
                                         lock (LockObject)
                                         {
@@ -314,8 +311,7 @@ namespace Corrade
                                 Notification groupNotification =
                                     GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                         o =>
-                                            o.GroupName.Equals(corradeCommandParameters.Group.Name,
-                                                StringComparison.OrdinalIgnoreCase));
+                                            o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                                 if (groupNotification != null)
                                 {
                                     Parallel.ForEach(Reflection.GetEnumNames<Configuration.Notifications>(), o =>
@@ -344,7 +340,7 @@ namespace Corrade
                             {
                                 Parallel.ForEach(GroupNotifications, o =>
                                 {
-                                    switch (!o.GroupName.Equals(corradeCommandParameters.Group.Name))
+                                    switch (!o.GroupUUID.Equals(corradeCommandParameters.Group.UUID))
                                     {
                                         case false: // this is our group
                                             Collections.SerializableDictionary
@@ -394,8 +390,7 @@ namespace Corrade
                                 Notification groupNotification =
                                     GroupNotifications.ToArray().AsParallel().FirstOrDefault(
                                         o =>
-                                            o.GroupName.Equals(corradeCommandParameters.Group.Name,
-                                                StringComparison.OrdinalIgnoreCase));
+                                            o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                                 if (groupNotification != null)
                                 {
                                     GroupNotifications.Remove(groupNotification);
@@ -406,6 +401,45 @@ namespace Corrade
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                    }
+
+                    // If notifications changed, rebuild the notification cache.
+                    switch (action)
+                    {
+                        case Action.ADD:
+                        case Action.SET:
+                        case Action.REMOVE:
+                        case Action.CLEAR:
+                        case Action.PURGE:
+                            lock (GroupNotificationsLock)
+                            {
+                                GroupNotificationsCache.Clear();
+                                Reflection.GetEnumValues<Configuration.Notifications>()
+                                    .ToArray()
+                                    .AsParallel()
+                                    .ForAll(o =>
+                                    {
+                                        GroupNotifications.ToArray()
+                                            .AsParallel()
+                                            .Where(p => !((uint) o & p.NotificationMask).Equals(0))
+                                            .ForAll(p =>
+                                            {
+
+                                                switch (GroupNotificationsCache.ContainsKey((uint) o))
+                                                {
+                                                    case true:
+                                                        GroupNotificationsCache[(uint) o].Add(p);
+                                                        break;
+                                                    default:
+                                                        GroupNotificationsCache.Add((uint) o,
+                                                            new HashSet<Notification> {p});
+                                                        break;
+                                                }
+                                            });
+
+                                    });
+                            }
+                            break;
                     }
                 };
         }

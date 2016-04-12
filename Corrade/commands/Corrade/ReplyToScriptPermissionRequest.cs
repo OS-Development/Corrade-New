@@ -72,7 +72,7 @@ namespace Corrade
                                             switch (permission)
                                             {
                                                 case ScriptPermission.Debit:
-                                                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                                                         (int) Configuration.Permissions.Economy))
                                                     {
                                                         succeeded = false;
@@ -80,7 +80,7 @@ namespace Corrade
                                                     }
                                                     break;
                                                 case ScriptPermission.Teleport:
-                                                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                                                         (int) Configuration.Permissions.Movement))
                                                     {
                                                         succeeded = false;
@@ -89,7 +89,7 @@ namespace Corrade
                                                     break;
                                                 case ScriptPermission.ChangeJoints:
                                                 case ScriptPermission.ChangeLinks:
-                                                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                                                         (int) Configuration.Permissions.Interact))
                                                     {
                                                         succeeded = false;
@@ -102,7 +102,7 @@ namespace Corrade
                                                 case ScriptPermission.RemapControls:
                                                 case ScriptPermission.ControlCamera:
                                                 case ScriptPermission.Attach:
-                                                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                                                         (int) Configuration.Permissions.Grooming))
                                                     {
                                                         succeeded = false;
@@ -111,7 +111,7 @@ namespace Corrade
                                                     break;
                                                 case ScriptPermission.ReleaseOwnership:
                                                 case ScriptPermission.ChangePermissions:
-                                                    if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                                                         (int) Configuration.Permissions.Inventory))
                                                     {
                                                         succeeded = false;

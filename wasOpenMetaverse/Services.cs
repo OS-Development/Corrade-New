@@ -421,7 +421,7 @@ namespace wasOpenMetaverse
                         alarm.Signal.WaitOne((int) millisecondsTimeout, false);
                         primitives =
                             Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
-                                .Select(o => o.Copy().Values).ToList()
+                                .Select(o => o.Copy().Values)
                                 .SelectMany(o => o);
                         lock (Locks.ClientInstanceConfigurationLock)
                         {
@@ -432,7 +432,7 @@ namespace wasOpenMetaverse
                     return primitives;
                 default:
                     return Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
-                        .Select(o => o.Copy().Values).ToList()
+                        .Select(o => o.Copy().Values)
                         .SelectMany(o => o);
             }
         }

@@ -28,7 +28,7 @@ namespace Corrade
                      * amount of time for the grid to return them when asked to return them.
                      */
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Mute))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Mute))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
