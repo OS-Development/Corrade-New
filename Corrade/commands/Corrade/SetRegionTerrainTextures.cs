@@ -61,7 +61,7 @@ namespace Corrade
                                             switch (inventoryBaseItem is InventoryTexture)
                                             {
                                                 case true:
-                                                    setTextures[o] = inventoryBaseItem.UUID;
+                                                    setTextures[o] = (inventoryBaseItem as InventoryTexture).AssetUUID;
                                                     break;
                                                 default:
                                                     setTextures[o] = simTextures[o];

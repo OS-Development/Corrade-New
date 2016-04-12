@@ -7,10 +7,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
+using wasSharp = wasSharp.wasSharp;
 
 namespace wasOpenMetaverse
 {
@@ -680,7 +682,7 @@ namespace wasOpenMetaverse
             if (!WaitHandle.WaitAll(semaphore.Select(o => (WaitHandle) o).ToArray(), (int) millisecondsTimeout, false))
                 return false;
             object LockObject = new object();
-            HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
+            HashSet<Primitive> primitives = new HashSet<Primitive>();
             Parallel.ForEach(objectsPrimitives.Values, o =>
             {
                 // find the parent of the primitive
@@ -703,27 +705,26 @@ namespace wasOpenMetaverse
                 } while (!parent.ParentID.Equals(0));
                 // Ignore the object if the parent is out of range.
                 if (Vector3.Distance(parent.Position, Client.Self.SimPosition) > range) return;
-                if (item is UUID && o.ID.Equals(item))
+                if (typeof(T) == typeof(UUID) && o.ID.Equals(item))
                 {
                     lock (LockObject)
                     {
-                        selectedPrimitives.Add(o);
+                        primitives.Add(o);
                     }
                     return;
                 }
-                if (item is string)
+                if (typeof(T) == typeof(string))
                 {
                     lock (LockObject)
                     {
-                        selectedPrimitives.Add(o);
+                        primitives.Add(o);
                     }
                 }
             });
-            if (!selectedPrimitives.Any()) return false;
-            if (!UpdatePrimitives(Client, ref selectedPrimitives, dataTimeout))
+            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
             primitive =
-                selectedPrimitives.ToArray().AsParallel().FirstOrDefault(
+                primitives.ToArray().AsParallel().FirstOrDefault(
                     o =>
                         (item is UUID && o.ID.Equals(item)) ||
                         (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));

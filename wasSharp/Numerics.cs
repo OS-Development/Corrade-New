@@ -11,7 +11,6 @@ namespace wasSharp
 {
     public static class Numerics
     {
-
 #if !__MonoCS__
         private static readonly Func<double, double, double, double, double, double> directMapValueToRange =
             ((Expression<Func<double, double, double, double, double, double>>)

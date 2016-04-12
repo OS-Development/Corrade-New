@@ -44,7 +44,6 @@ namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
-
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
@@ -387,7 +386,7 @@ namespace Corrade
         private static readonly object GroupNotificationsLock = new object();
         private static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
-        private static Dictionary<uint, HashSet<Notification>> GroupNotificationsCache =
+        private static readonly Dictionary<uint, HashSet<Notification>> GroupNotificationsCache =
             new Dictionary<uint, HashSet<Notification>>();
 
         private static readonly Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
@@ -577,10 +576,7 @@ namespace Corrade
             new Timer(GroupSchedulesChanged =>
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.GROUP_SCHEDULES_FILE_MODIFIED));
-                lock (GroupSchedulesLock)
-                {
-                    LoadGroupSchedulesState.Invoke();
-                }
+                LoadGroupSchedulesState.Invoke();
             });
 
         /// <summary>
@@ -878,7 +874,7 @@ namespace Corrade
                         {
                             HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
-                                (new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>)))
+                                new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>))
                                     .Deserialize(streamReader))
                                 .ToArray().AsParallel()
                                 .Where(
@@ -1041,7 +1037,6 @@ namespace Corrade
                     {
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            
                             ((HashSet<Notification>)
                                 (new XmlSerializer(typeof (HashSet<Notification>))).Deserialize(streamReader))
                                 .ToArray().AsParallel()
@@ -1088,9 +1083,7 @@ namespace Corrade
                                         GroupNotificationsCache.Add((uint) o, new HashSet<Notification> {p});
                                         break;
                                 }
-
                             });
-
                     });
                 }
             }
@@ -1910,8 +1903,8 @@ namespace Corrade
                 {
                     case true:
                         Dictionary<string, uint> allPowers =
-                            typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .ToDictionary(o => o.Name, o => (uint)o.GetValue(null));
+                            typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .ToDictionary(o => o.Name, o => (uint) o.GetValue(null));
                         CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
@@ -8302,7 +8295,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("addpick")] [Reflection.NameAttribute("addpick")] ADDPICK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("deltepick")] [Reflection.NameAttribute("deltepick")] DELETEPICK,
+                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("deletepick")] [Reflection.NameAttribute("deletepick")] DELETEPICK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=touch>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
@@ -8413,7 +8406,6 @@ namespace Corrade
 
         public partial class CorradeNotifications
         {
-
             private static readonly
                 Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>> notifications =
                     new Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>>(
@@ -8445,7 +8437,6 @@ namespace Corrade
 
         public partial class CorradeCommands
         {
-
             private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
                 commands =
                     new Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>(
@@ -8487,22 +8478,21 @@ namespace Corrade
 
         public partial class RLVBehaviours
         {
-
             private static readonly Dictionary<string, Action<string, RLVRule, UUID>>
                 behaviours = new Dictionary<string, Action<string, RLVRule, UUID>>(StringComparer.OrdinalIgnoreCase);
 
             public RLVBehaviours()
             {
-                typeof(RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
+                typeof (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
                     .AsParallel()
                     .Where(
                         o =>
                             o.FieldType ==
-                            typeof(Action<string, RLVRule, UUID>))
+                            typeof (Action<string, RLVRule, UUID>))
                     .ForAll(
                         o =>
                             behaviours.Add(o.Name,
-                                (Action<string, RLVRule, UUID>)o?.GetValue(null)));
+                                (Action<string, RLVRule, UUID>) o?.GetValue(null)));
             }
 
             public Action<string, RLVRule, UUID> this[string name]

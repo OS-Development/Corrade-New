@@ -164,15 +164,15 @@ namespace wasSharp
                 }
             }
 
-            ~TimedThrottle()
-            {
-                Dispose(false);
-            }
-
             public void Dispose()
             {
                 Dispose(true);
                 GC.SuppressFinalize(this);
+            }
+
+            ~TimedThrottle()
+            {
+                Dispose(false);
             }
 
             private void Dispose(bool dispose)
@@ -221,11 +221,6 @@ namespace wasSharp
                 Signal = new ManualResetEvent(false);
             }
 
-            ~DecayingAlarm()
-            {
-                Dispose(false);
-            }
-
             /// <summary>
             ///     The constructor for the DecayingAlarm class taking as parameter a decay type.
             /// </summary>
@@ -242,6 +237,11 @@ namespace wasSharp
             {
                 Dispose(true);
                 GC.SuppressFinalize(this);
+            }
+
+            ~DecayingAlarm()
+            {
+                Dispose(false);
             }
 
             public void Alarm(double deadline)

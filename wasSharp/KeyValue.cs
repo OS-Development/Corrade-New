@@ -13,55 +13,6 @@ namespace wasSharp
 {
     public static class KeyValue
     {
-
-#if !__MonoCS__
-        private static readonly Func<string, string, string> directGet =
-            ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2) && o[0].Equals(key))
-                .Select(o => o[1])
-                .FirstOrDefault())).Compile();
-
-        private static readonly Func<string, string, string, string> directSet =
-            ((Expression<Func<string, string, string, string>>)
-                ((key, value, data) => string.Join("&", string.Join("&", data.Split('&')
-                    .AsParallel()
-                    .Select(o => o.Split('='))
-                    .Where(o => o.Length.Equals(2) && !o[0].Equals(key))
-                    .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value)))).Compile();
-
-        private static readonly Func<string, string, string> directDelete =
-            ((Expression<Func<string, string, string>>) ((key, data) => string.Join("&", data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2) && !o[0].Equals(key))
-                .Select(o => string.Join("=", o[0], o[1]))
-                .ToArray()))).Compile();
-
-        private static readonly Func<string, Dictionary<string, string>> directDecode =
-            ((Expression<Func<string, Dictionary<string, string>>>) (data => data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2))
-                .Select(o => new
-                {
-                    k = o[0],
-                    v = o[1]
-                })
-                .GroupBy(o => o.k)
-                .ToDictionary(o => o.Key, p => p.First().v))).Compile();
-
-        private static readonly Func<Dictionary<string, string>, string> directEncode =
-            ((Expression<Func<Dictionary<string, string>, string>>)
-                (data => string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value))))).Compile();
-
-        private static readonly Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>
-            directEscape =
-                ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
-                    ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
-#endif
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -186,5 +137,53 @@ namespace wasSharp
             return data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value));
 #endif
         }
+
+#if !__MonoCS__
+        private static readonly Func<string, string, string> directGet =
+            ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
+                .AsParallel()
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2) && o[0].Equals(key))
+                .Select(o => o[1])
+                .FirstOrDefault())).Compile();
+
+        private static readonly Func<string, string, string, string> directSet =
+            ((Expression<Func<string, string, string, string>>)
+                ((key, value, data) => string.Join("&", string.Join("&", data.Split('&')
+                    .AsParallel()
+                    .Select(o => o.Split('='))
+                    .Where(o => o.Length.Equals(2) && !o[0].Equals(key))
+                    .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value)))).Compile();
+
+        private static readonly Func<string, string, string> directDelete =
+            ((Expression<Func<string, string, string>>) ((key, data) => string.Join("&", data.Split('&')
+                .AsParallel()
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2) && !o[0].Equals(key))
+                .Select(o => string.Join("=", o[0], o[1]))
+                .ToArray()))).Compile();
+
+        private static readonly Func<string, Dictionary<string, string>> directDecode =
+            ((Expression<Func<string, Dictionary<string, string>>>) (data => data.Split('&')
+                .AsParallel()
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
+                .Select(o => new
+                {
+                    k = o[0],
+                    v = o[1]
+                })
+                .GroupBy(o => o.k)
+                .ToDictionary(o => o.Key, p => p.First().v))).Compile();
+
+        private static readonly Func<Dictionary<string, string>, string> directEncode =
+            ((Expression<Func<Dictionary<string, string>, string>>)
+                (data => string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value))))).Compile();
+
+        private static readonly Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>
+            directEscape =
+                ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
+                    ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
+#endif
     }
 }

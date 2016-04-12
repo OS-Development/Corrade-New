@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
@@ -49,7 +48,7 @@ namespace wasSharp
                                 .Deserialize(writer);
                     }
                 }
-                /* cloning failed so return an empty dictionary */
+                    /* cloning failed so return an empty dictionary */
                 catch (Exception)
                 {
                     clone = new SerializableDictionary<TKey, TValue>();

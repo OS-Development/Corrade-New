@@ -33,6 +33,16 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    Vector3d position;
+                    if (
+                        !Vector3d.TryParse(
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                corradeCommandParameters.Message)),
+                            out position))
+                    {
+                        position = Client.Self.GlobalPosition;
+                    }
                     object item =
                         Helpers.StringOrUUID(
                             wasInput(
@@ -41,14 +51,23 @@ namespace Corrade
                     UUID textureUUID = UUID.Zero;
                     if (item != null)
                     {
-                        InventoryBase inventoryBaseItem =
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
-                                ).FirstOrDefault();
-                        if (inventoryBaseItem == null)
+                        switch (item is UUID)
                         {
-                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                            case true: // if the item is an UUID, trust the sender
+                                textureUUID = (UUID)item;
+                                break;
+                            default: // otherwise search inventory
+                                InventoryBase inventoryBaseItem =
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
+                                        ).FirstOrDefault();
+                                if (!(inventoryBaseItem is InventoryTexture))
+                                {
+                                    throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                }
+                                textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
+                                break;
                         }
-                        textureUUID = inventoryBaseItem.UUID;
+
                     }
                     string name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
@@ -133,7 +152,7 @@ namespace Corrade
                     Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                         ? (DirectoryManager.ClassifiedCategories)
                             classifiedCategoriesField.GetValue(null)
-                        : DirectoryManager.ClassifiedCategories.Any, textureUUID, price,
+                        : DirectoryManager.ClassifiedCategories.Any, textureUUID, price, position,
                         name, classifiedDescription, renew);
                 };
         }

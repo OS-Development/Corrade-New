@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfiguration;
 using wasOpenMetaverse;
@@ -46,7 +47,8 @@ namespace Corrade
                             DateTime at;
                             if (!DateTime.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
-                                    corradeCommandParameters.Message)), out at))
+                                    corradeCommandParameters.Message)), CultureInfo.InvariantCulture,
+                                DateTimeStyles.AdjustToUniversal, out at))
                             {
                                 throw new ScriptException(ScriptError.UNKNOWN_DATE_TIME_STAMP);
                             }

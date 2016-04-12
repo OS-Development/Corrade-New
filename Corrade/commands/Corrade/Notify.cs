@@ -424,7 +424,6 @@ namespace Corrade
                                             .Where(p => !((uint) o & p.NotificationMask).Equals(0))
                                             .ForAll(p =>
                                             {
-
                                                 switch (GroupNotificationsCache.ContainsKey((uint) o))
                                                 {
                                                     case true:
@@ -436,7 +435,6 @@ namespace Corrade
                                                         break;
                                                 }
                                             });
-
                                     });
                             }
                             break;

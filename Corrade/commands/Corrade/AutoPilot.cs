@@ -7,10 +7,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -61,7 +61,7 @@ namespace Corrade
                                     // stop all non-built-in animations
                                     Client.Self.SignaledAnimations.Copy()
                                         .Keys.AsParallel()
-                                        .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                                        .Where(o => !Helpers.LindenAnimations.Contains(o))
                                         .ForAll(o => { Client.Self.AnimationStop(o, true); });
                                     break;
                             }

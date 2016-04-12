@@ -13,7 +13,6 @@ namespace wasSharp
 {
     public static class IO
     {
-
 #if !__MonoCS__
         private static readonly Func<string[], string> directPathCombine =
             ((Expression<Func<string[], string>>) (data =>
