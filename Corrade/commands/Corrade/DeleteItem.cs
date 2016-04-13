@@ -11,7 +11,6 @@ using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 

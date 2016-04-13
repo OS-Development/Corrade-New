@@ -45,28 +45,6 @@ namespace wasOpenMetaverse
                 : null)).Compile();
 #endif
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Tries to build an UUID out of the data string.
-        /// </summary>
-        /// <param name="data">a string</param>
-        /// <returns>an UUID or the supplied string in case data could not be resolved</returns>
-        public static object StringOrUUID(string data)
-        {
-            if (string.IsNullOrEmpty(data))
-            {
-                return null;
-            }
-            UUID @UUID;
-            if (!UUID.TryParse(data, out UUID))
-            {
-                return data;
-            }
-            return UUID;
-        }
-
         /// <summary>
         ///     Gets the first name and last name from an avatar name.
         /// </summary>

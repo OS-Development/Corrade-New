@@ -38,6 +38,22 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
                     }
+
+                    // stop non default animations if requested
+                    bool deanimate;
+                    switch (bool.TryParse(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                    {
+                        case true:
+                            // stop all non-built-in animations
+                            Client.Self.SignaledAnimations.Copy()
+                                .Keys.AsParallel()
+                                .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            break;
+                    }
+
                     CSV.ToEnumerable(
                         attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
@@ -46,8 +62,9 @@ namespace Corrade
                             if (UUID.TryParse(o, out itemUUID))
                             {
                                 InventoryBase inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
-                                            ).FirstOrDefault();
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                        itemUUID
+                                        ).FirstOrDefault();
                                 if (inventoryBaseItem == null)
                                     return;
                                 inventoryItem = inventoryBaseItem as InventoryItem;
@@ -60,13 +77,15 @@ namespace Corrade
                                 {
                                     inventoryBaseItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                            .FirstOrDefault();
                                 }
                                 catch (Exception)
                                 {
                                     // not a regex so we do not care
                                     inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, o)
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            o)
                                             .FirstOrDefault();
                                 }
                                 if (inventoryBaseItem == null)
@@ -78,7 +97,7 @@ namespace Corrade
 
                             if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                                 Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
-                                corradeConfiguration.ServicesTimeout);
+                                    corradeConfiguration.ServicesTimeout);
                         });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

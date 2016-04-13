@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -90,7 +89,8 @@ namespace Corrade
                                                         itemUUID,
                                                         range,
                                                         corradeConfiguration.Range,
-                                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                                        corradeConfiguration.DataTimeout,
                                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                                 {
                                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
@@ -103,7 +103,8 @@ namespace Corrade
                                                         item,
                                                         range,
                                                         corradeConfiguration.Range,
-                                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                                        corradeConfiguration.DataTimeout,
                                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                                 {
                                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);

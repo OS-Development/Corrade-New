@@ -22,7 +22,7 @@ using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
-using Helpers = wasOpenMetaverse.Helpers;
+using Helpers = OpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -311,7 +311,7 @@ namespace Corrade
                                 {
                                     primitiveEntryDataStreamWriter.Write(
                                         OSDParser.SerializeLLSDXmlString(
-                                            OpenMetaverse.Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
+                                            Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
                                     primitiveEntryDataStreamWriter.Flush();
                                 }
                             }

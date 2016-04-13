@@ -90,8 +90,9 @@ namespace Corrade
                             if (UUID.TryParse(item, out itemUUID))
                             {
                                 InventoryBase inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
-                                            ).FirstOrDefault();
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                        itemUUID
+                                        ).FirstOrDefault();
                                 if (inventoryBaseItem == null)
                                 {
                                     throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
@@ -106,13 +107,15 @@ namespace Corrade
                                 {
                                     inventoryBaseItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                            new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                            .FirstOrDefault();
                                 }
                                 catch (Exception)
                                 {
                                     // not a regex so we do not care
                                     inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            item)
                                             .FirstOrDefault();
                                 }
                                 if (inventoryBaseItem == null)

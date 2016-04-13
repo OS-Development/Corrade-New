@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -42,8 +41,8 @@ namespace Corrade
                     if (UUID.TryParse(item, out itemUUID))
                     {
                         InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
-                                    ).FirstOrDefault();
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
+                                ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
                             throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
@@ -159,7 +158,8 @@ namespace Corrade
                                         targetUUID,
                                         range,
                                         corradeConfiguration.Range,
-                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
@@ -172,7 +172,8 @@ namespace Corrade
                                         target,
                                         range,
                                         corradeConfiguration.Range,
-                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);

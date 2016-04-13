@@ -12,7 +12,6 @@ using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -81,13 +80,15 @@ namespace Corrade
                                 {
                                     inventoryBaseItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                            new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                            .FirstOrDefault();
                                 }
                                 catch (Exception)
                                 {
                                     // not a regex so we do not care
                                     inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            folder)
                                             .FirstOrDefault();
                                 }
                                 if (inventoryBaseItem == null)

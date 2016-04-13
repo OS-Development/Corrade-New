@@ -20,7 +20,6 @@ using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -39,8 +38,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string item = wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message));
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
@@ -74,7 +73,8 @@ namespace Corrade
                             {
                                 inventoryBaseItem =
                                     Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                        new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                        new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                        .FirstOrDefault();
                             }
                             catch (Exception)
                             {

@@ -44,9 +44,9 @@ namespace Corrade
                         position = Client.Self.GlobalPosition;
                     }
                     string item =
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message));
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message));
                     UUID textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
                     {
@@ -54,8 +54,8 @@ namespace Corrade
                         if (!UUID.TryParse(item, out textureUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
-                                        ).FirstOrDefault();
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (!(inventoryBaseItem is InventoryTexture))
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

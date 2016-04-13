@@ -42,8 +42,8 @@ namespace Corrade
                     if (UUID.TryParse(item, out itemUUID))
                     {
                         InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
-                                    ).FirstOrDefault();
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
+                                ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
                             throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

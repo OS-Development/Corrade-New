@@ -710,12 +710,13 @@ namespace wasOpenMetaverse
                 new HashSet<Primitive>(GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm));
             if (!p.Any() || !UpdatePrimitives(Client, ref p, dataTimeout))
                 return false;
-            Primitive localPrimitive = p.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
+            Primitive localPrimitive =
+                p.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
             if (localPrimitive != null)
             {
                 primitive = localPrimitive;
                 return true;
-            } 
+            }
             return false;
         }
     }

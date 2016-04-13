@@ -11,7 +11,6 @@ using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -39,14 +38,15 @@ namespace Corrade
                     }
                     CSV.ToEnumerable(
                         wearables).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
-                        { 
+                        {
                             InventoryItem inventoryItem;
                             UUID itemUUID;
                             if (UUID.TryParse(o, out itemUUID))
                             {
                                 InventoryBase inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
-                                            ).FirstOrDefault();
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                        itemUUID
+                                        ).FirstOrDefault();
                                 if (inventoryBaseItem == null)
                                     return;
                                 inventoryItem = inventoryBaseItem as InventoryItem;
@@ -59,13 +59,15 @@ namespace Corrade
                                 {
                                     inventoryBaseItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                            .FirstOrDefault();
                                 }
                                 catch (Exception)
                                 {
                                     // not a regex so we do not care
                                     inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, o)
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            o)
                                             .FirstOrDefault();
                                 }
                                 if (inventoryBaseItem == null)
@@ -77,7 +79,7 @@ namespace Corrade
 
                             if (inventoryItem is InventoryWearable)
                                 Inventory.UnWear(Client, CurrentOutfitFolder, inventoryItem,
-                                corradeConfiguration.ServicesTimeout);
+                                    corradeConfiguration.ServicesTimeout);
                         });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

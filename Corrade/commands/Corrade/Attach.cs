@@ -62,15 +62,14 @@ namespace Corrade
                             case true:
                                 if (
                                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                                        .Count() + items.Count() -
+                                        .Count() + items.Count -
                                     typeof (AttachmentPoint).GetFields(
                                         BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Count(p => !items.ContainsKey(p.Name)) >
                                     Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
-                                    throw new Exception(
-                                        Reflection.GetNameFromEnumValue(
-                                            ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
+                                    throw new ScriptException(
+                                        ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
                                 }
                                 break;
                             default:
@@ -79,13 +78,28 @@ namespace Corrade
                                         .Count() >
                                     Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
-                                    throw new Exception(
-                                        Reflection.GetNameFromEnumValue(
-                                            ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
+                                    throw new ScriptException(
+                                        ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
                                 }
                                 break;
                         }
                     }
+
+                    // stop non default animations if requested
+                    bool deanimate;
+                    switch (bool.TryParse(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                    {
+                        case true:
+                            // stop all non-built-in animations
+                            Client.Self.SignaledAnimations.Copy()
+                                .Keys.AsParallel()
+                                .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            break;
+                    }
+
                     Parallel.ForEach(items, o =>
                         typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
@@ -98,8 +112,9 @@ namespace Corrade
                                             if (UUID.TryParse(o.Value, out itemUUID))
                                             {
                                                 InventoryBase inventoryBaseItem =
-                                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
-                                                            ).FirstOrDefault();
+                                                    Inventory.FindInventory<InventoryBase>(Client,
+                                                        Client.Inventory.Store.RootNode, itemUUID
+                                                        ).FirstOrDefault();
                                                 if (inventoryBaseItem == null)
                                                     return;
                                                 inventoryItem = inventoryBaseItem as InventoryItem;
@@ -111,14 +126,18 @@ namespace Corrade
                                                 try
                                                 {
                                                     inventoryBaseItem =
-                                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                                            new Regex(o.Value, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                                        Inventory.FindInventory<InventoryBase>(Client,
+                                                            Client.Inventory.Store.RootNode,
+                                                            new Regex(o.Value,
+                                                                RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                                            .FirstOrDefault();
                                                 }
                                                 catch (Exception)
                                                 {
                                                     // not a regex so we do not care
                                                     inventoryBaseItem =
-                                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, o.Value)
+                                                        Inventory.FindInventory<InventoryBase>(Client,
+                                                            Client.Inventory.Store.RootNode, o.Value)
                                                             .FirstOrDefault();
                                                 }
                                                 if (inventoryBaseItem == null)
@@ -133,7 +152,6 @@ namespace Corrade
                                                     inventoryItem,
                                                     (AttachmentPoint) q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
-
                                         }));
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

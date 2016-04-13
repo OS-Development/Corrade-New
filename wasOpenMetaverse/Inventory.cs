@@ -234,13 +234,13 @@ namespace wasOpenMetaverse
         {
             if (string.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
             {
-                if (typeof(T) == typeof(InventoryNode))
+                if (typeof (T) == typeof (InventoryNode))
                 {
-                    yield return (T)(object)root;
+                    yield return (T) (object) root;
                 }
-                if (typeof(T) == typeof(InventoryBase))
+                if (typeof (T) == typeof (InventoryBase))
                 {
-                    yield return (T)(object)Client.Inventory.Store[root.Data.UUID];
+                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
                 }
             }
             foreach (
@@ -268,16 +268,16 @@ namespace wasOpenMetaverse
         public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, UUID criteria)
         {
             if (criteria.Equals(root.Data.UUID) ||
-                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
+                (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
+                 (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
             {
-                if (typeof(T) == typeof(InventoryNode))
+                if (typeof (T) == typeof (InventoryNode))
                 {
-                    yield return (T)(object)root;
+                    yield return (T) (object) root;
                 }
-                if (typeof(T) == typeof(InventoryBase))
+                if (typeof (T) == typeof (InventoryBase))
                 {
-                    yield return (T)(object)Client.Inventory.Store[root.Data.UUID];
+                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
                 }
             }
             foreach (
@@ -306,13 +306,13 @@ namespace wasOpenMetaverse
         {
             if (criteria.IsMatch(root.Data.Name))
             {
-                if (typeof(T) == typeof(InventoryNode))
+                if (typeof (T) == typeof (InventoryNode))
                 {
-                    yield return (T)(object)root;
+                    yield return (T) (object) root;
                 }
-                if (typeof(T) == typeof(InventoryBase))
+                if (typeof (T) == typeof (InventoryBase))
                 {
-                    yield return (T)(object)Client.Inventory.Store[root.Data.UUID];
+                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
                 }
             }
             foreach (
@@ -337,28 +337,28 @@ namespace wasOpenMetaverse
         public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
             InventoryNode root, string criteria, LinkedList<string> prefix)
         {
-            if (string.Equals(criteria,root.Data.Name, StringComparison.Ordinal))
+            if (string.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
             {
-                if (typeof(T) == typeof(InventoryBase))
+                if (typeof (T) == typeof (InventoryBase))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
-                                prefix.Concat(new[] { root.Data.Name })));
+                                prefix.Concat(new[] {root.Data.Name})));
                 }
-                if (typeof(T) == typeof(InventoryNode))
+                if (typeof (T) == typeof (InventoryNode))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
                             new LinkedList<string>(
-                                prefix.Concat(new[] { root.Data.Name })));
+                                prefix.Concat(new[] {root.Data.Name})));
                 }
             }
             foreach (
                 KeyValuePair<T, LinkedList<string>> o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => FindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] { root.Data.Name })))))
+                            prefix.Concat(new[] {root.Data.Name})))))
             {
                 yield return o;
             }
@@ -380,29 +380,29 @@ namespace wasOpenMetaverse
             InventoryNode root, UUID criteria, LinkedList<string> prefix)
         {
             if (criteria.Equals(root.Data.UUID) ||
-                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
+                (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
+                 (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
             {
-                if (typeof(T) == typeof(InventoryBase))
+                if (typeof (T) == typeof (InventoryBase))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
-                                prefix.Concat(new[] { root.Data.Name })));
+                                prefix.Concat(new[] {root.Data.Name})));
                 }
-                if (typeof(T) == typeof(InventoryNode))
+                if (typeof (T) == typeof (InventoryNode))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
                             new LinkedList<string>(
-                                prefix.Concat(new[] { root.Data.Name })));
+                                prefix.Concat(new[] {root.Data.Name})));
                 }
             }
             foreach (
                 KeyValuePair<T, LinkedList<string>> o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => FindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] { root.Data.Name })))))
+                            prefix.Concat(new[] {root.Data.Name})))))
             {
                 yield return o;
             }
@@ -425,26 +425,26 @@ namespace wasOpenMetaverse
         {
             if (criteria.IsMatch(root.Data.Name))
             {
-                if (typeof(T) == typeof(InventoryBase))
+                if (typeof (T) == typeof (InventoryBase))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
-                                prefix.Concat(new[] { root.Data.Name })));
+                                prefix.Concat(new[] {root.Data.Name})));
                 }
-                if (typeof(T) == typeof(InventoryNode))
+                if (typeof (T) == typeof (InventoryNode))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
                             new LinkedList<string>(
-                                prefix.Concat(new[] { root.Data.Name })));
+                                prefix.Concat(new[] {root.Data.Name})));
                 }
             }
             foreach (
                 KeyValuePair<T, LinkedList<string>> o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => FindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] { root.Data.Name })))))
+                            prefix.Concat(new[] {root.Data.Name})))))
             {
                 yield return o;
             }

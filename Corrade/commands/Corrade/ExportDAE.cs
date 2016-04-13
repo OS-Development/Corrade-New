@@ -23,7 +23,6 @@ using OpenMetaverse.Rendering;
 using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
-using Helpers = wasOpenMetaverse.Helpers;
 using Mesh = wasOpenMetaverse.Mesh;
 using Parallel = System.Threading.Tasks.Parallel;
 using Path = System.IO.Path;

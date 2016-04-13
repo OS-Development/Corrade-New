@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -29,33 +30,64 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-
-                    string folder =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
-                                corradeCommandParameters.Message));
+                    string folder = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder))
                     {
                         throw new ScriptException(ScriptError.NO_FOLDER_SPECIFIED);
                     }
-
                     InventoryFolder inventoryFolder;
-                    lock (Locks.ClientInstanceInventoryLock)
+                    UUID folderUUID;
+                    if (UUID.TryParse(folder, out folderUUID))
                     {
-                        inventoryFolder =
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
-                                .FirstOrDefault(o => o is InventoryFolder) as InventoryFolder;
+                        InventoryBase inventoryBaseItem =
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                folderUUID
+                                ).FirstOrDefault();
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                        }
+                        inventoryFolder = inventoryBaseItem as InventoryFolder;
+                    }
+                    else
+                    {
+                        // attempt regex and then fall back to string
+                        InventoryBase inventoryBaseItem = null;
+                        try
+                        {
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                    .FirstOrDefault();
+                        }
+                        catch (Exception)
+                        {
+                            // not a regex so we do not care
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    folder)
+                                    .FirstOrDefault();
+                        }
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                        }
+                        inventoryFolder = inventoryBaseItem as InventoryFolder;
                     }
                     if (inventoryFolder == null)
                     {
                         throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
                     }
-
                     List<InventoryItem> equipItems = new List<InventoryItem>();
                     lock (Locks.ClientInstanceInventoryLock)
                     {
                         equipItems.AddRange(
                             Client.Inventory.Store.GetContents(inventoryFolder)
+                                .AsParallel()
+                                .Where(o => o is InventoryItem)
                                 .Select(o => Inventory.ResolveItemLink(Client, o as InventoryItem))
                                 .Where(Inventory.CanBeWorn));
                     }
