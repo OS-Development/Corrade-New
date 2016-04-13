@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -29,13 +30,39 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    string item = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(item))
+                    {
+                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                    }
                     HashSet<InventoryItem> items =
-                        new HashSet<InventoryItem>(
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                Helpers.StringOrUUID(wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message)))
-                                ).Cast<InventoryItem>());
+                        new HashSet<InventoryItem>();
+                    UUID itemUUID;
+                    if (UUID.TryParse(item, out itemUUID))
+                    {
+                        items.UnionWith(Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                            itemUUID).Select(o => o as InventoryItem));
+                    }
+                    else
+                    {
+                        // attempt regex and then fall back to string
+                        try
+                        {
+                            items.UnionWith(
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                    .Select(o => o as InventoryItem));
+                        }
+                        catch (Exception)
+                        {
+                            // not a regex so we do not care
+                            items.UnionWith(
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .Select(o => o as InventoryItem));
+                        }
+                    }
                     if (!items.Any())
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

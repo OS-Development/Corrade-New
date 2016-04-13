@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -37,12 +38,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    object item =
-                        Helpers.StringOrUUID(
-                            wasInput(
+                    string item = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message)));
-                    if (item == null)
+                                    corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(item))
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                            BindingFlags.Static)
@@ -61,17 +60,29 @@ namespace Corrade
                     }
                     AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
-                    UUID itemUUID;
+                    UUID itemUUID = UUID.Zero;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
-                    switch (
-                        assetType.Equals(AssetType.LSLText) || assetType.Equals(AssetType.Notecard) ||
-                        item is string)
+                    if (
+                        assetType.Equals(AssetType.LSLText) || assetType.Equals(AssetType.Notecard))
                     {
-                        case true:
-                            InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
-                                    .FirstOrDefault();
+                        if (!UUID.TryParse(item, out itemUUID))
+                        {
+                            // attempt regex and then fall back to string
+                            InventoryBase inventoryBaseItem = null;
+                            try
+                            {
+                                inventoryBaseItem =
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                        new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                            }
+                            catch (Exception)
+                            {
+                                // not a regex so we do not care
+                                inventoryBaseItem =
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                        .FirstOrDefault();
+                            }
                             if (inventoryBaseItem == null)
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
@@ -82,10 +93,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
                             itemUUID = inventoryItem.AssetUUID;
-                            break;
-                        default: // otherwise, just set the the item UUID to the item
-                            itemUUID = (UUID) item;
-                            break;
+                        }
                     }
                     byte[] assetData = null;
                     switch (!Client.Assets.Cache.HasAsset(itemUUID))

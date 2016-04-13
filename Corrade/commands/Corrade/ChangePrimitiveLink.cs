@@ -73,17 +73,36 @@ namespace Corrade
                     Parallel.ForEach(Enumerable.Range(0, items.Count), (o, state) =>
                     {
                         Primitive primitive = null;
-                        if (
-                            !Services.FindPrimitive(Client,
-                                Helpers.StringOrUUID(items[o]),
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        UUID itemUUID;
+                        if (UUID.TryParse(items[o], out itemUUID))
                         {
-                            succeeded = false;
-                            state.Break();
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    itemUUID,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                succeeded = false;
+                                state.Break();
+                            }
+                        }
+                        else
+                        {
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    items[o],
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                succeeded = false;
+                                state.Break();
+                            }
                         }
                         searchPrimitives[o] = primitive;
                     });

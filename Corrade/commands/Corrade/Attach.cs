@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -92,19 +93,47 @@ namespace Corrade
                                     string.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
-                                            InventoryBase inventoryBaseItem =
-                                                Inventory.FindInventory<InventoryBase>(Client,
-                                                    Client.Inventory.Store.RootNode,
-                                                    Helpers.StringOrUUID(o.Value)
-                                                    )
-                                                    .ToArray().AsParallel().FirstOrDefault(
-                                                        r => r is InventoryObject || r is InventoryAttachment);
-                                            if (inventoryBaseItem == null)
+                                            InventoryItem inventoryItem;
+                                            UUID itemUUID;
+                                            if (UUID.TryParse(o.Value, out itemUUID))
+                                            {
+                                                InventoryBase inventoryBaseItem =
+                                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
+                                                            ).FirstOrDefault();
+                                                if (inventoryBaseItem == null)
+                                                    return;
+                                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                            }
+                                            else
+                                            {
+                                                // attempt regex and then fall back to string
+                                                InventoryBase inventoryBaseItem = null;
+                                                try
+                                                {
+                                                    inventoryBaseItem =
+                                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                                            new Regex(o.Value, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                                }
+                                                catch (Exception)
+                                                {
+                                                    // not a regex so we do not care
+                                                    inventoryBaseItem =
+                                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, o.Value)
+                                                            .FirstOrDefault();
+                                                }
+                                                if (inventoryBaseItem == null)
+                                                    return;
+                                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                            }
+                                            if (inventoryItem == null)
                                                 return;
-                                            Inventory.Attach(Client, CurrentOutfitFolder,
-                                                inventoryBaseItem as InventoryItem,
-                                                (AttachmentPoint) q.GetValue(null),
-                                                replace, corradeConfiguration.ServicesTimeout);
+
+                                            if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
+                                                Inventory.Attach(Client, CurrentOutfitFolder,
+                                                    inventoryItem,
+                                                    (AttachmentPoint) q.GetValue(null),
+                                                    replace, corradeConfiguration.ServicesTimeout);
+
                                         }));
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

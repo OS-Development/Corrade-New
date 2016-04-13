@@ -266,10 +266,10 @@ namespace wasOpenMetaverse
         public static bool AgentInGroup(GridClient Client, UUID agentUUID, UUID groupUUID, uint millisecondsTimeout)
         {
             ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
-            Dictionary<UUID, GroupMember> groupMembers = null;
+            HashSet<UUID> groupMembers = new HashSet<UUID>();
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
-                groupMembers = args.Members;
+                groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
                 groupMembersReceivedEvent.Set();
             };
             lock (Locks.ClientInstanceGroupsLock)
@@ -283,7 +283,7 @@ namespace wasOpenMetaverse
                 }
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             }
-            return groupMembers != null && groupMembers.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
+            return groupMembers.Contains(agentUUID);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -317,14 +317,13 @@ namespace wasOpenMetaverse
                 }
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
             }
-            @group = localGroup;
+            group = localGroup;
             return true;
         }
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-
         /// <summary>
         ///     Get the parcel of a simulator given a position.
         /// </summary>
@@ -360,27 +359,21 @@ namespace wasOpenMetaverse
                 }
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
             }
-            HashSet<Parcel> localParcels = new HashSet<Parcel>();
-            object LockObject = new object();
-            simulator.Parcels.ForEach(o =>
+            Parcel localParcel = simulator.Parcels.Copy().Values
+                .AsParallel()
+                .Where(
+                    o =>
+                        position.X >= o.AABBMin.X && position.X <= o.AABBMax.X &&
+                        position.Y >= o.AABBMin.Y &&
+                        position.Y <= o.AABBMax.Y)
+                .OrderBy(o => Vector3.Distance(o.AABBMin, o.AABBMax))
+                .FirstOrDefault();
+            if (localParcel != null)
             {
-                if (!(position.X >= o.AABBMin.X) || !(position.X <= o.AABBMax.X) ||
-                    !(position.Y >= o.AABBMin.Y) || !(position.Y <= o.AABBMax.Y))
-                    return;
-                lock (LockObject)
-                {
-                    localParcels.Add(o);
-                }
-            });
-            Parcel localParcel = localParcels.OrderBy(o => Vector3.Distance(o.AABBMin, o.AABBMax)).FirstOrDefault();
-            switch (localParcel != null)
-            {
-                case true:
-                    parcel = localParcel;
-                    return true;
-                default:
-                    return false;
+                parcel = localParcel;
+                return true;
             }
+            return false;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -472,7 +465,41 @@ namespace wasOpenMetaverse
                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 }
             } while (primitiveQueue.Any());
-            return primitiveUpdatesCount.Equals(primitives.Count);
+            return primitiveUpdatesCount.Equals(primitives.Count());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Updates a set of primitives by scanning their properties.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="primitives">a list of primitives to update</param>
+        /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
+        /// <returns>a list of updated primitives</returns>
+        public static bool UpdatePrimitives(GridClient Client, ref Primitive primitive, uint dataTimeout)
+        {
+            int primitiveUpdatesCount = 0;
+            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
+            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
+                (sender, args) =>
+                {
+                    Interlocked.Increment(ref primitiveUpdatesCount);
+                    ObjectPropertiesEvent.Set();
+                };
+            Primitive updatePrimitive = primitive;
+            lock (Locks.ClientInstanceObjectsLock)
+            {
+                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+                ObjectPropertiesEvent.Reset();
+                Client.Objects.SelectObject(Client.Network.Simulators.AsParallel()
+                    .FirstOrDefault(p => p.Handle.Equals(updatePrimitive.RegionHandle)), updatePrimitive.LocalID,
+                    true);
+                ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
+                Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+            }
+            return primitiveUpdatesCount.Equals(1);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -619,16 +646,15 @@ namespace wasOpenMetaverse
                 });
             }
 
-            switch (
+            if (
                 avatarUpdates.Values.AsParallel()
                     .Any(
                         o =>
                             o != null && !o.ProfileInterests.Equals(default(Avatar.Interests)) &&
                             !o.ProfileProperties.Equals(default(Avatar.AvatarProperties))))
             {
-                case true:
-                    avatars = new HashSet<Avatar>(avatarUpdates.Values);
-                    return true;
+                avatars = new HashSet<Avatar>(avatarUpdates.Values);
+                return true;
             }
             return false;
         }
@@ -640,7 +666,7 @@ namespace wasOpenMetaverse
         ///     Find a named primitive in range (whether attachment or in-world).
         /// </summary>
         /// <param name="Client">the OpenMetaverse grid client</param>
-        /// <param name="item">the name or UUID of the primitive</param>
+        /// <param name="item">the UUID of the primitive</param>
         /// <param name="range">the range in meters to search for the object</param>
         /// <param name="maxRange">the maximum configured range for the grid</param>
         /// <param name="primitive">a primitive object to store the result</param>
@@ -648,85 +674,49 @@ namespace wasOpenMetaverse
         /// <param name="dataTimeout">the data timeout in milliseconds</param>
         /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <returns>true if the primitive could be found</returns>
-        public static bool FindPrimitive<T>(GridClient Client, T item, float range, float maxRange,
+        public static bool FindPrimitive(GridClient Client, UUID item, float range, float maxRange,
             ref Primitive primitive, uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
-            Dictionary<uint, Primitive> objectsPrimitives = null;
-            ManualResetEvent[] semaphore =
-            {
-                new ManualResetEvent(false),
-                new ManualResetEvent(false)
-            };
-            new Thread(() =>
-            {
-                objectsPrimitives =
-                    new Dictionary<uint, Primitive>(
-                        GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
-                            .ToDictionary(o => o.LocalID, p => p));
-                semaphore[0].Set();
-            })
-            {IsBackground = true}.Start();
-            Dictionary<uint, Avatar> objectsAvatars = null;
-            new Thread(() =>
-            {
-                objectsAvatars =
-                    new Dictionary<uint, Avatar>(
-                        GetAvatars(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
-                            .ToDictionary(o => o.LocalID, p => p));
-                semaphore[1].Set();
-            })
-            {IsBackground = true}.Start();
-            if (!WaitHandle.WaitAll(semaphore.Select(o => (WaitHandle) o).ToArray(), (int) millisecondsTimeout, false))
+            Primitive p = GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                .AsParallel()
+                .FirstOrDefault(o => o.ID.Equals(item));
+            if (p == null || !UpdatePrimitives(Client, ref p, dataTimeout))
                 return false;
-            object LockObject = new object();
-            HashSet<Primitive> primitives = new HashSet<Primitive>();
-            Parallel.ForEach(objectsPrimitives.Values, o =>
-            {
-                // find the parent of the primitive
-                Primitive parent = o;
-                do
-                {
-                    Primitive ancestor = null;
-                    Primitive ancestorPrimitive;
-                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
-                    {
-                        ancestor = ancestorPrimitive;
-                    }
-                    Avatar ancestorAvatar;
-                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
-                    {
-                        ancestor = ancestorAvatar;
-                    }
-                    if (ancestor == null) break;
-                    parent = ancestor;
-                } while (!parent.ParentID.Equals(0));
-                // Ignore the object if the parent is out of range.
-                if (Vector3.Distance(parent.Position, Client.Self.SimPosition) > range) return;
-                if (item is UUID && o.ID.Equals(item))
-                {
-                    lock (LockObject)
-                    {
-                        primitives.Add(o);
-                    }
-                    return;
-                }
-                if (item is string)
-                {
-                    lock (LockObject)
-                    {
-                        primitives.Add(o);
-                    }
-                }
-            });
-            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
+            primitive = p;
+            return true;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Find a named primitive in range (whether attachment or in-world).
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="item">the name of the primitive</param>
+        /// <param name="range">the range in meters to search for the object</param>
+        /// <param name="maxRange">the maximum configured range for the grid</param>
+        /// <param name="primitive">a primitive object to store the result</param>
+        /// <param name="millisecondsTimeout">the services timeout in milliseconds</param>
+        /// <param name="dataTimeout">the data timeout in milliseconds</param>
+        /// <param name="alarm">a decaying alarm for retrieving data</param>
+        /// <returns>true if the primitive could be found</returns>
+        public static bool FindPrimitive(GridClient Client, string item, float range, float maxRange,
+            ref Primitive primitive, uint millisecondsTimeout,
+            uint dataTimeout, Time.DecayingAlarm alarm)
+        {
+            HashSet<Primitive> p =
+                new HashSet<Primitive>(GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm));
+            if (!p.Any() || !UpdatePrimitives(Client, ref p, dataTimeout))
                 return false;
-            primitive =
-                primitives.ToArray().AsParallel().FirstOrDefault(
-                    o =>
-                        (item is UUID && o.ID.Equals(item)) ||
-                        (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
-            return primitive != null;
+            Primitive localPrimitive = p.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
+            if (localPrimitive != null)
+            {
+                primitive = localPrimitive;
+                return true;
+            } 
+            return false;
         }
     }
 }

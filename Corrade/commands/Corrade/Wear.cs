@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -53,9 +54,46 @@ namespace Corrade
                         .Where(o => !string.IsNullOrEmpty(o))
                         .Select(
                             o =>
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    Helpers.StringOrUUID(o)
-                                    ).ToArray().AsParallel().FirstOrDefault(p => p is InventoryWearable))
+                            {
+                                InventoryItem inventoryItem;
+                                UUID itemUUID;
+                                if (UUID.TryParse(o, out itemUUID))
+                                {
+                                    InventoryBase inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
+                                                ).FirstOrDefault();
+                                    if (inventoryBaseItem == null)
+                                        return null;
+                                    inventoryItem = inventoryBaseItem as InventoryItem;
+                                }
+                                else
+                                {
+                                    // attempt regex and then fall back to string
+                                    InventoryBase inventoryBaseItem = null;
+                                    try
+                                    {
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                                new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                    }
+                                    catch (Exception)
+                                    {
+                                        // not a regex so we do not care
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, o)
+                                                .FirstOrDefault();
+                                    }
+                                    if (inventoryBaseItem == null)
+                                        return null;
+                                    inventoryItem = inventoryBaseItem as InventoryItem;
+                                }
+                                if (inventoryItem == null)
+                                    return null;
+
+                                if (inventoryItem is InventoryWearable)
+                                    return null;
+                                return inventoryItem;
+                            })
                         .Where(o => o != null)
                         .Select(o => o as InventoryItem)
                         .ForAll(

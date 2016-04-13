@@ -230,23 +230,89 @@ namespace wasOpenMetaverse
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
         /// <returns>a list of items matching the item name</returns>
-        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, object criteria)
+        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, string criteria)
         {
-            if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
-                (criteria is string &&
-                 (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
-                (criteria is UUID &&
-                 (criteria.Equals(root.Data.UUID) ||
-                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))))
+            if (string.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
             {
-                if (typeof (T) == typeof (InventoryNode))
+                if (typeof(T) == typeof(InventoryNode))
                 {
-                    yield return (T) (object) root;
+                    yield return (T)(object)root;
                 }
-                if (typeof (T) == typeof (InventoryBase))
+                if (typeof(T) == typeof(InventoryBase))
                 {
-                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
+                    yield return (T)(object)Client.Inventory.Store[root.Data.UUID];
+                }
+            }
+            foreach (
+                T item in root.Nodes.Values.AsParallel().SelectMany(node => FindInventory<T>(Client, node, criteria)))
+            {
+                yield return item;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// ///
+        /// <summary>
+        ///     Fetches items by searching the inventory starting with an inventory
+        ///     node where the search criteria finds:
+        ///     - name as string
+        ///     - name as Regex
+        ///     - UUID as UUID
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the node to start the search from</param>
+        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <returns>a list of items matching the item name</returns>
+        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, UUID criteria)
+        {
+            if (criteria.Equals(root.Data.UUID) ||
+                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
+                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
+            {
+                if (typeof(T) == typeof(InventoryNode))
+                {
+                    yield return (T)(object)root;
+                }
+                if (typeof(T) == typeof(InventoryBase))
+                {
+                    yield return (T)(object)Client.Inventory.Store[root.Data.UUID];
+                }
+            }
+            foreach (
+                T item in root.Nodes.Values.AsParallel().SelectMany(node => FindInventory<T>(Client, node, criteria)))
+            {
+                yield return item;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// ///
+        /// <summary>
+        ///     Fetches items by searching the inventory starting with an inventory
+        ///     node where the search criteria finds:
+        ///     - name as string
+        ///     - name as Regex
+        ///     - UUID as UUID
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the node to start the search from</param>
+        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <returns>a list of items matching the item name</returns>
+        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, Regex criteria)
+        {
+            if (criteria.IsMatch(root.Data.Name))
+            {
+                if (typeof(T) == typeof(InventoryNode))
+                {
+                    yield return (T)(object)root;
+                }
+                if (typeof(T) == typeof(InventoryBase))
+                {
+                    yield return (T)(object)Client.Inventory.Store[root.Data.UUID];
                 }
             }
             foreach (
@@ -261,47 +327,124 @@ namespace wasOpenMetaverse
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
         ///     Fetches items and their full path from the inventory starting with
-        ///     an inventory node where the search criteria finds:
-        ///     - name as string
-        ///     - name as Regex
-        ///     - UUID as UUID
+        ///     an inventory node where the search criteria is a string.
         /// </summary>
         /// <param name="Client">the grid client to use</param>
         /// <param name="root">the node to start the search from</param>
-        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <param name="criteria">the name of the item to find</param>
         /// <param name="prefix">any prefix to append to the found paths</param>
         /// <returns>items matching criteria and their full inventoy path</returns>
         public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
-            InventoryNode root, object criteria, LinkedList<string> prefix)
+            InventoryNode root, string criteria, LinkedList<string> prefix)
         {
-            if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
-                (criteria is string &&
-                 (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
-                (criteria is UUID &&
-                 (criteria.Equals(root.Data.UUID) ||
-                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))))
+            if (string.Equals(criteria,root.Data.Name, StringComparison.Ordinal))
             {
-                if (typeof (T) == typeof (InventoryBase))
+                if (typeof(T) == typeof(InventoryBase))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
+                                prefix.Concat(new[] { root.Data.Name })));
                 }
-                if (typeof (T) == typeof (InventoryNode))
+                if (typeof(T) == typeof(InventoryNode))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
                             new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
+                                prefix.Concat(new[] { root.Data.Name })));
                 }
             }
             foreach (
                 KeyValuePair<T, LinkedList<string>> o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => FindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] {root.Data.Name})))))
+                            prefix.Concat(new[] { root.Data.Name })))))
+            {
+                yield return o;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Fetches items and their full path from the inventory starting with
+        ///     an inventory node where the search criteria is an UUID.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the node to start the search from</param>
+        /// <param name="criteria">UUID of the item to be found</param>
+        /// <param name="prefix">any prefix to append to the found paths</param>
+        /// <returns>items matching criteria and their full inventoy path</returns>
+        public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
+            InventoryNode root, UUID criteria, LinkedList<string> prefix)
+        {
+            if (criteria.Equals(root.Data.UUID) ||
+                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
+                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
+            {
+                if (typeof(T) == typeof(InventoryBase))
+                {
+                    yield return
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
+                            new LinkedList<string>(
+                                prefix.Concat(new[] { root.Data.Name })));
+                }
+                if (typeof(T) == typeof(InventoryNode))
+                {
+                    yield return
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
+                            new LinkedList<string>(
+                                prefix.Concat(new[] { root.Data.Name })));
+                }
+            }
+            foreach (
+                KeyValuePair<T, LinkedList<string>> o in
+                    root.Nodes.Values.AsParallel()
+                        .SelectMany(o => FindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
+                            prefix.Concat(new[] { root.Data.Name })))))
+            {
+                yield return o;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Fetches items and their full path from the inventory starting with
+        ///     an inventory node where the search criteria is a regex.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the node to start the search from</param>
+        /// <param name="criteria">Regex for the item to be found</param>
+        /// <param name="prefix">any prefix to append to the found paths</param>
+        /// <returns>items matching criteria and their full inventoy path</returns>
+        public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
+            InventoryNode root, Regex criteria, LinkedList<string> prefix)
+        {
+            if (criteria.IsMatch(root.Data.Name))
+            {
+                if (typeof(T) == typeof(InventoryBase))
+                {
+                    yield return
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
+                            new LinkedList<string>(
+                                prefix.Concat(new[] { root.Data.Name })));
+                }
+                if (typeof(T) == typeof(InventoryNode))
+                {
+                    yield return
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
+                            new LinkedList<string>(
+                                prefix.Concat(new[] { root.Data.Name })));
+                }
+            }
+            foreach (
+                KeyValuePair<T, LinkedList<string>> o in
+                    root.Nodes.Values.AsParallel()
+                        .SelectMany(o => FindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
+                            prefix.Concat(new[] { root.Data.Name })))))
             {
                 yield return o;
             }

@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -40,17 +41,43 @@ namespace Corrade
                     CSV.ToEnumerable(
                         attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
-                            InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    Helpers.StringOrUUID(o)
-                                    )
-                                    .ToArray()
-                                    .AsParallel().FirstOrDefault(
-                                        p =>
-                                            p is InventoryObject || p is InventoryAttachment);
-                            if (inventoryBaseItem == null)
+                            InventoryItem inventoryItem;
+                            UUID itemUUID;
+                            if (UUID.TryParse(o, out itemUUID))
+                            {
+                                InventoryBase inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
+                                            ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                    return;
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                            }
+                            else
+                            {
+                                // attempt regex and then fall back to string
+                                InventoryBase inventoryBaseItem = null;
+                                try
+                                {
+                                    inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                }
+                                catch (Exception)
+                                {
+                                    // not a regex so we do not care
+                                    inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, o)
+                                            .FirstOrDefault();
+                                }
+                                if (inventoryBaseItem == null)
+                                    return;
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                            }
+                            if (inventoryItem == null)
                                 return;
-                            Inventory.Detach(Client, CurrentOutfitFolder, inventoryBaseItem as InventoryItem,
+
+                            if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
+                                Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
                                 corradeConfiguration.ServicesTimeout);
                         });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

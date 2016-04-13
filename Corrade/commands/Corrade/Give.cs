@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -29,49 +30,71 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    object item =
-                        Helpers.StringOrUUID(
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message)));
-                    InventoryItem inventoryItem;
-                    switch (item != null)
+                    string item = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(item))
                     {
-                        case true:
-                            InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
+                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                    }
+                    InventoryItem inventoryItem;
+                    UUID itemUUID;
+                    if (UUID.TryParse(item, out itemUUID))
+                    {
+                        InventoryBase inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
                                     ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            inventoryItem = inventoryBaseItem as InventoryItem;
-                            if (inventoryItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            // Sending an item requires transfer permission.
-                            if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
-                            {
-                                throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
-                            }
-                            // Set requested permissions if any on the item.
-                            string permissions = wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                    corradeCommandParameters.Message));
-                            if (!string.IsNullOrEmpty(permissions))
-                            {
-                                if (
-                                    !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
-                                        corradeConfiguration.ServicesTimeout))
-                                {
-                                    throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
-                                }
-                            }
-                            break;
-                        default:
-                            throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        inventoryItem = inventoryBaseItem as InventoryItem;
+                    }
+                    else
+                    {
+                        // attempt regex and then fall back to string
+                        InventoryBase inventoryBaseItem = null;
+                        try
+                        {
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                        }
+                        catch (Exception)
+                        {
+                            // not a regex so we do not care
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .FirstOrDefault();
+                        }
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        inventoryItem = inventoryBaseItem as InventoryItem;
+                    }
+                    if (inventoryItem == null)
+                    {
+                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                    }
+                    // Sending an item requires transfer permission.
+                    if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
+                    {
+                        throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
+                    }
+                    // Set requested permissions if any on the item.
+                    string permissions = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                            corradeCommandParameters.Message));
+                    if (!string.IsNullOrEmpty(permissions))
+                    {
+                        if (
+                            !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
+                                corradeConfiguration.ServicesTimeout))
+                        {
+                            throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                        }
                     }
                     switch (
                         Reflection.GetEnumValueFromName<Entity>(
@@ -121,18 +144,39 @@ namespace Corrade
                                 range = corradeConfiguration.Range;
                             }
                             Primitive primitive = null;
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    Helpers.StringOrUUID(wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
-                                            corradeCommandParameters.Message))),
-                                    range, corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            string target = wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                                corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(target))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new ScriptException(ScriptError.NO_TARGET_SPECIFIED);
+                            }
+                            UUID targetUUID;
+                            if (UUID.TryParse(target, out targetUUID))
+                            {
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        targetUUID,
+                                        range,
+                                        corradeConfiguration.Range,
+                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                            }
+                            else
+                            {
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        target,
+                                        range,
+                                        corradeConfiguration.Range,
+                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
                             }
                             Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
                             break;

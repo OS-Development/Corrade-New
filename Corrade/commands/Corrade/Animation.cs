@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -28,30 +29,52 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    object item =
-                        Helpers.StringOrUUID(
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message)));
-                    InventoryItem inventoryItem;
-                    switch (item != null)
+                    string item = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(item))
                     {
-                        case true:
-                            InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
+                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                    }
+                    InventoryItem inventoryItem;
+                    UUID itemUUID;
+                    if (UUID.TryParse(item, out itemUUID))
+                    {
+                        InventoryBase inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
                                     ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            inventoryItem = inventoryBaseItem as InventoryItem;
-                            if (inventoryItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            break;
-                        default:
-                            throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        inventoryItem = inventoryBaseItem as InventoryItem;
+                    }
+                    else
+                    {
+                        // attempt regex and then fall back to string
+                        InventoryBase inventoryBaseItem = null;
+                        try
+                        {
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                        }
+                        catch (Exception)
+                        {
+                            // not a regex so we do not care
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .FirstOrDefault();
+                        }
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        inventoryItem = inventoryBaseItem as InventoryItem;
+                    }
+                    if (inventoryItem == null)
+                    {
+                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
                     switch (
                         Reflection.GetEnumValueFromName<Action>(

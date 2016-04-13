@@ -332,7 +332,10 @@ namespace Corrade
             [Status(62646)] [Reflection.DescriptionAttribute("effect UUID belongs to different effect")] EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT,
             [Status(25252)] [Reflection.DescriptionAttribute("no SQL string provided")] NO_SQL_STRING_PROVIDED,
             [Status(45173)] [Reflection.DescriptionAttribute("invalid angle provided")] INVALID_ANGLE_PROVIDED,
-            [Status(32453)] [Reflection.DescriptionAttribute("could not get parcel info data")] COULD_NOT_GET_PARCEL_INFO
+            [Status(32453)] [Reflection.DescriptionAttribute("could not get parcel info data")] COULD_NOT_GET_PARCEL_INFO,
+            [Status(02188)]
+            [Reflection.DescriptionAttribute("could not get parcel info data")]
+            NO_TARGET_SPECIFIED
         }
 
         /// <summary>

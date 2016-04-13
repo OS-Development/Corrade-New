@@ -43,31 +43,25 @@ namespace Corrade
                     {
                         position = Client.Self.GlobalPosition;
                     }
-                    object item =
-                        Helpers.StringOrUUID(
+                    string item =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message));
                     UUID textureUUID = UUID.Zero;
-                    if (item != null)
+                    if (!string.IsNullOrEmpty(item))
                     {
-                        switch (item is UUID)
+                        // if the item is an UUID, trust the sender otherwise search the inventory
+                        if (!UUID.TryParse(item, out textureUUID))
                         {
-                            case true: // if the item is an UUID, trust the sender
-                                textureUUID = (UUID)item;
-                                break;
-                            default: // otherwise search inventory
-                                InventoryBase inventoryBaseItem =
+                            InventoryBase inventoryBaseItem =
                                     Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                         ).FirstOrDefault();
-                                if (!(inventoryBaseItem is InventoryTexture))
-                                {
-                                    throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                }
-                                textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
-                                break;
+                            if (!(inventoryBaseItem is InventoryTexture))
+                            {
+                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                            }
+                            textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
-
                     }
                     string name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),

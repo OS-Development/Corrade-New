@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -40,24 +41,50 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    object folder =
-                        Helpers.StringOrUUID(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
-                                    corradeCommandParameters.Message)));
+                    string folder = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            corradeCommandParameters.Message));
                     InventoryFolder inventoryFolder;
-                    switch (folder != null)
+                    switch (!string.IsNullOrEmpty(folder))
                     {
                         case true:
-                            InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder
-                                    ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
+                            UUID folderUUID;
+                            if (UUID.TryParse(folder, out folderUUID))
                             {
-                                throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                InventoryBase inventoryBaseItem =
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                        folderUUID
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                }
+                                inventoryFolder = inventoryBaseItem as InventoryFolder;
                             }
-                            inventoryFolder = inventoryBaseItem as InventoryFolder;
+                            else
+                            {
+                                // attempt regex and then fall back to string
+                                InventoryBase inventoryBaseItem = null;
+                                try
+                                {
+                                    inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                }
+                                catch (Exception)
+                                {
+                                    // not a regex so we do not care
+                                    inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
+                                            .FirstOrDefault();
+                                }
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                }
+                                inventoryFolder = inventoryBaseItem as InventoryFolder;
+                            }
                             if (inventoryFolder == null)
                             {
                                 throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
@@ -80,17 +107,39 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     Primitive primitive = null;
-                    if (
-                        !Services.FindPrimitive(Client,
-                            Helpers.StringOrUUID(wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message))),
-                            range,
-                            corradeConfiguration.Range,
-                            ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                    string item = wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                    }
+                    UUID itemUUID;
+                    if (UUID.TryParse(item, out itemUUID))
+                    {
+                        if (
+                            !Services.FindPrimitive(Client,
+                                itemUUID,
+                                range,
+                                corradeConfiguration.Range,
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                    }
+                    else
+                    {
+                        if (
+                            !Services.FindPrimitive(Client,
+                                item,
+                                range,
+                                corradeConfiguration.Range,
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
                     }
                     Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
                         ? (DeRezDestination)

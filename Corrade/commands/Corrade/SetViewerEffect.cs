@@ -82,15 +82,32 @@ namespace Corrade
                                                 range = corradeConfiguration.Range;
                                             }
                                             Primitive primitive = null;
-                                            if (
-                                                !Services.FindPrimitive(Client,
-                                                    Helpers.StringOrUUID(item),
-                                                    range, corradeConfiguration.Range,
-                                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                                    corradeConfiguration.DataTimeout,
-                                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                            UUID itemUUID;
+                                            if (UUID.TryParse(item, out itemUUID))
                                             {
-                                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                                if (
+                                                    !Services.FindPrimitive(Client,
+                                                        itemUUID,
+                                                        range,
+                                                        corradeConfiguration.Range,
+                                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                                {
+                                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (
+                                                    !Services.FindPrimitive(Client,
+                                                        item,
+                                                        range,
+                                                        corradeConfiguration.Range,
+                                                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                                {
+                                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                                }
                                             }
                                             targetUUID = primitive.ID;
                                             break;

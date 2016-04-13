@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -51,24 +52,50 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_OFFER_NOT_FOUND);
                     }
-                    object folder =
-                        Helpers.StringOrUUID(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
-                                    corradeCommandParameters.Message)));
+                    string folder = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            corradeCommandParameters.Message));
                     InventoryFolder inventoryFolder;
-                    switch (folder != null)
+                    switch (!string.IsNullOrEmpty(folder))
                     {
                         case true:
-                            InventoryBase inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder
-                                    ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
+                            UUID folderUUID;
+                            if (UUID.TryParse(folder, out folderUUID))
                             {
-                                throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                InventoryBase inventoryBaseItem =
+                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                        folderUUID
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                }
+                                inventoryFolder = inventoryBaseItem as InventoryFolder;
                             }
-                            inventoryFolder = inventoryBaseItem as InventoryFolder;
+                            else
+                            {
+                                // attempt regex and then fall back to string
+                                InventoryBase inventoryBaseItem = null;
+                                try
+                                {
+                                    inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase)).FirstOrDefault();
+                                }
+                                catch (Exception)
+                                {
+                                    // not a regex so we do not care
+                                    inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
+                                            .FirstOrDefault();
+                                }
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                }
+                                inventoryFolder = inventoryBaseItem as InventoryFolder;
+                            }
                             if (inventoryFolder == null)
                             {
                                 throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
@@ -76,8 +103,7 @@ namespace Corrade
                             break;
                         default:
                             inventoryFolder =
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(offer.Key.AssetType)
-                                    ]
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
                                     .Data as InventoryFolder;
                             break;
                     }
