@@ -59,41 +59,37 @@ namespace Corrade
                     }
                     AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
-                    UUID itemUUID = UUID.Zero;
+                    UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
-                    if (
-                        assetType.Equals(AssetType.LSLText) || assetType.Equals(AssetType.Notecard))
+                    if (!UUID.TryParse(item, out itemUUID))
                     {
-                        if (!UUID.TryParse(item, out itemUUID))
+                        // attempt regex and then fall back to string
+                        InventoryBase inventoryBaseItem = null;
+                        try
                         {
-                            // attempt regex and then fall back to string
-                            InventoryBase inventoryBaseItem = null;
-                            try
-                            {
-                                inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                        new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                        .FirstOrDefault();
-                            }
-                            catch (Exception)
-                            {
-                                // not a regex so we do not care
-                                inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
-                                        .FirstOrDefault();
-                            }
-                            if (inventoryBaseItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            inventoryItem = inventoryBaseItem as InventoryItem;
-                            if (inventoryItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            itemUUID = inventoryItem.AssetUUID;
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                    .FirstOrDefault();
                         }
+                        catch (Exception)
+                        {
+                            // not a regex so we do not care
+                            inventoryBaseItem =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .FirstOrDefault();
+                        }
+                        if (inventoryBaseItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        inventoryItem = inventoryBaseItem as InventoryItem;
+                        if (inventoryItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        itemUUID = inventoryItem.AssetUUID;
                     }
                     byte[] assetData = null;
                     switch (!Client.Assets.Cache.HasAsset(itemUUID))
