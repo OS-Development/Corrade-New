@@ -333,7 +333,8 @@ namespace Corrade
             [Status(25252)] [Reflection.DescriptionAttribute("no SQL string provided")] NO_SQL_STRING_PROVIDED,
             [Status(45173)] [Reflection.DescriptionAttribute("invalid angle provided")] INVALID_ANGLE_PROVIDED,
             [Status(32453)] [Reflection.DescriptionAttribute("could not get parcel info data")] COULD_NOT_GET_PARCEL_INFO,
-            [Status(02188)] [Reflection.DescriptionAttribute("could not get parcel info data")] NO_TARGET_SPECIFIED
+            [Status(02188)] [Reflection.DescriptionAttribute("could not get parcel info data")] NO_TARGET_SPECIFIED,
+            [Status(47350)] [Reflection.DescriptionAttribute("no type provided")] NO_TYPE_PROVIDED
         }
 
         /// <summary>
@@ -3982,14 +3983,14 @@ namespace Corrade
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
-                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
                         if (!corradeConfiguration.AutoActivateGroup) return;
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     })
-                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
@@ -3998,7 +3999,7 @@ namespace Corrade
                             Client.Self.RetrieveInstantMessages();
                         }
                     })
-                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Request the mute list.
                     new Thread(() =>
                     {
@@ -4007,7 +4008,7 @@ namespace Corrade
                             return;
                         Cache.MutesCache.UnionWith(mutes);
                     })
-                    {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -8513,7 +8514,10 @@ namespace Corrade
             [Reflection.NameAttribute("people")] PEOPLE,
             [Reflection.NameAttribute("place")] PLACE,
             [Reflection.NameAttribute("input")] INPUT,
-            [Reflection.NameAttribute("output")] OUTPUT
+            [Reflection.NameAttribute("output")] OUTPUT,
+            [Reflection.NameAttribute("slot")] SLOT,
+            [Reflection.NameAttribute("name")] NAME,
+            [Reflection.NameAttribute("UUID")] UUID,
         }
 
         /// <summary>

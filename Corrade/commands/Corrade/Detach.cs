@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -39,6 +40,22 @@ namespace Corrade
                         throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
                     }
 
+                    string type = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(type))
+                    {
+                        throw new ScriptException(ScriptError.NO_TYPE_PROVIDED);
+                    }
+                    Type detachType = Reflection.GetEnumValueFromName<Type>(type.ToLowerInvariant());
+
+                    // build a look-up table for the attachment points
+                    Dictionary<string, AttachmentPoint> attachmentPoints =
+                        new Dictionary<string, AttachmentPoint>(typeof (AttachmentPoint).GetFields(BindingFlags.Public |
+                                                                                                   BindingFlags.Static)
+                            .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint) o.GetValue(null)));
+
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
@@ -57,41 +74,69 @@ namespace Corrade
                     CSV.ToEnumerable(
                         attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
-                            InventoryItem inventoryItem;
-                            UUID itemUUID;
-                            if (UUID.TryParse(o, out itemUUID))
+                            InventoryBase inventoryBaseItem = null;
+                            switch (detachType)
                             {
-                                InventoryBase inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                        itemUUID
-                                        ).FirstOrDefault();
-                                if (inventoryBaseItem == null)
-                                    return;
-                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                case Type.SLOT:
+                                    AttachmentPoint attachmentPoint;
+                                    if (attachmentPoints.TryGetValue(o, out attachmentPoint))
+                                    {
+                                        KeyValuePair<Primitive, AttachmentPoint> attachment =
+                                            Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
+                                                .AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
+                                        if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                        {
+                                            inventoryBaseItem =
+                                                Inventory.FindInventory<InventoryBase>(Client,
+                                                    Client.Inventory.Store.RootNode,
+                                                    attachment.Key.Properties.ItemID
+                                                    )
+                                                    .AsParallel().FirstOrDefault(
+                                                        p =>
+                                                            p is InventoryItem &&
+                                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                            if (inventoryBaseItem == null)
+                                                return;
+                                        }
+                                    }
+                                    break;
+                                case Type.NAME:
+                                    // attempt regex and then fall back to string
+                                    try
+                                    {
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client,
+                                                Client.Inventory.Store.RootNode,
+                                                new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                                .FirstOrDefault();
+                                    }
+                                    catch (Exception)
+                                    {
+                                        // not a regex so we do not care
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client,
+                                                Client.Inventory.Store.RootNode,
+                                                o)
+                                                .FirstOrDefault();
+                                    }
+                                    if (inventoryBaseItem == null)
+                                        return;
+                                    break;
+                                case Type.UUID:
+                                    UUID itemUUID;
+                                    if (UUID.TryParse(o, out itemUUID))
+                                    {
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client,
+                                                Client.Inventory.Store.RootNode,
+                                                itemUUID
+                                                ).FirstOrDefault();
+                                        if (inventoryBaseItem == null)
+                                            return;
+                                    }
+                                    break;
                             }
-                            else
-                            {
-                                // attempt regex and then fall back to string
-                                InventoryBase inventoryBaseItem = null;
-                                try
-                                {
-                                    inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                            .FirstOrDefault();
-                                }
-                                catch (Exception)
-                                {
-                                    // not a regex so we do not care
-                                    inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            o)
-                                            .FirstOrDefault();
-                                }
-                                if (inventoryBaseItem == null)
-                                    return;
-                                inventoryItem = inventoryBaseItem as InventoryItem;
-                            }
+                            InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
                             if (inventoryItem == null)
                                 return;
 

@@ -34,7 +34,7 @@ namespace Corrade
                                 )
                                 .AsParallel().FirstOrDefault(
                                     p =>
-                                        (p is InventoryItem) &&
+                                        p is InventoryItem &&
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                         if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
