@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -20,7 +19,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     OutfitEventArgs outfitEventArgs =
-                        (OutfitEventArgs)corradeNotificationParameters.Event;
+                        (OutfitEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
@@ -31,7 +30,7 @@ namespace Corrade
                         return;
                     }
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                        outfitEventArgs.Action.ToString());
+                        Reflection.GetNameFromEnumValue(outfitEventArgs.Action));
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
                         outfitEventArgs.Asset.ToString());
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CREATOR),
