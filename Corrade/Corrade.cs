@@ -451,7 +451,7 @@ namespace Corrade
         private static volatile bool AIMLBotBrainCompiled;
 
         private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
-            corradeCommands = typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
+            corradeCommands = new CorradeCommands().GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
                 .AsParallel()
                 .Where(
                     o =>
@@ -463,7 +463,7 @@ namespace Corrade
 
         private static readonly Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>>
             corradeNotifications =
-                typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                new CorradeNotifications().GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
                     .AsParallel()
                     .Where(
                         o =>
@@ -474,7 +474,7 @@ namespace Corrade
                             (Action<CorradeNotificationParameters, Dictionary<string, string>>) o.GetValue(null));
 
         private static readonly Dictionary<string, Action<string, RLVRule, UUID>>
-            rlvBehaviours = typeof (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
+            rlvBehaviours = new RLVBehaviours().GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
                 .AsParallel()
                 .Where(
                     o =>
@@ -6100,7 +6100,15 @@ namespace Corrade
             [Reflection.NameAttribute("ban")] BAN,
             [Reflection.NameAttribute("unban")] UNBAN,
             [Reflection.NameAttribute("send")] SEND,
-            [Reflection.NameAttribute("search")] SEARCH
+            [Reflection.NameAttribute("search")] SEARCH,
+            [Reflection.NameAttribute("attach")]
+            ATTACH,
+            [Reflection.NameAttribute("detach")]
+            DETACH,
+            [Reflection.NameAttribute("wear")]
+            WEAR,
+            [Reflection.NameAttribute("unwear")]
+            UNWEAR,
         }
 
         /// <summary>
@@ -7254,6 +7262,21 @@ namespace Corrade
             public UUID GroupUUID;
         }
 
+        private class OutfitEventArgs : EventArgs
+        {
+            public Action Action;
+            public string Name;
+            public string Description;
+            public UUID Item;
+            public AssetType Entity;
+            public UUID Asset;
+            public UUID Creator;
+            public string Permissions;
+            public InventoryType Inventory;
+            public bool Replace;
+            public string Slot;
+        }
+
         /// <summary>
         ///     An event for a group message.
         /// </summary>
@@ -7451,6 +7474,12 @@ namespace Corrade
             [CorradeCommand("setparcellist")]
             [Reflection.NameAttribute("setparcellist")]
             SETPARCELLIST, */
+
+            [Reflection.NameAttribute("creator")]
+            CREATOR,
+            [Reflection.NameAttribute("slot")]
+            SLOT,
+
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,

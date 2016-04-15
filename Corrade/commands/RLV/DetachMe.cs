@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -38,7 +39,36 @@ namespace Corrade
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                         if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
-                            Inventory.Detach(Client, CurrentOutfitFolder, inventoryBase as InventoryItem,
+                            InventoryItem inventoryItem = inventoryBase as InventoryItem;
+                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                () => SendNotification(
+                                    Configuration.Notifications.OutfitChanged,
+                                    new OutfitEventArgs
+                                    {
+                                        Action = Action.DETACH,
+                                        Name = inventoryItem.Name,
+                                        Description = inventoryItem.Description,
+                                        Item = inventoryItem.UUID,
+                                        Asset = inventoryItem.AssetUUID,
+                                        Entity = inventoryItem.AssetType,
+                                        Creator = inventoryItem.CreatorID,
+                                        Permissions =
+                                            Inventory.wasPermissionsToString(
+                                                inventoryItem.Permissions),
+                                        Inventory = inventoryItem.InventoryType,
+                                        Slot = Inventory.GetAttachments(
+                                            Client,
+                                            corradeConfiguration.DataTimeout)
+                                            .AsParallel()
+                                            .Where(
+                                                p =>
+                                                    p.Key.Properties.ItemID.Equals(
+                                                        inventoryItem.UUID))
+                                            .Select(p => p.Value.ToString())
+                                            .FirstOrDefault()
+                                    }),
+                                corradeConfiguration.MaximumNotificationThreads);
+                            Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
                                 corradeConfiguration.ServicesTimeout);
                         }
                         RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

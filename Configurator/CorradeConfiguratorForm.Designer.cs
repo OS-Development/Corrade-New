@@ -4115,7 +4115,8 @@
             "primitives",
             "control",
             "sit",
-            "animation"});
+            "animation",
+            "outfit"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);

@@ -910,6 +910,9 @@
     <Compile Include="notifications\ObjectIM.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Outfit.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\OwnerSay.cs">
       <SubType>Component</SubType>
     </Compile>

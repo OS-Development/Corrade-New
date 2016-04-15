@@ -103,6 +103,26 @@ namespace Corrade
                             {
                                 Inventory.Wear(Client, CurrentOutfitFolder, o, replace,
                                     corradeConfiguration.ServicesTimeout);
+                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                    () => SendNotification(
+                                        Configuration.Notifications.OutfitChanged,
+                                        new OutfitEventArgs
+                                        {
+                                            Action = Action.WEAR,
+                                            Name = o.Name,
+                                            Description = o.Description,
+                                            Item = o.UUID,
+                                            Asset = o.AssetUUID,
+                                            Entity = o.AssetType,
+                                            Creator = o.CreatorID,
+                                            Permissions =
+                                                Inventory.wasPermissionsToString(
+                                                    o.Permissions),
+                                            Inventory = o.InventoryType,
+                                            Replace = replace,
+                                            Slot = (o as InventoryWearable).WearableType.ToString()
+                                        }),
+                                    corradeConfiguration.MaximumNotificationThreads);
                             });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

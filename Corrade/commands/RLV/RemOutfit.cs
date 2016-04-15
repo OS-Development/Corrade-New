@@ -7,6 +7,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using CorradeConfiguration;
 using OpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -44,6 +45,25 @@ namespace Corrade
                                             (WearableType) wearTypeInfo.GetValue(null)));
                         if (wearable != null)
                         {
+                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                () => SendNotification(
+                                    Configuration.Notifications.OutfitChanged,
+                                    new OutfitEventArgs
+                                    {
+                                        Action = Action.UNWEAR,
+                                        Name = wearable.Name,
+                                        Description = wearable.Description,
+                                        Item = wearable.UUID,
+                                        Asset = wearable.AssetUUID,
+                                        Entity = wearable.AssetType,
+                                        Creator = wearable.CreatorID,
+                                        Permissions =
+                                            Inventory.wasPermissionsToString(
+                                                wearable.Permissions),
+                                        Inventory = wearable.InventoryType,
+                                        Slot = (wearable as InventoryWearable).WearableType.ToString()
+                                    }),
+                                corradeConfiguration.MaximumNotificationThreads);
                             Inventory.UnWear(Client, CurrentOutfitFolder, wearable, corradeConfiguration.ServicesTimeout);
                         }
                         break;
@@ -53,8 +73,29 @@ namespace Corrade
                             .Where(o => !Inventory.IsBodyPart(Client, o as InventoryWearable))
                             .ForAll(
                                 o =>
+                                {
+                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        () => SendNotification(
+                                            Configuration.Notifications.OutfitChanged,
+                                            new OutfitEventArgs
+                                            {
+                                                Action = Action.UNWEAR,
+                                                Name = o.Name,
+                                                Description = o.Description,
+                                                Item = o.UUID,
+                                                Asset = o.AssetUUID,
+                                                Entity = o.AssetType,
+                                                Creator = o.CreatorID,
+                                                Permissions =
+                                                    Inventory.wasPermissionsToString(
+                                                        o.Permissions),
+                                                Inventory = o.InventoryType,
+                                                Slot = (o as InventoryWearable).WearableType.ToString()
+                                            }),
+                                        corradeConfiguration.MaximumNotificationThreads);
                                     Inventory.UnWear(Client, CurrentOutfitFolder, o,
-                                        corradeConfiguration.ServicesTimeout));
+                                        corradeConfiguration.ServicesTimeout);
+                                });
                         break;
                 }
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

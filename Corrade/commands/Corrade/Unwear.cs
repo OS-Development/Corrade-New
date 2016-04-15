@@ -78,8 +78,29 @@ namespace Corrade
                                 return;
 
                             if (inventoryItem is InventoryWearable)
+                            {
+                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                    () => SendNotification(
+                                        Configuration.Notifications.OutfitChanged,
+                                        new OutfitEventArgs
+                                        {
+                                            Action = Action.UNWEAR,
+                                            Name = inventoryItem.Name,
+                                            Description = inventoryItem.Description,
+                                            Item = inventoryItem.UUID,
+                                            Asset = inventoryItem.AssetUUID,
+                                            Entity = inventoryItem.AssetType,
+                                            Creator = inventoryItem.CreatorID,
+                                            Permissions =
+                                                Inventory.wasPermissionsToString(
+                                                    inventoryItem.Permissions),
+                                            Inventory = inventoryItem.InventoryType,
+                                            Slot = (inventoryItem as InventoryWearable).WearableType.ToString()
+                                        }),
+                                    corradeConfiguration.MaximumNotificationThreads);
                                 Inventory.UnWear(Client, CurrentOutfitFolder, inventoryItem,
                                     corradeConfiguration.ServicesTimeout);
+                            }
                         });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

@@ -115,9 +115,13 @@ namespace Corrade
                     // Create a list of links that should be removed.
                     List<UUID> removeItems = new List<UUID>();
                     object LockObject = new object();
+                    Dictionary<Primitive, AttachmentPoint> attachments = Inventory.GetAttachments(Client,
+                        corradeConfiguration.DataTimeout)
+                        .ToDictionary(o => o.Key, o => o.Value);
                     Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder).ToArray().AsParallel().ForAll(
                         o =>
                         {
+                            InventoryItem inventoryItem = Inventory.ResolveItemLink(Client, o);
                             switch (Inventory.IsBodyPart(Client, o))
                             {
                                 case true:
@@ -127,7 +131,7 @@ namespace Corrade
                                             .Any(
                                                 p =>
                                                     ((InventoryWearable) p).WearableType.Equals(
-                                                        ((InventoryWearable) Inventory.ResolveItemLink(Client, o))
+                                                        ((InventoryWearable) inventoryItem)
                                                             .WearableType)))
                                         goto default;
                                     break;
@@ -135,6 +139,46 @@ namespace Corrade
                                     lock (LockObject)
                                     {
                                         removeItems.Add(o.UUID);
+                                        string slot = string.Empty;
+                                        if (inventoryItem is InventoryWearable)
+                                        {
+                                            slot = (inventoryItem as InventoryWearable).WearableType.ToString();
+                                        }
+                                        else if(inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
+                                        {
+                                            KeyValuePair<Primitive, AttachmentPoint> a =
+                                                attachments.AsParallel()
+                                                    .FirstOrDefault(
+                                                        p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID));
+                                            if (!a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                            {
+                                                slot = a.Value.ToString();
+                                            }
+                                        }
+                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action =
+                                                        (inventoryItem is InventoryObject ||
+                                                         inventoryItem is InventoryAttachment)
+                                                            ? Action.DETACH
+                                                            : Action.UNWEAR,
+                                                    Name = inventoryItem.Name,
+                                                    Description = inventoryItem.Description,
+                                                    Item = inventoryItem.UUID,
+                                                    Asset = inventoryItem.AssetUUID,
+                                                    Entity = inventoryItem.AssetType,
+                                                    Creator = inventoryItem.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            inventoryItem.Permissions),
+                                                    Inventory = inventoryItem.InventoryType,
+                                                    Replace = true,
+                                                    Slot = slot
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
                                     }
                                     break;
                             }
@@ -146,9 +190,9 @@ namespace Corrade
                         Client.Inventory.Remove(removeItems, null);
 
                         // Add links to new items.
-                        foreach (InventoryItem item in equipItems)
+                        foreach (InventoryItem inventoryItem in equipItems)
                         {
-                            Inventory.AddLink(Client, item, CurrentOutfitFolder);
+                            Inventory.AddLink(Client, inventoryItem, CurrentOutfitFolder);
                         }
                     }
 
@@ -157,6 +201,52 @@ namespace Corrade
                     {
                         Client.Appearance.ReplaceOutfit(equipItems, false);
                     }
+
+                    attachments = Inventory.GetAttachments(Client,
+                        corradeConfiguration.DataTimeout)
+                        .ToDictionary(o => o.Key, o => o.Value);
+                    equipItems.AsParallel().Select(o => o as InventoryItem).ForAll(o =>
+                    {
+                        string slot = string.Empty;
+                        if (o is InventoryWearable)
+                        {
+                            slot = (o as InventoryWearable).WearableType.ToString();
+                        }
+                        else if (o is InventoryObject || o is InventoryAttachment)
+                        {
+                            KeyValuePair<Primitive, AttachmentPoint> a =
+                                attachments.AsParallel()
+                                    .FirstOrDefault(
+                                        p => p.Key.Properties.ItemID.Equals(o.UUID));
+                            if (!a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                            {
+                                slot = a.Value.ToString();
+                            }
+                        }
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(
+                                Configuration.Notifications.OutfitChanged,
+                                new OutfitEventArgs
+                                {
+                                    Action =
+                                        (o is InventoryObject || o is InventoryAttachment)
+                                            ? Action.ATTACH
+                                            : Action.WEAR,
+                                    Name = o.Name,
+                                    Description = o.Description,
+                                    Item = o.UUID,
+                                    Asset = o.AssetUUID,
+                                    Entity = o.AssetType,
+                                    Creator = o.CreatorID,
+                                    Permissions =
+                                        Inventory.wasPermissionsToString(
+                                            o.Permissions),
+                                    Inventory = o.InventoryType,
+                                    Replace = true,
+                                    Slot = slot
+                                }),
+                            corradeConfiguration.MaximumNotificationThreads);
+                    });
 
                     // Update inventory.
                     try

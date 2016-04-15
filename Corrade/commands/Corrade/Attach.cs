@@ -148,10 +148,41 @@ namespace Corrade
                                                 return;
 
                                             if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
+                                            {
                                                 Inventory.Attach(Client, CurrentOutfitFolder,
                                                     inventoryItem,
-                                                    (AttachmentPoint) q.GetValue(null),
+                                                    (AttachmentPoint)q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
+                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                    () => SendNotification(
+                                                        Configuration.Notifications.OutfitChanged,
+                                                        new OutfitEventArgs
+                                                        {
+                                                            Action = Action.ATTACH,
+                                                            Name = inventoryItem.Name,
+                                                            Description = inventoryItem.Description,
+                                                            Item = inventoryItem.UUID,
+                                                            Asset = inventoryItem.AssetUUID,
+                                                            Entity = inventoryItem.AssetType,
+                                                            Creator = inventoryItem.CreatorID,
+                                                            Permissions =
+                                                                Inventory.wasPermissionsToString(
+                                                                    inventoryItem.Permissions),
+                                                            Inventory = inventoryItem.InventoryType,
+                                                            Replace = replace,
+                                                            Slot = Inventory.GetAttachments(
+                                                                Client,
+                                                                corradeConfiguration.DataTimeout)
+                                                                .AsParallel()
+                                                                .Where(
+                                                                    p =>
+                                                                        p.Key.Properties.ItemID.Equals(
+                                                                            inventoryItem.UUID))
+                                                                .Select(p => p.Value.ToString())
+                                                                .FirstOrDefault()
+                                                        }),
+                                                    corradeConfiguration.MaximumNotificationThreads);
+                                            }
                                         }));
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

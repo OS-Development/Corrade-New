@@ -7,6 +7,7 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using CorradeConfiguration;
 using OpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -55,8 +56,38 @@ namespace Corrade
                                                         o is InventoryAttachment || o is InventoryObject))
                                     .Where(o => o != null)
                                     .Select(o => o as InventoryItem).ForAll(o =>
+                                    {
+                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action = Action.DETACH,
+                                                    Name = o.Name,
+                                                    Description = o.Description,
+                                                    Item = o.UUID,
+                                                    Asset = o.AssetUUID,
+                                                    Entity = o.AssetType,
+                                                    Creator = o.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            o.Permissions),
+                                                    Inventory = o.InventoryType,
+                                                    Slot = Inventory.GetAttachments(
+                                                        Client,
+                                                        corradeConfiguration.DataTimeout)
+                                                        .AsParallel()
+                                                        .Where(
+                                                            p =>
+                                                                p.Key.Properties.ItemID.Equals(
+                                                                    o.UUID))
+                                                        .Select(p => p.Value.ToString())
+                                                        .FirstOrDefault()
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
                                         Inventory.Detach(Client, CurrentOutfitFolder, o,
-                                            corradeConfiguration.ServicesTimeout));
+                                            corradeConfiguration.ServicesTimeout);
+                                    });
                                 break;
                             default: // detach by folder(s) name
                                 if (string.IsNullOrEmpty(rule.Option)) break;
@@ -73,16 +104,64 @@ namespace Corrade
                                             Client.Inventory.Store.GetContents(o as InventoryFolder)
                                                 .AsParallel().Where(Inventory.CanBeWorn)).ForAll(o =>
                                                 {
-                                                    if (o is InventoryWearable)
+                                                    InventoryItem inventoryItem = o as InventoryItem;
+                                                    if (inventoryItem is InventoryWearable)
                                                     {
+                                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                            () => SendNotification(
+                                                                Configuration.Notifications.OutfitChanged,
+                                                                new OutfitEventArgs
+                                                                {
+                                                                    Action = Action.DETACH,
+                                                                    Name = inventoryItem.Name,
+                                                                    Description = inventoryItem.Description,
+                                                                    Item = inventoryItem.UUID,
+                                                                    Asset = inventoryItem.AssetUUID,
+                                                                    Entity = inventoryItem.AssetType,
+                                                                    Creator = inventoryItem.CreatorID,
+                                                                    Permissions =
+                                                                        Inventory.wasPermissionsToString(
+                                                                            inventoryItem.Permissions),
+                                                                    Inventory = inventoryItem.InventoryType,
+                                                                    Slot = (inventoryItem as InventoryWearable).WearableType.ToString()
+                                                                }),
+                                                            corradeConfiguration.MaximumNotificationThreads);
                                                         Inventory.UnWear(Client, CurrentOutfitFolder,
-                                                            o as InventoryItem, corradeConfiguration.ServicesTimeout);
+                                                            inventoryItem, corradeConfiguration.ServicesTimeout);
                                                         return;
                                                     }
                                                     if (o is InventoryAttachment || o is InventoryObject)
                                                     {
-                                                        Inventory.Detach(Client, CurrentOutfitFolder,
-                                                            o as InventoryItem, corradeConfiguration.ServicesTimeout);
+                                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                            () => SendNotification(
+                                                                Configuration.Notifications.OutfitChanged,
+                                                                new OutfitEventArgs
+                                                                {
+                                                                    Action = Action.DETACH,
+                                                                    Name = inventoryItem.Name,
+                                                                    Description = inventoryItem.Description,
+                                                                    Item = inventoryItem.UUID,
+                                                                    Asset = inventoryItem.AssetUUID,
+                                                                    Entity = inventoryItem.AssetType,
+                                                                    Creator = inventoryItem.CreatorID,
+                                                                    Permissions =
+                                                                        Inventory.wasPermissionsToString(
+                                                                            inventoryItem.Permissions),
+                                                                    Inventory = inventoryItem.InventoryType,
+                                                                    Slot = Inventory.GetAttachments(
+                                                                        Client,
+                                                                        corradeConfiguration.DataTimeout)
+                                                                        .AsParallel()
+                                                                        .Where(
+                                                                            p =>
+                                                                                p.Key.Properties.ItemID.Equals(
+                                                                                    inventoryItem.UUID))
+                                                                        .Select(p => p.Value.ToString())
+                                                                        .FirstOrDefault()
+                                                                }),
+                                                            corradeConfiguration.MaximumNotificationThreads);
+                                                        Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
+                                                            corradeConfiguration.ServicesTimeout);
                                                     }
                                                 });
                                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
@@ -97,15 +176,44 @@ namespace Corrade
                             .SelectMany(
                                 o =>
                                     o.Key.NameValues.AsParallel()
-                                        .Where(p => string.Equals("AttachItemID", p.Name, StringComparison.Ordinal)))
+                                        .Where(p => string.Equals(@"AttachItemID", p.Name, StringComparison.Ordinal)))
                             .ForAll(
                                 o =>
                                 {
                                     UUID itemUUID;
                                     if (UUID.TryParse(o.Value.ToString(), out itemUUID))
                                     {
-                                        Inventory.Detach(Client, CurrentOutfitFolder,
-                                            Client.Inventory.Store.Items[itemUUID].Data as InventoryItem,
+                                        InventoryItem inventoryItem =
+                                            Client.Inventory.Store.Items[itemUUID].Data as InventoryItem;
+                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action = Action.DETACH,
+                                                    Name = inventoryItem.Name,
+                                                    Description = inventoryItem.Description,
+                                                    Item = inventoryItem.UUID,
+                                                    Asset = inventoryItem.AssetUUID,
+                                                    Entity = inventoryItem.AssetType,
+                                                    Creator = inventoryItem.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            inventoryItem.Permissions),
+                                                    Inventory = inventoryItem.InventoryType,
+                                                    Slot = Inventory.GetAttachments(
+                                                        Client,
+                                                        corradeConfiguration.DataTimeout)
+                                                        .AsParallel()
+                                                        .Where(
+                                                            p =>
+                                                                p.Key.Properties.ItemID.Equals(
+                                                                    inventoryItem.UUID))
+                                                        .Select(p => p.Value.ToString())
+                                                        .FirstOrDefault()
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
+                                        Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
                                             corradeConfiguration.ServicesTimeout);
                                     }
                                 });

@@ -5,8 +5,10 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using CorradeConfiguration;
 using OpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -44,16 +46,63 @@ namespace Corrade
                                 .AsParallel()
                                 .Where(Inventory.CanBeWorn)).ForAll(o =>
                                 {
-                                    if (o is InventoryWearable)
+                                    InventoryItem inventoryItem = o as InventoryItem;
+                                    if (inventoryItem is InventoryWearable)
                                     {
-                                        Inventory.Wear(Client, CurrentOutfitFolder, o as InventoryItem, true,
+                                        Inventory.Wear(Client, CurrentOutfitFolder, inventoryItem, true,
                                             corradeConfiguration.ServicesTimeout);
+                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action = Action.ATTACH,
+                                                    Name = inventoryItem.Name,
+                                                    Description = inventoryItem.Description,
+                                                    Item = inventoryItem.UUID,
+                                                    Asset = inventoryItem.AssetUUID,
+                                                    Entity = inventoryItem.AssetType,
+                                                    Creator = inventoryItem.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            inventoryItem.Permissions),
+                                                    Inventory = inventoryItem.InventoryType,
+                                                    Slot = (inventoryItem as InventoryWearable).WearableType.ToString(),
+                                                    Replace = true
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
                                         return;
                                     }
-                                    if (o is InventoryObject || o is InventoryAttachment)
+                                    if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                                     {
-                                        Inventory.Attach(Client, CurrentOutfitFolder, o as InventoryItem,
+                                        Inventory.Attach(Client, CurrentOutfitFolder, inventoryItem,
                                             AttachmentPoint.Default, true, corradeConfiguration.ServicesTimeout);
+                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action = Action.ATTACH,
+                                                    Name = inventoryItem.Name,
+                                                    Description = inventoryItem.Description,
+                                                    Item = inventoryItem.UUID,
+                                                    Asset = inventoryItem.AssetUUID,
+                                                    Entity = inventoryItem.AssetType,
+                                                    Creator = inventoryItem.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            inventoryItem.Permissions),
+                                                    Inventory = inventoryItem.InventoryType,
+                                                    Slot = Inventory.GetAttachments(
+                                                        Client,
+                                                        corradeConfiguration.DataTimeout)
+                                                        .AsParallel()
+                                                        .Where(p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID))
+                                                        .Select(p => p.Value.ToString())
+                                                        .FirstOrDefault(),
+                                                    Replace = true
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
                                     }
                                 });
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
