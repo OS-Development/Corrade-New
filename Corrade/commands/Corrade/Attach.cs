@@ -21,7 +21,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeCommands
+        public static partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> attach =
                 (corradeCommandParameters, result) =>
@@ -151,7 +151,7 @@ namespace Corrade
                                             {
                                                 Inventory.Attach(Client, CurrentOutfitFolder,
                                                     inventoryItem,
-                                                    (AttachmentPoint)q.GetValue(null),
+                                                    (AttachmentPoint) q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
                                                 CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                     () => SendNotification(
@@ -179,7 +179,7 @@ namespace Corrade
                                                                         p.Key.Properties.ItemID.Equals(
                                                                             inventoryItem.UUID))
                                                                 .Select(p => p.Value.ToString())
-                                                                .FirstOrDefault()
+                                                                .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
                                                         }),
                                                     corradeConfiguration.MaximumNotificationThreads);
                                             }

@@ -15,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class RLVBehaviours
+        public static partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> detachme = (message, rule, senderUUID) =>
             {
@@ -65,7 +65,7 @@ namespace Corrade
                                                     p.Key.Properties.ItemID.Equals(
                                                         inventoryItem.UUID))
                                             .Select(p => p.Value.ToString())
-                                            .FirstOrDefault()
+                                            .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
                                     }),
                                 corradeConfiguration.MaximumNotificationThreads);
                             Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,

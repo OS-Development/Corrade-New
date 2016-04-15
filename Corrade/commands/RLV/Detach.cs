@@ -15,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class RLVBehaviours
+        public static partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> detach = (message, rule, senderUUID) =>
             {
@@ -82,7 +82,7 @@ namespace Corrade
                                                                 p.Key.Properties.ItemID.Equals(
                                                                     o.UUID))
                                                         .Select(p => p.Value.ToString())
-                                                        .FirstOrDefault()
+                                                        .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
                                                 }),
                                             corradeConfiguration.MaximumNotificationThreads);
                                         Inventory.Detach(Client, CurrentOutfitFolder, o,
@@ -123,7 +123,9 @@ namespace Corrade
                                                                         Inventory.wasPermissionsToString(
                                                                             inventoryItem.Permissions),
                                                                     Inventory = inventoryItem.InventoryType,
-                                                                    Slot = (inventoryItem as InventoryWearable).WearableType.ToString()
+                                                                    Slot =
+                                                                        (inventoryItem as InventoryWearable)
+                                                                            .WearableType.ToString()
                                                                 }),
                                                             corradeConfiguration.MaximumNotificationThreads);
                                                         Inventory.UnWear(Client, CurrentOutfitFolder,
@@ -157,7 +159,8 @@ namespace Corrade
                                                                                 p.Key.Properties.ItemID.Equals(
                                                                                     inventoryItem.UUID))
                                                                         .Select(p => p.Value.ToString())
-                                                                        .FirstOrDefault()
+                                                                        .FirstOrDefault() ??
+                                                                           AttachmentPoint.Default.ToString()
                                                                 }),
                                                             corradeConfiguration.MaximumNotificationThreads);
                                                         Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
@@ -210,7 +213,7 @@ namespace Corrade
                                                                 p.Key.Properties.ItemID.Equals(
                                                                     inventoryItem.UUID))
                                                         .Select(p => p.Value.ToString())
-                                                        .FirstOrDefault()
+                                                        .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
                                                 }),
                                             corradeConfiguration.MaximumNotificationThreads);
                                         Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,

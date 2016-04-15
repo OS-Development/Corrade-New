@@ -18,7 +18,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeCommands
+        public static partial class CorradeCommands
         {
             /// <remarks>
             ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.

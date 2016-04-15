@@ -19,7 +19,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeCommands
+        public static partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> changeappearance =
                 (corradeCommandParameters, result) =>
@@ -144,7 +144,7 @@ namespace Corrade
                                         {
                                             slot = (inventoryItem as InventoryWearable).WearableType.ToString();
                                         }
-                                        else if(inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
+                                        else if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                                         {
                                             KeyValuePair<Primitive, AttachmentPoint> a =
                                                 attachments.AsParallel()
@@ -153,6 +153,10 @@ namespace Corrade
                                             if (!a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                             {
                                                 slot = a.Value.ToString();
+                                            }
+                                            else
+                                            {
+                                                slot = AttachmentPoint.Default.ToString();
                                             }
                                         }
                                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -202,10 +206,24 @@ namespace Corrade
                         Client.Appearance.ReplaceOutfit(equipItems, false);
                     }
 
+                    // Update inventory.
+                    try
+                    {
+                        lock (Locks.ClientInstanceInventoryLock)
+                        {
+                            Inventory.UpdateInventoryRecursive(Client, CurrentOutfitFolder,
+                                corradeConfiguration.ServicesTimeout);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                    }
+
                     attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
                         .ToDictionary(o => o.Key, o => o.Value);
-                    equipItems.AsParallel().Select(o => o as InventoryItem).ForAll(o =>
+                    equipItems.AsParallel().Select(o => o).ForAll(o =>
                     {
                         string slot = string.Empty;
                         if (o is InventoryWearable)
@@ -221,6 +239,10 @@ namespace Corrade
                             if (!a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                             {
                                 slot = a.Value.ToString();
+                            }
+                            else
+                            {
+                                slot = AttachmentPoint.Default.ToString();
                             }
                         }
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -247,20 +269,6 @@ namespace Corrade
                                 }),
                             corradeConfiguration.MaximumNotificationThreads);
                     });
-
-                    // Update inventory.
-                    try
-                    {
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            Inventory.UpdateInventoryRecursive(Client, CurrentOutfitFolder,
-                                corradeConfiguration.ServicesTimeout);
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
-                    }
 
                     // Schedule a rebake.
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

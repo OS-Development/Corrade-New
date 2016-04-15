@@ -14,7 +14,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeNotifications
+        public static partial class CorradeNotifications
         {
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> collision =
                 (corradeNotificationParameters, notificationData) =>

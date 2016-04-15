@@ -388,8 +388,8 @@ namespace Corrade
         private static readonly object GroupNotificationsLock = new object();
         private static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
-        private static readonly Dictionary<uint, HashSet<Notification>> GroupNotificationsCache =
-            new Dictionary<uint, HashSet<Notification>>();
+        private static readonly Dictionary<Configuration.Notifications, HashSet<Notification>> GroupNotificationsCache =
+            new Dictionary<Configuration.Notifications, HashSet<Notification>>();
 
         private static readonly Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
             InventoryOffers =
@@ -451,7 +451,7 @@ namespace Corrade
         private static volatile bool AIMLBotBrainCompiled;
 
         private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
-            corradeCommands = new CorradeCommands().GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
+            corradeCommands = typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
                 .AsParallel()
                 .Where(
                     o =>
@@ -462,19 +462,18 @@ namespace Corrade
                         (Action<CorradeCommandParameters, Dictionary<string, string>>) o.GetValue(null));
 
         private static readonly Dictionary<string, Action<CorradeNotificationParameters, Dictionary<string, string>>>
-            corradeNotifications =
-                new CorradeNotifications().GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
-                    .AsParallel()
-                    .Where(
-                        o =>
-                            o.FieldType ==
-                            typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
-                    .ToDictionary(
-                        o => o.Name, o =>
-                            (Action<CorradeNotificationParameters, Dictionary<string, string>>) o.GetValue(null));
+            corradeNotifications = typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .AsParallel()
+                .Where(
+                    o =>
+                        o.FieldType ==
+                        typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
+                .ToDictionary(
+                    o => o.Name, o =>
+                        (Action<CorradeNotificationParameters, Dictionary<string, string>>) o.GetValue(null));
 
         private static readonly Dictionary<string, Action<string, RLVRule, UUID>>
-            rlvBehaviours = new RLVBehaviours().GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
+            rlvBehaviours = typeof (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
                 .AsParallel()
                 .Where(
                     o =>
@@ -915,7 +914,7 @@ namespace Corrade
                                 {
                                     lock (GroupMembersLock)
                                     {
-                                        if (!GroupMembers.Contains(o))
+                                        if (!GroupMembers.ContainsKey(o.Key))
                                         {
                                             GroupMembers.Add(o.Key, o.Value);
                                         }
@@ -1096,28 +1095,27 @@ namespace Corrade
                 }
 
                 // Build the group notification cache.
-                lock (GroupNotificationsLock)
-                {
-                    GroupNotificationsCache.Clear();
-                    Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
+                object LockObject = new object();
+                new List<Configuration.Notifications>(Reflection.GetEnumValues<Configuration.Notifications>())
+                    .AsParallel().ForAll(o =>
                     {
-                        GroupNotifications.ToArray()
-                            .AsParallel()
-                            .Where(p => !((uint) o & p.NotificationMask).Equals(0))
-                            .ForAll(p =>
-                            {
-                                switch (GroupNotificationsCache.ContainsKey((uint) o))
+                        lock (GroupNotificationsLock)
+                        {
+                            GroupNotifications.ToArray().AsParallel()
+                                .Where(p => !((uint) o & p.NotificationMask).Equals(0)).ForAll(p =>
                                 {
-                                    case true:
-                                        GroupNotificationsCache[(uint) o].Add(p);
-                                        break;
-                                    default:
-                                        GroupNotificationsCache.Add((uint) o, new HashSet<Notification> {p});
-                                        break;
-                                }
-                            });
+                                    lock (LockObject)
+                                    {
+                                        if (GroupNotificationsCache.ContainsKey(o))
+                                        {
+                                            GroupNotificationsCache[o].Add(p);
+                                            return;
+                                        }
+                                        GroupNotificationsCache.Add(o, new HashSet<Notification> {p});
+                                    }
+                                });
+                        }
                     });
-                }
             }
         };
 
@@ -3424,7 +3422,7 @@ namespace Corrade
             HashSet<Notification> notifications = new HashSet<Notification>();
             lock (GroupNotificationsLock)
             {
-                if (!GroupNotificationsCache.TryGetValue((uint) notification, out notifications) || !notifications.Any())
+                if (!GroupNotificationsCache.TryGetValue(notification, out notifications) || !notifications.Any())
                     return;
             }
 
@@ -6101,14 +6099,10 @@ namespace Corrade
             [Reflection.NameAttribute("unban")] UNBAN,
             [Reflection.NameAttribute("send")] SEND,
             [Reflection.NameAttribute("search")] SEARCH,
-            [Reflection.NameAttribute("attach")]
-            ATTACH,
-            [Reflection.NameAttribute("detach")]
-            DETACH,
-            [Reflection.NameAttribute("wear")]
-            WEAR,
-            [Reflection.NameAttribute("unwear")]
-            UNWEAR,
+            [Reflection.NameAttribute("attach")] ATTACH,
+            [Reflection.NameAttribute("detach")] DETACH,
+            [Reflection.NameAttribute("wear")] WEAR,
+            [Reflection.NameAttribute("unwear")] UNWEAR
         }
 
         /// <summary>
@@ -7265,14 +7259,14 @@ namespace Corrade
         private class OutfitEventArgs : EventArgs
         {
             public Action Action;
-            public string Name;
-            public string Description;
-            public UUID Item;
-            public AssetType Entity;
             public UUID Asset;
             public UUID Creator;
-            public string Permissions;
+            public string Description;
+            public AssetType Entity;
             public InventoryType Inventory;
+            public UUID Item;
+            public string Name;
+            public string Permissions;
             public bool Replace;
             public string Slot;
         }
@@ -7474,11 +7468,8 @@ namespace Corrade
             [CorradeCommand("setparcellist")]
             [Reflection.NameAttribute("setparcellist")]
             SETPARCELLIST, */
-
-            [Reflection.NameAttribute("creator")]
-            CREATOR,
-            [Reflection.NameAttribute("slot")]
-            SLOT,
+            [Reflection.NameAttribute("creator")] CREATOR,
+            [Reflection.NameAttribute("slot")] SLOT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
@@ -8546,7 +8537,7 @@ namespace Corrade
             [Reflection.NameAttribute("output")] OUTPUT,
             [Reflection.NameAttribute("slot")] SLOT,
             [Reflection.NameAttribute("name")] NAME,
-            [Reflection.NameAttribute("UUID")] UUID,
+            [Reflection.NameAttribute("UUID")] UUID
         }
 
         /// <summary>

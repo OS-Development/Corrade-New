@@ -19,7 +19,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeCommands
+        public static partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> detach =
                 (corradeCommandParameters, result) =>
@@ -167,7 +167,7 @@ namespace Corrade
                                                         p.Key.Properties.ItemID.Equals(
                                                             inventoryItem.UUID))
                                                 .Select(p => p.Value.ToString())
-                                                .FirstOrDefault()
+                                                .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
                                         }),
                                     corradeConfiguration.MaximumNotificationThreads);
                                 Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,

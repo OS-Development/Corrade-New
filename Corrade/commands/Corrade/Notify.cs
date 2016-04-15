@@ -16,7 +16,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeCommands
+        public static partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> notify =
                 (corradeCommandParameters, result) =>
@@ -411,32 +411,28 @@ namespace Corrade
                         case Action.REMOVE:
                         case Action.CLEAR:
                         case Action.PURGE:
-                            lock (GroupNotificationsLock)
-                            {
-                                GroupNotificationsCache.Clear();
-                                Reflection.GetEnumValues<Configuration.Notifications>()
-                                    .ToArray()
-                                    .AsParallel()
-                                    .ForAll(o =>
+                            // Build the group notification cache.
+                            new List<Configuration.Notifications>(
+                                Reflection.GetEnumValues<Configuration.Notifications>())
+                                .AsParallel().ForAll(o =>
+                                {
+                                    lock (GroupNotificationsLock)
                                     {
-                                        GroupNotifications.ToArray()
-                                            .AsParallel()
-                                            .Where(p => !((uint) o & p.NotificationMask).Equals(0))
-                                            .ForAll(p =>
+                                        GroupNotifications.ToArray().AsParallel()
+                                            .Where(p => !((uint) o & p.NotificationMask).Equals(0)).ForAll(p =>
                                             {
-                                                switch (GroupNotificationsCache.ContainsKey((uint) o))
+                                                lock (LockObject)
                                                 {
-                                                    case true:
-                                                        GroupNotificationsCache[(uint) o].Add(p);
-                                                        break;
-                                                    default:
-                                                        GroupNotificationsCache.Add((uint) o,
-                                                            new HashSet<Notification> {p});
-                                                        break;
+                                                    if (GroupNotificationsCache.ContainsKey(o))
+                                                    {
+                                                        GroupNotificationsCache[o].Add(p);
+                                                        return;
+                                                    }
+                                                    GroupNotificationsCache.Add(o, new HashSet<Notification> {p});
                                                 }
                                             });
-                                    });
-                            }
+                                    }
+                                });
                             break;
                     }
                 };

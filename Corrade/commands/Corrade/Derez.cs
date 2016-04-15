@@ -19,7 +19,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class CorradeCommands
+        public static partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> derez =
                 (corradeCommandParameters, result) =>

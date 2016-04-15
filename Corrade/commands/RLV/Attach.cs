@@ -5,7 +5,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using CorradeConfiguration;
@@ -16,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public partial class RLVBehaviours
+        public static partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> attach = (message, rule, senderUUID) =>
             {
@@ -99,7 +98,7 @@ namespace Corrade
                                                         .AsParallel()
                                                         .Where(p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID))
                                                         .Select(p => p.Value.ToString())
-                                                        .FirstOrDefault(),
+                                                        .FirstOrDefault() ?? AttachmentPoint.Default.ToString(),
                                                     Replace = true
                                                 }),
                                             corradeConfiguration.MaximumNotificationThreads);
