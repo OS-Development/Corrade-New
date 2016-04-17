@@ -334,7 +334,8 @@ namespace Corrade
             [Status(45173)] [Reflection.DescriptionAttribute("invalid angle provided")] INVALID_ANGLE_PROVIDED,
             [Status(32453)] [Reflection.DescriptionAttribute("could not get parcel info data")] COULD_NOT_GET_PARCEL_INFO,
             [Status(02188)] [Reflection.DescriptionAttribute("could not get parcel info data")] NO_TARGET_SPECIFIED,
-            [Status(47350)] [Reflection.DescriptionAttribute("no type provided")] NO_TYPE_PROVIDED
+            [Status(47350)] [Reflection.DescriptionAttribute("no type provided")] NO_TYPE_PROVIDED,
+            [Status(64450)] [Reflection.DescriptionAttribute("unknown sift")] UNKNOWN_SIFT
         }
 
         /// <summary>
@@ -4809,78 +4810,59 @@ namespace Corrade
                 // Execute the command.
                 execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
+                // Sifting was requested so apply the filters in order.
                 string data;
-                if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data))
+                string sift;
+                if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
+                    result.TryGetValue(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT), out sift))
                 {
-                    // Take a specified amount from the results if requested.
-                    int take;
-                    if (!string.IsNullOrEmpty(data) &&
-                        int.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TAKE)),
-                            corradeCommandParameters.Message)), out take))
+                    foreach (KeyValuePair<string, string> kvp in CSV.ToKeyValue(sift))
                     {
-                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take(take));
-                        switch (!string.IsNullOrEmpty(data))
+                        switch (Reflection.GetEnumValueFromName<Sift>(wasInput(kvp.Key).ToLowerInvariant()))
                         {
-                            case true:
-                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
+                            case Sift.TAKE:
+                                // Take a specified amount from the results if requested.
+                                int take;
+                                if (!string.IsNullOrEmpty(data) && int.TryParse(wasInput(kvp.Value), out take))
+                                {
+                                    data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take(take));
+                                }
+                                break;
+                            case Sift.SKIP:
+                                // Skip a number of elements if requested.
+                                int skip;
+                                if (!string.IsNullOrEmpty(data) && int.TryParse(wasInput(kvp.Value), out skip))
+                                {
+                                    data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip(skip));
+                                }
+                                break;
+                            case Sift.EACH:
+                                // Return a stride in case it was requested.
+                                int each;
+                                if (!string.IsNullOrEmpty(data) && int.TryParse(wasInput(kvp.Value), out each))
+                                {
+                                    data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i%each == 0));
+                                }
+                                break;
+                            case Sift.MATCH:
+                                // Match the results if requested.
+                                string regex = wasInput(kvp.Value);
+                                if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
+                                {
+                                    data =
+                                        CSV.FromEnumerable(new Regex(regex, RegexOptions.Compiled).Matches(data)
+                                            .AsParallel()
+                                            .Cast<Match>()
+                                            .Select(m => m.Groups).SelectMany(
+                                                matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
+                                                (matchGroups, i) => new {matchGroups, i})
+                                            .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
+                                                (@t, j) => @t.matchGroups[@t.i].Captures[j].Value));
+                                }
                                 break;
                             default:
-                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
-                                break;
+                                throw new ScriptException(ScriptError.UNKNOWN_SIFT);
                         }
-                    }
-
-                    // Skip a number of elements if requested.
-                    int skip;
-                    if (!string.IsNullOrEmpty(data) &&
-                        int.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SKIP)),
-                            corradeCommandParameters.Message)), out skip))
-                    {
-                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip(skip));
-                        switch (!string.IsNullOrEmpty(data))
-                        {
-                            case true:
-                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
-                                break;
-                            default:
-                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
-                                break;
-                        }
-                    }
-
-                    // Return a stride in case it was requested.
-                    int each;
-                    if (!string.IsNullOrEmpty(data) &&
-                        int.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EACH)),
-                            corradeCommandParameters.Message)), out each))
-                    {
-                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i%each == 0));
-                        switch (!string.IsNullOrEmpty(data))
-                        {
-                            case true:
-                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
-                                break;
-                            default:
-                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
-                                break;
-                        }
-                    }
-
-                    // Sift the results if requested.
-                    string sift =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
-                            corradeCommandParameters.Message));
-                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(sift))
-                    {
-                        data =
-                            CSV.FromEnumerable(new Regex(sift, RegexOptions.Compiled).Matches(data)
-                                .AsParallel()
-                                .Cast<Match>()
-                                .Select(m => m.Groups).SelectMany(
-                                    matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
-                                    (matchGroups, i) => new {matchGroups, i})
-                                .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
-                                    (@t, j) => @t.matchGroups[@t.i].Captures[j].Value));
                         switch (!string.IsNullOrEmpty(data))
                         {
                             case true:
@@ -6103,6 +6085,23 @@ namespace Corrade
             [Reflection.NameAttribute("detach")] DETACH,
             [Reflection.NameAttribute("wear")] WEAR,
             [Reflection.NameAttribute("unwear")] UNWEAR
+        }
+
+        /// <summary>
+        ///     Possible sifting actions for post-processing data.
+        /// </summary>
+        private enum Sift : uint 
+        {
+            [Reflection.NameAttribute("none")]
+            NONE = 0,
+            [Reflection.NameAttribute("take")]
+            TAKE,
+            [Reflection.NameAttribute("each")]
+            EACH,
+            [Reflection.NameAttribute("match")]
+            MATCH,
+            [Reflection.NameAttribute("skip")]
+            SKIP,
         }
 
         /// <summary>
@@ -7474,9 +7473,7 @@ namespace Corrade
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,
-
-            [Reflection.NameAttribute("each")] EACH,
-            [Reflection.NameAttribute("skip")] SKIP,
+            
             [Reflection.NameAttribute("degrees")] DEGREES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(

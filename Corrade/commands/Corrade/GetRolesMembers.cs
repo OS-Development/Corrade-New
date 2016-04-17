@@ -39,12 +39,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    HashSet<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
+                    HashSet<KeyValuePair<UUID, UUID>> groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                         (sender, args) =>
                         {
-                            groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>(args.RolesMembers);
+                            groupRolesMembers.UnionWith(args.RolesMembers);
                             GroupRoleMembersReplyEvent.Set();
                         };
                     lock (Locks.ClientInstanceGroupsLock)
@@ -83,7 +83,7 @@ namespace Corrade
                     {
                         string agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value, corradeConfiguration.ServicesTimeout,
-                            ref agentName))
+                            ref agentName) && roleUUIDNames.ContainsKey(o.Key))
                         {
                             lock (LockObject)
                             {
