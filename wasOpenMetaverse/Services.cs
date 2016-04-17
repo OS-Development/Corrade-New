@@ -475,7 +475,7 @@ namespace wasOpenMetaverse
         ///     Updates a set of primitives by scanning their properties.
         /// </summary>
         /// <param name="Client">the OpenMetaverse grid client</param>
-        /// <param name="primitives">a list of primitives to update</param>
+        /// <param name="primitive">a primitive to update</param>
         /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
         /// <returns>a list of updated primitives</returns>
         public static bool UpdatePrimitives(GridClient Client, ref Primitive primitive, uint dataTimeout)
@@ -678,13 +678,75 @@ namespace wasOpenMetaverse
             ref Primitive primitive, uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
-            Primitive p = GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
-                .AsParallel()
-                .FirstOrDefault(o => o.ID.Equals(item));
-            if (p == null || !UpdatePrimitives(Client, ref p, dataTimeout))
+            Dictionary<uint, Primitive> objectsPrimitives = null;
+            ManualResetEvent[] semaphore =
+            {
+                new ManualResetEvent(false),
+                new ManualResetEvent(false)
+            };
+            new Thread(() =>
+            {
+                objectsPrimitives =
+                    new Dictionary<uint, Primitive>(
+                        GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                            .ToDictionary(o => o.LocalID, p => p));
+                semaphore[0].Set();
+            })
+            {IsBackground = true}.Start();
+            Dictionary<uint, Avatar> objectsAvatars = null;
+            new Thread(() =>
+            {
+                objectsAvatars =
+                    new Dictionary<uint, Avatar>(
+                        GetAvatars(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                            .ToDictionary(o => o.LocalID, p => p));
+                semaphore[1].Set();
+            })
+            {IsBackground = true}.Start();
+            if (!WaitHandle.WaitAll(semaphore.Select(o => (WaitHandle) o).ToArray(), (int) millisecondsTimeout, false))
                 return false;
-            primitive = p;
-            return true;
+            object LockObject = new object();
+            HashSet<Primitive> primitives = new HashSet<Primitive>();
+            Parallel.ForEach(objectsPrimitives.Values, o =>
+            {
+                // find the parent of the primitive
+                Primitive parent = o;
+                do
+                {
+                    Primitive ancestor = null;
+                    Primitive ancestorPrimitive;
+                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
+                    {
+                        ancestor = ancestorPrimitive;
+                    }
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
+                    {
+                        ancestor = ancestorAvatar;
+                    }
+                    if (ancestor == null) break;
+                    parent = ancestor;
+                } while (!parent.ParentID.Equals(0));
+                // Ignore the object if the parent is out of range.
+                if (Vector3.Distance(parent.Position, Client.Self.SimPosition) > range) return;
+                if (o.ID.Equals(item))
+                {
+                    lock (LockObject)
+                    {
+                        primitives.Add(o);
+                    }
+                }
+            });
+            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
+                return false;
+            Primitive localPrimitive =
+                primitives.FirstOrDefault(o => o.ID.Equals(item));
+            if (localPrimitive != null)
+            {
+                primitive = localPrimitive;
+                return true;
+            }
+            return false;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -706,12 +768,66 @@ namespace wasOpenMetaverse
             ref Primitive primitive, uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
-            HashSet<Primitive> p =
-                new HashSet<Primitive>(GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm));
-            if (!p.Any() || !UpdatePrimitives(Client, ref p, dataTimeout))
+            Dictionary<uint, Primitive> objectsPrimitives = null;
+            ManualResetEvent[] semaphore =
+            {
+                new ManualResetEvent(false),
+                new ManualResetEvent(false)
+            };
+            new Thread(() =>
+            {
+                objectsPrimitives =
+                    new Dictionary<uint, Primitive>(
+                        GetPrimitives(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                            .ToDictionary(o => o.LocalID, p => p));
+                semaphore[0].Set();
+            })
+            {IsBackground = true}.Start();
+            Dictionary<uint, Avatar> objectsAvatars = null;
+            new Thread(() =>
+            {
+                objectsAvatars =
+                    new Dictionary<uint, Avatar>(
+                        GetAvatars(Client, range, maxRange, millisecondsTimeout, dataTimeout, alarm)
+                            .ToDictionary(o => o.LocalID, p => p));
+                semaphore[1].Set();
+            })
+            {IsBackground = true}.Start();
+            if (!WaitHandle.WaitAll(semaphore.Select(o => (WaitHandle) o).ToArray(), (int) millisecondsTimeout, false))
+                return false;
+            object LockObject = new object();
+            HashSet<Primitive> primitives = new HashSet<Primitive>();
+            Parallel.ForEach(objectsPrimitives.Values, o =>
+            {
+                // find the parent of the primitive
+                Primitive parent = o;
+                do
+                {
+                    Primitive ancestor = null;
+                    Primitive ancestorPrimitive;
+                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
+                    {
+                        ancestor = ancestorPrimitive;
+                    }
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
+                    {
+                        ancestor = ancestorAvatar;
+                    }
+                    if (ancestor == null) break;
+                    parent = ancestor;
+                } while (!parent.ParentID.Equals(0));
+                // Ignore the object if the parent is out of range.
+                if (Vector3.Distance(parent.Position, Client.Self.SimPosition) > range) return;
+                lock (LockObject)
+                {
+                    primitives.Add(o);
+                }
+            });
+            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
             Primitive localPrimitive =
-                p.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
+                primitives.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
             if (localPrimitive != null)
             {
                 primitive = localPrimitive;
