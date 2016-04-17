@@ -153,6 +153,16 @@ namespace Corrade
                                                     inventoryItem,
                                                     (AttachmentPoint) q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
+                                                string slot = Inventory.GetAttachments(
+                                                    Client,
+                                                    corradeConfiguration.DataTimeout)
+                                                    .AsParallel()
+                                                    .Where(
+                                                        p =>
+                                                            p.Key.Properties.ItemID.Equals(
+                                                                inventoryItem.UUID))
+                                                    .Select(p => p.Value.ToString())
+                                                    .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
                                                 CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                     () => SendNotification(
                                                         Configuration.Notifications.OutfitChanged,
@@ -170,16 +180,7 @@ namespace Corrade
                                                                     inventoryItem.Permissions),
                                                             Inventory = inventoryItem.InventoryType,
                                                             Replace = replace,
-                                                            Slot = Inventory.GetAttachments(
-                                                                Client,
-                                                                corradeConfiguration.DataTimeout)
-                                                                .AsParallel()
-                                                                .Where(
-                                                                    p =>
-                                                                        p.Key.Properties.ItemID.Equals(
-                                                                            inventoryItem.UUID))
-                                                                .Select(p => p.Value.ToString())
-                                                                .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
+                                                            Slot = slot
                                                         }),
                                                     corradeConfiguration.MaximumNotificationThreads);
                                             }

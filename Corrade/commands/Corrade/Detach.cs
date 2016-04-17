@@ -70,7 +70,9 @@ namespace Corrade
                                 .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             break;
                     }
-
+                    HashSet<KeyValuePair<Primitive, AttachmentPoint>> attached =
+                        new HashSet<KeyValuePair<Primitive, AttachmentPoint>>(Inventory.GetAttachments(Client,
+                            corradeConfiguration.DataTimeout));
                     CSV.ToEnumerable(
                         attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
@@ -82,8 +84,7 @@ namespace Corrade
                                     if (attachmentPoints.TryGetValue(o, out attachmentPoint))
                                     {
                                         KeyValuePair<Primitive, AttachmentPoint> attachment =
-                                            Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                                                .AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
+                                            attached.AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
                                         if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                         {
                                             inventoryBaseItem =
@@ -142,6 +143,14 @@ namespace Corrade
 
                             if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                             {
+                                string slot = attached
+                                    .AsParallel()
+                                    .Where(
+                                        p =>
+                                            p.Key.Properties.ItemID.Equals(
+                                                inventoryItem.UUID))
+                                    .Select(p => p.Value.ToString())
+                                    .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
                                 CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                     () => SendNotification(
                                         Configuration.Notifications.OutfitChanged,
@@ -158,16 +167,7 @@ namespace Corrade
                                                 Inventory.wasPermissionsToString(
                                                     inventoryItem.Permissions),
                                             Inventory = inventoryItem.InventoryType,
-                                            Slot = Inventory.GetAttachments(
-                                                Client,
-                                                corradeConfiguration.DataTimeout)
-                                                .AsParallel()
-                                                .Where(
-                                                    p =>
-                                                        p.Key.Properties.ItemID.Equals(
-                                                            inventoryItem.UUID))
-                                                .Select(p => p.Value.ToString())
-                                                .FirstOrDefault() ?? AttachmentPoint.Default.ToString()
+                                            Slot = slot
                                         }),
                                     corradeConfiguration.MaximumNotificationThreads);
                                 Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
