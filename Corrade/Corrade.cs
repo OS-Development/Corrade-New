@@ -3750,12 +3750,9 @@ namespace Corrade
                 // It is accepted, so update the inventory.
                 try
                 {
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        Inventory.UpdateInventoryRecursive(Client,
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                InventoryFolder, corradeConfiguration.ServicesTimeout);
-                    }
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                            InventoryFolder, corradeConfiguration.ServicesTimeout);
                 }
                 catch (Exception)
                 {
@@ -3775,12 +3772,9 @@ namespace Corrade
             // It is temporary, so update the inventory.
             try
             {
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    Inventory.UpdateInventoryRecursive(Client,
-                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                            InventoryFolder, corradeConfiguration.ServicesTimeout);
-                }
+                Inventory.UpdateInventoryRecursive(Client,
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                        InventoryFolder, corradeConfiguration.ServicesTimeout);
             }
             catch (Exception)
             {
@@ -3840,11 +3834,8 @@ namespace Corrade
                         }
                         if (inventoryBaseFolder != null)
                         {
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
-                                    corradeConfiguration.ServicesTimeout);
-                            }
+                            Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
+                                corradeConfiguration.ServicesTimeout);
                         }
                         break;
                     default:
@@ -3857,13 +3848,10 @@ namespace Corrade
                         }
                         try
                         {
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Inventory.UpdateInventoryRecursive(Client,
-                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data
-                                        as
-                                        InventoryFolder, corradeConfiguration.ServicesTimeout);
-                            }
+                            Inventory.UpdateInventoryRecursive(Client,
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data
+                                    as
+                                    InventoryFolder, corradeConfiguration.ServicesTimeout);
                         }
                         catch (Exception)
                         {
@@ -3963,11 +3951,11 @@ namespace Corrade
                         // Update the inventory.
                         try
                         {
+                            Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                corradeConfiguration.ServicesTimeout);
+                            // Get COF.
                             lock (Locks.ClientInstanceInventoryLock)
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                    corradeConfiguration.ServicesTimeout);
-                                // Get COF.
                                 CurrentOutfitFolder =
                                     Client.Inventory.Store[
                                         Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
@@ -4811,10 +4799,11 @@ namespace Corrade
                 execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
                 // Sifting was requested so apply the filters in order.
-                string data;
-                string sift;
+                string data = string.Empty;
+                string sift = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
+                    corradeCommandParameters.Message));
                 if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
-                    result.TryGetValue(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT), out sift))
+                    !string.IsNullOrEmpty(sift))
                 {
                     foreach (KeyValuePair<string, string> kvp in CSV.ToKeyValue(sift))
                     {
@@ -6090,18 +6079,13 @@ namespace Corrade
         /// <summary>
         ///     Possible sifting actions for post-processing data.
         /// </summary>
-        private enum Sift : uint 
+        private enum Sift : uint
         {
-            [Reflection.NameAttribute("none")]
-            NONE = 0,
-            [Reflection.NameAttribute("take")]
-            TAKE,
-            [Reflection.NameAttribute("each")]
-            EACH,
-            [Reflection.NameAttribute("match")]
-            MATCH,
-            [Reflection.NameAttribute("skip")]
-            SKIP,
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("take")] TAKE,
+            [Reflection.NameAttribute("each")] EACH,
+            [Reflection.NameAttribute("match")] MATCH,
+            [Reflection.NameAttribute("skip")] SKIP
         }
 
         /// <summary>
@@ -7473,7 +7457,7 @@ namespace Corrade
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,
-            
+
             [Reflection.NameAttribute("degrees")] DEGREES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
