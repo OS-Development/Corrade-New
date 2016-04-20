@@ -277,14 +277,10 @@ namespace Corrade
                     // Otherwise, save it to the specified file.
                     using (FileStream fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
-                        using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                        using (BinaryWriter binaryWriter = new BinaryWriter(fileStream, Encoding.UTF8))
                         {
-                            using (BinaryWriter binaryWriter = new BinaryWriter(streamWriter.BaseStream, Encoding.UTF8))
-                            {
-                                binaryWriter.Write(assetData);
-                                binaryWriter.Flush();
-                            }
-                            streamWriter.Flush();
+                            binaryWriter.Write(assetData);
+                            binaryWriter.Flush();
                         }
                     }
                 };

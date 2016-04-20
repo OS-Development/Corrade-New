@@ -11,6 +11,7 @@ using System.Threading;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -63,41 +64,44 @@ namespace Corrade
                     int myItemsCount = 0;
                     int myItemsWornCount = 0;
 
-                    node.Nodes.Values.ToArray().AsParallel().Where(
-                        n =>
-                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
-                            n.Data is InventoryItem && Inventory.CanBeWorn(n.Data)
-                        ).ForAll(n =>
-                        {
-                            Interlocked.Increment(ref myItemsCount);
-                            if ((n.Data is InventoryWearable &&
-                                 currentWearables.AsParallel().Any(
-                                     o =>
-                                         o.UUID.Equals(
-                                             Inventory.ResolveItemLink(Client, n.Data as InventoryItem).UUID))) ||
-                                currentAttachments.AsParallel().Any(
-                                    o =>
-                                        o.Key.Properties.ItemID.Equals(
-                                            Inventory.ResolveItemLink(Client, n.Data as InventoryItem).UUID)))
+                    Parallel.ForEach(
+                        node.Nodes.Values.AsParallel().Where(
+                            n =>
+                                !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                                n.Data is InventoryItem && Inventory.CanBeWorn(n.Data)
+                            ), n =>
                             {
-                                Interlocked.Increment(ref myItemsWornCount);
-                            }
-                        });
+                                Interlocked.Increment(ref myItemsCount);
+                                if ((n.Data is InventoryWearable &&
+                                     currentWearables.AsParallel().Any(
+                                         o =>
+                                             o.UUID.Equals(
+                                                 Inventory.ResolveItemLink(Client, n.Data as InventoryItem).UUID))) ||
+                                    currentAttachments.AsParallel().Any(
+                                        o =>
+                                            o.Key.Properties.ItemID.Equals(
+                                                Inventory.ResolveItemLink(Client, n.Data as InventoryItem).UUID)))
+                                {
+                                    Interlocked.Increment(ref myItemsWornCount);
+                                }
+                            });
 
 
                     int allItemsCount = 0;
                     int allItemsWornCount = 0;
 
-                    node.Nodes.Values.ToArray().AsParallel().Where(
-                        n =>
-                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
-                            n.Data is InventoryFolder
-                        ).ForAll(n => n.Nodes.Values.ToArray()
+                    Parallel.ForEach(
+                        node.Nodes.Values.AsParallel().Where(
+                            n =>
+                                !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                                n.Data is InventoryFolder
+                            ),
+                        n => Parallel.ForEach(n.Nodes.Values
                             .AsParallel().Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                             .Where(
                                 o =>
                                     !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) && o.Data is InventoryItem &&
-                                    Inventory.CanBeWorn(o.Data)).ForAll(p =>
+                                    Inventory.CanBeWorn(o.Data)), p =>
                                     {
                                         Interlocked.Increment(ref allItemsCount);
                                         if ((p.Data is InventoryWearable &&

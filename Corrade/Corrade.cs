@@ -7454,6 +7454,15 @@ namespace Corrade
             [Reflection.NameAttribute("creator")] CREATOR,
             [Reflection.NameAttribute("slot")] SLOT,
 
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=configuration>&<group=<UUID|STRING>>&<password=<STRING>>&<action=read|write|get|set>&action=write:<data=STRING>&action=write:<data=<STRING>>&action=get:<path=<STRING>>&action=set:<path=<STRING>>&action=set:<data=<STRING>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((uint)Configuration.Permissions.System)]
+            [CorradeCommand("configuration")]
+            [Reflection.NameAttribute("configuration")]
+            CONFIGURATION,
+
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,
@@ -8194,9 +8203,13 @@ namespace Corrade
             [Reflection.NameAttribute("key")] KEY,
             [Reflection.NameAttribute("value")] VALUE,
 
-            [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<string>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Configuration.Permissions.Database)] [CorradeCommand("database")] [Reflection.NameAttribute("database")] DATABASE,
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax("<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<string>>&[callback=<STRING>]")]
+            [CommandPermissionMask((uint)Configuration.Permissions.Database)]
+            [CorradeCommand("database")]
+            [Reflection.NameAttribute("database")]
+            DATABASE,
+
             [Reflection.NameAttribute("text")] TEXT,
             [Reflection.NameAttribute("quorum")] QUORUM,
             [Reflection.NameAttribute("majority")] MAJORITY,
