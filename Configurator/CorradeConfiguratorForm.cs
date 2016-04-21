@@ -524,6 +524,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
+                mainForm.LoadLegacyConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
                 switch (mainForm.LoadLegacyConfigurationDialog.ShowDialog())
                 {
                     case DialogResult.OK:
@@ -560,6 +561,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
+                mainForm.LoadConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
                 switch (mainForm.LoadConfigurationDialog.ShowDialog())
                 {
                     case DialogResult.OK:
@@ -595,6 +597,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
+                mainForm.SaveConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
                 switch (mainForm.SaveConfigurationDialog.ShowDialog())
                 {
                     case DialogResult.OK:
