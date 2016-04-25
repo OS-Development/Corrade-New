@@ -387,14 +387,8 @@ namespace Corrade
                         case Action.PURGE:
                             lock (GroupNotificationsLock)
                             {
-                                Notification groupNotification =
-                                    GroupNotifications.ToArray().AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
-                                if (groupNotification != null)
-                                {
-                                    GroupNotifications.Remove(groupNotification);
-                                }
+                                GroupNotifications.RemoveWhere(
+                                    o => o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                             }
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
@@ -412,12 +406,14 @@ namespace Corrade
                         case Action.CLEAR:
                         case Action.PURGE:
                             // Build the group notification cache.
-                            new List<Configuration.Notifications>(
-                                Reflection.GetEnumValues<Configuration.Notifications>())
-                                .AsParallel().ForAll(o =>
-                                {
-                                    lock (GroupNotificationsLock)
+                            lock (GroupNotificationsLock)
+                            {
+                                GroupNotificationsCache.Clear();
+                                new List<Configuration.Notifications>(
+                                    Reflection.GetEnumValues<Configuration.Notifications>())
+                                    .AsParallel().ForAll(o =>
                                     {
+
                                         GroupNotifications.ToArray().AsParallel()
                                             .Where(p => !((uint) o & p.NotificationMask).Equals(0)).ForAll(p =>
                                             {
@@ -431,8 +427,9 @@ namespace Corrade
                                                     GroupNotificationsCache.Add(o, new HashSet<Notification> {p});
                                                 }
                                             });
-                                    }
-                                });
+
+                                    });
+                            }
                             break;
                     }
                 };
