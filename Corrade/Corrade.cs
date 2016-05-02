@@ -2085,7 +2085,7 @@ namespace Corrade
                 UUID UUIDData;
                 if (!UUID.TryParse(setting, out UUIDData))
                 {
-                    InventoryItem item = null;
+                    InventoryItem item;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
                         item = Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
@@ -7440,6 +7440,15 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=setrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&<powers=<GroupPowers[,GroupPowers...]>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((uint)Configuration.Permissions.Group)]
+            [CorradeCommand("setrolepowers")]
+            [Reflection.NameAttribute("setrolepowers")]
+            SETROLEPOWERS,
+
             /// <remarks>
             ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.
             /// </remarks>
@@ -8221,8 +8230,8 @@ namespace Corrade
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("leave")] [Reflection.NameAttribute("leave")] LEAVE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=updategroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<[Charter<,STRING>][,ListInProfile<,BOOL>][,MembershipFee<,INTEGER>][,OpenEnrollment<,BOOL>][,ShowInList<,BOOL>]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("updategroupdata")] [Reflection.NameAttribute("updategroupdata")] UPDATEGROUPDATA,
+                "<command=setgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("setgroupdata")] [Reflection.NameAttribute("setgroupdata")] SETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=eject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"

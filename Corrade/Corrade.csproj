@@ -611,6 +611,9 @@
     <Compile Include="commands\Corrade\SetEstateList.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\SetGroupData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\SetHome.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -698,6 +701,9 @@
     <Compile Include="commands\Corrade\SetRegionTerrainVariables.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\SetRolePowers.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\SetScriptRunning.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -744,9 +750,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Unwear.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="commands\Corrade\UpdateGroupData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\UpdatePrimitiveInventory.cs">

@@ -130,7 +130,7 @@ namespace wasSharp
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Get the description of structure member.
+        ///     Get the name of a structure member.
         /// </summary>
         /// <typeparam name="T">the type of the structure to search</typeparam>
         /// <param name="structure">the structure to search</param>

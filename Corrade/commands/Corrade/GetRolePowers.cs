@@ -39,14 +39,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    if (
-                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
-                            GroupPowers.RoleProperties,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     string role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
@@ -67,8 +59,8 @@ namespace Corrade
                         data.UnionWith(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 o =>
-                                    !(((ulong) o.GetValue(null) &
-                                       (ulong) queryRole.Powers)).Equals(0))
+                                    !((ulong) o.GetValue(null) &
+                                      (ulong) queryRole.Powers).Equals(0))
                             .Select(o => o.Name));
                         GroupRoleDataReplyEvent.Set();
                     };

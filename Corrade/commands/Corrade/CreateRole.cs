@@ -89,7 +89,7 @@ namespace Corrade
                             o =>
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        q => { powers |= ((ulong) q.GetValue(null)); }));
+                                        q => { powers |= (ulong) q.GetValue(null); }));
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.ChangeActions,
