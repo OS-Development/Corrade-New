@@ -162,7 +162,7 @@ namespace Corrade
                             o =>
                                 typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        q => { primFlags |= ((uint) q.GetValue(null)); }));
+                                        q => { primFlags |= (uint) q.GetValue(null); }));
 
                     // Finally, add the primitive to the simulator.
                     Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID, position,

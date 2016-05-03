@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -62,17 +63,19 @@ namespace Corrade
                     }
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                     object LockObject = new object();
-                    CSV.ToEnumerable(
+                    bool rolesFound = true;
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message)))
-                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)), (o, s) =>
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(o, out roleUUID) &&
                                 !Resolvers.RoleNameToUUID(Client, o, corradeCommandParameters.Group.UUID,
                                     corradeConfiguration.ServicesTimeout, ref roleUUID))
                             {
-                                throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
+                                rolesFound = false;
+                                s.Break();
                             }
                             lock (LockObject)
                             {
@@ -82,6 +85,8 @@ namespace Corrade
                                 }
                             }
                         });
+                    if (!rolesFound)
+                        throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     // No roles specified, so assume everyone role.
                     if (!roleUUIDs.Any())
                     {

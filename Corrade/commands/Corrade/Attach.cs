@@ -122,7 +122,7 @@ namespace Corrade
                                             else
                                             {
                                                 // attempt regex and then fall back to string
-                                                InventoryBase inventoryBaseItem = null;
+                                                InventoryBase inventoryBaseItem;
                                                 try
                                                 {
                                                     inventoryBaseItem =

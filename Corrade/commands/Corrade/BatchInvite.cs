@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -49,25 +50,29 @@ namespace Corrade
                     }
                     // Get the roles to invite to.
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
-                    CSV.ToEnumerable(
+                    bool rolesFound = true;
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                                 corradeCommandParameters.Message)))
-                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)), (o, s) =>
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(o, out roleUUID) &&
                                 !Resolvers.RoleNameToUUID(Client, o, corradeCommandParameters.Group.UUID,
                                     corradeConfiguration.ServicesTimeout, ref roleUUID))
                             {
-                                throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
+                                rolesFound = false;
+                                s.Break();
                             }
                             if (!roleUUIDs.Contains(roleUUID))
                             {
                                 roleUUIDs.Add(roleUUID);
                             }
                         });
+                    if (!rolesFound)
+                        throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     // No roles specified, so assume everyone role.
                     if (!roleUUIDs.Any())
                     {

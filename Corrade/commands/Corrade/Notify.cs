@@ -413,7 +413,6 @@ namespace Corrade
                                     Reflection.GetEnumValues<Configuration.Notifications>())
                                     .AsParallel().ForAll(o =>
                                     {
-
                                         GroupNotifications.ToArray().AsParallel()
                                             .Where(p => !((uint) o & p.NotificationMask).Equals(0)).ForAll(p =>
                                             {
@@ -427,7 +426,6 @@ namespace Corrade
                                                     GroupNotificationsCache.Add(o, new HashSet<Notification> {p});
                                                 }
                                             });
-
                                     });
                             }
                             break;

@@ -993,7 +993,7 @@ namespace Corrade
                                                 !(o.PermissionMask & (uint) Configuration.Permissions.Schedule).Equals(0))
                                         .Select(o => o.UUID));
                             ((HashSet<GroupSchedule>)
-                                (new XmlSerializer(typeof (HashSet<GroupSchedule>))).Deserialize(streamReader))
+                                new XmlSerializer(typeof (HashSet<GroupSchedule>)).Deserialize(streamReader))
                                 .ToArray().AsParallel()
                                 .Where(o => groups.Contains(o.Group.UUID)).ForAll(o =>
                                 {
@@ -1070,7 +1070,7 @@ namespace Corrade
                         using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
                             ((HashSet<Notification>)
-                                (new XmlSerializer(typeof (HashSet<Notification>))).Deserialize(streamReader))
+                                new XmlSerializer(typeof (HashSet<Notification>)).Deserialize(streamReader))
                                 .ToArray().AsParallel()
                                 .Where(
                                     o => groups.Contains(o.GroupUUID))
@@ -7440,14 +7440,9 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
-            [IsCorradeCommand(true)]
-            [CommandInputSyntax(
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&<powers=<GroupPowers[,GroupPowers...]>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((uint)Configuration.Permissions.Group)]
-            [CorradeCommand("setrolepowers")]
-            [Reflection.NameAttribute("setrolepowers")]
-            SETROLEPOWERS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("setrolepowers")] [Reflection.NameAttribute("setrolepowers")] SETROLEPOWERS,
 
             /// <remarks>
             ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.

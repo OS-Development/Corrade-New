@@ -109,7 +109,7 @@ namespace Corrade
                                                     .AsParallel()
                                                     .Where(q => string.Equals(p, q.Name, StringComparison.Ordinal))
                                                     .ForAll(
-                                                        r => { muteFlags |= ((int) r.GetValue(null)); }));
+                                                        r => { muteFlags |= (int) r.GetValue(null); }));
                                         succeeded = true;
                                         lock (Locks.ClientInstanceSelfLock)
                                         {

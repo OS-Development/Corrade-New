@@ -24,7 +24,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -69,7 +69,7 @@ namespace Corrade
                     {
                         Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                         Client.Groups.RequestGroupRoles(corradeCommandParameters.Group.UUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                             throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
@@ -91,10 +91,7 @@ namespace Corrade
                             o =>
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        q =>
-                                        {
-                                            groupRole.Powers |= (GroupPowers) q.GetValue(null);
-                                        }));
+                                        q => { groupRole.Powers |= (GroupPowers) q.GetValue(null); }));
                     Client.Groups.UpdateRole(groupRole);
                 };
         }
