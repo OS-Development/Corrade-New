@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -56,11 +57,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    if (Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
+                    /*if (Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                         corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
-                    }
+                    }*/
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                     object LockObject = new object();
                     bool rolesFound = true;
@@ -92,13 +93,41 @@ namespace Corrade
                     {
                         roleUUIDs.Add(UUID.Zero);
                     }
-                    if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
-                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
-                            GroupPowers.AssignMember,
+                    // If we are not inviting to the everyone role, then check whether we need the group power to
+                    // assign just to the roles we are part of or whether we need the power to invite to any role.
+                    if (!roleUUIDs.All(o => o.Equals(UUID.Zero)))
+                    {
+                        // get our current roles.
+                        HashSet<UUID> selfRoles = new HashSet<UUID>();
+                        ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
+                        {
+                            selfRoles.UnionWith(
+                                args.RolesMembers.ToArray()
+                                    .AsParallel()
+                                    .Where(o => o.Value.Equals(Client.Self.AgentID))
+                                    .Select(o => o.Key));
+                            GroupRoleMembersReplyEvent.Set();
+                        };
+                        lock (Locks.ClientInstanceGroupsLock)
+                        {
+                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                            Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                                throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
+                            }
+                            Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                        }
+                        if (!Services.HasGroupPowers(Client, Client.Self.AgentID,
+                            corradeCommandParameters.Group.UUID,
+                            roleUUIDs.All(o => selfRoles.Contains(o))
+                                ? GroupPowers.AssignMemberLimited
+                                : GroupPowers.AssignMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     Client.Groups.Invite(corradeCommandParameters.Group.UUID, roleUUIDs.ToList(), agentUUID);
                 };

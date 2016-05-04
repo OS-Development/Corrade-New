@@ -32,6 +32,8 @@ namespace wasOpenMetaverse
             uint millisecondsTimeout, uint dataTimeout, Time.DecayingAlarm alarm,
             ref UUID GroupUUID)
         {
+            if (string.IsNullOrEmpty(GroupName))
+                return false;
             UUID groupUUID = UUID.Zero;
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
@@ -120,6 +122,8 @@ namespace wasOpenMetaverse
             Time.DecayingAlarm alarm,
             ref UUID AgentUUID)
         {
+            if (string.IsNullOrEmpty(FirstName) || string.IsNullOrEmpty(LastName))
+                return false;
             UUID agentUUID = UUID.Zero;
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
@@ -349,11 +353,12 @@ namespace wasOpenMetaverse
         public static bool RoleNameToUUID(GridClient Client, string RoleName, UUID GroupUUID, uint millisecondsTimeout,
             ref UUID RoleUUID)
         {
-            switch (!RoleName.Equals(Constants.GROUPS.EVERYONE_ROLE_NAME, StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(RoleName))
+                return false;
+            if (RoleName.Equals(Constants.GROUPS.EVERYONE_ROLE_NAME, StringComparison.Ordinal))
             {
-                case false:
-                    RoleUUID = UUID.Zero;
-                    return true;
+                RoleUUID = UUID.Zero;
+                return true;
             }
             ManualResetEvent GroupRoleDataReceivedEvent = new ManualResetEvent(false);
             UUID roleUUID = UUID.Zero;
@@ -399,11 +404,10 @@ namespace wasOpenMetaverse
         public static bool RoleUUIDToName(GridClient Client, UUID RoleUUID, UUID GroupUUID, uint millisecondsTimeout,
             ref string roleName)
         {
-            switch (!RoleUUID.Equals(UUID.Zero))
+            if (RoleUUID.Equals(UUID.Zero))
             {
-                case false:
-                    roleName = Constants.GROUPS.EVERYONE_ROLE_NAME;
-                    return true;
+                roleName = Constants.GROUPS.EVERYONE_ROLE_NAME;
+                return true;
             }
             ManualResetEvent GroupRoleDataReceivedEvent = new ManualResetEvent(false);
             GroupRole groupRole = new GroupRole();
@@ -445,6 +449,8 @@ namespace wasOpenMetaverse
         private static bool directRegionNameToHandle(GridClient Client, string name, uint millisecondsTimeout,
             ref ulong regionHandle)
         {
+            if (string.IsNullOrEmpty(name))
+                return false;
             ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
             ulong localRegionHandle = 0;
             EventHandler<GridRegionEventArgs> GridRegionEventHandler =
