@@ -81,7 +81,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE);
                     }
-                    Client.Groups.AddToRole(corradeCommandParameters.Group.UUID, roleUUID, agentUUID);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.AddToRole(corradeCommandParameters.Group.UUID, roleUUID, agentUUID);
+                    }
                 };
         }
     }

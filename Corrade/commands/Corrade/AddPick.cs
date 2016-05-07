@@ -114,8 +114,11 @@ namespace Corrade
                     {
                         pickUUID = UUID.Random();
                     }
-                    Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
-                        position, textureUUID, description);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
+                            position, textureUUID, description);
+                    }
                 };
         }
     }

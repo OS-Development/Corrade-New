@@ -89,6 +89,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     Vector3 scale;
                     if (
                         !Vector3.TryParse(
@@ -109,10 +117,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
-                    Client.Objects.SetScale(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, scale, false, uniform);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetScale(simulator,
+                            primitive.LocalID, scale, false, uniform);
+                    }
                 };
         }
     }

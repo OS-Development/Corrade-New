@@ -72,6 +72,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
@@ -83,10 +91,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_ROTATION);
                     }
-                    Client.Objects.SetRotation(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, rotation, true);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetRotation(simulator,
+                            primitive.LocalID, rotation, true);
+                    }
                 };
         }
     }

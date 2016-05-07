@@ -100,7 +100,10 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                     }
-                    Client.Groups.DeleteRole(corradeCommandParameters.Group.UUID, roleUUID);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.DeleteRole(corradeCommandParameters.Group.UUID, roleUUID);
+                    }
                 };
         }
     }

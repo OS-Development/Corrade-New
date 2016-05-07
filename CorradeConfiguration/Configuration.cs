@@ -49,74 +49,76 @@ namespace CorradeConfiguration
         ///     Corrade notification types.
         /// </summary>
         [Flags]
-        public enum Notifications : uint
+        public enum Notifications : ulong
         {
-            [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] NONE = 0,
-            [XmlEnum(Name = "alert")] [Reflection.NameAttribute("alert")] AlertMessage = 1,
-            [XmlEnum(Name = "region")] [Reflection.NameAttribute("region")] RegionMessage = 2,
-            [XmlEnum(Name = "group")] [Reflection.NameAttribute("group")] GroupMessage = 4,
-            [XmlEnum(Name = "balance")] [Reflection.NameAttribute("balance")] Balance = 8,
-            [XmlEnum(Name = "message")] [Reflection.NameAttribute("message")] InstantMessage = 16,
-            [XmlEnum(Name = "notice")] [Reflection.NameAttribute("notice")] GroupNotice = 32,
-            [XmlEnum(Name = "local")] [Reflection.NameAttribute("local")] LocalChat = 64,
-            [XmlEnum(Name = "dialog")] [Reflection.NameAttribute("dialog")] ScriptDialog = 128,
-            [XmlEnum(Name = "friendship")] [Reflection.NameAttribute("friendship")] Friendship = 256,
-            [XmlEnum(Name = "inventory")] [Reflection.NameAttribute("inventory")] Inventory = 512,
-            [XmlEnum(Name = "permission")] [Reflection.NameAttribute("permission")] ScriptPermission = 1024,
-            [XmlEnum(Name = "lure")] [Reflection.NameAttribute("lure")] TeleportLure = 2048,
-            [XmlEnum(Name = "effect")] [Reflection.NameAttribute("effect")] ViewerEffect = 4096,
-            [XmlEnum(Name = "collision")] [Reflection.NameAttribute("collision")] MeanCollision = 8192,
-            [XmlEnum(Name = "crossing")] [Reflection.NameAttribute("crossing")] RegionCrossed = 16384,
-            [XmlEnum(Name = "terse")] [Reflection.NameAttribute("terse")] TerseUpdates = 32768,
-            [XmlEnum(Name = "typing")] [Reflection.NameAttribute("typing")] Typing = 65536,
-            [XmlEnum(Name = "invite")] [Reflection.NameAttribute("invite")] GroupInvite = 131072,
-            [XmlEnum(Name = "economy")] [Reflection.NameAttribute("economy")] Economy = 262144,
-            [XmlEnum(Name = "membership")] [Reflection.NameAttribute("membership")] GroupMembership = 524288,
-            [XmlEnum(Name = "url")] [Reflection.NameAttribute("url")] LoadURL = 1048576,
-            [XmlEnum(Name = "ownersay")] [Reflection.NameAttribute("ownersay")] OwnerSay = 2097152,
-            [XmlEnum(Name = "regionsayto")] [Reflection.NameAttribute("regionsayto")] RegionSayTo = 4194304,
-            [XmlEnum(Name = "objectim")] [Reflection.NameAttribute("objectim")] ObjectInstantMessage = 8388608,
-            [XmlEnum(Name = "rlv")] [Reflection.NameAttribute("rlv")] RLVMessage = 16777216,
-            [XmlEnum(Name = "debug")] [Reflection.NameAttribute("debug")] DebugMessage = 33554432,
-            [XmlEnum(Name = "avatars")] [Reflection.NameAttribute("avatars")] RadarAvatars = 67108864,
-            [XmlEnum(Name = "primitives")] [Reflection.NameAttribute("primitives")] RadarPrimitives = 134217728,
-            [XmlEnum(Name = "control")] [Reflection.NameAttribute("control")] ScriptControl = 268435456,
-            [XmlEnum(Name = "sit")] [Reflection.NameAttribute("sit")] SitChanged = 536870912,
-            [XmlEnum(Name = "animation")] [Reflection.NameAttribute("animation")] AnimationsChanged = 1073741824,
-            [XmlEnum(Name = "outfit")] [Reflection.NameAttribute("outfit")] OutfitChanged = 2147483648
+            [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] NONE = 0uL,
+            [XmlEnum(Name = "alert")] [Reflection.NameAttribute("alert")] AlertMessage = 1uL,
+            [XmlEnum(Name = "region")] [Reflection.NameAttribute("region")] RegionMessage = 2uL,
+            [XmlEnum(Name = "group")] [Reflection.NameAttribute("group")] GroupMessage = 4uL,
+            [XmlEnum(Name = "balance")] [Reflection.NameAttribute("balance")] Balance = 8uL,
+            [XmlEnum(Name = "message")] [Reflection.NameAttribute("message")] InstantMessage = 16uL,
+            [XmlEnum(Name = "notice")] [Reflection.NameAttribute("notice")] GroupNotice = 32uL,
+            [XmlEnum(Name = "local")] [Reflection.NameAttribute("local")] LocalChat = 64uL,
+            [XmlEnum(Name = "dialog")] [Reflection.NameAttribute("dialog")] ScriptDialog = 128uL,
+            [XmlEnum(Name = "friendship")] [Reflection.NameAttribute("friendship")] Friendship = 256uL,
+            [XmlEnum(Name = "inventory")] [Reflection.NameAttribute("inventory")] Inventory = 512uL,
+            [XmlEnum(Name = "permission")] [Reflection.NameAttribute("permission")] ScriptPermission = 1024uL,
+            [XmlEnum(Name = "lure")] [Reflection.NameAttribute("lure")] TeleportLure = 2048uL,
+            [XmlEnum(Name = "effect")] [Reflection.NameAttribute("effect")] ViewerEffect = 4096uL,
+            [XmlEnum(Name = "collision")] [Reflection.NameAttribute("collision")] MeanCollision = 8192uL,
+            [XmlEnum(Name = "crossing")] [Reflection.NameAttribute("crossing")] RegionCrossed = 16384uL,
+            [XmlEnum(Name = "terse")] [Reflection.NameAttribute("terse")] TerseUpdates = 32768uL,
+            [XmlEnum(Name = "typing")] [Reflection.NameAttribute("typing")] Typing = 65536uL,
+            [XmlEnum(Name = "invite")] [Reflection.NameAttribute("invite")] GroupInvite = 131072uL,
+            [XmlEnum(Name = "economy")] [Reflection.NameAttribute("economy")] Economy = 262144uL,
+            [XmlEnum(Name = "membership")] [Reflection.NameAttribute("membership")] GroupMembership = 524288uL,
+            [XmlEnum(Name = "url")] [Reflection.NameAttribute("url")] LoadURL = 1048576uL,
+            [XmlEnum(Name = "ownersay")] [Reflection.NameAttribute("ownersay")] OwnerSay = 2097152uL,
+            [XmlEnum(Name = "regionsayto")] [Reflection.NameAttribute("regionsayto")] RegionSayTo = 4194304uL,
+            [XmlEnum(Name = "objectim")] [Reflection.NameAttribute("objectim")] ObjectInstantMessage = 8388608uL,
+            [XmlEnum(Name = "rlv")] [Reflection.NameAttribute("rlv")] RLVMessage = 16777216uL,
+            [XmlEnum(Name = "debug")] [Reflection.NameAttribute("debug")] DebugMessage = 33554432uL,
+            [XmlEnum(Name = "avatars")] [Reflection.NameAttribute("avatars")] RadarAvatars = 67108864uL,
+            [XmlEnum(Name = "primitives")] [Reflection.NameAttribute("primitives")] RadarPrimitives = 134217728uL,
+            [XmlEnum(Name = "control")] [Reflection.NameAttribute("control")] ScriptControl = 268435456uL,
+            [XmlEnum(Name = "sit")] [Reflection.NameAttribute("sit")] SitChanged = 536870912uL,
+            [XmlEnum(Name = "animation")] [Reflection.NameAttribute("animation")] AnimationsChanged = 1073741824uL,
+            [XmlEnum(Name = "outfit")] [Reflection.NameAttribute("outfit")] OutfitChanged = 2147483648uL,
+            [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 4294967296uL
         }
 
         /// <summary>
         ///     Corrade permissions.
         /// </summary>
         [Flags]
-        public enum Permissions : uint
+        public enum Permissions : ulong
         {
-            [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] None = 0,
-            [XmlEnum(Name = "movement")] [Reflection.NameAttribute("movement")] Movement = 1,
-            [XmlEnum(Name = "economy")] [Reflection.NameAttribute("economy")] Economy = 2,
-            [XmlEnum(Name = "land")] [Reflection.NameAttribute("land")] Land = 4,
-            [XmlEnum(Name = "grooming")] [Reflection.NameAttribute("grooming")] Grooming = 8,
-            [XmlEnum(Name = "inventory")] [Reflection.NameAttribute("inventory")] Inventory = 16,
-            [XmlEnum(Name = "interact")] [Reflection.NameAttribute("interact")] Interact = 32,
-            [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 64,
-            [XmlEnum(Name = "database")] [Reflection.NameAttribute("database")] Database = 128,
-            [XmlEnum(Name = "notifications")] [Reflection.NameAttribute("notifications")] Notifications = 256,
-            [XmlEnum(Name = "talk")] [Reflection.NameAttribute("talk")] Talk = 512,
-            [XmlEnum(Name = "directory")] [Reflection.NameAttribute("directory")] Directory = 1024,
-            [XmlEnum(Name = "system")] [Reflection.NameAttribute("system")] System = 2048,
-            [XmlEnum(Name = "friendship")] [Reflection.NameAttribute("friendship")] Friendship = 4096,
-            [XmlEnum(Name = "execute")] [Reflection.NameAttribute("execute")] Execute = 8192,
-            [XmlEnum(Name = "group")] [Reflection.NameAttribute("group")] Group = 16384,
-            [XmlEnum(Name = "filter")] [Reflection.NameAttribute("filter")] Filter = 32768,
-            [XmlEnum(Name = "schedule")] [Reflection.NameAttribute("schedule")] Schedule = 65536
+            [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] None = 0uL,
+            [XmlEnum(Name = "movement")] [Reflection.NameAttribute("movement")] Movement = 1uL,
+            [XmlEnum(Name = "economy")] [Reflection.NameAttribute("economy")] Economy = 2uL,
+            [XmlEnum(Name = "land")] [Reflection.NameAttribute("land")] Land = 4uL,
+            [XmlEnum(Name = "grooming")] [Reflection.NameAttribute("grooming")] Grooming = 8uL,
+            [XmlEnum(Name = "inventory")] [Reflection.NameAttribute("inventory")] Inventory = 16uL,
+            [XmlEnum(Name = "interact")] [Reflection.NameAttribute("interact")] Interact = 32uL,
+            [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 64uL,
+            [XmlEnum(Name = "database")] [Reflection.NameAttribute("database")] Database = 128uL,
+            [XmlEnum(Name = "notifications")] [Reflection.NameAttribute("notifications")] Notifications = 256uL,
+            [XmlEnum(Name = "talk")] [Reflection.NameAttribute("talk")] Talk = 512uL,
+            [XmlEnum(Name = "directory")] [Reflection.NameAttribute("directory")] Directory = 1024uL,
+            [XmlEnum(Name = "system")] [Reflection.NameAttribute("system")] System = 2048uL,
+            [XmlEnum(Name = "friendship")] [Reflection.NameAttribute("friendship")] Friendship = 4096uL,
+            [XmlEnum(Name = "execute")] [Reflection.NameAttribute("execute")] Execute = 8192uL,
+            [XmlEnum(Name = "group")] [Reflection.NameAttribute("group")] Group = 16384uL,
+            [XmlEnum(Name = "filter")] [Reflection.NameAttribute("filter")] Filter = 32768uL,
+            [XmlEnum(Name = "schedule")] [Reflection.NameAttribute("schedule")] Schedule = 65536uL,
+            [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 131072uL
         }
 
         private readonly object ClientInstanceConfigurationLock = new object();
-        private uint _autoActivateGroupDelay = 5000;
         private byte[] _AESIV;
         private byte[] _AESKey;
         private bool _autoActivateGroup;
+        private uint _autoActivateGroupDelay = 5000;
         private string _bindIPAddress = string.Empty;
         private uint _callbackQueueLength = 100;
         private uint _callbackThrottle = 1000;
@@ -1681,9 +1683,9 @@ namespace CorradeConfiguration
 
         public void Save(string file, ref Configuration configuration)
         {
-            using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
+            using (var writer = new StreamWriter(file, false, Encoding.UTF8))
             {
-                XmlSerializer serializer = new XmlSerializer(typeof (Configuration));
+                var serializer = new XmlSerializer(typeof (Configuration));
                 serializer.Serialize(writer, configuration);
                 writer.Flush();
             }
@@ -1691,11 +1693,11 @@ namespace CorradeConfiguration
 
         public void Load(string file, ref Configuration configuration)
         {
-            using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
+            using (var stream = new StreamReader(file, Encoding.UTF8))
             {
-                XmlSerializer serializer =
+                var serializer =
                     new XmlSerializer(typeof (Configuration));
-                Configuration loadedConfiguration = (Configuration) serializer.Deserialize(stream);
+                var loadedConfiguration = (Configuration) serializer.Deserialize(stream);
                 configuration = loadedConfiguration;
             }
         }
@@ -1716,23 +1718,23 @@ namespace CorradeConfiguration
             public UUID UUID;
             public uint Workers;
 
-            public uint NotificationMask
+            public ulong NotificationMask
             {
                 get
                 {
                     return Notifications != null && Notifications.Any()
-                        ? Notifications.Cast<uint>()
+                        ? Notifications.Cast<ulong>()
                             .Aggregate((p, q) => p |= q)
                         : 0;
                 }
             }
 
-            public uint PermissionMask
+            public ulong PermissionMask
             {
                 get
                 {
                     return Permissions != null && Permissions.Any()
-                        ? Permissions.Cast<uint>()
+                        ? Permissions.Cast<ulong>()
                             .Aggregate((p, q) => p |= q)
                         : 0;
                 }

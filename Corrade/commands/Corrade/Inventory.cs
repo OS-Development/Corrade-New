@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -56,8 +57,11 @@ namespace Corrade
                         // Avoid preceeding slashes.
                         if (string.IsNullOrEmpty(first)) goto CONTINUE;
 
-                        HashSet<InventoryBase> contents =
-                            new HashSet<InventoryBase>(Client.Inventory.Store.GetContents(p.UUID));
+                        HashSet<InventoryBase> contents = new HashSet<InventoryBase>();
+                        lock (Locks.ClientInstanceInventoryLock)
+                        {
+                            contents.UnionWith(Client.Inventory.Store.GetContents(p.UUID));
+                        }
                         try
                         {
                             UUID itemUUID;
@@ -106,7 +110,10 @@ namespace Corrade
                                 case true:
                                     if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
                                     {
-                                        item = Client.Inventory.Store.RootFolder;
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                        }
                                         break;
                                     }
                                     goto default;
@@ -122,9 +129,14 @@ namespace Corrade
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    foreach (DirItem dirItem in Client.Inventory.Store.GetContents(
-                                        item.UUID).AsParallel().Select(
-                                            o => DirItem.FromInventoryBase(o)))
+                                    List<DirItem> dirItems = new List<DirItem>();
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        dirItems.AddRange(Client.Inventory.Store.GetContents(
+                                            item.UUID).AsParallel().Select(
+                                                o => DirItem.FromInventoryBase(o)));
+                                    }
+                                    foreach (DirItem dirItem in dirItems)
                                     {
                                         csv.AddRange(new[]
                                         {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
@@ -203,7 +215,10 @@ namespace Corrade
                                     }
                                     break;
                                 default:
-                                    item = Client.Inventory.Store.RootFolder;
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        item = Client.Inventory.Store.RootFolder;
+                                    }
                                     break;
                             }
                             item = findPath(path, item);
@@ -231,7 +246,10 @@ namespace Corrade
                                 case true:
                                     if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
                                     {
-                                        item = Client.Inventory.Store.RootFolder;
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                        }
                                         break;
                                     }
                                     goto default;
@@ -277,7 +295,10 @@ namespace Corrade
                                 case true:
                                     if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
                                     {
-                                        item = Client.Inventory.Store.RootFolder;
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                        }
                                         break;
                                     }
                                     goto default;
@@ -293,15 +314,18 @@ namespace Corrade
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    if (Client.Inventory.Store.GetContents(
-                                        item.UUID)
-                                        .OfType<InventoryItem>()
-                                        .Any(
-                                            inventoryItem =>
-                                                !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem,
-                                                    itemPermissions, corradeConfiguration.ServicesTimeout)))
+                                    lock (Locks.ClientInstanceInventoryLock)
                                     {
-                                        throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                        if (Client.Inventory.Store.GetContents(
+                                            item.UUID)
+                                            .OfType<InventoryItem>()
+                                            .Any(
+                                                inventoryItem =>
+                                                    !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem,
+                                                        itemPermissions, corradeConfiguration.ServicesTimeout)))
+                                        {
+                                            throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                        }
                                     }
                                     break;
                                 default:
@@ -329,7 +353,10 @@ namespace Corrade
                                 case true:
                                     if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
                                     {
-                                        item = Client.Inventory.Store.RootFolder;
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                        }
                                         break;
                                     }
                                     goto default;
@@ -345,12 +372,18 @@ namespace Corrade
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    Client.Inventory.MoveFolder(item.UUID,
-                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        Client.Inventory.MoveFolder(item.UUID,
+                                            Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                    }
                                     break;
                                 default:
-                                    Client.Inventory.MoveItem(item.UUID,
-                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        Client.Inventory.MoveItem(item.UUID,
+                                            Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                    }
                                     break;
                             }
                             try
@@ -429,36 +462,48 @@ namespace Corrade
                             switch (action)
                             {
                                 case Action.LN:
-                                    Client.Inventory.CreateLink(targetItem.UUID, sourceItem, (succeeded, newItem) =>
+                                    lock (Locks.ClientInstanceInventoryLock)
                                     {
-                                        if (!succeeded)
+                                        Client.Inventory.CreateLink(targetItem.UUID, sourceItem, (succeeded, newItem) =>
                                         {
-                                            throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
-                                        }
-                                        Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                                    });
+                                            if (!succeeded)
+                                            {
+                                                throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
+                                            }
+                                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                                        });
+                                    }
                                     break;
                                 case Action.MV:
                                     switch (sourceItem is InventoryFolder)
                                     {
                                         case true:
-                                            Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID);
+                                            lock (Locks.ClientInstanceInventoryLock)
+                                            {
+                                                Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID);
+                                            }
                                             break;
                                         default:
-                                            Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID);
+                                            lock (Locks.ClientInstanceInventoryLock)
+                                            {
+                                                Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID);
+                                            }
                                             break;
                                     }
                                     break;
                                 case Action.CP:
-                                    Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
-                                        sourceItem.Name,
-                                        newItem =>
-                                        {
-                                            if (newItem == null)
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
+                                            sourceItem.Name,
+                                            newItem =>
                                             {
-                                                throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
-                                            }
-                                        });
+                                                if (newItem == null)
+                                                {
+                                                    throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
+                                                }
+                                            });
+                                    }
                                     break;
                             }
                             try

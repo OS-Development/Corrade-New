@@ -73,6 +73,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     // build the primitive shape from presets by supplying "type" (or not)...
                     FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
                         BindingFlags.Public |
@@ -100,10 +108,11 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref constructionData);
-                    Client.Objects.SetShape(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, constructionData);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetShape(simulator,
+                            primitive.LocalID, constructionData);
+                    }
                 };
         }
     }

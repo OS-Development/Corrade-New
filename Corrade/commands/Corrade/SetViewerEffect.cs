@@ -175,8 +175,11 @@ namespace Corrade
                                                 ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                     }
                                     // Trigger the effect.
-                                    Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
-                                        lookAtType, effectUUID);
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
+                                            lookAtType, effectUUID);
+                                    }
                                     // Update the list of effects.
                                     lock (LookAtEffectsLock)
                                     {
@@ -229,8 +232,11 @@ namespace Corrade
                                             throw new ScriptException(
                                                 ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                     }
-                                    Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
-                                        pointAtType, effectUUID);
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
+                                            pointAtType, effectUUID);
+                                    }
                                     lock (PointAtEffectsLock)
                                     {
                                         if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
@@ -308,8 +314,11 @@ namespace Corrade
                                                     throw new ScriptException(
                                                         ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
-                                            Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
-                                                color, duration, effectUUID);
+                                            lock (Locks.ClientInstanceSelfLock)
+                                            {
+                                                Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
+                                                    color, duration, effectUUID);
+                                            }
                                             lock (BeamEffectsLock)
                                             {
                                                 if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
@@ -349,8 +358,11 @@ namespace Corrade
                                                     throw new ScriptException(
                                                         ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
-                                            Client.Self.SphereEffect(offset, color, duration,
-                                                effectUUID);
+                                            lock (Locks.ClientInstanceSelfLock)
+                                            {
+                                                Client.Self.SphereEffect(offset, color, duration,
+                                                    effectUUID);
+                                            }
                                             lock (SphereEffectsLock)
                                             {
                                                 if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))

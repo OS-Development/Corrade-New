@@ -143,11 +143,14 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
-                    Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
-                        ? (DirectoryManager.ClassifiedCategories)
-                            classifiedCategoriesField.GetValue(null)
-                        : DirectoryManager.ClassifiedCategories.Any, textureUUID, price, position,
-                        name, classifiedDescription, renew);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
+                            ? (DirectoryManager.ClassifiedCategories)
+                                classifiedCategoriesField.GetValue(null)
+                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, price, position,
+                            name, classifiedDescription, renew);
+                    }
                 };
         }
     }

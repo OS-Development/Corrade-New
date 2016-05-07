@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -83,10 +84,16 @@ namespace Corrade
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.START:
-                            Client.Self.AnimationStart(inventoryItem.AssetUUID, true);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.AnimationStart(inventoryItem.AssetUUID, true);
+                            }
                             break;
                         case Action.STOP:
-                            Client.Self.AnimationStop(inventoryItem.AssetUUID, true);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.AnimationStop(inventoryItem.AssetUUID, true);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ANIMATION_ACTION);

@@ -123,7 +123,11 @@ namespace Corrade
                     {
                         mature = Client.Network.CurrentSim.Access.Equals(SimAccess.Mature);
                     }
-                    Client.Estate.SetRegionInfo(!terraform, !fly, damage, resell, !push, parcel, limit, bonus, mature);
+                    lock (Locks.ClientInstanceEstateLock)
+                    {
+                        Client.Estate.SetRegionInfo(!terraform, !fly, damage, resell, !push, parcel, limit, bonus,
+                            mature);
+                    }
                 };
         }
     }

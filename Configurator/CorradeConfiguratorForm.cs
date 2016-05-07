@@ -665,7 +665,7 @@ namespace Configurator
                 {
                     switch (
                         !(group.PermissionMask &
-                          (uint)
+                          (UInt64)
                               Reflection.GetEnumValueFromName<Configuration.Permissions>(
                                   (string) GroupPermissions.Items[i]))
                             .Equals
@@ -685,7 +685,7 @@ namespace Configurator
                 {
                     switch (
                         !(group.NotificationMask &
-                          (uint)
+                          (UInt64)
                               Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                   (string) GroupNotifications.Items[i]))
                             .Equals(0))

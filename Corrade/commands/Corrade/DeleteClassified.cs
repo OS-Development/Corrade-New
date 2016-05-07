@@ -61,7 +61,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_CLASSIFIED);
                     }
-                    Client.Self.DeleteClassfied(classifiedUUID);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.DeleteClassfied(classifiedUUID);
+                    }
                 };
         }
     }

@@ -103,9 +103,13 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     wasCSVToStructure(data, ref targetGroup);
-                    Client.Groups.SetGroupAcceptNotices(corradeCommandParameters.Group.UUID, targetGroup.AcceptNotices,
-                        targetGroup.ListInProfile);
-                    Client.Groups.UpdateGroup(corradeCommandParameters.Group.UUID, targetGroup);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.SetGroupAcceptNotices(corradeCommandParameters.Group.UUID,
+                            targetGroup.AcceptNotices,
+                            targetGroup.ListInProfile);
+                        Client.Groups.UpdateGroup(corradeCommandParameters.Group.UUID, targetGroup);
+                    }
                 };
         }
     }

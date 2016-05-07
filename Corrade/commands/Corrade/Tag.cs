@@ -79,7 +79,10 @@ namespace Corrade
                                 case false:
                                     throw new ScriptException(ScriptError.COULD_NOT_FIND_TITLE);
                             }
-                            Client.Groups.ActivateTitle(corradeCommandParameters.Group.UUID, role.Value);
+                            lock (Locks.ClientInstanceGroupsLock)
+                            {
+                                Client.Groups.ActivateTitle(corradeCommandParameters.Group.UUID, role.Value);
+                            }
                             break;
                         case Action.GET:
                             string title = string.Empty;

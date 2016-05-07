@@ -46,10 +46,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    Client.Self.SendTeleportLure(agentUUID,
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
-                                corradeCommandParameters.Message)));
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.SendTeleportLure(agentUUID,
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                    corradeCommandParameters.Message)));
+                    }
                 };
         }
     }

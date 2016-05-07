@@ -33,7 +33,10 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
-                        region = Client.Network.CurrentSim.Name;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            region = Client.Network.CurrentSim.Name;
+                        }
                     }
                     ulong regionHandle = 0;
                     if (
@@ -42,9 +45,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    HashSet<MapItem> mapItems =
-                        new HashSet<MapItem>(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
+                    HashSet<MapItem> mapItems = new HashSet<MapItem>();
+                    lock (Locks.ClientInstanceGridLock)
+                    {
+                        mapItems.UnionWith(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
                             GridLayerType.Objects, (int) corradeConfiguration.ServicesTimeout));
+                    }
                     if (!mapItems.Any())
                     {
                         throw new ScriptException(ScriptError.NO_MAP_ITEMS_FOUND);

@@ -149,7 +149,10 @@ namespace Corrade
                                 }
                             }
                             notice.AttachmentID = inventoryItem.UUID;
-                            Client.Groups.SendGroupNotice(corradeCommandParameters.Group.UUID, notice);
+                            lock (Locks.ClientInstanceGroupsLock)
+                            {
+                                Client.Groups.SendGroupNotice(corradeCommandParameters.Group.UUID, notice);
+                            }
                             break;
                         case Action.LIST:
                             ManualResetEvent GroupNoticesReplyEvent = new ManualResetEvent(false);
@@ -312,12 +315,16 @@ namespace Corrade
                                     }
                                     break;
                             }
-                            Client.Self.InstantMessage(Client.Self.Name, agentUUID, string.Empty,
-                                sessionUUID,
-                                action.Equals(Action.ACCEPT)
-                                    ? InstantMessageDialog.GroupNoticeInventoryAccepted
-                                    : InstantMessageDialog.GroupNoticeInventoryDeclined, InstantMessageOnline.Offline,
-                                Client.Self.SimPosition, Client.Network.CurrentSim.RegionID, folderUUID.GetBytes());
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.InstantMessage(Client.Self.Name, agentUUID, string.Empty,
+                                    sessionUUID,
+                                    action.Equals(Action.ACCEPT)
+                                        ? InstantMessageDialog.GroupNoticeInventoryAccepted
+                                        : InstantMessageDialog.GroupNoticeInventoryDeclined,
+                                    InstantMessageOnline.Offline,
+                                    Client.Self.SimPosition, Client.Network.CurrentSim.RegionID, folderUUID.GetBytes());
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

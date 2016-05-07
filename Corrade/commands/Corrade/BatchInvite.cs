@@ -172,8 +172,11 @@ namespace Corrade
                                     }
                                     break;
                                 default:
-                                    Client.Groups.Invite(corradeCommandParameters.Group.UUID, roleUUIDs.ToList(),
-                                        agentUUID);
+                                    lock (Locks.ClientInstanceGroupsLock)
+                                    {
+                                        Client.Groups.Invite(corradeCommandParameters.Group.UUID, roleUUIDs.ToList(),
+                                            agentUUID);
+                                    }
                                     break;
                             }
                         });

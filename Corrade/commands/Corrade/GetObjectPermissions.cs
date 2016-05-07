@@ -74,7 +74,12 @@ namespace Corrade
                     }
                     // if the primitive is not an object (the root) or the primitive
                     // is not an object as an avatar attachment then bail out
-                    if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                    uint selfLocalID;
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        selfLocalID = Client.Self.LocalID;
+                    }
+                    if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(selfLocalID))
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }

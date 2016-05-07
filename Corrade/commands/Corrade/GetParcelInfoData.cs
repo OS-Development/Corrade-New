@@ -41,12 +41,16 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator =
-                        Client.Network.Simulators.AsParallel().FirstOrDefault(
-                            o =>
-                                o.Name.Equals(
-                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.OrdinalIgnoreCase));
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator =
+                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.OrdinalIgnoreCase));
+                    }
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -58,8 +62,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    UUID parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
-                        UUID.Zero);
+                    UUID parcelUUID;
+                    lock (Locks.ClientInstanceParcelsLock)
+                    {
+                        parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
+                            UUID.Zero);
+                    }
                     if (parcelUUID.Equals(UUID.Zero))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);

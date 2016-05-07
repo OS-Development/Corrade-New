@@ -18,6 +18,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
+using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -92,7 +93,12 @@ namespace Corrade
                         itemUUID = inventoryItem.AssetUUID;
                     }
                     byte[] assetData = null;
-                    switch (!Client.Assets.Cache.HasAsset(itemUUID))
+                    bool cacheHasAsset;
+                    lock (Locks.ClientInstanceAssetsLock)
+                    {
+                        cacheHasAsset = Client.Assets.Cache.HasAsset(itemUUID);
+                    }
+                    switch (!cacheHasAsset)
                     {
                         case true:
                             ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
@@ -100,21 +106,24 @@ namespace Corrade
                             switch (assetType)
                             {
                                 case AssetType.Mesh:
-                                    Client.Assets.RequestMesh(itemUUID,
-                                        delegate(bool completed, AssetMesh asset)
-                                        {
-                                            if (!asset.AssetID.Equals(itemUUID)) return;
-                                            succeeded = completed;
-                                            if (succeeded)
-                                            {
-                                                assetData = asset.MeshData.AsBinary();
-                                            }
-                                            RequestAssetEvent.Set();
-                                        });
-                                    if (
-                                        !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    lock (Locks.ClientInstanceAssetsLock)
                                     {
-                                        throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        Client.Assets.RequestMesh(itemUUID,
+                                            delegate(bool completed, AssetMesh asset)
+                                            {
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
+                                                succeeded = completed;
+                                                if (succeeded)
+                                                {
+                                                    assetData = asset.MeshData.AsBinary();
+                                                }
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                        {
+                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        }
                                     }
                                     break;
                                 // All of these can only be fetched if they exist locally.
@@ -126,37 +135,43 @@ namespace Corrade
                                     {
                                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                                     }
-                                    Client.Assets.RequestInventoryAsset(inventoryItem, true,
-                                        delegate(AssetDownload transfer, Asset asset)
-                                        {
-                                            succeeded = transfer.Success;
-                                            if (transfer.Success)
-                                            {
-                                                assetData = asset.AssetData;
-                                            }
-                                            RequestAssetEvent.Set();
-                                        });
-                                    if (
-                                        !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    lock (Locks.ClientInstanceAssetsLock)
                                     {
-                                        throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        Client.Assets.RequestInventoryAsset(inventoryItem, true,
+                                            delegate(AssetDownload transfer, Asset asset)
+                                            {
+                                                succeeded = transfer.Success;
+                                                if (transfer.Success)
+                                                {
+                                                    assetData = asset.AssetData;
+                                                }
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                        {
+                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        }
                                     }
                                     break;
                                 // All images go through RequestImage and can be fetched directly from the asset server.
                                 case AssetType.Texture:
-                                    Client.Assets.RequestImage(itemUUID, ImageType.Normal,
-                                        delegate(TextureRequestState state, AssetTexture asset)
-                                        {
-                                            if (!asset.AssetID.Equals(itemUUID)) return;
-                                            if (!state.Equals(TextureRequestState.Finished)) return;
-                                            assetData = asset.AssetData;
-                                            succeeded = true;
-                                            RequestAssetEvent.Set();
-                                        });
-                                    if (
-                                        !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    lock (Locks.ClientInstanceAssetsLock)
                                     {
-                                        throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        Client.Assets.RequestImage(itemUUID, ImageType.Normal,
+                                            delegate(TextureRequestState state, AssetTexture asset)
+                                            {
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
+                                                if (!state.Equals(TextureRequestState.Finished)) return;
+                                                assetData = asset.AssetData;
+                                                succeeded = true;
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                        {
+                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        }
                                     }
                                     break;
                                 // All of these can be fetched directly from the asset server.
@@ -166,21 +181,24 @@ namespace Corrade
                                 case AssetType.Sound: // Ogg Vorbis
                                 case AssetType.Clothing:
                                 case AssetType.Bodypart:
-                                    Client.Assets.RequestAsset(itemUUID, assetType, true,
-                                        delegate(AssetDownload transfer, Asset asset)
-                                        {
-                                            if (!transfer.AssetID.Equals(itemUUID)) return;
-                                            succeeded = transfer.Success;
-                                            if (transfer.Success)
-                                            {
-                                                assetData = asset.AssetData;
-                                            }
-                                            RequestAssetEvent.Set();
-                                        });
-                                    if (
-                                        !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    lock (Locks.ClientInstanceAssetsLock)
                                     {
-                                        throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        Client.Assets.RequestAsset(itemUUID, assetType, true,
+                                            delegate(AssetDownload transfer, Asset asset)
+                                            {
+                                                if (!transfer.AssetID.Equals(itemUUID)) return;
+                                                succeeded = transfer.Success;
+                                                if (transfer.Success)
+                                                {
+                                                    assetData = asset.AssetData;
+                                                }
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                        {
+                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        }
                                     }
                                     break;
                                 default:
@@ -190,10 +208,16 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.FAILED_TO_DOWNLOAD_ASSET);
                             }
-                            Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
+                            lock (Locks.ClientInstanceAssetsLock)
+                            {
+                                Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
+                            }
                             break;
                         default:
-                            assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                            lock (Locks.ClientInstanceAssetsLock)
+                            {
+                                assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                            }
                             break;
                     }
                     // If the asset type was a texture, convert it to the desired format.

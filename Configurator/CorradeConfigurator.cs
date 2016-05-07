@@ -22,15 +22,15 @@ namespace Configurator
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            try
-            {
+            //try
+            //{
                 Application.Run(new CorradeConfiguratorForm());
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(@"Who put a clog in my cogs?" + Environment.NewLine + ex.Message);
-                Environment.Exit(-1);
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show(@"Who put a clog in my cogs?" + Environment.NewLine + ex.Message);
+            //    Environment.Exit(-1);
+            //}
         }
     }
 }

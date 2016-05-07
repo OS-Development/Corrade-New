@@ -125,11 +125,21 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_BINORMAL_VECTOR);
                     }
-                    Client.Objects.ClickObject(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, uvCoord, stCoord, faceIndex, position,
-                        normal, binormal);
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.ClickObject(
+                            simulator,
+                            primitive.LocalID, uvCoord, stCoord, faceIndex, position,
+                            normal, binormal);
+                    }
                 };
         }
     }

@@ -178,7 +178,12 @@ namespace Corrade
                     Parallel.ForEach(exportTexturesSet, o =>
                     {
                         byte[] assetData = null;
-                        switch (!Client.Assets.Cache.HasAsset(o))
+                        bool cacheHasAsset;
+                        lock (Locks.ClientInstanceAssetsLock)
+                        {
+                            cacheHasAsset = Client.Assets.Cache.HasAsset(o);
+                        }
+                        switch (!cacheHasAsset)
                         {
                             case true:
                                 lock (Locks.ClientInstanceAssetsLock)
@@ -198,10 +203,16 @@ namespace Corrade
                                         throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                     }
                                 }
-                                Client.Assets.Cache.SaveAssetToCache(o, assetData);
+                                lock (Locks.ClientInstanceAssetsLock)
+                                {
+                                    Client.Assets.Cache.SaveAssetToCache(o, assetData);
+                                }
                                 break;
                             default:
-                                assetData = Client.Assets.Cache.GetCachedAssetBytes(o);
+                                lock (Locks.ClientInstanceAssetsLock)
+                                {
+                                    assetData = Client.Assets.Cache.GetCachedAssetBytes(o);
+                                }
                                 break;
                         }
                         switch (formatProperty != null)

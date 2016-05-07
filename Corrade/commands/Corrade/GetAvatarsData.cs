@@ -74,7 +74,10 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     out position))
                             {
-                                position = Client.Self.SimPosition;
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    position = Client.Self.SimPosition;
+                                }
                             }
                             Parcel parcel = null;
                             if (

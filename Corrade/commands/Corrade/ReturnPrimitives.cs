@@ -53,12 +53,16 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator =
-                        Client.Network.Simulators.AsParallel().FirstOrDefault(
-                            o =>
-                                o.Name.Equals(
-                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.OrdinalIgnoreCase));
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator =
+                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.OrdinalIgnoreCase));
+                    }
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -172,12 +176,14 @@ namespace Corrade
                                 if (!gotPermission)
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
-                            Parallel.ForEach(parcels,
-                                o =>
-                                    Client.Parcels.ReturnObjects(simulator, o.LocalID,
-                                        returnType
-                                        , new List<UUID> {agentUUID}));
-
+                            lock (Locks.ClientInstanceParcelsLock)
+                            {
+                                Parallel.ForEach(parcels,
+                                    o =>
+                                        Client.Parcels.ReturnObjects(simulator, o.LocalID,
+                                            returnType
+                                            , new List<UUID> {agentUUID}));
+                            }
                             break;
                         case Entity.ESTATE:
                             if (!simulator.IsEstateManager)
@@ -201,11 +207,14 @@ namespace Corrade
                                     o =>
                                         o.Name.Equals(type,
                                             StringComparison.Ordinal));
-                            Client.Estate.SimWideReturn(agentUUID, estateReturnFlagsField != null
-                                ? (EstateTools.EstateReturnFlags)
-                                    estateReturnFlagsField
-                                        .GetValue(null)
-                                : EstateTools.EstateReturnFlags.ReturnScriptedAndOnOthers, allEstates);
+                            lock (Locks.ClientInstanceEstateLock)
+                            {
+                                Client.Estate.SimWideReturn(agentUUID, estateReturnFlagsField != null
+                                    ? (EstateTools.EstateReturnFlags)
+                                        estateReturnFlagsField
+                                            .GetValue(null)
+                                    : EstateTools.EstateReturnFlags.ReturnScriptedAndOnOthers, allEstates);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

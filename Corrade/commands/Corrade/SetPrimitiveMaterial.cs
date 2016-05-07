@@ -73,6 +73,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     FieldInfo materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
                                                                               BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -83,10 +91,11 @@ namespace Corrade
                                     StringComparison.OrdinalIgnoreCase));
                     if (materialFieldInfo == null)
                         throw new ScriptException(ScriptError.UNKNOWN_MATERIAL_TYPE);
-                    Client.Objects.SetMaterial(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, (Material) materialFieldInfo.GetValue(null));
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetMaterial(simulator,
+                            primitive.LocalID, (Material) materialFieldInfo.GetValue(null));
+                    }
                 };
         }
     }

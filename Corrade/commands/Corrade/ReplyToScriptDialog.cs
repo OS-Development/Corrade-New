@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -81,7 +82,10 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
                         }
                     }
-                    Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
+                    }
                 };
         }
     }

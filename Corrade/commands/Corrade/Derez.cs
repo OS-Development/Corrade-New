@@ -92,9 +92,12 @@ namespace Corrade
                             }
                             break;
                         default:
-                            inventoryFolder =
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
-                                    .Data as InventoryFolder;
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                inventoryFolder =
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
+                                        .Data as InventoryFolder;
+                            }
                             break;
                     }
                     FieldInfo deRezDestionationTypeInfo = typeof (DeRezDestination).GetFields(BindingFlags.Public |
@@ -142,11 +145,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
-                    Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
-                        ? (DeRezDestination)
-                            deRezDestionationTypeInfo
-                                .GetValue(null)
-                        : DeRezDestination.AgentInventoryTake, inventoryFolder.UUID, UUID.Random());
+                    lock (Locks.ClientInstanceInventoryLock)
+                    {
+                        Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
+                            ? (DeRezDestination)
+                                deRezDestionationTypeInfo
+                                    .GetValue(null)
+                            : DeRezDestination.AgentInventoryTake, inventoryFolder.UUID, UUID.Random());
+                    }
                 };
         }
     }

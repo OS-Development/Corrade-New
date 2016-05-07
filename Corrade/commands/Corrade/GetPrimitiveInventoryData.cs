@@ -85,9 +85,13 @@ namespace Corrade
                         }
                         entityUUID = UUID.Zero;
                     }
-                    List<InventoryBase> inventory =
-                        Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                            (int) corradeConfiguration.ServicesTimeout).ToList();
+                    List<InventoryBase> inventory = new List<InventoryBase>();
+                    lock (Locks.ClientInstanceInventoryLock)
+                    {
+                        inventory.AddRange(
+                            Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                (int) corradeConfiguration.ServicesTimeout));
+                    }
                     InventoryItem inventoryItem = !entityUUID.Equals(UUID.Zero)
                         ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                         : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;

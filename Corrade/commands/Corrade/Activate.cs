@@ -37,7 +37,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    Client.Groups.ActivateGroup(corradeCommandParameters.Group.UUID);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.ActivateGroup(corradeCommandParameters.Group.UUID);
+                    }
                 };
         }
     }

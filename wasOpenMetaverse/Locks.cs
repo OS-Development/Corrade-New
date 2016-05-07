@@ -22,5 +22,6 @@ namespace wasOpenMetaverse
         public static readonly object ClientInstanceFriendsLock = new object();
         public static readonly object ClientInstanceAssetsLock = new object();
         public static readonly object ClientInstanceAppearanceLock = new object();
+        public static readonly object ClientInstanceSoundLock = new object();
     }
 }

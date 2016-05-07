@@ -87,8 +87,12 @@ namespace Corrade
                     {
                         sunPosition = Constants.REGION.SUNRISE;
                     }
-                    Client.Estate.SetTerrainVariables(waterHeight, terrainRaiseLimit, terrainLowerLimit, useEstateSun,
-                        fixedSun, sunPosition);
+                    lock (Locks.ClientInstanceEstateLock)
+                    {
+                        Client.Estate.SetTerrainVariables(waterHeight, terrainRaiseLimit, terrainLowerLimit,
+                            useEstateSun,
+                            fixedSun, sunPosition);
+                    }
                 };
         }
     }

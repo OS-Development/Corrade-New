@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -30,13 +31,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                     }
-                    List<UUID> simTextures = new List<UUID>
+                    List<UUID> simTextures;
+                    lock (Locks.ClientInstanceNetworkLock)
                     {
-                        Client.Network.CurrentSim.TerrainDetail0,
-                        Client.Network.CurrentSim.TerrainDetail1,
-                        Client.Network.CurrentSim.TerrainDetail2,
-                        Client.Network.CurrentSim.TerrainDetail3
-                    };
+                        simTextures = new List<UUID>
+                        {
+                            Client.Network.CurrentSim.TerrainDetail0,
+                            Client.Network.CurrentSim.TerrainDetail1,
+                            Client.Network.CurrentSim.TerrainDetail2,
+                            Client.Network.CurrentSim.TerrainDetail3
+                        };
+                    }
                     UUID[] setTextures = new UUID[4];
                     List<string> data = CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
@@ -75,7 +80,10 @@ namespace Corrade
                                     break;
                             }
                         });
-                    Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2], setTextures[3]);
+                    lock (Locks.ClientInstanceEstateLock)
+                    {
+                        Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2], setTextures[3]);
+                    }
                 };
         }
     }

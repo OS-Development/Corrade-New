@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
@@ -71,12 +72,18 @@ namespace Corrade
                         switch (o.AssetType)
                         {
                             case AssetType.Folder:
-                                Client.Inventory.MoveFolder(o.UUID,
-                                    Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Client.Inventory.MoveFolder(o.UUID,
+                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                }
                                 break;
                             default:
-                                Client.Inventory.MoveItem(o.UUID,
-                                    Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Client.Inventory.MoveItem(o.UUID,
+                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                }
                                 break;
                         }
                     });

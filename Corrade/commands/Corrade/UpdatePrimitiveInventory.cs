@@ -86,6 +86,14 @@ namespace Corrade
                         }
                         entityUUID = UUID.Zero;
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     InventoryBase inventoryBaseItem;
                     switch (
                         Reflection.GetEnumValueFromName<Action>(
@@ -103,8 +111,11 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
-                            Client.Inventory.UpdateTaskInventory(primitive.LocalID,
-                                inventoryBaseItem as InventoryItem);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID,
+                                    inventoryBaseItem as InventoryItem);
+                            }
                             break;
                         case Action.REMOVE:
                             if (entityUUID.Equals(UUID.Zero))
@@ -120,9 +131,10 @@ namespace Corrade
                                 }
                                 entityUUID = inventoryBaseItem.UUID;
                             }
-                            Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
-                                Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                    o => o.Handle.Equals(primitive.RegionHandle)));
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID, simulator);
+                            }
                             break;
                         case Action.TAKE:
                             inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
@@ -152,9 +164,11 @@ namespace Corrade
                                         Client.Inventory.FindFolderForType(inventoryItem.AssetType)].Data
                                         .UUID;
                             }
-                            Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
-                                Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                    o => o.Handle.Equals(primitive.RegionHandle)));
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
+                                    simulator);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

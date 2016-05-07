@@ -81,8 +81,11 @@ namespace Corrade
                         }
                     }
                     wasCSVToStructure(fields, ref interests);
-                    Client.Self.UpdateProfile(properties);
-                    Client.Self.UpdateInterests(interests);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.UpdateProfile(properties);
+                        Client.Self.UpdateInterests(interests);
+                    }
                 };
         }
     }

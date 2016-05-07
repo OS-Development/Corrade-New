@@ -133,6 +133,14 @@ namespace Corrade
                             }
                         }
                     };
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                            o => o.Handle.Equals(rootPrimitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
@@ -140,14 +148,12 @@ namespace Corrade
                         {
                             case Action.LINK:
                                 Client.Objects.LinkPrims(
-                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o => o.Handle.Equals(rootPrimitive.RegionHandle)),
+                                    simulator,
                                     primitives.Select(o => o.LocalID).ToList());
                                 break;
                             case Action.DELINK:
                                 Client.Objects.DelinkPrims(
-                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o => o.Handle.Equals(rootPrimitive.RegionHandle)),
+                                    simulator,
                                     primitives.Select(o => o.LocalID).ToList());
                                 break;
                         }

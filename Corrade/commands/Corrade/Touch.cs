@@ -71,7 +71,10 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
-                    Client.Self.Touch(primitive.LocalID);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Touch(primitive.LocalID);
+                    }
                 };
         }
     }

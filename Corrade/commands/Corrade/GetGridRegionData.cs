@@ -32,7 +32,10 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
-                        region = Client.Network.CurrentSim.Name;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            region = Client.Network.CurrentSim.Name;
+                        }
                     }
                     ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
                     GridRegion gridRegion = new GridRegion();

@@ -79,24 +79,27 @@ namespace Corrade
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
                     List<string> data = new List<string>();
-                    Client.Objects.RequestObjectMedia(primitive.ID,
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        (succeeded, version, faceMedia) =>
-                        {
-                            switch (succeeded)
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.RequestObjectMedia(primitive.ID,
+                            Client.Network.Simulators.AsParallel()
+                                .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            (succeeded, version, faceMedia) =>
                             {
-                                case true:
-                                    data.AddRange(GetStructuredData(faceMedia,
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                                                corradeCommandParameters.Message))));
-                                    break;
-                                default:
-                                    throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
-                            }
-                        });
+                                switch (succeeded)
+                                {
+                                    case true:
+                                        data.AddRange(GetStructuredData(faceMedia,
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                                    corradeCommandParameters.Message))));
+                                        break;
+                                    default:
+                                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
+                                }
+                            });
+                    }
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

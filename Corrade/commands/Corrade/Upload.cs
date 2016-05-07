@@ -95,9 +95,12 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                             }
-                            if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
+                            lock (Locks.ClientInstanceSelfLock)
                             {
-                                throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                                if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
+                                {
+                                    throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                                }
                             }
                             switch (assetType)
                             {
@@ -128,26 +131,29 @@ namespace Corrade
                             }
                             // now create and upload the asset
                             ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
-                            Client.Inventory.RequestCreateItemFromAsset(data, name,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
-                                assetType,
-                                (InventoryType)
-                                    (typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().FirstOrDefault(
-                                            o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
-                                                StringComparison.Ordinal))).GetValue(null),
-                                Client.Inventory.FindFolderForType(assetType),
-                                delegate(bool completed, string status, UUID itemID, UUID assetID)
-                                {
-                                    succeeded = completed;
-                                    CreateItemFromAssetEvent.Set();
-                                });
-                            if (!CreateItemFromAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                Client.Inventory.RequestCreateItemFromAsset(data, name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    (InventoryType)
+                                        (typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                            .AsParallel().FirstOrDefault(
+                                                o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
+                                                    StringComparison.Ordinal))).GetValue(null),
+                                    Client.Inventory.FindFolderForType(assetType),
+                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    {
+                                        succeeded = completed;
+                                        CreateItemFromAssetEvent.Set();
+                                    });
+                                if (!CreateItemFromAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                }
                             }
                             break;
                         case AssetType.Bodypart:
@@ -172,23 +178,26 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
                             }
                             ManualResetEvent CreateWearableEvent = new ManualResetEvent(false);
-                            Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
-                                name,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
-                                assetType,
-                                wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
-                                permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
-                                delegate(bool completed, InventoryItem createdItem)
-                                {
-                                    succeeded = completed;
-                                    CreateWearableEvent.Set();
-                                });
-                            if (!CreateWearableEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        CreateWearableEvent.Set();
+                                    });
+                                if (!CreateWearableEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
                             }
                             break;
                         case AssetType.Landmark:
@@ -198,133 +207,154 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
                             }
                             ManualResetEvent CreateLandmarkEvent = new ManualResetEvent(false);
-                            Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
-                                name,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
-                                assetType,
-                                landmarkUUID, InventoryType.Landmark, PermissionMask.All,
-                                delegate(bool completed, InventoryItem createdItem)
-                                {
-                                    succeeded = completed;
-                                    CreateLandmarkEvent.Set();
-                                });
-                            if (!CreateLandmarkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    landmarkUUID, InventoryType.Landmark, PermissionMask.All,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        CreateLandmarkEvent.Set();
+                                    });
+                                if (!CreateLandmarkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
                             }
                             break;
                         case AssetType.Gesture:
                             ManualResetEvent CreateGestureEvent = new ManualResetEvent(false);
                             InventoryItem newGesture = null;
-                            Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
-                                name,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
-                                assetType,
-                                UUID.Random(), InventoryType.Gesture,
-                                permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
-                                delegate(bool completed, InventoryItem createdItem)
-                                {
-                                    succeeded = completed;
-                                    newGesture = createdItem;
-                                    CreateGestureEvent.Set();
-                                });
-                            if (!CreateGestureEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    UUID.Random(), InventoryType.Gesture,
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        newGesture = createdItem;
+                                        CreateGestureEvent.Set();
+                                    });
+                                if (!CreateGestureEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
                             }
                             if (!succeeded)
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
                             }
                             ManualResetEvent UploadGestureAssetEvent = new ManualResetEvent(false);
-                            Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
-                                delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
-                                {
-                                    succeeded = completed;
-                                    UploadGestureAssetEvent.Set();
-                                });
-                            if (!UploadGestureAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
+                                    delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    {
+                                        succeeded = completed;
+                                        UploadGestureAssetEvent.Set();
+                                    });
+                                if (!UploadGestureAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                }
                             }
                             break;
                         case AssetType.Notecard:
                             ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
                             InventoryItem newNotecard = null;
-                            Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
-                                name,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
-                                assetType,
-                                UUID.Random(), InventoryType.Notecard,
-                                permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
-                                delegate(bool completed, InventoryItem createdItem)
-                                {
-                                    succeeded = completed;
-                                    newNotecard = createdItem;
-                                    CreateNotecardEvent.Set();
-                                });
-                            if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceNetworkLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    UUID.Random(), InventoryType.Notecard,
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        newNotecard = createdItem;
+                                        CreateNotecardEvent.Set();
+                                    });
+                                if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
                             }
                             if (!succeeded)
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
                             }
                             ManualResetEvent UploadNotecardAssetEvent = new ManualResetEvent(false);
-                            Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
-                                delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
-                                {
-                                    succeeded = completed;
-                                    UploadNotecardAssetEvent.Set();
-                                });
-                            if (!UploadNotecardAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
+                                    delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    {
+                                        succeeded = completed;
+                                        UploadNotecardAssetEvent.Set();
+                                    });
+                                if (!UploadNotecardAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                }
                             }
                             break;
                         case AssetType.LSLText:
                             ManualResetEvent CreateScriptEvent = new ManualResetEvent(false);
                             InventoryItem newScript = null;
-                            Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
-                                name,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
-                                assetType,
-                                UUID.Random(), InventoryType.LSL,
-                                permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
-                                delegate(bool completed, InventoryItem createdItem)
-                                {
-                                    succeeded = completed;
-                                    newScript = createdItem;
-                                    CreateScriptEvent.Set();
-                                });
-                            if (!CreateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    UUID.Random(), InventoryType.LSL,
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        newScript = createdItem;
+                                        CreateScriptEvent.Set();
+                                    });
+                                if (!CreateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
                             }
                             ManualResetEvent UpdateScriptEvent = new ManualResetEvent(false);
-                            Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,
-                                delegate(bool completed, string status, bool compiled, List<string> messages,
-                                    UUID itemID, UUID assetID)
-                                {
-                                    succeeded = completed;
-                                    UpdateScriptEvent.Set();
-                                });
-                            if (!UpdateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            lock (Locks.ClientInstanceInventoryLock)
                             {
-                                throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,
+                                    delegate(bool completed, string status, bool compiled, List<string> messages,
+                                        UUID itemID, UUID assetID)
+                                    {
+                                        succeeded = completed;
+                                        UpdateScriptEvent.Set();
+                                    });
+                                if (!UpdateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                }
                             }
                             break;
                         default:

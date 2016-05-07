@@ -105,19 +105,22 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE);
                     }
-                    Client.Groups.CreateRole(corradeCommandParameters.Group.UUID, new GroupRole
+                    lock (Locks.ClientInstanceGroupsLock)
                     {
-                        Name = role,
-                        Description =
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                    corradeCommandParameters.Message)),
-                        GroupID = corradeCommandParameters.Group.UUID,
-                        ID = UUID.Random(),
-                        Powers = (GroupPowers) powers,
-                        Title = title
-                    });
+                        Client.Groups.CreateRole(corradeCommandParameters.Group.UUID, new GroupRole
+                        {
+                            Name = role,
+                            Description =
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                        corradeCommandParameters.Message)),
+                            GroupID = corradeCommandParameters.Group.UUID,
+                            ID = UUID.Random(),
+                            Powers = (GroupPowers) powers,
+                            Title = title
+                        });
+                    }
                     UUID roleUUID = UUID.Zero;
                     if (
                         !Resolvers.RoleNameToUUID(Client, role, corradeCommandParameters.Group.UUID,

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -33,12 +34,18 @@ namespace Corrade
                     {
                         case Action.ENABLE:
                         case Action.DISABLE:
-                            Client.Self.Movement.AlwaysRun = !action.Equals(Action.DISABLE);
-                            Client.Self.Movement.SendUpdate(true);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Movement.AlwaysRun = !action.Equals(Action.DISABLE);
+                                Client.Self.Movement.SendUpdate(true);
+                            }
                             break;
                         case Action.GET:
-                            result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                Client.Self.Movement.AlwaysRun.ToString());
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    Client.Self.Movement.AlwaysRun.ToString());
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

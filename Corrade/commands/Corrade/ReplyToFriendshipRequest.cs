@@ -48,13 +48,16 @@ namespace Corrade
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
                     UUID session = UUID.Zero;
-                    Client.Friends.FriendRequests.ForEach(o =>
+                    lock (Locks.ClientInstanceFriendsLock)
                     {
-                        if (o.Key.Equals(agentUUID))
+                        Client.Friends.FriendRequests.ForEach(o =>
                         {
-                            session = o.Value;
-                        }
-                    });
+                            if (o.Key.Equals(agentUUID))
+                            {
+                                session = o.Value;
+                            }
+                        });
+                    }
                     if (session.Equals(UUID.Zero))
                     {
                         throw new ScriptException(ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
@@ -67,10 +70,16 @@ namespace Corrade
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.ACCEPT:
-                            Client.Friends.AcceptFriendship(agentUUID, session);
+                            lock (Locks.ClientInstanceFriendsLock)
+                            {
+                                Client.Friends.AcceptFriendship(agentUUID, session);
+                            }
                             break;
                         case Action.DECLINE:
-                            Client.Friends.DeclineFriendship(agentUUID, session);
+                            lock (Locks.ClientInstanceFriendsLock)
+                            {
+                                Client.Friends.DeclineFriendship(agentUUID, session);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

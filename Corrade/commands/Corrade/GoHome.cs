@@ -26,9 +26,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                    lock (Locks.ClientInstanceSelfLock)
                     {
-                        Client.Self.Stand();
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                        {
+                            Client.Self.Stand();
+                        }
                     }
                     // stop non default animations if requested
                     bool deanimate;
@@ -38,21 +41,30 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            Client.Self.SignaledAnimations.Copy()
-                                .Keys.AsParallel()
-                                .Where(o => !Helpers.LindenAnimations.Contains(o))
-                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.SignaledAnimations.Copy()
+                                    .Keys.AsParallel()
+                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            }
                             break;
                     }
-                    if (!Client.Self.GoHome())
+                    lock (Locks.ClientInstanceSelfLock)
                     {
-                        throw new ScriptException(ScriptError.UNABLE_TO_GO_HOME);
+                        if (!Client.Self.GoHome())
+                        {
+                            throw new ScriptException(ScriptError.UNABLE_TO_GO_HOME);
+                        }
                     }
                     // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
+                    }
                 };
         }
     }

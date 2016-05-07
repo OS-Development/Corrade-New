@@ -29,15 +29,18 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string previous = string.Empty;
-                    Client.Avatars.GetDisplayNames(new List<UUID> {Client.Self.AgentID},
-                        (succeded, names, IDs) =>
-                        {
-                            if (!succeded || names.Length < 1)
+                    lock (Locks.ClientInstanceAvatarsLock)
+                    {
+                        Client.Avatars.GetDisplayNames(new List<UUID> {Client.Self.AgentID},
+                            (succeded, names, IDs) =>
                             {
-                                throw new ScriptException(ScriptError.FAILED_TO_GET_DISPLAY_NAME);
-                            }
-                            previous = names[0].DisplayName;
-                        });
+                                if (!succeded || names.Length < 1)
+                                {
+                                    throw new ScriptException(ScriptError.FAILED_TO_GET_DISPLAY_NAME);
+                                }
+                                previous = names[0].DisplayName;
+                            });
+                    }
                     switch (
                         Reflection.GetEnumValueFromName<Action>(
                             wasInput(

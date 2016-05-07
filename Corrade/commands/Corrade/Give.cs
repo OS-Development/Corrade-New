@@ -127,8 +127,11 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            Client.Inventory.GiveItem(inventoryItem.UUID, inventoryItem.Name,
-                                inventoryItem.AssetType, agentUUID, true);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.GiveItem(inventoryItem.UUID, inventoryItem.Name,
+                                    inventoryItem.AssetType, agentUUID, true);
+                            }
                             break;
                         case Entity.OBJECT:
                             float range;
@@ -179,7 +182,10 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                             }
-                            Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -54,9 +55,12 @@ namespace Corrade
                                 case false:
                                     throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
                             }
-                            Client.Self.LookAtEffect(Client.Self.AgentID, Client.Self.AgentID,
-                                Vector3d.UnitX,
-                                LookAtType.Idle, effectUUID);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.LookAtEffect(Client.Self.AgentID, Client.Self.AgentID,
+                                    Vector3d.UnitX,
+                                    LookAtType.Idle, effectUUID);
+                            }
                             break;
                         case ViewerEffectType.POINT:
                             PointAtEffect pointAtEffect;
@@ -72,9 +76,12 @@ namespace Corrade
                                 case false:
                                     throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
                             }
-                            Client.Self.PointAtEffect(Client.Self.AgentID, UUID.Zero,
-                                Vector3.Zero,
-                                PointAtType.None, effectUUID);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.PointAtEffect(Client.Self.AgentID, UUID.Zero,
+                                    Vector3.Zero,
+                                    PointAtType.None, effectUUID);
+                            }
                             lock (PointAtEffectsLock)
                             {
                                 PointAtEffects.Remove(pointAtEffect);
@@ -92,9 +99,13 @@ namespace Corrade
                                 case false:
                                     throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
                             }
-                            Client.Self.BeamEffect(Client.Self.AgentID, beamEffect.Target, Vector3.Zero,
-                                new Color4(beamEffect.Color.X, beamEffect.Color.Y, beamEffect.Color.Z, beamEffect.Alpha),
-                                0, effectUUID);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.BeamEffect(Client.Self.AgentID, beamEffect.Target, Vector3.Zero,
+                                    new Color4(beamEffect.Color.X, beamEffect.Color.Y, beamEffect.Color.Z,
+                                        beamEffect.Alpha),
+                                    0, effectUUID);
+                            }
                             lock (BeamEffectsLock)
                             {
                                 BeamEffects.Remove(beamEffect);
@@ -114,9 +125,12 @@ namespace Corrade
                                 case false:
                                     throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
                             }
-                            Client.Self.SphereEffect(Vector3.Zero,
-                                new Color4(sphereEffect.Color.X, sphereEffect.Color.Y, sphereEffect.Color.Z,
-                                    sphereEffect.Alpha), 0, effectUUID);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.SphereEffect(Vector3.Zero,
+                                    new Color4(sphereEffect.Color.X, sphereEffect.Color.Y, sphereEffect.Color.Z,
+                                        sphereEffect.Alpha), 0, effectUUID);
+                            }
                             lock (SphereEffectsLock)
                             {
                                 SphereEffects.Remove(sphereEffect);

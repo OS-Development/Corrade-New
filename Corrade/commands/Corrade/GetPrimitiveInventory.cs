@@ -72,13 +72,17 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
-                    List<string> data =
-                        Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                            (int) corradeConfiguration.ServicesTimeout).ToArray().AsParallel().Select(o => new[]
-                            {
-                                o.Name,
-                                o.UUID.ToString()
-                            }).SelectMany(o => o).ToList();
+                    List<string> data = new List<string>();
+                    lock (Locks.ClientInstanceInventoryLock)
+                    {
+                        data.AddRange(
+                            Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                (int) corradeConfiguration.ServicesTimeout).ToArray().AsParallel().Select(o => new[]
+                                {
+                                    o.Name,
+                                    o.UUID.ToString()
+                                }).SelectMany(o => o));
+                    }
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

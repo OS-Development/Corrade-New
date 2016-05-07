@@ -153,14 +153,17 @@ namespace Corrade
                                     return;
                             }
                             // Demote them.
-                            groupRolesMembers.AsParallel().Where(
-                                p => p.Value.Equals(agentUUID))
-                                .ForAll(
-                                    p =>
-                                    {
-                                        Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, p.Key,
-                                            agentUUID);
-                                    });
+                            lock (Locks.ClientInstanceGroupsLock)
+                            {
+                                groupRolesMembers.AsParallel().Where(
+                                    p => p.Value.Equals(agentUUID))
+                                    .ForAll(
+                                        p =>
+                                        {
+                                            Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, p.Key,
+                                                agentUUID);
+                                        });
+                            }
                             // And eject them.
                             ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
                             bool succeeded = false;

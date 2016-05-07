@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -64,10 +65,13 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            Client.Self.SignaledAnimations.Copy()
-                                .Keys.AsParallel()
-                                .Where(o => !Helpers.LindenAnimations.Contains(o))
-                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.SignaledAnimations.Copy()
+                                    .Keys.AsParallel()
+                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            }
                             break;
                     }
                     HashSet<KeyValuePair<Primitive, AttachmentPoint>> attached =

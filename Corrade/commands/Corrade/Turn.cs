@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -40,41 +41,54 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Direction.LEFT:
-                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
-                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, degrees);
-                            Client.Self.Movement.SendManualUpdate(
-                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
-                                AgentManager.ControlFlags.
-                                    AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
-                                Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
-                                Client.Self.Movement.Camera.UpAxis,
-                                Client.Self.Movement.BodyRotation,
-                                Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
-                                Client.Self.Movement.State, false);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
+                                    degrees);
+                                Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
+                                    degrees);
+                                Client.Self.Movement.SendManualUpdate(
+                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    AgentManager.ControlFlags.
+                                        AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation,
+                                    Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                    Client.Self.Movement.State, false);
+                            }
                             break;
                         case Direction.RIGHT:
-                            Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
-                            Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -degrees);
-                            Client.Self.Movement.SendManualUpdate(
-                                (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
-                                AgentManager.ControlFlags.
-                                    AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
-                                Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
-                                Client.Self.Movement.Camera.UpAxis,
-                                Client.Self.Movement.BodyRotation,
-                                Client.Self.Movement.HeadRotation,
-                                Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
-                                Client.Self.Movement.State, false);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
+                                    -degrees);
+                                Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
+                                    -degrees);
+                                Client.Self.Movement.SendManualUpdate(
+                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    AgentManager.ControlFlags.
+                                        AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation,
+                                    Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
+                                    Client.Self.Movement.State, false);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_DIRECTION);
                     }
                     // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
+                    }
                 };
         }
     }

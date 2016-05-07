@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -32,18 +33,27 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.ENABLE:
-                            Client.Self.AnimationStart(Animations.AWAY, true);
-                            Client.Self.Movement.Away = true;
-                            Client.Self.Movement.SendUpdate(true);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.AnimationStart(Animations.AWAY, true);
+                                Client.Self.Movement.Away = true;
+                                Client.Self.Movement.SendUpdate(true);
+                            }
                             break;
                         case Action.DISABLE:
-                            Client.Self.Movement.Away = false;
-                            Client.Self.AnimationStop(Animations.AWAY, true);
-                            Client.Self.Movement.SendUpdate(true);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Movement.Away = false;
+                                Client.Self.AnimationStop(Animations.AWAY, true);
+                                Client.Self.Movement.SendUpdate(true);
+                            }
                             break;
                         case Action.GET:
-                            result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                Client.Self.Movement.Away.ToString());
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    Client.Self.Movement.Away.ToString());
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

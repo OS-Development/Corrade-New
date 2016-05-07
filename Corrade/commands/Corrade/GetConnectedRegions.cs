@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -23,8 +24,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                        CSV.FromEnumerable(Client.Network.Simulators.Select(o => o.Name)));
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(Client.Network.Simulators.Select(o => o.Name)));
+                    }
                 };
         }
     }

@@ -26,7 +26,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    AgentManager.AgentMovement.AgentCamera camera = Client.Self.Movement.Camera;
+                    AgentManager.AgentMovement.AgentCamera camera;
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        camera = Client.Self.Movement.Camera;
+                    }
                     wasCSVToStructure(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),

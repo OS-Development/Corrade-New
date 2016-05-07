@@ -78,6 +78,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -89,10 +97,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
-                    Client.Objects.SetPosition(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, position);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetPosition(simulator,
+                            primitive.LocalID, position);
+                    }
                 };
         }
     }

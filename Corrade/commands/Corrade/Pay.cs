@@ -45,9 +45,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    if (Client.Self.Balance < amount)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
-                        throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                        if (Client.Self.Balance < amount)
+                        {
+                            throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                        }
                     }
                     UUID targetUUID;
                     switch (
@@ -58,11 +61,14 @@ namespace Corrade
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.GROUP:
-                            Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)));
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)));
+                            }
                             break;
                         case Entity.AVATAR:
                             if (
@@ -88,11 +94,14 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            Client.Self.GiveAvatarMoney(targetUUID, amount,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)));
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.GiveAvatarMoney(targetUUID, amount,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)));
+                            }
                             break;
                         case Entity.OBJECT:
                             if (
@@ -105,11 +114,14 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.INVALID_PAY_TARGET);
                             }
-                            Client.Self.GiveObjectMoney(targetUUID, amount,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
-                                        corradeCommandParameters.Message)));
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.GiveObjectMoney(targetUUID, amount,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                            corradeCommandParameters.Message)));
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

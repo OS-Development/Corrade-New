@@ -4116,7 +4116,8 @@
             "control",
             "sit",
             "animation",
-            "outfit"});
+            "outfit",
+            "feed"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -4167,7 +4168,8 @@
             "execute",
             "group",
             "filter",
-            "schedule"});
+            "schedule",
+            "feed"});
             this.GroupPermissions.Location = new System.Drawing.Point(6, 19);
             this.GroupPermissions.Name = "GroupPermissions";
             this.GroupPermissions.Size = new System.Drawing.Size(120, 169);

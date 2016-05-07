@@ -57,11 +57,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    /*if (Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
+                    if (Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                         corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
-                    }*/
+                    }
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                     object LockObject = new object();
                     bool rolesFound = true;
@@ -129,7 +129,10 @@ namespace Corrade
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    Client.Groups.Invite(corradeCommandParameters.Group.UUID, roleUUIDs.ToList(), agentUUID);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.Invite(corradeCommandParameters.Group.UUID, roleUUIDs.ToList(), agentUUID);
+                    }
                 };
         }
     }

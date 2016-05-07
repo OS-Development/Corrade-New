@@ -127,10 +127,16 @@ namespace Corrade
                                             }
                                         }
                                     }
-                                    Client.Estate.BanUser(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.BanUser(targetUUID, allEstates);
+                                    }
                                     break;
                                 case Action.REMOVE:
-                                    Client.Estate.UnbanUser(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.UnbanUser(targetUUID, allEstates);
+                                    }
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
@@ -205,10 +211,16 @@ namespace Corrade
                                             }
                                         }
                                     }
-                                    Client.Estate.AddAllowedGroup(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.AddAllowedGroup(targetUUID, allEstates);
+                                    }
                                     break;
                                 case Action.REMOVE:
-                                    Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
+                                    }
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
@@ -288,10 +300,16 @@ namespace Corrade
                                             }
                                         }
                                     }
-                                    Client.Estate.AddAllowedUser(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.AddAllowedUser(targetUUID, allEstates);
+                                    }
                                     break;
                                 case Action.REMOVE:
-                                    Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
+                                    }
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
@@ -372,10 +390,16 @@ namespace Corrade
                                             }
                                         }
                                     }
-                                    Client.Estate.AddEstateManager(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.AddEstateManager(targetUUID, allEstates);
+                                    }
                                     break;
                                 case Action.REMOVE:
-                                    Client.Estate.RemoveEstateManager(targetUUID, allEstates);
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.RemoveEstateManager(targetUUID, allEstates);
+                                    }
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST_ACTION);

@@ -74,7 +74,10 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
-                            Client.Self.InstantMessage(agentUUID, data);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.InstantMessage(agentUUID, data);
+                            }
                             // Log instant messages,
                             if (corradeConfiguration.InstantMessageLogEnabled)
                             {
@@ -145,7 +148,13 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
-                            if (!Client.Self.GroupChatSessions.ContainsKey(corradeCommandParameters.Group.UUID))
+                            bool gotChatSession;
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                gotChatSession =
+                                    Client.Self.GroupChatSessions.ContainsKey(corradeCommandParameters.Group.UUID);
+                            }
+                            if (!gotChatSession)
                             {
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -164,7 +173,10 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
                                 }
                             }
-                            Client.Self.InstantMessageGroup(corradeCommandParameters.Group.UUID, data);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.InstantMessageGroup(corradeCommandParameters.Group.UUID, data);
+                            }
                             corradeConfiguration.Groups.ToArray().AsParallel().Where(
                                 o => o.UUID.Equals(corradeCommandParameters.Group.UUID) && o.ChatLogEnabled).ForAll(
                                     o =>
@@ -238,10 +250,13 @@ namespace Corrade
                                     chatTypeInfo
                                         .GetValue(null)
                                 : ChatType.Normal;
-                            Client.Self.Chat(
-                                data,
-                                chatChannel,
-                                chatType);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Chat(
+                                    data,
+                                    chatChannel,
+                                    chatType);
+                            }
                             // Log local chat,
                             if (corradeConfiguration.LocalMessageLogEnabled)
                             {
@@ -291,10 +306,16 @@ namespace Corrade
                             }
                             break;
                         case Entity.ESTATE:
-                            Client.Estate.EstateMessage(data);
+                            lock (Locks.ClientInstanceEstateLock)
+                            {
+                                Client.Estate.EstateMessage(data);
+                            }
                             break;
                         case Entity.REGION:
-                            Client.Estate.SimulatorMessage(data);
+                            lock (Locks.ClientInstanceEstateLock)
+                            {
+                                Client.Estate.SimulatorMessage(data);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

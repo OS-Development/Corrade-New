@@ -79,11 +79,20 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
-                    Client.Objects.SetObjectsGroup(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        new List<uint> {primitive.LocalID},
-                        corradeCommandParameters.Group.UUID);
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetObjectsGroup(simulator,
+                            new List<uint> {primitive.LocalID},
+                            corradeCommandParameters.Group.UUID);
+                    }
                 };
         }
     }

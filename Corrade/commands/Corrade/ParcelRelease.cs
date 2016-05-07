@@ -40,12 +40,16 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator =
-                        Client.Network.Simulators.AsParallel().FirstOrDefault(
-                            o =>
-                                o.Name.Equals(
-                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.OrdinalIgnoreCase));
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator =
+                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.OrdinalIgnoreCase));
+                    }
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -76,7 +80,10 @@ namespace Corrade
                             }
                         }
                     }
-                    Client.Parcels.ReleaseParcel(simulator, parcel.LocalID);
+                    lock (Locks.ClientInstanceParcelsLock)
+                    {
+                        Client.Parcels.ReleaseParcel(simulator, parcel.LocalID);
+                    }
                 };
         }
     }

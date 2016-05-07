@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
@@ -47,9 +48,12 @@ namespace Corrade
                             }
                             uint moveRegionX, moveRegionY;
                             Utils.LongToUInts(Client.Network.CurrentSim.Handle, out moveRegionX, out moveRegionY);
-                            if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                            lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.Stand();
+                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                                {
+                                    Client.Self.Stand();
+                                }
                             }
                             // stop non default animations if requested
                             bool deanimate;
@@ -59,27 +63,39 @@ namespace Corrade
                             {
                                 case true:
                                     // stop all non-built-in animations
-                                    Client.Self.SignaledAnimations.Copy()
-                                        .Keys.AsParallel()
-                                        .Where(o => !Helpers.LindenAnimations.Contains(o))
-                                        .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        Client.Self.SignaledAnimations.Copy()
+                                            .Keys.AsParallel()
+                                            .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                            .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                    }
                                     break;
                             }
-                            Client.Self.AutoPilotCancel();
-                            Client.Self.Movement.TurnToward(position, true);
-                            Client.Self.AutoPilot(position.X + moveRegionX, position.Y + moveRegionY, position.Z);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.AutoPilotCancel();
+                                Client.Self.Movement.TurnToward(position, true);
+                                Client.Self.AutoPilot(position.X + moveRegionX, position.Y + moveRegionY, position.Z);
+                            }
                             break;
                         case Action.STOP:
-                            Client.Self.AutoPilotCancel();
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.AutoPilotCancel();
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_MOVE_ACTION);
                     }
                     // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
+                    }
                 };
         }
     }

@@ -47,12 +47,18 @@ namespace Corrade
                     {
                         case Action.RESTART:
                             // Manually override Client.Estate.RestartRegion();
-                            Client.Estate.EstateOwnerMessage(
-                                Constants.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
-                                delay.ToString(Utils.EnUsCulture));
+                            lock (Locks.ClientInstanceEstateLock)
+                            {
+                                Client.Estate.EstateOwnerMessage(
+                                    Constants.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
+                                    delay.ToString(Utils.EnUsCulture));
+                            }
                             break;
                         case Action.CANCEL:
-                            Client.Estate.CancelRestart();
+                            lock (Locks.ClientInstanceEstateLock)
+                            {
+                                Client.Estate.CancelRestart();
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_RESTART_ACTION);

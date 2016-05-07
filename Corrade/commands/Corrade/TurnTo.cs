@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -36,12 +37,18 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
-                    Client.Self.Movement.TurnToward(position, true);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.TurnToward(position, true);
+                    }
                     // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
+                    }
                 };
         }
     }

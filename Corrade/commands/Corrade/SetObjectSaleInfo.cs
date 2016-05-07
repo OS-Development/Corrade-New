@@ -93,6 +93,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     FieldInfo saleTypeInfo = typeof (SaleType).GetFields(BindingFlags.Public |
                                                                          BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
@@ -102,13 +110,14 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
-                    Client.Objects.SetSaleInfo(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, saleTypeInfo != null
-                            ? (SaleType)
-                                saleTypeInfo.GetValue(null)
-                            : SaleType.Copy, price);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetSaleInfo(simulator,
+                            primitive.LocalID, saleTypeInfo != null
+                                ? (SaleType)
+                                    saleTypeInfo.GetValue(null)
+                                : SaleType.Copy, price);
+                    }
                 };
         }
     }

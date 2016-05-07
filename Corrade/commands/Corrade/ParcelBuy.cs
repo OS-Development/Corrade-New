@@ -42,12 +42,16 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator =
-                        Client.Network.Simulators.AsParallel().FirstOrDefault(
-                            o =>
-                                o.Name.Equals(
-                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.OrdinalIgnoreCase));
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator =
+                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.OrdinalIgnoreCase));
+                    }
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -88,8 +92,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    UUID parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
-                        UUID.Zero);
+                    UUID parcelUUID;
+                    lock (Locks.ClientInstanceParcelsLock)
+                    {
+                        parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
+                            UUID.Zero);
+                    }
                     if (parcelUUID.Equals(UUID.Zero))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
@@ -163,9 +171,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    if (Client.Self.Balance < parcel.SalePrice)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
-                        throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                        if (Client.Self.Balance < parcel.SalePrice)
+                        {
+                            throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                        }
                     }
                     if (!parcel.SalePrice.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
@@ -173,8 +184,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, corradeCommandParameters.Group.UUID,
-                        removeContribution, parcel.Area, parcel.SalePrice);
+                    lock (Locks.ClientInstanceParcelsLock)
+                    {
+                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, corradeCommandParameters.Group.UUID,
+                            removeContribution, parcel.Area, parcel.SalePrice);
+                    }
                 };
         }
     }

@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -75,7 +76,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    Client.Self.PlayGesture(inventoryItem.UUID);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.PlayGesture(inventoryItem.UUID);
+                    }
                 };
         }
     }

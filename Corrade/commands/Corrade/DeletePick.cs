@@ -60,7 +60,10 @@ namespace Corrade
                     {
                         pickUUID = UUID.Random();
                     }
-                    Client.Self.PickDelete(pickUUID);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.PickDelete(pickUUID);
+                    }
                 };
         }
     }

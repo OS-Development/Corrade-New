@@ -102,6 +102,7 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess">
       <Private>False</Private>
     </Reference>
@@ -246,6 +247,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\ExportXML.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\Feed.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Filter.cs">

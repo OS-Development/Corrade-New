@@ -33,7 +33,7 @@ namespace wasSharp
 #if !__MonoCS__
             return directPathCombine(paths);
 #else
-            return data.Aggregate((x, y) => Path.Combine(x, y));
+            return paths.Aggregate((x, y) => Path.Combine(x, y));
 #endif
         }
     }

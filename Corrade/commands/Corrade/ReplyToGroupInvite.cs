@@ -92,8 +92,11 @@ namespace Corrade
                     {
                         GroupInvites.Remove(groupInvite);
                     }
-                    Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
-                        action.Equals((uint) Action.ACCEPT));
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
+                            action.Equals((uint) Action.ACCEPT));
+                    }
                 };
         }
     }

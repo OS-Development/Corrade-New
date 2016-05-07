@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -24,13 +25,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<UUID> data = new List<UUID>
+                    List<UUID> data;
+                    lock (Locks.ClientInstanceNetworkLock)
                     {
-                        Client.Network.CurrentSim.TerrainDetail0,
-                        Client.Network.CurrentSim.TerrainDetail1,
-                        Client.Network.CurrentSim.TerrainDetail2,
-                        Client.Network.CurrentSim.TerrainDetail3
-                    };
+                        data = new List<UUID>
+                        {
+                            Client.Network.CurrentSim.TerrainDetail0,
+                            Client.Network.CurrentSim.TerrainDetail1,
+                            Client.Network.CurrentSim.TerrainDetail2,
+                            Client.Network.CurrentSim.TerrainDetail3
+                        };
+                    }
                     result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                         CSV.FromEnumerable(data.Select(o => o.ToString())));
                 };

@@ -78,6 +78,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     uint face;
                     if (
                         !uint.TryParse(
@@ -86,29 +94,31 @@ namespace Corrade
                                     corradeCommandParameters.Message)), out face))
                         throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
                     MediaEntry[] faceMediaEntries = null;
-                    Client.Objects.RequestObjectMedia(primitive.ID,
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        (succeeded, version, faceMedia) =>
-                        {
-                            switch (succeeded)
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.RequestObjectMedia(primitive.ID, simulator,
+                            (succeeded, version, faceMedia) =>
                             {
-                                case true:
-                                    if (face >= faceMedia.Length)
-                                        throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
-                                    faceMediaEntries = faceMedia;
-                                    break;
-                                default:
-                                    throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
-                            }
-                        });
+                                switch (succeeded)
+                                {
+                                    case true:
+                                        if (face >= faceMedia.Length)
+                                            throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
+                                        faceMediaEntries = faceMedia;
+                                        break;
+                                    default:
+                                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
+                                }
+                            });
+                    }
                     wasCSVToStructure(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref faceMediaEntries[face]);
-                    Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries,
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)));
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries, simulator);
+                    }
                 };
         }
     }

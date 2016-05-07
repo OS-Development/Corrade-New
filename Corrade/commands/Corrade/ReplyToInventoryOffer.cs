@@ -12,6 +12,7 @@ using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -103,9 +104,12 @@ namespace Corrade
                             }
                             break;
                         default:
-                            inventoryFolder =
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
-                                    .Data as InventoryFolder;
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                inventoryFolder =
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
+                                        .Data as InventoryFolder;
+                            }
                             break;
                     }
                     switch (

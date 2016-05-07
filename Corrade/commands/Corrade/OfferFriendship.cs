@@ -47,14 +47,20 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    if (Client.Friends.FriendList.ContainsKey(agentUUID))
+                    lock (Locks.ClientInstanceFriendsLock)
                     {
-                        throw new ScriptException(ScriptError.AGENT_ALREADY_FRIEND);
+                        if (Client.Friends.FriendList.ContainsKey(agentUUID))
+                        {
+                            throw new ScriptException(ScriptError.AGENT_ALREADY_FRIEND);
+                        }
                     }
-                    Client.Friends.OfferFriendship(agentUUID,
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
-                                corradeCommandParameters.Message)));
+                    lock (Locks.ClientInstanceFriendsLock)
+                    {
+                        Client.Friends.OfferFriendship(agentUUID,
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                    corradeCommandParameters.Message)));
+                    }
                 };
         }
     }

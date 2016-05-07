@@ -11,6 +11,7 @@ using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -133,8 +134,12 @@ namespace Corrade
                     string region = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
-                    Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                        o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                            o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
+                    }
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -144,8 +149,11 @@ namespace Corrade
                     {
                         ScriptPermissionRequests.Remove(scriptPermissionRequest);
                     }
-                    Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
-                        (ScriptPermission) permissionMask);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
+                            (ScriptPermission) permissionMask);
+                    }
                 };
         }
     }

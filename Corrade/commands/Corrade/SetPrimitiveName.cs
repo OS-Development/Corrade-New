@@ -74,6 +74,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     string name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
@@ -86,10 +94,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NAME_TOO_LARGE);
                     }
-                    Client.Objects.SetName(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, name);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetName(simulator,
+                            primitive.LocalID, name);
+                    }
                 };
         }
     }

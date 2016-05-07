@@ -50,11 +50,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_OPEN);
                     }
-                    if (!Client.Network.MaxAgentGroups.Equals(-1))
+                    lock (Locks.ClientInstanceNetworkLock)
                     {
-                        if (groups.Count >= Client.Network.MaxAgentGroups)
+                        if (!Client.Network.MaxAgentGroups.Equals(-1))
                         {
-                            throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
+                            if (groups.Count >= Client.Network.MaxAgentGroups)
+                            {
+                                throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
+                            }
                         }
                     }
                     ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);

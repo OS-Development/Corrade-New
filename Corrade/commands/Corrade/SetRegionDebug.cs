@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
@@ -60,7 +61,10 @@ namespace Corrade
                     {
                         physics = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipPhysics);
                     }
-                    Client.Estate.SetRegionDebug(!scripts, !collisions, !physics);
+                    lock (Locks.ClientInstanceEstateLock)
+                    {
+                        Client.Estate.SetRegionDebug(!scripts, !collisions, !physics);
+                    }
                 };
         }
     }

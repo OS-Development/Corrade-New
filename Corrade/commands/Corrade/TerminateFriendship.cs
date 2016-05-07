@@ -47,12 +47,19 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
+                    FriendInfo friend;
+                    lock(Locks.ClientInstanceFriendsLock)
+                    {
+                        friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
+                    }
                     if (friend == null)
                     {
                         throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
                     }
-                    Client.Friends.TerminateFriendship(agentUUID);
+                    lock (Locks.ClientInstanceFriendsLock)
+                    {
+                        Client.Friends.TerminateFriendship(agentUUID);
+                    }
                 };
         }
     }

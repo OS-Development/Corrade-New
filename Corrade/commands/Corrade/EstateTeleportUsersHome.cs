@@ -26,9 +26,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    if (!Client.Network.CurrentSim.IsEstateManager)
+                    lock (Locks.ClientInstanceNetworkLock)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        {
+                            throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        }
                     }
                     string avatars =
                         wasInput(
@@ -58,12 +61,18 @@ namespace Corrade
                                         data.Add(o);
                                         break;
                                     default: // the name could be resolved so send them home
-                                        Client.Estate.TeleportHomeUser(agentUUID);
+                                        lock (Locks.ClientInstanceEstateLock)
+                                        {
+                                            Client.Estate.TeleportHomeUser(agentUUID);
+                                        }
                                         break;
                                 }
                                 break;
                             default:
-                                Client.Estate.TeleportHomeUser(agentUUID);
+                                lock (Locks.ClientInstanceEstateLock)
+                                {
+                                    Client.Estate.TeleportHomeUser(agentUUID);
+                                }
                                 break;
                         }
                     });

@@ -37,9 +37,12 @@ namespace Corrade
                     {
                         case Action.START:
                         case Action.STOP:
-                            if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                            lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.Stand();
+                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                                {
+                                    Client.Self.Stand();
+                                }
                             }
                             // stop non default animations if requested
                             bool deanimate;
@@ -49,22 +52,31 @@ namespace Corrade
                             {
                                 case true:
                                     // stop all non-built-in animations
-                                    Client.Self.SignaledAnimations.Copy()
-                                        .Keys.AsParallel()
-                                        .Where(o => !Helpers.LindenAnimations.Contains(o))
-                                        .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        Client.Self.SignaledAnimations.Copy()
+                                            .Keys.AsParallel()
+                                            .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                            .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                    }
                                     break;
                             }
-                            Client.Self.Fly(action.Equals(Action.START));
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Fly(action.Equals(Action.START));
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.FLY_ACTION_START_OR_STOP);
                     }
                     // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
+                    }
                 };
         }
     }

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -27,13 +28,16 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     List<string> csv = new List<string>();
-                    Client.Self.SignaledAnimations.ForEach(
-                        o =>
-                            csv.AddRange(new List<string>
-                            {
-                                o.Key.ToString(),
-                                o.Value.ToString(Utils.EnUsCulture)
-                            }));
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.SignaledAnimations.ForEach(
+                            o =>
+                                csv.AddRange(new List<string>
+                                {
+                                    o.Key.ToString(),
+                                    o.Value.ToString(Utils.EnUsCulture)
+                                }));
+                    }
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

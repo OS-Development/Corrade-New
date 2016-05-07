@@ -49,23 +49,26 @@ namespace Corrade
                     ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
                     bool succeeded = false;
                     InventoryItem newItem = null;
-                    Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
-                        name,
-                        wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                corradeCommandParameters.Message)),
-                        AssetType.Notecard,
-                        UUID.Random(), InventoryType.Notecard, PermissionMask.All,
-                        delegate(bool completed, InventoryItem createdItem)
-                        {
-                            succeeded = completed;
-                            newItem = createdItem;
-                            CreateNotecardEvent.Set();
-                        });
-                    if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
-                        throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                        Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
+                            name,
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    corradeCommandParameters.Message)),
+                            AssetType.Notecard,
+                            UUID.Random(), InventoryType.Notecard, PermissionMask.All,
+                            delegate(bool completed, InventoryItem createdItem)
+                            {
+                                succeeded = completed;
+                                newItem = createdItem;
+                                CreateNotecardEvent.Set();
+                            });
+                        if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        {
+                            throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                        }
                     }
                     if (!succeeded)
                     {
@@ -78,15 +81,18 @@ namespace Corrade
                     blank.Encode();
                     ManualResetEvent UploadBlankNotecardEvent = new ManualResetEvent(false);
                     succeeded = false;
-                    Client.Inventory.RequestUploadNotecardAsset(blank.AssetData, newItem.UUID,
-                        delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
-                        {
-                            succeeded = completed;
-                            UploadBlankNotecardEvent.Set();
-                        });
-                    if (!UploadBlankNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
-                        throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ITEM);
+                        Client.Inventory.RequestUploadNotecardAsset(blank.AssetData, newItem.UUID,
+                            delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                            {
+                                succeeded = completed;
+                                UploadBlankNotecardEvent.Set();
+                            });
+                        if (!UploadBlankNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        {
+                            throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ITEM);
+                        }
                     }
                     if (!succeeded)
                     {
@@ -101,15 +107,18 @@ namespace Corrade
                         notecard.Encode();
                         ManualResetEvent UploadNotecardDataEvent = new ManualResetEvent(false);
                         succeeded = false;
-                        Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, newItem.UUID,
-                            delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
-                            {
-                                succeeded = completed;
-                                UploadNotecardDataEvent.Set();
-                            });
-                        if (!UploadNotecardDataEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
-                            throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);
+                            Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, newItem.UUID,
+                                delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                {
+                                    succeeded = completed;
+                                    UploadNotecardDataEvent.Set();
+                                });
+                            if (!UploadNotecardDataEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);
+                            }
                         }
                         if (!succeeded)
                         {

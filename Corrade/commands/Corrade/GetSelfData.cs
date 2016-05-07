@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -25,9 +26,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> data = GetStructuredData(Client.Self,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))).ToList();
+                    List<string> data = new List<string>();
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        data.AddRange(GetStructuredData(Client.Self,
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                corradeCommandParameters.Message))));
+                    }
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

@@ -79,6 +79,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     string itemPermissions =
                         wasInput(
                             KeyValue.Get(
@@ -89,31 +97,24 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_PERMISSIONS_PROVIDED);
                     }
                     Permissions permissions = Inventory.wasStringToPermissions(itemPermissions);
-                    Client.Objects.SetPermissions(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        new List<uint> {primitive.LocalID},
-                        PermissionWho.Base, permissions.BaseMask, true);
-                    Client.Objects.SetPermissions(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        new List<uint> {primitive.LocalID},
-                        PermissionWho.Owner, permissions.OwnerMask, true);
-                    Client.Objects.SetPermissions(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        new List<uint> {primitive.LocalID},
-                        PermissionWho.Group, permissions.GroupMask, true);
-                    Client.Objects.SetPermissions(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        new List<uint> {primitive.LocalID},
-                        PermissionWho.Everyone, permissions.EveryoneMask, true);
-                    Client.Objects.SetPermissions(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        new List<uint> {primitive.LocalID},
-                        PermissionWho.NextOwner, permissions.NextOwnerMask, true);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> {primitive.LocalID},
+                            PermissionWho.Base, permissions.BaseMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> {primitive.LocalID},
+                            PermissionWho.Owner, permissions.OwnerMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> {primitive.LocalID},
+                            PermissionWho.Group, permissions.GroupMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> {primitive.LocalID},
+                            PermissionWho.Everyone, permissions.EveryoneMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> {primitive.LocalID},
+                            PermissionWho.NextOwner, permissions.NextOwnerMask, true);
+                    }
                 };
         }
     }

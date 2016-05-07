@@ -73,6 +73,14 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                     }
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -187,17 +195,18 @@ namespace Corrade
                     {
                         gravity = primitive.PhysicsProps.GravityMultiplier;
                     }
-                    Client.Objects.SetFlags(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID,
-                        physics,
-                        temporary,
-                        phantom,
-                        shadows,
-                        physicsShapeType, density,
-                        friction, restitution,
-                        gravity);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.SetFlags(simulator,
+                            primitive.LocalID,
+                            physics,
+                            temporary,
+                            phantom,
+                            shadows,
+                            physicsShapeType, density,
+                            friction, restitution,
+                            gravity);
+                    }
                 };
         }
     }

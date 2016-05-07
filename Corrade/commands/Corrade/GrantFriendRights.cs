@@ -49,7 +49,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
+                    FriendInfo friend;
+                    lock (Locks.ClientInstanceFriendsLock)
+                    {
+                        friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
+                    }
                     if (friend == null)
                     {
                         throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
@@ -66,7 +70,10 @@ namespace Corrade
                             o => typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
                                     q => { rights |= ((int) q.GetValue(null)); }));
-                    Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
+                    lock (Locks.ClientInstanceFriendsLock)
+                    {
+                        Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
+                    }
                 };
         }
     }

@@ -87,9 +87,12 @@ namespace Corrade
                     {
                         case Type.TEXT:
                         case Type.VOICE:
-                            Client.Self.ModerateChatSessions(corradeCommandParameters.Group.UUID, agentUUID,
-                                Reflection.GetNameFromEnumValue(type),
-                                silence);
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.ModerateChatSessions(corradeCommandParameters.Group.UUID, agentUUID,
+                                    Reflection.GetNameFromEnumValue(type),
+                                    silence);
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.TYPE_CAN_BE_VOICE_OR_TEXT);

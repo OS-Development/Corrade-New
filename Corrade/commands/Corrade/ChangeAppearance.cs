@@ -107,10 +107,13 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            Client.Self.SignaledAnimations.Copy()
-                                .Keys.AsParallel()
-                                .Where(o => !Helpers.LindenAnimations.Contains(o))
-                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.SignaledAnimations.Copy()
+                                    .Keys.AsParallel()
+                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            }
                             break;
                     }
 

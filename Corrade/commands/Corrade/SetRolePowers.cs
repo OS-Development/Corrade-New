@@ -92,7 +92,10 @@ namespace Corrade
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
                                         q => { groupRole.Powers |= (GroupPowers) q.GetValue(null); }));
-                    Client.Groups.UpdateRole(groupRole);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.UpdateRole(groupRole);
+                    }
                 };
         }
     }

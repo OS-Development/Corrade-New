@@ -89,14 +89,26 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                     {
-                        folderUUID = Client.Inventory.Store.RootFolder.UUID;
+                        lock (Locks.ClientInstanceInventoryLock)
+                        {
+                            folderUUID = Client.Inventory.Store.RootFolder.UUID;
+                        }
                     }
-                    Client.Objects.BuyObject(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                        primitive.LocalID, primitive.Properties.SaleType,
-                        primitive.Properties.SalePrice,
-                        corradeCommandParameters.Group.UUID, folderUUID);
+                    Simulator simulator;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        simulator = Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                    }
+                    if (simulator == null)
+                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.BuyObject(simulator,
+                            primitive.LocalID, primitive.Properties.SaleType,
+                            primitive.Properties.SalePrice,
+                            corradeCommandParameters.Group.UUID, folderUUID);
+                    }
                 };
         }
     }
