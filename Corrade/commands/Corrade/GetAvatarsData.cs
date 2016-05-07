@@ -19,7 +19,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getavatarsdata =
                 (corradeCommandParameters, result) =>
@@ -132,7 +132,7 @@ namespace Corrade
                             HashSet<Parcel> regionParcels =
                                 new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
                             Services.GetAvatars(Client,
-                                regionParcels.ToArray().AsParallel().Select(o => new[]
+                                regionParcels.AsParallel().Select(o => new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
@@ -147,7 +147,7 @@ namespace Corrade
                                 .AsParallel()
                                 .Where(
                                     o =>
-                                        regionParcels.ToArray()
+                                        regionParcels
                                             .AsParallel()
                                             .Any(p => Helpers.IsVectorInParcel(o.Position, p)))
                                 .ForAll(

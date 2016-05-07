@@ -888,6 +888,9 @@
     <Compile Include="notifications\Effect.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Feed.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Friendship.cs">
       <SubType>Component</SubType>
     </Compile>

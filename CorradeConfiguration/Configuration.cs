@@ -173,6 +173,7 @@ namespace CorradeConfiguration
         private uint _maximumPOSTThreads = 25;
         private uint _maximumRLVThreads = 10;
         private uint _membershipSweepInterval = 60000;
+        private uint _feedsUpdateInterval = 60000;
         private string _networkCardMAC = string.Empty;
         private uint _notificationQueueLength = 100;
         private uint _notificationThrottle = 1000;
@@ -1244,6 +1245,24 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _membershipSweepInterval = value;
+                }
+            }
+        }
+
+        public uint FeedsUpdateInterval
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _feedsUpdateInterval;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _feedsUpdateInterval = value;
                 }
             }
         }

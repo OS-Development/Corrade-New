@@ -15,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getattachments =
                 (corradeCommandParameters, result) =>
@@ -28,6 +28,7 @@ namespace Corrade
                     }
                     List<string> attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
+                        .ToArray()
                         .AsParallel()
                         .Select(o => new[]
                         {

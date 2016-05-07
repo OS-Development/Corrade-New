@@ -16,7 +16,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> sit = (message, rule, senderUUID) =>
             {
@@ -40,15 +40,21 @@ namespace Corrade
                     (sender, args) =>
                         SitEvent.Set();
                 EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) => SitEvent.Set();
-                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                lock (Locks.ClientInstanceSelfLock)
                 {
-                    Client.Self.Stand();
+                    if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                    {
+                        Client.Self.Stand();
+                    }
                 }
                 // stop all non-built-in animations
-                Client.Self.SignaledAnimations.Copy()
-                    .Keys.AsParallel()
-                    .Where(o => !Helpers.LindenAnimations.Contains(o))
-                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.SignaledAnimations.Copy()
+                        .Keys.AsParallel()
+                        .Where(o => !Helpers.LindenAnimations.Contains(o))
+                        .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                }
                 lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
@@ -59,10 +65,13 @@ namespace Corrade
                     Client.Self.AlertMessage -= AlertMessageEventHandler;
                 }
                 // Set the camera on the avatar.
-                Client.Self.Movement.Camera.LookAt(
-                    Client.Self.SimPosition,
-                    Client.Self.SimPosition
-                    );
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
+                }
             };
         }
     }

@@ -22,10 +22,12 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
+using System.ServiceModel.Syndication;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Xml;
 using System.Xml.Serialization;
 using AIMLbot;
 using CorradeConfiguration;
@@ -37,8 +39,6 @@ using Helpers = OpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 using ThreadState = System.Threading.ThreadState;
-using System.Xml;
-using System.ServiceModel.Syndication;
 
 #endregion
 
@@ -527,7 +527,7 @@ namespace Corrade
                  GroupFeedThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
                 return;
             runGroupFeedThread = true;
-            GroupFeedThread = new Thread(GroupFeed)
+            GroupFeedThread = new Thread(CheckGroupFeeds)
             {
                 IsBackground = true,
                 Priority = ThreadPriority.Lowest
@@ -972,7 +972,7 @@ namespace Corrade
                             ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
                                 new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>))
                                     .Deserialize(streamReader))
-                                .ToArray().AsParallel()
+                                .AsParallel()
                                 .Where(
                                     o => groups.Contains(o.Key))
                                 .ForAll(o =>
@@ -1050,16 +1050,17 @@ namespace Corrade
                         {
                             HashSet<UUID> groups =
                                 new HashSet<UUID>(
-                                    corradeConfiguration.Groups.ToArray()
+                                    corradeConfiguration.Groups
                                         .AsParallel()
                                         .Where(
                                             o =>
                                                 !o.Schedules.Equals(0) &&
-                                                !(o.PermissionMask & (UInt64) Configuration.Permissions.Schedule).Equals(0))
+                                                !(o.PermissionMask & (ulong) Configuration.Permissions.Schedule).Equals(
+                                                    0))
                                         .Select(o => o.UUID));
                             ((HashSet<GroupSchedule>)
                                 new XmlSerializer(typeof (HashSet<GroupSchedule>)).Deserialize(streamReader))
-                                .ToArray().AsParallel()
+                                .AsParallel()
                                 .Where(o => groups.Contains(o.Group.UUID)).ForAll(o =>
                                 {
                                     lock (GroupSchedulesLock)
@@ -1138,7 +1139,7 @@ namespace Corrade
                         {
                             ((HashSet<Notification>)
                                 new XmlSerializer(typeof (HashSet<Notification>)).Deserialize(streamReader))
-                                .ToArray().AsParallel()
+                                .AsParallel()
                                 .Where(
                                     o => groups.Contains(o.GroupUUID))
                                 .ForAll(o =>
@@ -1169,8 +1170,8 @@ namespace Corrade
                     {
                         lock (GroupNotificationsLock)
                         {
-                            GroupNotifications.ToArray().AsParallel()
-                                .Where(p => !((UInt64) o & p.NotificationMask).Equals(0)).ForAll(p =>
+                            GroupNotifications.AsParallel()
+                                .Where(p => !((ulong) o & p.NotificationMask).Equals(0)).ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -1298,7 +1299,6 @@ namespace Corrade
                             serializer.Serialize(writer, GroupFeeds);
                         }
                         writer.Flush();
-
                     }
                 }
             }
@@ -1320,7 +1320,6 @@ namespace Corrade
             {
                 try
                 {
-
                     using (
                         FileStream fileStream = File.Open(feedStateFile, FileMode.Open, FileAccess.Read,
                             FileShare.Read))
@@ -1331,7 +1330,7 @@ namespace Corrade
                             XmlSerializer serializer =
                                 new XmlSerializer(typeof (Collections.SerializableDictionary<string, HashSet<UUID>>));
                             ((Collections.SerializableDictionary<string, HashSet<UUID>>)
-                                serializer.Deserialize(streamReader)).ToArray().AsParallel().ForAll(o =>
+                                serializer.Deserialize(streamReader)).AsParallel().ForAll(o =>
                                 {
                                     lock (GroupFeedsLock)
                                     {
@@ -1478,11 +1477,11 @@ namespace Corrade
         /// <summary>
         ///     Group feed.
         /// </summary>
-        private static void GroupFeed()
+        private static void CheckGroupFeeds()
         {
             while (runGroupFeedThread)
             {
-                Thread.Sleep(TimeSpan.FromMinutes(1));
+                Thread.Sleep(TimeSpan.FromSeconds(corradeConfiguration.FeedsUpdateInterval));
                 lock (GroupFeedsLock)
                 {
                     Parallel.ForEach(GroupFeeds, o =>
@@ -1494,8 +1493,10 @@ namespace Corrade
                                 SyndicationFeed.Load(reader).Items.AsParallel()
                                     .Where(
                                         p =>
-                                            p.PublishDate != null && p.Title != null && p.Summary != null &&
-                                            p.PublishDate.CompareTo(DateTimeOffset.Now.Subtract(TimeSpan.FromMinutes(1))) >
+                                            p != null && p.PublishDate != null && p.Title != null && p.Summary != null &&
+                                            p.PublishDate.CompareTo(
+                                                DateTimeOffset.Now.Subtract(
+                                                    TimeSpan.FromSeconds(corradeConfiguration.FeedsUpdateInterval))) >
                                             0)
                                     .ForAll(p =>
                                     {
@@ -1522,7 +1523,6 @@ namespace Corrade
                                 Reflection.GetDescriptionFromEnumValue(
                                     ConsoleError.ERROR_LOADING_FEED), o.Key,
                                 ex.Message);
-                            return;
                         }
                     });
                 }
@@ -1590,7 +1590,7 @@ namespace Corrade
                 groupUUIDs.Clear();
                 object LockObject = new object();
                 HashSet<UUID> currentGroups = new HashSet<UUID>(groups);
-                corradeConfiguration.Groups.ToArray().AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
+                corradeConfiguration.Groups.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
                     .Where(p => currentGroups.Contains(p.groupUUID))
                     .Select(o => o.group).ForAll(o =>
                     {
@@ -1599,7 +1599,7 @@ namespace Corrade
                             groupUUIDs.Enqueue(o.UUID);
                         }
                     });
-
+                currentGroups.Clear();
 
                 // Bail if no configured groups are also joined.
                 if (!groupUUIDs.Any()) continue;
@@ -2463,7 +2463,7 @@ namespace Corrade
         /// <returns>true if the agent has authenticated</returns>
         private static bool Authenticate(string group, string password)
         {
-            return corradeConfiguration.Groups.ToArray().AsParallel().Any(
+            return corradeConfiguration.Groups.AsParallel().Any(
                 o =>
                     string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                     (string.Equals(o.Password, password, StringComparison.Ordinal) ||
@@ -2479,7 +2479,7 @@ namespace Corrade
         /// <returns>true if the agent has authenticated</returns>
         private static bool Authenticate(UUID group, string password)
         {
-            return corradeConfiguration.Groups.ToArray().AsParallel().Any(
+            return corradeConfiguration.Groups.AsParallel().Any(
                 o =>
                     group.Equals(o.UUID) &&
                     (string.Equals(o.Password, password, StringComparison.Ordinal) ||
@@ -2493,9 +2493,9 @@ namespace Corrade
         /// <param name="group">the name of the group</param>
         /// <param name="permission">the numeric Corrade permission</param>
         /// <returns>true if the group has permission</returns>
-        private static bool HasCorradePermission(string group, UInt64 permission)
+        private static bool HasCorradePermission(string group, ulong permission)
         {
-            return !permission.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel().Any(
+            return !permission.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
                 o =>
                     string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                     !(o.PermissionMask & permission).Equals(0));
@@ -2507,9 +2507,9 @@ namespace Corrade
         /// <param name="group">the UUID of the group</param>
         /// <param name="permission">the numeric Corrade permission</param>
         /// <returns>true if the group has permission</returns>
-        private static bool HasCorradePermission(UUID group, UInt64 permission)
+        private static bool HasCorradePermission(UUID group, ulong permission)
         {
-            return !permission.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel()
+            return !permission.Equals(0) && corradeConfiguration.Groups.AsParallel()
                 .Any(o => group.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0));
         }
 
@@ -2525,8 +2525,8 @@ namespace Corrade
                     message));
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
-                ? corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
-                : corradeConfiguration.Groups.ToArray().AsParallel()
+                ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
+                : corradeConfiguration.Groups.AsParallel()
                     .FirstOrDefault(o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -2536,9 +2536,9 @@ namespace Corrade
         /// <param name="group">the name of the group</param>
         /// <param name="notification">the numeric Corrade notification</param>
         /// <returns>true if the group has the notification</returns>
-        private static bool GroupHasNotification(string group, UInt64 notification)
+        private static bool GroupHasNotification(string group, ulong notification)
         {
-            return !notification.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel().Any(
+            return !notification.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
                 o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
                      !(o.NotificationMask & notification).Equals(0));
         }
@@ -2549,9 +2549,9 @@ namespace Corrade
         /// <param name="group">the UUID of the group</param>
         /// <param name="notification">the numeric Corrade notification</param>
         /// <returns>true if the group has the notification</returns>
-        private static bool GroupHasNotification(UUID group, UInt64 notification)
+        private static bool GroupHasNotification(UUID group, ulong notification)
         {
-            return !notification.Equals(0) && corradeConfiguration.Groups.ToArray().AsParallel().Any(
+            return !notification.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
                 o => group.Equals(o.UUID) &&
                      !(o.NotificationMask & notification).Equals(0));
         }
@@ -3975,7 +3975,7 @@ namespace Corrade
 
             // Accept anything from master avatars.
             if (
-                corradeConfiguration.Masters.ToArray().AsParallel().Select(
+                corradeConfiguration.Masters.AsParallel().Select(
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => string.Equals(e.Offer.FromAgentName, p, StringComparison.OrdinalIgnoreCase)))
             {
@@ -4134,7 +4134,7 @@ namespace Corrade
             lock (RLVRulesLock)
             {
                 if (
-                    !RLVRules.ToArray().AsParallel()
+                    !RLVRules.AsParallel()
                         .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                     return;
                 lock (Locks.ClientInstanceSelfLock)
@@ -4331,7 +4331,7 @@ namespace Corrade
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Accept friendships only from masters (for the time being)
                     if (
-                        !corradeConfiguration.Masters.ToArray().AsParallel().Any(
+                        !corradeConfiguration.Masters.AsParallel().Any(
                             o =>
                                 string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
                                 string.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
@@ -4358,7 +4358,7 @@ namespace Corrade
                     lock (RLVRulesLock)
                     {
                         if (
-                            RLVRules.ToArray().AsParallel()
+                            RLVRules.AsParallel()
                                 .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
                             if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
@@ -4396,7 +4396,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (
-                            !corradeConfiguration.Masters.ToArray().AsParallel()
+                            !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
                                         string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
@@ -4464,7 +4464,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (
-                            !corradeConfiguration.Masters.ToArray().AsParallel()
+                            !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
                                         string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
@@ -4557,7 +4557,7 @@ namespace Corrade
                     if (new HashSet<UUID>(currentGroups).Contains(args.IM.IMSessionID))
                     {
                         Configuration.Group messageGroup =
-                            corradeConfiguration.Groups.ToArray().AsParallel()
+                            corradeConfiguration.Groups.AsParallel()
                                 .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Configuration.Group)))
                         {
@@ -4579,7 +4579,7 @@ namespace Corrade
                                     }),
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Log group messages
-                            corradeConfiguration.Groups.ToArray().AsParallel().Where(
+                            corradeConfiguration.Groups.AsParallel().Where(
                                 o =>
                                     messageGroup.UUID.Equals(o.UUID) &&
                                     o.ChatLogEnabled).ForAll(o =>
@@ -4929,7 +4929,7 @@ namespace Corrade
                 }
             }
 
-            Configuration.Group configuredGroup = corradeConfiguration.Groups.ToArray().AsParallel().FirstOrDefault(
+            Configuration.Group configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
                 o => commandGroup.UUID.Equals(o.UUID));
             if (configuredGroup.Equals(default(Configuration.Group)))
             {
@@ -5348,10 +5348,10 @@ namespace Corrade
         public static void UpdateDynamicConfiguration(Configuration configuration)
         {
             // Enable the group scheduling thread if permissions were granted to groups.
-            switch (configuration.Groups.ToArray().AsParallel()
+            switch (configuration.Groups.AsParallel()
                 .Any(
                     o =>
-                        !(o.PermissionMask & (UInt64) Configuration.Permissions.Schedule).Equals(0) &&
+                        !(o.PermissionMask & (ulong) Configuration.Permissions.Schedule).Equals(0) &&
                         !o.Schedules.Equals(0)))
             {
                 case true:
@@ -5369,7 +5369,7 @@ namespace Corrade
                             lock (GroupSchedulesLock)
                             {
                                 groupSchedules.Clear();
-                                groupSchedules.UnionWith(GroupSchedules.ToArray().AsParallel()
+                                groupSchedules.UnionWith(GroupSchedules.AsParallel()
                                     .Where(
                                         o =>
                                             DateTime.Compare(DateTime.Now.ToUniversalTime(),
@@ -5467,9 +5467,9 @@ namespace Corrade
             // Dynamically disable or enable notifications.
             Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
             {
-                bool enabled = configuration.Groups.ToArray().AsParallel().Any(
+                bool enabled = configuration.Groups.AsParallel().Any(
                     p =>
-                        !(p.NotificationMask & (UInt64) o).Equals(0));
+                        !(p.NotificationMask & (ulong) o).Equals(0));
                 switch (o)
                 {
                     case Configuration.Notifications.AnimationsChanged:
@@ -5672,8 +5672,8 @@ namespace Corrade
             // Depending on whether groups have bound to the viewer effects notification,
             // start or stop the viwer effect expiration thread.
             switch (
-                configuration.Groups.ToArray().AsParallel()
-                    .Any(o => !(o.NotificationMask & (UInt64) Configuration.Notifications.ViewerEffect).Equals(0)))
+                configuration.Groups.AsParallel()
+                    .Any(o => !(o.NotificationMask & (ulong) Configuration.Notifications.ViewerEffect).Equals(0)))
             {
                 case true:
                     // Don't start if the expiration thread is already started.
@@ -5730,10 +5730,10 @@ namespace Corrade
             // Depending on whether any group has bound either the avatar radar notification,
             // or the primitive radar notification, install or uinstall the listeners.
             switch (
-                configuration.Groups.ToArray().AsParallel().Any(
+                configuration.Groups.AsParallel().Any(
                     o =>
-                        !(o.NotificationMask & (UInt64) Configuration.Notifications.RadarAvatars).Equals(0) ||
-                        !(o.NotificationMask & (UInt64) Configuration.Notifications.RadarPrimitives).Equals(0)))
+                        !(o.NotificationMask & (ulong) Configuration.Notifications.RadarAvatars).Equals(0) ||
+                        !(o.NotificationMask & (ulong) Configuration.Notifications.RadarPrimitives).Equals(0)))
             {
                 case true:
                     Client.Network.SimChanged += HandleRadarObjects;
@@ -5824,7 +5824,7 @@ namespace Corrade
                                                 lock (GroupNotificationsLock)
                                                 {
                                                     notification =
-                                                        GroupNotifications.ToArray().AsParallel().FirstOrDefault(
+                                                        GroupNotifications.AsParallel().FirstOrDefault(
                                                             o =>
                                                                 o.GroupUUID.Equals(commandGroup.UUID));
                                                 }
@@ -5889,8 +5889,8 @@ namespace Corrade
                                                     .Where(o => !string.IsNullOrEmpty(o)),
                                                     (o, state) =>
                                                     {
-                                                        UInt64 notificationValue =
-                                                            (UInt64)
+                                                        ulong notificationValue =
+                                                            (ulong)
                                                                 Reflection
                                                                     .GetEnumValueFromName
                                                                     <Configuration.Notifications>(o);
@@ -6000,7 +6000,7 @@ namespace Corrade
                                         lock (GroupNotificationsLock)
                                         {
                                             Notification notification =
-                                                GroupNotifications.ToArray().AsParallel().FirstOrDefault(
+                                                GroupNotifications.AsParallel().FirstOrDefault(
                                                     o =>
                                                         o.GroupUUID.Equals(commandGroup.UUID));
                                             if (notification != null)
@@ -7496,10 +7496,10 @@ namespace Corrade
         /// </summary>
         private class FeedEventArgs : EventArgs
         {
-            public string Title;
-            public string Summary;
             public DateTimeOffset Date;
             public UUID GroupUUID;
+            public string Summary;
+            public string Title;
         }
 
         private class OutfitEventArgs : EventArgs
@@ -7574,14 +7574,14 @@ namespace Corrade
             public Collections.SerializableDictionary<Configuration.Notifications, HashSet<string>>
                 NotificationURLDestination;
 
-            public UInt64 NotificationMask
+            public ulong NotificationMask
             {
                 get
                 {
                     return (NotificationURLDestination != null && NotificationURLDestination.Any()
-                        ? NotificationURLDestination.Keys.Cast<UInt64>().Aggregate((p, q) => p |= q)
+                        ? NotificationURLDestination.Keys.Cast<ulong>().Aggregate((p, q) => p |= q)
                         : 0) | (NotificationTCPDestination != null && NotificationTCPDestination.Any()
-                            ? NotificationTCPDestination.Keys.Cast<UInt64>().Aggregate((p, q) => p |= q)
+                            ? NotificationTCPDestination.Keys.Cast<ulong>().Aggregate((p, q) => p |= q)
                             : 0);
                 }
             }
@@ -7703,18 +7703,16 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
-            [IsCorradeCommand(true)]
-            [CommandInputSyntax(
+            [Reflection.NameAttribute("date")] DATE,
+            [Reflection.NameAttribute("summary")] SUMMARY,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=feed>&<group=<UUID|STRING>>&<password=<STRING>>&<URL=<STRING>>&<action=<add|remove|list>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((UInt64)Configuration.Permissions.Feed)]
-            [CorradeCommand("feed")]
-            [Reflection.NameAttribute("feed")]
-            FEED,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Feed)] [CorradeCommand("feed")] [Reflection.NameAttribute("feed")] FEED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&<powers=<GroupPowers[,GroupPowers...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("setrolepowers")] [Reflection.NameAttribute("setrolepowers")] SETROLEPOWERS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("setrolepowers")] [Reflection.NameAttribute("setrolepowers")] SETROLEPOWERS,
 
             /// <remarks>
             ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.
@@ -7732,23 +7730,23 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=configuration>&<group=<UUID|STRING>>&<password=<STRING>>&<action=read|write|get|set>&action=write:<data=STRING>&action=write:<data=<STRING>>&action=get:<path=<STRING>>&action=set:<path=<STRING>>&action=set:<data=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.System)] [CorradeCommand("configuration")] [Reflection.NameAttribute("configuration")] CONFIGURATION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("configuration")] [Reflection.NameAttribute("configuration")] CONFIGURATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getparcelinfodata")] [Reflection.NameAttribute("getparcelinfodata")] GETPARCELINFODATA,
 
             [Reflection.NameAttribute("degrees")] DEGREES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=turn>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("turn")] [Reflection.NameAttribute("turn")] TURN,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("turn")] [Reflection.NameAttribute("turn")] TURN,
 
             [Reflection.NameAttribute("SQL")] SQL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=logs>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<group|message|local|region>>&<action=<get|search>>&entity=group|message|local|region,action=get:[from=<DateTime>]&entity=group|message|local|region,action=get:[to=<DateTime>]&entity=group|message|local|region,action=get:[firstname=<STRING>]&entity=group|message|local|region,action=get:[lastname=<STRING>]&entity=group|message|local|region,action=get:[message=<STRING>]&entity=local|region,action=get:[region=<STRING>]&entity=local:[type=<ChatType>]&action=search:<data=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Talk)] [CorradeCommand("logs")] [Reflection.NameAttribute("logs")] LOGS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("logs")] [Reflection.NameAttribute("logs")] LOGS,
 
             [Reflection.NameAttribute("from")] FROM,
             [Reflection.NameAttribute("to")] TO,
@@ -7756,7 +7754,7 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terraform>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<height=<FLOAT>>&<width=<FLOAT>>&<amount=<FLOAT>>&<brush=<TerraformBrushSize>>&<action=<TerraformAction>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("terraform")] [Reflection.NameAttribute("terraform")] TERRAFORM,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("terraform")] [Reflection.NameAttribute("terraform")] TERRAFORM,
 
             [Reflection.NameAttribute("height")] HEIGHT,
             [Reflection.NameAttribute("width")] WIDTH,
@@ -7764,15 +7762,15 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getestatecovenant>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getestatecovenant")] [Reflection.NameAttribute("getestatecovenant")] GETESTATECOVENANT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getestatecovenant")] [Reflection.NameAttribute("getestatecovenant")] GETESTATECOVENANT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=estateteleportusershome>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("estateteleportusershome")] [Reflection.NameAttribute("estateteleportusershome")] ESTATETELEPORTUSERSHOME,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("estateteleportusershome")] [Reflection.NameAttribute("estateteleportusershome")] ESTATETELEPORTUSERSHOME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregionterrainvariables>&<group=<UUID|STRING>>&<password=<STRING>>&[waterheight=<FLOAT>]&[terrainraiselimit=<FLOAT>]&[terrainlowerlimit=<FLOAT>]&[usestatesun=<BOOL>]&[fixedsun=<BOOL>]&[sunposition=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainvariables")] [Reflection.NameAttribute("setregionterrainvariables")] SETREGIONTERRAINVARIABLES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainvariables")] [Reflection.NameAttribute("setregionterrainvariables")] SETREGIONTERRAINVARIABLES,
 
             [Reflection.NameAttribute("useestatesun")] USEESTATESUN,
             [Reflection.NameAttribute("terrainraiselimit")] TERRAINRAISELIMIT,
@@ -7783,23 +7781,23 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregionterrainheights>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getregionterrainheights")] [Reflection.NameAttribute("getregionterrainheights")] GETREGIONTERRAINHEIGHTS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregionterrainheights")] [Reflection.NameAttribute("getregionterrainheights")] GETREGIONTERRAINHEIGHTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregionterrainheights>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<FLOAT[,FLOAT...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainheights")] [Reflection.NameAttribute("setregionterrainheights")] SETREGIONTERRAINHEIGHTS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainheights")] [Reflection.NameAttribute("setregionterrainheights")] SETREGIONTERRAINHEIGHTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregionterraintextures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getregionterraintextures")] [Reflection.NameAttribute("getregionterraintextures")] GETREGIONTERRAINTEXTURES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregionterraintextures")] [Reflection.NameAttribute("getregionterraintextures")] GETREGIONTERRAINTEXTURES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregionterraintextures>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<UUID|STRING[,UUID|STRING...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setregionterraintextures")] [Reflection.NameAttribute("setregionterraintextures")] SETREGIONTERRAINTEXTURES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setregionterraintextures")] [Reflection.NameAttribute("setregionterraintextures")] SETREGIONTERRAINTEXTURES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregioninfo>&<group=<UUID|STRING>>&<password=<STRING>>&[terraform=<BOOL>]&[fly=<BOOL>]&[damage=<BOOL>]&[resell=<BOOL>]&[push=<BOOL>]&[parcel=<BOOL>]&[limit=<FLOAT>]&[bonus=<FLOAT>]&[mature=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setregioninfo")] [Reflection.NameAttribute("setregioninfo")] SETREGIONINFO,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setregioninfo")] [Reflection.NameAttribute("setregioninfo")] SETREGIONINFO,
 
             [Reflection.NameAttribute("bonus")] BONUS,
             [Reflection.NameAttribute("damage")] DAMAGE,
@@ -7811,115 +7809,115 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setcameradata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement.AgentCamera[,AgentManager.AgentMovement.AgentCamera...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("setcameradata")] [Reflection.NameAttribute("setcameradata")] SETCAMERADATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("setcameradata")] [Reflection.NameAttribute("setcameradata")] SETCAMERADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcameradata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement.AgentCamera[,AgentManager.AgentMovement.AgentCamera...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getcameradata")] [Reflection.NameAttribute("getcameradata")] GETCAMERADATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getcameradata")] [Reflection.NameAttribute("getcameradata")] GETCAMERADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setmovementdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement[,AgentManager.AgentMovement...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("setmovementdata")] [Reflection.NameAttribute("setmovementdata")] SETMOVEMENTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("setmovementdata")] [Reflection.NameAttribute("setmovementdata")] SETMOVEMENTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getmovementdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement[,AgentManager.AgentMovement...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getmovementdata")] [Reflection.NameAttribute("getmovementdata")] GETMOVEMENTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getmovementdata")] [Reflection.NameAttribute("getmovementdata")] GETMOVEMENTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=at>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|get|remove|list>>&action=add:<time=<Timestamp>>&action=add:<data=<STRING>>&action=get|remove:<index=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Schedule)] [CorradeCommand("at")] [Reflection.NameAttribute("at")] AT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Schedule)] [CorradeCommand("at")] [Reflection.NameAttribute("at")] AT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=flyto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[fly=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("flyto")] [Reflection.NameAttribute("flyto")] FLYTO,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("flyto")] [Reflection.NameAttribute("flyto")] FLYTO,
 
             [Reflection.NameAttribute("vicinity")] VICINITY,
             [Reflection.NameAttribute("affinity")] AFFINITY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batchmute>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<mute|unmute>>&[mutes=<STRING|UUID[,STRING|UUID...]>]&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("batchmute")] [Reflection.NameAttribute("batchmute")] BATCHMUTE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("batchmute")] [Reflection.NameAttribute("batchmute")] BATCHMUTE,
 
             [Reflection.NameAttribute("mutes")] MUTES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[Configuration...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.System)] [CorradeCommand("setconfigurationdata")] [Reflection.NameAttribute("setconfigurationdata")] SETCONFIGURATIONDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("setconfigurationdata")] [Reflection.NameAttribute("setconfigurationdata")] SETCONFIGURATIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[Configuration...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.System)] [CorradeCommand("getconfigurationdata")] [Reflection.NameAttribute("getconfigurationdata")] GETCONFIGURATIONDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("getconfigurationdata")] [Reflection.NameAttribute("getconfigurationdata")] GETCONFIGURATIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=ban>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("ban")] [Reflection.NameAttribute("ban")] BAN,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("ban")] [Reflection.NameAttribute("ban")] BAN,
 
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.None)] [CorradeCommand("ping")] [Reflection.NameAttribute("ping")] PING,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.None)] [CorradeCommand("ping")] [Reflection.NameAttribute("ping")] PING,
             [Reflection.NameAttribute("pong")] PONG,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batcheject>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("batcheject")] [Reflection.NameAttribute("batcheject")] BATCHEJECT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("batcheject")] [Reflection.NameAttribute("batcheject")] BATCHEJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batchinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[role=<UUID[,STRING...]>]&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("batchinvite")] [Reflection.NameAttribute("batchinvite")] BATCHINVITE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("batchinvite")] [Reflection.NameAttribute("batchinvite")] BATCHINVITE,
 
             [Reflection.NameAttribute("avatars")] AVATARS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<face=<INTEGER>>&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectmediadata")] [Reflection.NameAttribute("setobjectmediadata")] SETOBJECTMEDIADATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectmediadata")] [Reflection.NameAttribute("setobjectmediadata")] SETOBJECTMEDIADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getobjectmediadata")] [Reflection.NameAttribute("getobjectmediadata")] GETOBJECTMEDIADATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getobjectmediadata")] [Reflection.NameAttribute("getobjectmediadata")] GETOBJECTMEDIADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivematerial>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[material=<Material>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivematerial")] [Reflection.NameAttribute("setprimitivematerial")] SETPRIMITIVEMATERIAL,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivematerial")] [Reflection.NameAttribute("setprimitivematerial")] SETPRIMITIVEMATERIAL,
 
             [Reflection.NameAttribute("material")] MATERIAL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData[,LightData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivelightdata")] [Reflection.NameAttribute("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivelightdata")] [Reflection.NameAttribute("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData [,LightData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivelightdata")] [Reflection.NameAttribute("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivelightdata")] [Reflection.NameAttribute("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveflexibledata")] [Reflection.NameAttribute("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveflexibledata")] [Reflection.NameAttribute("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveflexibledata")] [Reflection.NameAttribute("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveflexibledata")] [Reflection.NameAttribute("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=creategrass>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Grass>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("creategrass")] [Reflection.NameAttribute("creategrass")] CREATEGRASS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("creategrass")] [Reflection.NameAttribute("creategrass")] CREATEGRASS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getstatus>&<group=<UUID|STRING>>&<password=<STRING>>&<status=<INTEGER>>&<entity=<description>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.None)] [CorradeCommand("getstatus")] [Reflection.NameAttribute("getstatus")] GETSTATUS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.None)] [CorradeCommand("getstatus")] [Reflection.NameAttribute("getstatus")] GETSTATUS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivebodytypes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivebodytypes")] [Reflection.NameAttribute("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivebodytypes")] [Reflection.NameAttribute("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivephysicsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<PhysicsProperties[,PhysicsProperties ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivephysicsdata")] [Reflection.NameAttribute("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivephysicsdata")] [Reflection.NameAttribute("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepropertiesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ObjectProperties[,ObjectProperties ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivepropertiesdata")] [Reflection.NameAttribute("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivepropertiesdata")] [Reflection.NameAttribute("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveflags>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<SINGLE>]&[temporary=<BOOL>]&[shadows=<BOOL>]&[restitution=<SINGLE>]&[phantom=<BOOL>]&[gravity=<SINGLE>]&[friction=<SINGLE>]&[density=<SINGLE>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveflags")] [Reflection.NameAttribute("setprimitiveflags")] SETPRIMITIVEFLAGS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveflags")] [Reflection.NameAttribute("setprimitiveflags")] SETPRIMITIVEFLAGS,
 
             [Reflection.NameAttribute("temporary")] TEMPORARY,
             [Reflection.NameAttribute("shadows")] SHADOWS,
@@ -7931,7 +7929,7 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=grab>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&<item=<UUID|STRING>>&[range=<FLOAT>]&<texture=<VECTOR3>&<surface=<VECTOR3>>&<normal=<VECTOR3>>&<binormal=<VECTOR3>>&<face=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("grab")] [Reflection.NameAttribute("grab")] GRAB,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("grab")] [Reflection.NameAttribute("grab")] GRAB,
 
             [Reflection.NameAttribute("texture")] TEXTURE,
             [Reflection.NameAttribute("surface")] SURFACE,
@@ -7941,35 +7939,35 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createtree>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Tree>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("createtree")] [Reflection.NameAttribute("createtree")] CREATETREE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("createtree")] [Reflection.NameAttribute("createtree")] CREATETREE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[index=<INTEGER>]&[data=<TextureEntryFace [,TextureEntryFace ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivetexturedata")] [Reflection.NameAttribute("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivetexturedata")] [Reflection.NameAttribute("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<TextureEntry[,TextureEntry ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivetexturedata")] [Reflection.NameAttribute("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivetexturedata")] [Reflection.NameAttribute("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivesculptdata")] [Reflection.NameAttribute("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivesculptdata")] [Reflection.NameAttribute("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivesculptdata")] [Reflection.NameAttribute("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivesculptdata")] [Reflection.NameAttribute("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveshapedata")] [Reflection.NameAttribute("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveshapedata")] [Reflection.NameAttribute("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveshapedata")] [Reflection.NameAttribute("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveshapedata")] [Reflection.NameAttribute("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createprimitive>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData>]&[flags=<PrimFlags>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("createprimitive")] [Reflection.NameAttribute("createprimitive")] CREATEPRIMITIVE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("createprimitive")] [Reflection.NameAttribute("createprimitive")] CREATEPRIMITIVE,
 
             [Reflection.NameAttribute("flags")] FLAGS,
             [Reflection.NameAttribute("take")] TAKE,
@@ -7979,82 +7977,83 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivepayprices")] [Reflection.NameAttribute("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivepayprices")] [Reflection.NameAttribute("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact | (UInt64) Configuration.Permissions.Economy)
+                )] [CommandPermissionMask(
+                    (ulong) Configuration.Permissions.Interact | (ulong) Configuration.Permissions.Economy)
                    ] [CorradeCommand("primitivebuy")] [Reflection.NameAttribute("primitivebuy")] PRIMITIVEBUY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=changeprimitivelink>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<link|delink>>&action=link:<item=<STRING|UUID,STRING|UUID[,STRING|UUID...>>&action=delink:<item=<STRING|UUID[,STRING|UUID...>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("changeprimitivelink")] [Reflection.NameAttribute("changeprimitivelink")] CHANGEPRIMITIVELINK,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("changeprimitivelink")] [Reflection.NameAttribute("changeprimitivelink")] CHANGEPRIMITIVELINK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Reflection.NameAttribute("getgroupmemberdata")] GETGROUPMEMBERDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Reflection.NameAttribute("getgroupmemberdata")] GETGROUPMEMBERDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcommand>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<entity=<syntax|permission>>&entity=syntax:<type=<input>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.None)] [CorradeCommand("getcommand")] [Reflection.NameAttribute("getcommand")] GETCOMMAND,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.None)] [CorradeCommand("listcommands")] [Reflection.NameAttribute("listcommands")] LISTCOMMANDS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.None)] [CorradeCommand("getcommand")] [Reflection.NameAttribute("getcommand")] GETCOMMAND,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.None)] [CorradeCommand("listcommands")] [Reflection.NameAttribute("listcommands")] LISTCOMMANDS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getconnectedregions")] [Reflection.NameAttribute("getconnectedregions")] GETCONNECTEDREGIONS,
+                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getconnectedregions")] [Reflection.NameAttribute("getconnectedregions")] GETCONNECTEDREGIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getnetworkdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<NetworkManager[,NetworkManager...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getnetworkdata")] [Reflection.NameAttribute("getnetworkdata")] GETNETWORKDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getnetworkdata")] [Reflection.NameAttribute("getnetworkdata")] GETNETWORKDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=typing>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("typing")] [Reflection.NameAttribute("typing")] TYPING,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("typing")] [Reflection.NameAttribute("typing")] TYPING,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=busy>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("busy")] [Reflection.NameAttribute("busy")] BUSY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("busy")] [Reflection.NameAttribute("busy")] BUSY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=away>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("away")] [Reflection.NameAttribute("away")] AWAY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("away")] [Reflection.NameAttribute("away")] AWAY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getobjectpermissions")] [Reflection.NameAttribute("getobjectpermissions")] GETOBJECTPERMISSIONS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getobjectpermissions")] [Reflection.NameAttribute("getobjectpermissions")] GETOBJECTPERMISSIONS,
             [Reflection.NameAttribute("scale")] SCALE,
             [Reflection.NameAttribute("uniform")] UNIFORM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectscale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectscale")] [Reflection.NameAttribute("setobjectscale")] SETOBJECTSCALE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectscale")] [Reflection.NameAttribute("setobjectscale")] SETOBJECTSCALE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivescale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivescale")] [Reflection.NameAttribute("setprimitivescale")] SETPRIMITIVESCALE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivescale")] [Reflection.NameAttribute("setprimitivescale")] SETPRIMITIVESCALE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiverotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<rotation=<QUATERNION>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiverotation")] [Reflection.NameAttribute("setprimitiverotation")] SETPRIMITIVEROTATION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiverotation")] [Reflection.NameAttribute("setprimitiverotation")] SETPRIMITIVEROTATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveposition")] [Reflection.NameAttribute("setprimitiveposition")] SETPRIMITIVEPOSITION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveposition")] [Reflection.NameAttribute("setprimitiveposition")] SETPRIMITIVEPOSITION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=exportdae>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("exportdae")] [Reflection.NameAttribute("exportdae")] EXPORTDAE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("exportdae")] [Reflection.NameAttribute("exportdae")] EXPORTDAE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=exportxml>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("exportxml")] [Reflection.NameAttribute("exportxml")] EXPORTXML,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("exportxml")] [Reflection.NameAttribute("exportxml")] EXPORTXML,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive[,Primitive...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivesdata")] [Reflection.NameAttribute("getprimitivesdata")] GETPRIMITIVESDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivesdata")] [Reflection.NameAttribute("getprimitivesdata")] GETPRIMITIVESDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getavatarsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Avatar[,Avatar...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getavatarsdata")] [Reflection.NameAttribute("getavatarsdata")] GETAVATARSDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarsdata")] [Reflection.NameAttribute("getavatarsdata")] GETAVATARSDATA,
             [Reflection.NameAttribute("format")] FORMAT,
             [Reflection.NameAttribute("volume")] VOLUME,
             [Reflection.NameAttribute("audible")] AUDIBLE,
@@ -8062,117 +8061,119 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=inventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ls|cwd|cd|mkdir|chmod|rm|cp|mv|ln>>&action=ls|mkdir|chmod:[path=<STRING>]&action=cd,action=rm:<path=<STRING>>&action=mkdir:<name=<STRING>>&action=chmod:<permissions=<STRING>>&action=cp|mv|ln:<source=<STRING>>&action=cp|mv|ln:<target=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("inventory")] [Reflection.NameAttribute("inventory")] INVENTORY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("inventory")] [Reflection.NameAttribute("inventory")] INVENTORY,
             [Reflection.NameAttribute("offset")] OFFSET,
             [Reflection.NameAttribute("alpha")] ALPHA,
             [Reflection.NameAttribute("color")] COLOR,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point>>&<id=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("deleteviewereffect")] [Reflection.NameAttribute("deleteviewereffect")] DELETEVIEWEREFFECT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("deleteviewereffect")] [Reflection.NameAttribute("deleteviewereffect")] DELETEVIEWEREFFECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getviewereffects>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getviewereffects")] [Reflection.NameAttribute("getviewereffects")] GETVIEWEREFFECTS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getviewereffects")] [Reflection.NameAttribute("getviewereffects")] GETVIEWEREFFECTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&effect=Look:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Look:<offset=<VECTOR3>>&effect=Look:<type=LookAt>&effect=Point:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Point:<offset=<VECTOR3>>&effect=Point:<type=PointAt>&effect=Beam:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Beam:<color=<VECTOR3>>&effect=Beam:<alpha=<FLOAT>>&effect=Beam:<duration=<FLOAT>>&effect=Beam:<offset=<VECTOR3>>&effect=Sphere:<color=<VECTOR3>>&effect=Sphere:<alpha=<FLOAT>>&effect=Sphere:<duration=<FLOAT>>&effect=Sphere:<offset=<VECTOR3>>&[id=<UUID>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setviewereffect")] [Reflection.NameAttribute("setviewereffect")] SETVIEWEREFFECT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setviewereffect")] [Reflection.NameAttribute("setviewereffect")] SETVIEWEREFFECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=ai>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<process|enable|disable|rebuild>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Talk)] [CorradeCommand("ai")] [Reflection.NameAttribute("ai")] AI,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("gettitles")] [Reflection.NameAttribute("gettitles")] GETTITLES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("ai")] [Reflection.NameAttribute("ai")] AI,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("gettitles")] [Reflection.NameAttribute("gettitles")] GETTITLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=tag>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=set:<title=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("tag")] [Reflection.NameAttribute("tag")] TAG,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("tag")] [Reflection.NameAttribute("tag")] TAG,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=filter>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=get:<type=<input|output>>&action=set:<input=<STRING>>&action=set:<output=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Filter)] [CorradeCommand("filter")] [Reflection.NameAttribute("filter")] FILTER,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Filter)] [CorradeCommand("filter")] [Reflection.NameAttribute("filter")] FILTER,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=run>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
                 )
-                                     ] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("run")] [Reflection.NameAttribute("run")] RUN,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("relax")] [Reflection.NameAttribute("relax")] RELAX,
+                                     ] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("run")] [Reflection.NameAttribute("run")] RUN,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("relax")] [Reflection.NameAttribute("relax")] RELAX,
             [Reflection.NameAttribute("sift")] SIFT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=rlv>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable>>&[callback=<STRING>]")
-                                     ] [CommandPermissionMask((UInt64) Configuration.Permissions.System)] [CorradeCommand("rlv")] [Reflection.NameAttribute("rlv")] RLV,
+                                     ] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("rlv")] [Reflection.NameAttribute("rlv")] RLV,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getinventorypath>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorypath")] [Reflection.NameAttribute("getinventorypath")] GETINVENTORYPATH,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorypath")] [Reflection.NameAttribute("getinventorypath")] GETINVENTORYPATH,
             [Reflection.NameAttribute("committed")] COMMITTED,
             [Reflection.NameAttribute("credit")] CREDIT,
             [Reflection.NameAttribute("success")] SUCCESS,
             [Reflection.NameAttribute("transaction")] TRANSACTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getscriptdialogs")] [Reflection.NameAttribute("getscriptdialogs")] GETSCRIPTDIALOGS,
+                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getscriptdialogs")] [Reflection.NameAttribute("getscriptdialogs")] GETSCRIPTDIALOGS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getscriptpermissionrequests")] [Reflection.NameAttribute("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
+                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getscriptpermissionrequests")] [Reflection.NameAttribute("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("getteleportlures")] [Reflection.NameAttribute("getteleportlures")] GETTELEPORTLURES,
+                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("getteleportlures")] [Reflection.NameAttribute("getteleportlures")] GETTELEPORTLURES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytogroupinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[action=<accept|decline>]&<session=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group | (UInt64) Configuration.Permissions.Economy)] [CorradeCommand("replytogroupinvite")] [Reflection.NameAttribute("replytogroupinvite")] REPLYTOGROUPINVITE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group | (ulong) Configuration.Permissions.Economy)] [CorradeCommand("replytogroupinvite")] [Reflection.NameAttribute("replytogroupinvite")] REPLYTOGROUPINVITE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getgroupinvites")] [Reflection.NameAttribute("getgroupinvites")] GETGROUPINVITES,
+                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupinvites")] [Reflection.NameAttribute("getgroupinvites")] GETGROUPINVITES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getmemberroles>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getmemberroles")] [Reflection.NameAttribute("getmemberroles")] GETMEMBERROLES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getmemberroles")] [Reflection.NameAttribute("getmemberroles")] GETMEMBERROLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=execute>&<group=<UUID|STRING>>&<password=<STRING>>&<file=<STRING>>&[parameter=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Execute)] [CorradeCommand("execute")] [Reflection.NameAttribute("execute")] EXECUTE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Execute)] [CorradeCommand("execute")] [Reflection.NameAttribute("execute")] EXECUTE,
             [Reflection.NameAttribute("parameter")] PARAMETER,
             [Reflection.NameAttribute("file")] FILE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=cache>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<purge|load|save>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.System)] [CorradeCommand("cache")] [Reflection.NameAttribute("cache")] CACHE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("cache")] [Reflection.NameAttribute("cache")] CACHE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion[,GridRegion...]>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getgridregiondata")] [Reflection.NameAttribute("getgridregiondata")] GETGRIDREGIONDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getgridregiondata")] [Reflection.NameAttribute("getgridregiondata")] GETGRIDREGIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregionparcelsboundingbox>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getregionparcelsboundingbox")] [Reflection.NameAttribute("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregionparcelsboundingbox")] [Reflection.NameAttribute("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
             [Reflection.NameAttribute("pattern")] PATTERN,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=searchinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[type=<AssetType>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("searchinventory")] [Reflection.NameAttribute("searchinventory")] SEARCHINVENTORY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("searchinventory")] [Reflection.NameAttribute("searchinventory")] SEARCHINVENTORY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getterrainheight>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getterrainheight")] [Reflection.NameAttribute("getterrainheight")] GETTERRAINHEIGHT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getterrainheight")] [Reflection.NameAttribute("getterrainheight")] GETTERRAINHEIGHT,
             [Reflection.NameAttribute("northeast")] NORTHEAST,
             [Reflection.NameAttribute("southwest")] SOUTHWEST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=upload>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Clothing:[wear=<WearableType>]&type=Bodypart:[wear=<WearableType>]&<data=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory | (UInt64) Configuration.Permissions.Economy
+                )] [CommandPermissionMask(
+                    (ulong) Configuration.Permissions.Inventory | (ulong) Configuration.Permissions.Economy
                     )] [CorradeCommand("upload")] [Reflection.NameAttribute("upload")] UPLOAD,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture:[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact | (UInt64) Configuration.Permissions.System)] [CorradeCommand("download")] [Reflection.NameAttribute("download")] DOWNLOAD,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact | (ulong) Configuration.Permissions.System
+                    )] [CorradeCommand("download")] [Reflection.NameAttribute("download")] DOWNLOAD,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel[,Parcel...]>]&[region=<STRING>]&[callback=<STRING>]"
                 )
-                                     ] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setparceldata")] [Reflection.NameAttribute("setparceldata")] SETPARCELDATA,
+                                     ] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setparceldata")] [Reflection.NameAttribute("setparceldata")] SETPARCELDATA,
             [Reflection.NameAttribute("new")] NEW,
             [Reflection.NameAttribute("old")] OLD,
             [Reflection.NameAttribute("aggressor")] AGGRESSOR,
@@ -8182,292 +8183,293 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=playgesture>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("playgesture")] [Reflection.NameAttribute("playgesture")] PLAYGESTURE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("playgesture")] [Reflection.NameAttribute("playgesture")] PLAYGESTURE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("jump")] [Reflection.NameAttribute("jump")] JUMP,
+                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("jump")] [Reflection.NameAttribute("jump")] JUMP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("crouch")] [Reflection.NameAttribute("crouch")] CROUCH,
+                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("crouch")] [Reflection.NameAttribute("crouch")] CROUCH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("turnto")] [Reflection.NameAttribute("turnto")] TURNTO,
+                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("turnto")] [Reflection.NameAttribute("turnto")] TURNTO,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=nudge>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right|up|down|back|forward>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("nudge")] [Reflection.NameAttribute("nudge")] NUDGE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("nudge")] [Reflection.NameAttribute("nudge")] NUDGE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createnotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[text=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("createnotecard")] [Reflection.NameAttribute("createnotecard")] CREATENOTECARD,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("createnotecard")] [Reflection.NameAttribute("createnotecard")] CREATENOTECARD,
             [Reflection.NameAttribute("direction")] DIRECTION,
             [Reflection.NameAttribute("agent")] AGENT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoinventoryoffer>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<accept|decline>>&<session=<UUID>>&[folder=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("replytoinventoryoffer")] [Reflection.NameAttribute("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("replytoinventoryoffer")] [Reflection.NameAttribute("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("getinventoryoffers")] [Reflection.NameAttribute("getinventoryoffers")] GETINVENTORYOFFERS,
+                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("getinventoryoffers")] [Reflection.NameAttribute("getinventoryoffers")] GETINVENTORYOFFERS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=updateprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|remove|take>>&action=add:<entity=<UUID|STRING>>&action=remove:<entity=<UUID|STRING>>&action=take:<entity=<UUID|STRING>>&action=take:<folder=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("updateprimitiveinventory")] [Reflection.NameAttribute("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.None)] [CorradeCommand("version")] [Reflection.NameAttribute("version")] VERSION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("updateprimitiveinventory")] [Reflection.NameAttribute("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.None)] [CorradeCommand("version")] [Reflection.NameAttribute("version")] VERSION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=playsound>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[gain=<FLOAT>]&[position=<VECTOR3>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("playsound")] [Reflection.NameAttribute("playsound")] PLAYSOUND,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("playsound")] [Reflection.NameAttribute("playsound")] PLAYSOUND,
             [Reflection.NameAttribute("gain")] GAIN,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getrolemembers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getrolemembers")] [Reflection.NameAttribute("getrolemembers")] GETROLEMEMBERS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getrolemembers")] [Reflection.NameAttribute("getrolemembers")] GETROLEMEMBERS,
             [Reflection.NameAttribute("status")] STATUS,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getmembers")] [Reflection.NameAttribute("getmembers")] GETMEMBERS,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getmembers")] [Reflection.NameAttribute("getmembers")] GETMEMBERS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoteleportlure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<action=<accept|decline>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("replytoteleportlure")] [Reflection.NameAttribute("replytoteleportlure")] REPLYTOTELEPORTLURE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("replytoteleportlure")] [Reflection.NameAttribute("replytoteleportlure")] REPLYTOTELEPORTLURE,
             [Reflection.NameAttribute("session")] SESSION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoscriptpermissionrequest>&<group=<UUID|STRING>>&<password=<STRING>>&<task=<UUID>>&<item=<UUID>>&<permissions=<ScriptPermission>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("replytoscriptpermissionrequest")] [Reflection.NameAttribute("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("replytoscriptpermissionrequest")] [Reflection.NameAttribute("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
             [Reflection.NameAttribute("task")] TASK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getparcellist")] [Reflection.NameAttribute("getparcellist")] GETPARCELLIST,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getparcellist")] [Reflection.NameAttribute("getparcellist")] GETPARCELLIST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelrelease>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("parcelrelease")] [Reflection.NameAttribute("parcelrelease")] PARCELRELEASE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("parcelrelease")] [Reflection.NameAttribute("parcelrelease")] PARCELRELEASE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelbuy>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[forgroup=<BOOL>]&[removecontribution=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land | (UInt64) Configuration.Permissions.Economy)] [CorradeCommand("parcelbuy")] [Reflection.NameAttribute("parcelbuy")] PARCELBUY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land | (ulong) Configuration.Permissions.Economy)] [CorradeCommand("parcelbuy")] [Reflection.NameAttribute("parcelbuy")] PARCELBUY,
             [Reflection.NameAttribute("removecontribution")] REMOVECONTRIBUTION,
             [Reflection.NameAttribute("forgroup")] FORGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parceldeed>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("parceldeed")] [Reflection.NameAttribute("parceldeed")] PARCELDEED,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("parceldeed")] [Reflection.NameAttribute("parceldeed")] PARCELDEED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelreclaim>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("parcelreclaim")] [Reflection.NameAttribute("parcelreclaim")] PARCELRECLAIM,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("parcelreclaim")] [Reflection.NameAttribute("parcelreclaim")] PARCELRECLAIM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=unwear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("unwear")] [Reflection.NameAttribute("unwear")] UNWEAR,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("unwear")] [Reflection.NameAttribute("unwear")] UNWEAR,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=wear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("wear")] [Reflection.NameAttribute("wear")] WEAR,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("wear")] [Reflection.NameAttribute("wear")] WEAR,
             [Reflection.NameAttribute("wearables")] WEARABLES,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getwearables")] [Reflection.NameAttribute("getwearables")] GETWEARABLES,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getwearables")] [Reflection.NameAttribute("getwearables")] GETWEARABLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=changeappearance>&<group=<UUID|STRING>>&<password=<STRING>>&<folder=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("changeappearance")] [Reflection.NameAttribute("changeappearance")] CHANGEAPPEARANCE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("changeappearance")] [Reflection.NameAttribute("changeappearance")] CHANGEAPPEARANCE,
             [Reflection.NameAttribute("folder")] FOLDER,
             [Reflection.NameAttribute("replace")] REPLACE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectrotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<rotation=<QUARTERNION>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectrotation")] [Reflection.NameAttribute("setobjectrotation")] SETOBJECTROTATION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectrotation")] [Reflection.NameAttribute("setobjectrotation")] SETOBJECTROTATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivedescription>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<description=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivedescription")] [Reflection.NameAttribute("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivedescription")] [Reflection.NameAttribute("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivename>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivename")] [Reflection.NameAttribute("setprimitivename")] SETPRIMITIVENAME,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivename")] [Reflection.NameAttribute("setprimitivename")] SETPRIMITIVENAME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectposition")] [Reflection.NameAttribute("setobjectposition")] SETOBJECTPOSITION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectposition")] [Reflection.NameAttribute("setobjectposition")] SETOBJECTPOSITION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectsaleinfo>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<price=<INTEGER>>&<type=<SaleType>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectsaleinfo")] [Reflection.NameAttribute("setobjectsaleinfo")] SETOBJECTSALEINFO,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectsaleinfo")] [Reflection.NameAttribute("setobjectsaleinfo")] SETOBJECTSALEINFO,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectgroup")] [Reflection.NameAttribute("setobjectgroup")] SETOBJECTGROUP,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectgroup")] [Reflection.NameAttribute("setobjectgroup")] SETOBJECTGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=objectdeed>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("objectdeed")] [Reflection.NameAttribute("objectdeed")] OBJECTDEED,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("objectdeed")] [Reflection.NameAttribute("objectdeed")] OBJECTDEED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<permissions=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setobjectpermissions")] [Reflection.NameAttribute("setobjectpermissions")] SETOBJECTPERMISSIONS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setobjectpermissions")] [Reflection.NameAttribute("setobjectpermissions")] SETOBJECTPERMISSIONS,
             [Reflection.NameAttribute("permissions")] PERMISSIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<region|parcel>>&entity=parcel:<position=<VECTOR2>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getavatarpositions")] [Reflection.NameAttribute("getavatarpositions")] GETAVATARPOSITIONS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarpositions")] [Reflection.NameAttribute("getavatarpositions")] GETAVATARPOSITIONS,
             [Reflection.NameAttribute("delay")] DELAY,
             [Reflection.NameAttribute("asset")] ASSET,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregiondebug>&<group=<UUID|STRING>>&<password=<STRING>>&<scripts=<BOOL>>&<collisions=<BOOL>>&<physics=<BOOL>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setregiondebug")] [Reflection.NameAttribute("setregiondebug")] SETREGIONDEBUG,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setregiondebug")] [Reflection.NameAttribute("setregiondebug")] SETREGIONDEBUG,
             [Reflection.NameAttribute("scripts")] SCRIPTS,
             [Reflection.NameAttribute("collisions")] COLLISIONS,
             [Reflection.NameAttribute("physics")] PHYSICS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getmapavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getmapavatarpositions")] [Reflection.NameAttribute("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getmapavatarpositions")] [Reflection.NameAttribute("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=mapfriend>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("mapfriend")] [Reflection.NameAttribute("mapfriend")] MAPFRIEND,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("mapfriend")] [Reflection.NameAttribute("mapfriend")] MAPFRIEND,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytofriendshiprequest>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<action=<accept|decline>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("replytofriendshiprequest")] [Reflection.NameAttribute("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("replytofriendshiprequest")] [Reflection.NameAttribute("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("getfriendshiprequests")] [Reflection.NameAttribute("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
+                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("getfriendshiprequests")] [Reflection.NameAttribute("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=grantfriendrights>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<rights=<FriendRights>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("grantfriendrights")] [Reflection.NameAttribute("grantfriendrights")] GRANTFRIENDRIGHTS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("grantfriendrights")] [Reflection.NameAttribute("grantfriendrights")] GRANTFRIENDRIGHTS,
             [Reflection.NameAttribute("rights")] RIGHTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=getfriendslist>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("getfriendslist")] [Reflection.NameAttribute("getfriendslist")] GETFRIENDSLIST,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("getfriendslist")] [Reflection.NameAttribute("getfriendslist")] GETFRIENDSLIST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terminatefriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("terminatefriendship")] [Reflection.NameAttribute("terminatefriendship")] TERMINATEFRIENDSHIP,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("terminatefriendship")] [Reflection.NameAttribute("terminatefriendship")] TERMINATEFRIENDSHIP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=offerfriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("offerfriendship")] [Reflection.NameAttribute("offerfriendship")] OFFERFRIENDSHIP,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("offerfriendship")] [Reflection.NameAttribute("offerfriendship")] OFFERFRIENDSHIP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getfrienddata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<FriendInfo[,FriendInfo...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Friendship)] [CorradeCommand("getfrienddata")] [Reflection.NameAttribute("getfrienddata")] GETFRIENDDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Friendship)] [CorradeCommand("getfrienddata")] [Reflection.NameAttribute("getfrienddata")] GETFRIENDDATA,
             [Reflection.NameAttribute("days")] DAYS,
             [Reflection.NameAttribute("interval")] INTERVAL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupaccountsummarydata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GroupAccountSummary[,GroupAccountSummary...]>>&<days=<INTEGER>>&<interval=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getgroupaccountsummarydata")] [Reflection.NameAttribute("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupaccountsummarydata")] [Reflection.NameAttribute("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager[,AgentManager...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getselfdata")] [Reflection.NameAttribute("getselfdata")] GETSELFDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getselfdata")] [Reflection.NameAttribute("getselfdata")] GETSELFDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("deleteclassified")] [Reflection.NameAttribute("deleteclassified")] DELETECLASSIFIED,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("deleteclassified")] [Reflection.NameAttribute("deleteclassified")] DELETECLASSIFIED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=addclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<price=<INTEGER>>&<type=<Any|Shopping|LandRental|PropertyRental|SpecialAttraction|NewProducts|Employment|Wanted|Service|Personal>>&[item=<UUID|STRING>]&[description=<STRING>]&[renew=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming | (UInt64) Configuration.Permissions.Economy)
+                )] [CommandPermissionMask(
+                    (ulong) Configuration.Permissions.Grooming | (ulong) Configuration.Permissions.Economy)
                    ] [CorradeCommand("addclassified")] [Reflection.NameAttribute("addclassified")] ADDCLASSIFIED,
             [Reflection.NameAttribute("price")] PRICE,
             [Reflection.NameAttribute("renew")] RENEW,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.System)] [CorradeCommand("logout")] [Reflection.NameAttribute("logout")] LOGOUT,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("logout")] [Reflection.NameAttribute("logout")] LOGOUT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=displayname>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("displayname")] [Reflection.NameAttribute("displayname")] DISPLAYNAME,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("displayname")] [Reflection.NameAttribute("displayname")] DISPLAYNAME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=Owner|Group|Other|Sell:[position=<VECTOR2>]&type=ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("returnprimitives")] [Reflection.NameAttribute("returnprimitives")] RETURNPRIMITIVES,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("returnprimitives")] [Reflection.NameAttribute("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getgroupdata")] [Reflection.NameAttribute("getgroupdata")] GETGROUPDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupdata")] [Reflection.NameAttribute("getgroupdata")] GETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getavatardata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<Avatar[,Avatar...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getavatardata")] [Reflection.NameAttribute("getavatardata")] GETAVATARDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatardata")] [Reflection.NameAttribute("getavatardata")] GETAVATARDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventory")] [Reflection.NameAttribute("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventory")] [Reflection.NameAttribute("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorydata")] [Reflection.NameAttribute("getinventorydata")] GETINVENTORYDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorydata")] [Reflection.NameAttribute("getinventorydata")] GETINVENTORYDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventorydata")] [Reflection.NameAttribute("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventorydata")] [Reflection.NameAttribute("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getscriptrunning")] [Reflection.NameAttribute("getscriptrunning")] GETSCRIPTRUNNING,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getscriptrunning")] [Reflection.NameAttribute("getscriptrunning")] GETSCRIPTRUNNING,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("setscriptrunning")] [Reflection.NameAttribute("setscriptrunning")] SETSCRIPTRUNNING,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("setscriptrunning")] [Reflection.NameAttribute("setscriptrunning")] SETSCRIPTRUNNING,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=derez>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[folder=<STRING|UUID>]&[type=<DeRezDestination>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("derez")] [Reflection.NameAttribute("derez")] DEREZ,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("derez")] [Reflection.NameAttribute("derez")] DEREZ,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel[,Parcel...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getparceldata")] [Reflection.NameAttribute("getparceldata")] GETPARCELDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getparceldata")] [Reflection.NameAttribute("getparceldata")] GETPARCELDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=rez>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<item=<UUID|STRING>&[rotation=<QUARTERNION>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("rez")] [Reflection.NameAttribute("rez")] REZ,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("rez")] [Reflection.NameAttribute("rez")] REZ,
             [Reflection.NameAttribute("rotation")] ROTATION,
             [Reflection.NameAttribute("index")] INDEX,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoscriptdialog>&<group=<UUID|STRING>>&<password=<STRING>>&<channel=<INTEGER>>&<index=<INTEGER>&<button=<STRING>>&<item=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("replytoscriptdialog")] [Reflection.NameAttribute("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("replytoscriptdialog")] [Reflection.NameAttribute("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
             [Reflection.NameAttribute("owner")] OWNER,
             [Reflection.NameAttribute("button")] BUTTON,
 
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=getanimations>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")
-                                     ] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getanimations")] [Reflection.NameAttribute("getanimations")] GETANIMATIONS,
+                                     ] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getanimations")] [Reflection.NameAttribute("getanimations")] GETANIMATIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=animation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("animation")] [Reflection.NameAttribute("animation")] ANIMATION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("animation")] [Reflection.NameAttribute("animation")] ANIMATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&<action=<add|remove>>&type=ban|manager|user,action=add|remove:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=group,action=add|remove:<target=<STRING|UUID>>&[all=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("setestatelist")] [Reflection.NameAttribute("setestatelist")] SETESTATELIST,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setestatelist")] [Reflection.NameAttribute("setestatelist")] SETESTATELIST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getestatelist")] [Reflection.NameAttribute("getestatelist")] GETESTATELIST,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getestatelist")] [Reflection.NameAttribute("getestatelist")] GETESTATELIST,
             [Reflection.NameAttribute("all")] ALL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregiontop>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<scripts|colliders>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getregiontop")] [Reflection.NameAttribute("getregiontop")] GETREGIONTOP,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregiontop")] [Reflection.NameAttribute("getregiontop")] GETREGIONTOP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=restartregion>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<scripts|colliders>>&[delay=<INTEGER>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("restartregion")] [Reflection.NameAttribute("restartregion")] RESTARTREGION,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("restartregion")] [Reflection.NameAttribute("restartregion")] RESTARTREGION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=directorysearch>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<classified|event|group|land|people|places>>&type=classified:<data=<Classified[,Classified...]>>&type=classified:<name=<STRING>>&type=event:<data=<EventsSearchData[,EventSearchData...]>>&type=event:<name=<STRING>>&type=group:<data=<GroupSearchData[,GroupSearchData...]>>&type=land:<data=<DirectoryParcel[,DirectoryParcel...]>>&type=people:<data=<AgentSearchData[,AgentSearchData...]>>&type=places:<data=<DirectoryParcel[,DirectoryParcel...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Directory)] [CorradeCommand("directorysearch")] [Reflection.NameAttribute("directorysearch")] DIRECTORYSEARCH,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Directory)] [CorradeCommand("directorysearch")] [Reflection.NameAttribute("directorysearch")] DIRECTORYSEARCH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprofiledata")] [Reflection.NameAttribute("getprofiledata")] GETPROFILEDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprofiledata")] [Reflection.NameAttribute("getprofiledata")] GETPROFILEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparticlesystem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getparticlesystem")] [Reflection.NameAttribute("getparticlesystem")] GETPARTICLESYSTEM,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getparticlesystem")] [Reflection.NameAttribute("getparticlesystem")] GETPARTICLESYSTEM,
             [Reflection.NameAttribute("data")] DATA,
             [Reflection.NameAttribute("range")] RANGE,
             [Reflection.NameAttribute("balance")] BALANCE,
@@ -8475,7 +8477,7 @@ namespace Corrade
             [Reflection.NameAttribute("value")] VALUE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<string>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Database)] [CorradeCommand("database")] [Reflection.NameAttribute("database")] DATABASE,
+                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<SQL=<string>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Database)] [CorradeCommand("database")] [Reflection.NameAttribute("database")] DATABASE,
 
             [Reflection.NameAttribute("text")] TEXT,
             [Reflection.NameAttribute("quorum")] QUORUM,
@@ -8483,31 +8485,31 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=startproposal>&<group=<UUID|STRING>>&<password=<STRING>>&<duration=<INTEGER>>&<majority=<FLOAT>>&<quorum=<INTEGER>>&<text=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("startproposal")] [Reflection.NameAttribute("startproposal")] STARTPROPOSAL,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("startproposal")] [Reflection.NameAttribute("startproposal")] STARTPROPOSAL,
             [Reflection.NameAttribute("duration")] DURATION,
             [Reflection.NameAttribute("action")] ACTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deletefromrole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("deletefromrole")] [Reflection.NameAttribute("deletefromrole")] DELETEFROMROLE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("deletefromrole")] [Reflection.NameAttribute("deletefromrole")] DELETEFROMROLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=addtorole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("addtorole")] [Reflection.NameAttribute("addtorole")] ADDTOROLE,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("leave")] [Reflection.NameAttribute("leave")] LEAVE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("addtorole")] [Reflection.NameAttribute("addtorole")] ADDTOROLE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("leave")] [Reflection.NameAttribute("leave")] LEAVE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("setgroupdata")] [Reflection.NameAttribute("setgroupdata")] SETGROUPDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("setgroupdata")] [Reflection.NameAttribute("setgroupdata")] SETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=eject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("eject")] [Reflection.NameAttribute("eject")] EJECT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("eject")] [Reflection.NameAttribute("eject")] EJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=invite>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("invite")] [Reflection.NameAttribute("invite")] INVITE,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group | (UInt64) Configuration.Permissions.Economy)] [CorradeCommand("join")] [Reflection.NameAttribute("join")] JOIN,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("invite")] [Reflection.NameAttribute("invite")] INVITE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group | (ulong) Configuration.Permissions.Economy)] [CorradeCommand("join")] [Reflection.NameAttribute("join")] JOIN,
             [Reflection.NameAttribute("callback")] CALLBACK,
             [Reflection.NameAttribute("group")] GROUP,
             [Reflection.NameAttribute("password")] PASSWORD,
@@ -8519,124 +8521,124 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=tell>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<local|group|avatar|estate|region>>&entity=local:<type=<Normal|Whisper|Shout>>&entity=local,type=Normal|Whisper|Shout:[channel=<INTEGER>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Talk)] [CorradeCommand("tell")] [Reflection.NameAttribute("tell")] TELL,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("tell")] [Reflection.NameAttribute("tell")] TELL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<send|list|accept|decline>>&action=send:<message=<STRING>>&action=send:[subject=<STRING>]&action=send:[item=<UUID|STRING>]&action=send:[permissions=<STRING>]&action=accept|decline:<<notice=<UUID>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<folder=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("notice")] [Reflection.NameAttribute("notice")] NOTICE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("notice")] [Reflection.NameAttribute("notice")] NOTICE,
             [Reflection.NameAttribute("message")] MESSAGE,
             [Reflection.NameAttribute("subject")] SUBJECT,
             [Reflection.NameAttribute("item")] ITEM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=pay>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object|group>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=object:<target=<UUID>>&[reason=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Economy)] [CorradeCommand("pay")] [Reflection.NameAttribute("pay")] PAY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Economy)] [CorradeCommand("pay")] [Reflection.NameAttribute("pay")] PAY,
             [Reflection.NameAttribute("amount")] AMOUNT,
             [Reflection.NameAttribute("target")] TARGET,
             [Reflection.NameAttribute("reason")] REASON,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Economy)] [CorradeCommand("getbalance")] [Reflection.NameAttribute("getbalance")] GETBALANCE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Economy)] [CorradeCommand("getbalance")] [Reflection.NameAttribute("getbalance")] GETBALANCE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=teleport>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[position=<VECTOR3>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("teleport")] [Reflection.NameAttribute("teleport")] TELEPORT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("teleport")] [Reflection.NameAttribute("teleport")] TELEPORT,
             [Reflection.NameAttribute("region")] REGION,
             [Reflection.NameAttribute("position")] POSITION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator[,Simulator...]>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getregiondata")] [Reflection.NameAttribute("getregiondata")] GETREGIONDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregiondata")] [Reflection.NameAttribute("getregiondata")] GETREGIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=sit>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("sit")] [Reflection.NameAttribute("sit")] SIT,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("stand")] [Reflection.NameAttribute("stand")] STAND,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("sit")] [Reflection.NameAttribute("sit")] SIT,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("stand")] [Reflection.NameAttribute("stand")] STAND,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parceleject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[ban=<BOOL>]&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("parceleject")] [Reflection.NameAttribute("parceleject")] PARCELEJECT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("parceleject")] [Reflection.NameAttribute("parceleject")] PARCELEJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group | (UInt64) Configuration.Permissions.Economy)] [CorradeCommand("creategroup")] [Reflection.NameAttribute("creategroup")] CREATEGROUP,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group | (ulong) Configuration.Permissions.Economy)] [CorradeCommand("creategroup")] [Reflection.NameAttribute("creategroup")] CREATEGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("parcelfreeze")] [Reflection.NameAttribute("parcelfreeze")] PARCELFREEZE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("parcelfreeze")] [Reflection.NameAttribute("parcelfreeze")] PARCELFREEZE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createrole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING>>&[powers=<GroupPowers[,GroupPowers...]>]&[title=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("createrole")] [Reflection.NameAttribute("createrole")] CREATEROLE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("createrole")] [Reflection.NameAttribute("createrole")] CREATEROLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleterole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("deleterole")] [Reflection.NameAttribute("deleterole")] DELETEROLE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("deleterole")] [Reflection.NameAttribute("deleterole")] DELETEROLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getrolesmembers")] [Reflection.NameAttribute("getrolesmembers")] GETROLESMEMBERS,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getroles")] [Reflection.NameAttribute("getroles")] GETROLES,
+                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getrolesmembers")] [Reflection.NameAttribute("getrolesmembers")] GETROLESMEMBERS,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getroles")] [Reflection.NameAttribute("getroles")] GETROLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("getrolepowers")] [Reflection.NameAttribute("getrolepowers")] GETROLEPOWERS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getrolepowers")] [Reflection.NameAttribute("getrolepowers")] GETROLEPOWERS,
             [Reflection.NameAttribute("powers")] POWERS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=lure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("lure")] [Reflection.NameAttribute("lure")] LURE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("lure")] [Reflection.NameAttribute("lure")] LURE,
             [Reflection.NameAttribute("URL")] URL,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("sethome")] [Reflection.NameAttribute("sethome")] SETHOME,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("gohome")] [Reflection.NameAttribute("gohome")] GOHOME,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("sethome")] [Reflection.NameAttribute("sethome")] SETHOME,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("gohome")] [Reflection.NameAttribute("gohome")] GOHOME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("setprofiledata")] [Reflection.NameAttribute("setprofiledata")] SETPROFILEDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("setprofiledata")] [Reflection.NameAttribute("setprofiledata")] SETPROFILEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=give>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=avatar:<item=<UUID|STRING>&entity=object:<item=<UUID|STRING>&entity=object:[range=<FLOAT>]&entity=object:<target=<UUID|STRING>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("give")] [Reflection.NameAttribute("give")] GIVE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("give")] [Reflection.NameAttribute("give")] GIVE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("deleteitem")] [Reflection.NameAttribute("deleteitem")] DELETEITEM,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Inventory)] [CorradeCommand("emptytrash")] [Reflection.NameAttribute("emptytrash")] EMPTYTRASH,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("deleteitem")] [Reflection.NameAttribute("deleteitem")] DELETEITEM,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("emptytrash")] [Reflection.NameAttribute("emptytrash")] EMPTYTRASH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("fly")] [Reflection.NameAttribute("fly")] FLY,
+                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("fly")] [Reflection.NameAttribute("fly")] FLY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=addpick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[item=<STRING|UUID>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("addpick")] [Reflection.NameAttribute("addpick")] ADDPICK,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("addpick")] [Reflection.NameAttribute("addpick")] ADDPICK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("deletepick")] [Reflection.NameAttribute("deletepick")] DELETEPICK,
+                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("deletepick")] [Reflection.NameAttribute("deletepick")] DELETEPICK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=touch>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("touch")] [Reflection.NameAttribute("touch")] TOUCH,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("touch")] [Reflection.NameAttribute("touch")] TOUCH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=moderate>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<type=<voice|text>>&<silence=<BOOL>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Group)] [CorradeCommand("moderate")] [Reflection.NameAttribute("moderate")] MODERATE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("moderate")] [Reflection.NameAttribute("moderate")] MODERATE,
             [Reflection.NameAttribute("type")] TYPE,
             [Reflection.NameAttribute("silence")] SILENCE,
             [Reflection.NameAttribute("freeze")] FREEZE,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("rebake")] [Reflection.NameAttribute("rebake")] REBAKE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("rebake")] [Reflection.NameAttribute("rebake")] REBAKE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=getattachments>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("getattachments")] [Reflection.NameAttribute("getattachments")] GETATTACHMENTS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getattachments")] [Reflection.NameAttribute("getattachments")] GETATTACHMENTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=attach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<AttachmentPoint<,<UUID|STRING>>[,AttachmentPoint<,<UUID|STRING>>...]>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("attach")] [Reflection.NameAttribute("attach")] ATTACH,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("attach")] [Reflection.NameAttribute("attach")] ATTACH,
             [Reflection.NameAttribute("attachments")] ATTACHMENTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=detach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<STRING[,UUID...]>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("detach")] [Reflection.NameAttribute("detach")] DETACH,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("detach")] [Reflection.NameAttribute("detach")] DETACH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveowners>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("getprimitiveowners")] [Reflection.NameAttribute("getprimitiveowners")] GETPRIMITIVEOWNERS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getprimitiveowners")] [Reflection.NameAttribute("getprimitiveowners")] GETPRIMITIVEOWNERS,
             [Reflection.NameAttribute("entity")] ENTITY,
             [Reflection.NameAttribute("channel")] CHANNEL,
             [Reflection.NameAttribute("name")] NAME,
@@ -8644,29 +8646,29 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive[,Primitive...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivedata")] [Reflection.NameAttribute("getprimitivedata")] GETPRIMITIVEDATA,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Grooming)] [CorradeCommand("activate")] [Reflection.NameAttribute("activate")] ACTIVATE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivedata")] [Reflection.NameAttribute("getprimitivedata")] GETPRIMITIVEDATA,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("activate")] [Reflection.NameAttribute("activate")] ACTIVATE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=autopilot>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Movement)] [CorradeCommand("autopilot")] [Reflection.NameAttribute("autopilot")] AUTOPILOT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("autopilot")] [Reflection.NameAttribute("autopilot")] AUTOPILOT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<mute|unmute>>&action=mute:<name=<STRING>&target=<UUID>>&action=unmute:<name=<STRING>|target=<UUID>>&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
 
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((UInt64) Configuration.Permissions.Mute)] [CorradeCommand("getmutes")] [Reflection.NameAttribute("getmutes")] GETMUTES,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("getmutes")] [Reflection.NameAttribute("getmutes")] GETMUTES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=notify>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|set|remove|list|clear|purge>>&action=add|set|remove|clear:<type=<STRING[,STRING...]>>&action=add|set|remove:<URL=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Notifications)] [CorradeCommand("notify")] [Reflection.NameAttribute("notify")] NOTIFY,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Notifications)] [CorradeCommand("notify")] [Reflection.NameAttribute("notify")] NOTIFY,
             [Reflection.NameAttribute("source")] SOURCE,
             [Reflection.NameAttribute("effect")] EFFECT,
             [Reflection.NameAttribute("id")] ID,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terrain>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<set|get>>&action=set:<data=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((UInt64) Configuration.Permissions.Land)] [CorradeCommand("terrain")] [Reflection.NameAttribute("terrain")] TERRAIN,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("terrain")] [Reflection.NameAttribute("terrain")] TERRAIN,
             [Reflection.NameAttribute("output")] OUTPUT,
             [Reflection.NameAttribute("input")] INPUT
         }
@@ -8676,12 +8678,12 @@ namespace Corrade
         /// </summary>
         private class CommandPermissionMaskAttribute : Attribute
         {
-            public CommandPermissionMaskAttribute(UInt64 permissionMask)
+            public CommandPermissionMaskAttribute(ulong permissionMask)
             {
                 PermissionMask = permissionMask;
             }
 
-            public UInt64 PermissionMask { get; }
+            public ulong PermissionMask { get; }
         }
 
         /// <summary>

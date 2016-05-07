@@ -6,12 +6,13 @@
 
 using System;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getsitid = (message, rule, senderUUID) =>
             {
@@ -21,20 +22,35 @@ namespace Corrade
                     return;
                 }
                 Avatar me;
-                if (Client.Network.CurrentSim.ObjectsAvatars.TryGetValue(Client.Self.LocalID, out me))
+                bool isSitting;
+                lock (Locks.ClientInstanceNetworkLock)
+                {
+                    isSitting = Client.Network.CurrentSim.ObjectsAvatars.TryGetValue(Client.Self.LocalID, out me);
+                }
+                if (isSitting)
                 {
                     if (me.ParentID != 0)
                     {
                         Primitive sit;
-                        if (Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(me.ParentID, out sit))
+                        lock (Locks.ClientInstanceNetworkLock)
                         {
-                            Client.Self.Chat(sit.ID.ToString(), channel, ChatType.Normal);
+                            isSitting = Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(me.ParentID, out sit);
+                        }
+                        if (isSitting)
+                        {
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Chat(sit.ID.ToString(), channel, ChatType.Normal);
+                            }
                             return;
                         }
                     }
                 }
                 UUID zero = UUID.Zero;
-                Client.Self.Chat(zero.ToString(), channel, ChatType.Normal);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Chat(zero.ToString(), channel, ChatType.Normal);
+                }
             };
         }
     }

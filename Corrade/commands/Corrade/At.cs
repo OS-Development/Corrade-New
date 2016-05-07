@@ -16,7 +16,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> at =
                 (corradeCommandParameters, result) =>
@@ -37,7 +37,7 @@ namespace Corrade
                     {
                         case Action.ADD:
                             if (
-                                GroupSchedules.ToArray()
+                                GroupSchedules
                                     .AsParallel()
                                     .Count(o => o.Group.Equals(corradeCommandParameters.Group)) +
                                 1 > corradeCommandParameters.Group.Schedules)

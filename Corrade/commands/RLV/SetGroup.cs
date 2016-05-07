@@ -14,7 +14,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> setgroup = (message, rule, senderUUID) =>
             {
@@ -33,10 +33,13 @@ namespace Corrade
                         ref currentGroups))
                     return;
                 UUID currentGroup =
-                    currentGroups.ToList().FirstOrDefault(o => o.Equals(groupUUID));
+                    currentGroups.ToArray().AsParallel().FirstOrDefault(o => o.Equals(groupUUID));
                 if (!currentGroup.Equals(UUID.Zero))
                 {
-                    Client.Groups.ActivateGroup(groupUUID);
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.ActivateGroup(groupUUID);
+                    }
                 }
             };
         }

@@ -18,7 +18,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getrolesmembers =
                 (corradeCommandParameters, result) =>
@@ -61,7 +61,7 @@ namespace Corrade
                     // First resolve the all the role names to role UUIDs
                     Hashtable roleUUIDNames = new Hashtable(groupRolesMembers.Count);
                     object LockObject = new object();
-                    groupRolesMembers.ToArray().AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key).ForAll(
+                    groupRolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key).ForAll(
                         o =>
                         {
                             string roleName = string.Empty;
@@ -79,7 +79,7 @@ namespace Corrade
                         });
                     // Next, associate role names with agent names and UUIDs.
                     List<string> csv = new List<string>();
-                    groupRolesMembers.ToArray().AsParallel().Where(o => roleUUIDNames.ContainsKey(o.Key)).ForAll(o =>
+                    groupRolesMembers.AsParallel().Where(o => roleUUIDNames.ContainsKey(o.Key)).ForAll(o =>
                     {
                         string agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value, corradeConfiguration.ServicesTimeout,

@@ -17,7 +17,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getinvworn = (message, rule, senderUUID) =>
             {
@@ -29,11 +29,15 @@ namespace Corrade
                 InventoryNode RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                        .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
                 {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    }
                     return;
                 }
                 KeyValuePair<InventoryNode, LinkedList<string>> folderPath = Inventory.FindInventoryPath<InventoryNode>(
@@ -41,6 +45,7 @@ namespace Corrade
                     RLVFolder,
                     CORRADE_CONSTANTS.OneOrMoRegex,
                     new LinkedList<string>())
+                    .ToArray()
                     .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                     .FirstOrDefault(
                         o =>
@@ -49,7 +54,10 @@ namespace Corrade
                 switch (!folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
                 {
                     case false:
-                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        }
                         return;
                 }
 
@@ -135,9 +143,12 @@ namespace Corrade
                                 o =>
                                     $"{o.Data.Name}{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
                 }
-                Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
-                    channel,
-                    ChatType.Normal);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
+                        channel,
+                        ChatType.Normal);
+                }
             };
         }
     }

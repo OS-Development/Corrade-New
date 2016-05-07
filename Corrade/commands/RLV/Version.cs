@@ -6,12 +6,13 @@
 
 using System;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> version = (message, rule, senderUUID) =>
             {
@@ -20,10 +21,13 @@ namespace Corrade
                 {
                     return;
                 }
-                Client.Self.Chat(
-                    $"{RLV_CONSTANTS.VIEWER} v{RLV_CONSTANTS.SHORT_VERSION} (Corrade Version: {CORRADE_CONSTANTS.CORRADE_VERSION} Compiled: {CORRADE_CONSTANTS.CORRADE_COMPILE_DATE})",
-                    channel,
-                    ChatType.Normal);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Chat(
+                        $"{RLV_CONSTANTS.VIEWER} v{RLV_CONSTANTS.SHORT_VERSION} (Corrade Version: {CORRADE_CONSTANTS.CORRADE_VERSION} Compiled: {CORRADE_CONSTANTS.CORRADE_COMPILE_DATE})",
+                        channel,
+                        ChatType.Normal);
+                }
             };
         }
     }

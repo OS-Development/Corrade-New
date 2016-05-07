@@ -16,7 +16,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> notify =
                 (corradeCommandParameters, result) =>
@@ -65,7 +65,7 @@ namespace Corrade
                             lock (GroupNotificationsLock)
                             {
                                 notification =
-                                    GroupNotifications.ToArray().AsParallel().FirstOrDefault(
+                                    GroupNotifications.AsParallel().FirstOrDefault(
                                         o =>
                                             o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                             }
@@ -155,8 +155,8 @@ namespace Corrade
                                 notificationTypes).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                                 (o, state) =>
                                 {
-                                    UInt64 notificationValue =
-                                        (UInt64) Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
+                                    ulong notificationValue =
+                                        (ulong) Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
                                     if (!GroupHasNotification(corradeCommandParameters.Group.UUID, notificationValue))
                                     {
                                         // one of the notification was not allowed, so abort
@@ -234,7 +234,7 @@ namespace Corrade
                                         .AsParallel()
                                         .Where(p => !string.IsNullOrEmpty(p))
                                         .Any(p => !(o.NotificationMask &
-                                                    (UInt64)
+                                                    (ulong)
                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                                             p))
                                             .Equals(0)) &&
@@ -272,7 +272,7 @@ namespace Corrade
                                             default:
                                                 HashSet<string> URLs =
                                                     new HashSet<string>(
-                                                        p.Value.ToArray().AsParallel()
+                                                        p.Value.AsParallel()
                                                             .Where(q => !string.Equals(url, q, StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)
@@ -309,7 +309,7 @@ namespace Corrade
                             lock (GroupNotificationsLock)
                             {
                                 Notification groupNotification =
-                                    GroupNotifications.ToArray().AsParallel().FirstOrDefault(
+                                    GroupNotifications.AsParallel().FirstOrDefault(
                                         o =>
                                             o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                                 if (groupNotification != null)
@@ -317,7 +317,7 @@ namespace Corrade
                                     Parallel.ForEach(Reflection.GetEnumNames<Configuration.Notifications>(), o =>
                                     {
                                         if ((groupNotification.NotificationMask &
-                                             (UInt64) Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
+                                             (ulong) Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
                                             .Equals(0))
                                             return;
                                         lock (LockObject)
@@ -413,8 +413,8 @@ namespace Corrade
                                     Reflection.GetEnumValues<Configuration.Notifications>())
                                     .AsParallel().ForAll(o =>
                                     {
-                                        GroupNotifications.ToArray().AsParallel()
-                                            .Where(p => !((UInt64) o & p.NotificationMask).Equals(0)).ForAll(p =>
+                                        GroupNotifications.AsParallel()
+                                            .Where(p => !((ulong) o & p.NotificationMask).Equals(0)).ForAll(p =>
                                             {
                                                 lock (LockObject)
                                                 {

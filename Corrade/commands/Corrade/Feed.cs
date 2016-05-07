@@ -8,23 +8,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel.Syndication;
-using OpenMetaverse;
-using CorradeConfiguration;
-using wasSharp;
 using System.Xml;
+using CorradeConfiguration;
+using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> feed =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Feed))
+                            (int) Configuration.Permissions.Feed))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }

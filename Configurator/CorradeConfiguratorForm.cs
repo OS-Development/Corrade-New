@@ -182,6 +182,7 @@ namespace Configurator
             mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
             mainForm.LimitsDataDecay.Text = Reflection.GetNameFromEnumValue(corradeConfiguration.DataDecayType);
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
+            mainForm.LimitsFeedsUpdate.Text = corradeConfiguration.FeedsUpdateInterval.ToString();
             mainForm.LimitsLogoutTimeout.Text = corradeConfiguration.LogoutGrace.ToString();
 
             // masters
@@ -477,6 +478,10 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, out outUint))
             {
                 corradeConfiguration.MembershipSweepInterval = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsFeedsUpdate.Text, out outUint))
+            {
+                corradeConfiguration.FeedsUpdateInterval = outUint;
             }
             if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, out outUint))
             {

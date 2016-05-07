@@ -7,12 +7,13 @@
 using System;
 using System.Globalization;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> setrot = (message, rule, senderUUID) =>
             {
@@ -23,7 +24,10 @@ namespace Corrade
                 {
                     return;
                 }
-                Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
+                }
             };
         }
     }

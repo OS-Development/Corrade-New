@@ -9,8 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
-using wasSharp;
 using wasOpenMetaverse;
+using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -18,7 +18,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setregionterraintextures =
                 (corradeCommandParameters, result) =>

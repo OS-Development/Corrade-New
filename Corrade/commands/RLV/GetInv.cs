@@ -8,13 +8,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getinv = (message, rule, senderUUID) =>
             {
@@ -26,11 +27,15 @@ namespace Corrade
                 InventoryNode RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                        .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
                 {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    }
                     return;
                 }
                 InventoryNode optionFolderNode;
@@ -42,6 +47,7 @@ namespace Corrade
                                 RLVFolder,
                                 CORRADE_CONSTANTS.OneOrMoRegex,
                                 new LinkedList<string>())
+                                .ToArray()
                             .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                             .FirstOrDefault(
                                 o =>
@@ -53,7 +59,10 @@ namespace Corrade
                                 optionFolderNode = folderPath.Key;
                                 break;
                             default:
-                                Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                                }
                                 return;
                         }
                         break;
@@ -64,6 +73,7 @@ namespace Corrade
                 HashSet<string> csv =
                     new HashSet<string>(Inventory.FindInventory<InventoryBase>(Client, optionFolderNode,
                         CORRADE_CONSTANTS.OneOrMoRegex)
+                        .ToArray()
                         .AsParallel()
                         .Where(o => o is InventoryFolder && !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                         .Skip(1)
@@ -71,11 +81,17 @@ namespace Corrade
                 switch (!csv.Count.Equals(0))
                 {
                     case true:
-                        Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
-                            ChatType.Normal);
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
+                                ChatType.Normal);
+                        }
                         break;
                     default:
-                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        }
                         break;
                 }
             };

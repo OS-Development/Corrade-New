@@ -6,12 +6,14 @@
 
 using System;
 using OpenMetaverse;
+using wasOpenMetaverse;
+using Helpers = OpenMetaverse.Helpers;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> tpto = (message, rule, senderUUID) =>
             {
@@ -37,7 +39,10 @@ namespace Corrade
                 }
                 float localX, localY;
                 ulong handle = Helpers.GlobalPosToRegionHandle(globalX, globalY, out localX, out localY);
-                Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
+                }
             };
         }
     }

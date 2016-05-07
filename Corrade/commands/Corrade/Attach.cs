@@ -21,7 +21,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> attach =
                 (corradeCommandParameters, result) =>
@@ -93,10 +93,13 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            Client.Self.SignaledAnimations.Copy()
-                                .Keys.AsParallel()
-                                .Where(o => !Helpers.LindenAnimations.Contains(o))
-                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.SignaledAnimations.Copy()
+                                    .Keys.AsParallel()
+                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                            }
                             break;
                     }
 
@@ -156,6 +159,7 @@ namespace Corrade
                                                 string slot = Inventory.GetAttachments(
                                                     Client,
                                                     corradeConfiguration.DataTimeout)
+                                                    .ToArray()
                                                     .AsParallel()
                                                     .Where(
                                                         p =>

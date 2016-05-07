@@ -7,13 +7,14 @@
 using System;
 using System.Linq;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> unsit = (message, rule, senderUUID) =>
             {
@@ -26,15 +27,21 @@ namespace Corrade
                     Client.Self.Stand();
                 }
                 // stop all non-built-in animations
-                Client.Self.SignaledAnimations.Copy()
-                    .Keys.AsParallel()
-                    .Where(o => !Helpers.LindenAnimations.Contains(o))
-                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.SignaledAnimations.Copy()
+                        .Keys.AsParallel()
+                        .Where(o => !Helpers.LindenAnimations.Contains(o))
+                        .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                }
                 // Set the camera on the avatar.
-                Client.Self.Movement.Camera.LookAt(
-                    Client.Self.SimPosition,
-                    Client.Self.SimPosition
-                    );
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
+                }
             };
         }
     }

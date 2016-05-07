@@ -18,7 +18,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> invite =
                 (corradeCommandParameters, result) =>
@@ -103,7 +103,7 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
                             selfRoles.UnionWith(
-                                args.RolesMembers.ToArray()
+                                args.RolesMembers
                                     .AsParallel()
                                     .Where(o => o.Value.Equals(Client.Self.AgentID))
                                     .Select(o => o.Key));

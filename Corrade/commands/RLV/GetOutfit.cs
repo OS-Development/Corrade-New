@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -16,7 +17,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getoutfit = (message, rule, senderUUID) =>
             {
@@ -69,7 +70,10 @@ namespace Corrade
                         response.Append(string.Join("", data.ToArray()));
                         break;
                 }
-                Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                }
             };
         }
     }

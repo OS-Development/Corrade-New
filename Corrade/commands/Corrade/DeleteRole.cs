@@ -17,7 +17,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> deleterole =
                 (corradeCommandParameters, result) =>
@@ -81,7 +81,7 @@ namespace Corrade
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
-                        args.RolesMembers.ToArray()
+                        args.RolesMembers
                             .AsParallel()
                             .Where(o => o.Key.Equals(roleUUID))
                             .ForAll(

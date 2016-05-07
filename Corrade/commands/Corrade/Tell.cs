@@ -20,7 +20,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> tell =
                 (corradeCommandParameters, result) =>
@@ -177,7 +177,7 @@ namespace Corrade
                             {
                                 Client.Self.InstantMessageGroup(corradeCommandParameters.Group.UUID, data);
                             }
-                            corradeConfiguration.Groups.ToArray().AsParallel().Where(
+                            corradeConfiguration.Groups.AsParallel().Where(
                                 o => o.UUID.Equals(corradeCommandParameters.Group.UUID) && o.ChatLogEnabled).ForAll(
                                     o =>
                                     {

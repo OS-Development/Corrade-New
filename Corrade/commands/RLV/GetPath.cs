@@ -9,13 +9,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getpath = (message, rule, senderUUID) =>
             {
@@ -31,7 +32,10 @@ namespace Corrade
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
                 {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    }
                     return;
                 }
                 // General variables
@@ -113,7 +117,10 @@ namespace Corrade
                 }
                 if (inventoryBase == null)
                 {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    }
                     return;
                 }
                 KeyValuePair<InventoryBase, LinkedList<string>> path =
@@ -122,12 +129,18 @@ namespace Corrade
                 switch (!path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))
                 {
                     case true:
-                        Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()),
-                            channel,
-                            ChatType.Normal);
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()),
+                                channel,
+                                ChatType.Normal);
+                        }
                         break;
                     default:
-                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        }
                         return;
                 }
             };

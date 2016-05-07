@@ -379,6 +379,11 @@
             this.SaveConfigurationDialog = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.Version = new System.Windows.Forms.Label();
+            this.groupBox86 = new System.Windows.Forms.GroupBox();
+            this.pictureBox93 = new System.Windows.Forms.PictureBox();
+            this.label32 = new System.Windows.Forms.Label();
+            this.label33 = new System.Windows.Forms.Label();
+            this.LimitsFeedsUpdate = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -572,6 +577,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).BeginInit();
             this.groupBox21.SuspendLayout();
             this.Status.SuspendLayout();
+            this.groupBox86.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -2793,6 +2800,7 @@
             // 
             // tabPage10
             // 
+            this.tabPage10.Controls.Add(this.groupBox86);
             this.tabPage10.Controls.Add(this.groupBox82);
             this.tabPage10.Controls.Add(this.groupBox76);
             this.tabPage10.Controls.Add(this.groupBox71);
@@ -4412,6 +4420,55 @@
             this.Version.TabIndex = 6;
             this.Version.Text = "                ";
             // 
+            // groupBox86
+            // 
+            this.groupBox86.Controls.Add(this.pictureBox93);
+            this.groupBox86.Controls.Add(this.label32);
+            this.groupBox86.Controls.Add(this.label33);
+            this.groupBox86.Controls.Add(this.LimitsFeedsUpdate);
+            this.groupBox86.Location = new System.Drawing.Point(488, 213);
+            this.groupBox86.Name = "groupBox86";
+            this.groupBox86.Size = new System.Drawing.Size(181, 51);
+            this.groupBox86.TabIndex = 16;
+            this.groupBox86.TabStop = false;
+            this.groupBox86.Text = "RSS Feeds";
+            // 
+            // pictureBox93
+            // 
+            this.pictureBox93.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox93.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox93.Image")));
+            this.pictureBox93.Location = new System.Drawing.Point(155, 17);
+            this.pictureBox93.Name = "pictureBox93";
+            this.pictureBox93.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox93.TabIndex = 17;
+            this.pictureBox93.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox93, "The time to wait in seconds between checking\r\nfor new RSS feed updates.");
+            // 
+            // label32
+            // 
+            this.label32.AutoSize = true;
+            this.label32.Location = new System.Drawing.Point(40, 49);
+            this.label32.Name = "label32";
+            this.label32.Size = new System.Drawing.Size(0, 16);
+            this.label32.TabIndex = 16;
+            // 
+            // label33
+            // 
+            this.label33.AutoSize = true;
+            this.label33.Location = new System.Drawing.Point(34, 19);
+            this.label33.Name = "label33";
+            this.label33.Size = new System.Drawing.Size(42, 16);
+            this.label33.TabIndex = 15;
+            this.label33.Text = "Update";
+            // 
+            // LimitsFeedsUpdate
+            // 
+            this.LimitsFeedsUpdate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsFeedsUpdate.Location = new System.Drawing.Point(83, 17);
+            this.LimitsFeedsUpdate.Name = "LimitsFeedsUpdate";
+            this.LimitsFeedsUpdate.Size = new System.Drawing.Size(66, 20);
+            this.LimitsFeedsUpdate.TabIndex = 13;
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -4689,6 +4746,9 @@
             this.groupBox21.ResumeLayout(false);
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.groupBox86.ResumeLayout(false);
+            this.groupBox86.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -5045,6 +5105,11 @@
         private System.Windows.Forms.PictureBox pictureBox90;
         private System.Windows.Forms.PictureBox pictureBox91;
         private System.Windows.Forms.TextBox AutoActivateGroupDelay;
+        private System.Windows.Forms.GroupBox groupBox86;
+        private System.Windows.Forms.PictureBox pictureBox93;
+        private System.Windows.Forms.Label label32;
+        private System.Windows.Forms.Label label33;
+        private System.Windows.Forms.TextBox LimitsFeedsUpdate;
     }
 }
 

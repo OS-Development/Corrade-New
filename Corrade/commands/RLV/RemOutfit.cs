@@ -15,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> remoutfit = (message, rule, senderUUID) =>
             {

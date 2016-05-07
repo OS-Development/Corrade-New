@@ -14,7 +14,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getgroup = (message, rule, senderUUID) =>
             {
@@ -37,7 +37,10 @@ namespace Corrade
                 {
                     return;
                 }
-                Client.Self.Chat(groupName, channel, ChatType.Normal);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Chat(groupName, channel, ChatType.Normal);
+                }
             };
         }
     }

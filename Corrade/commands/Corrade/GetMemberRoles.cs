@@ -17,7 +17,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getmemberroles =
                 (corradeCommandParameters, result) =>
@@ -87,7 +87,7 @@ namespace Corrade
                     }
                     // now resolve the roles
                     object LockObject = new object();
-                    groupRolesMembers.ToArray().AsParallel().Where(o => o.Value.Equals(agentUUID)).ForAll(o =>
+                    groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)).ForAll(o =>
                     {
                         string roleName = string.Empty;
                         switch (Resolvers.RoleUUIDToName(Client, o.Key, corradeCommandParameters.Group.UUID,

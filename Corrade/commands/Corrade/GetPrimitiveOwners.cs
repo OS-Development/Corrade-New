@@ -18,7 +18,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitiveowners =
                 (corradeCommandParameters, result) =>
@@ -89,7 +89,7 @@ namespace Corrade
                             break;
                     }
                     bool succeeded = true;
-                    Parallel.ForEach(parcels.ToArray().AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
+                    Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
                         (o, state) =>
                         {
                             if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))

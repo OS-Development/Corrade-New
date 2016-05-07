@@ -15,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> detachme = (message, rule, senderUUID) =>
             {
@@ -25,6 +25,7 @@ namespace Corrade
                 }
                 KeyValuePair<Primitive, AttachmentPoint> attachment =
                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
+                    .ToArray()
                         .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                 switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                 {
@@ -43,6 +44,7 @@ namespace Corrade
                             string slot = Inventory.GetAttachments(
                                 Client,
                                 corradeConfiguration.DataTimeout)
+                                .ToArray()
                                 .AsParallel()
                                 .Where(
                                     p =>

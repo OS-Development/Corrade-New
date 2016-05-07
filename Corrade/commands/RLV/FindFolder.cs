@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -16,7 +17,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> findfolder = (message, rule, senderUUID) =>
             {
@@ -27,12 +28,16 @@ namespace Corrade
                 }
                 if (string.IsNullOrEmpty(rule.Option))
                 {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                    }
                     return;
                 }
                 InventoryNode RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                        .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
@@ -70,9 +75,12 @@ namespace Corrade
                             });
                 if (folders.Any())
                 {
-                    Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
-                        channel,
-                        ChatType.Normal);
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
+                            channel,
+                            ChatType.Normal);
+                    }
                 }
             };
         }

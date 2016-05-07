@@ -8,12 +8,13 @@ using System;
 using System.Linq;
 using System.Text;
 using OpenMetaverse;
+using wasOpenMetaverse;
 
 namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class RLVBehaviours
+        public partial class RLVBehaviours
         {
             public static Action<string, RLVRule, UUID> getstatus = (message, rule, senderUUID) =>
             {
@@ -40,7 +41,7 @@ namespace Corrade
                 lock (RLVRulesLock)
                 {
                     object LockObject = new object();
-                    RLVRules.ToArray().AsParallel().Where(o =>
+                    RLVRules.AsParallel().Where(o =>
                         o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
                         ).ForAll(o =>
                         {
@@ -57,9 +58,12 @@ namespace Corrade
                             }
                         });
                 }
-                Client.Self.Chat(response.ToString(),
-                    channel,
-                    ChatType.Normal);
+                lock (Locks.ClientInstanceSelfLock)
+                {
+                    Client.Self.Chat(response.ToString(),
+                        channel,
+                        ChatType.Normal);
+                }
             };
         }
     }

@@ -15,7 +15,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> terminatefriendship =
                 (corradeCommandParameters, result) =>
@@ -48,7 +48,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
                     FriendInfo friend;
-                    lock(Locks.ClientInstanceFriendsLock)
+                    lock (Locks.ClientInstanceFriendsLock)
                     {
                         friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                     }

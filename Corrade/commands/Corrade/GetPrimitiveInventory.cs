@@ -16,7 +16,7 @@ namespace Corrade
 {
     public partial class Corrade
     {
-        public static partial class CorradeCommands
+        public partial class CorradeCommands
         {
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitiveinventory =
                 (corradeCommandParameters, result) =>
@@ -77,7 +77,7 @@ namespace Corrade
                     {
                         data.AddRange(
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int) corradeConfiguration.ServicesTimeout).ToArray().AsParallel().Select(o => new[]
+                                (int) corradeConfiguration.ServicesTimeout).AsParallel().Select(o => new[]
                                 {
                                     o.Name,
                                     o.UUID.ToString()
