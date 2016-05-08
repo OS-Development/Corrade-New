@@ -26,6 +26,19 @@ namespace wasSharp
         {
             #region IXmlSerializable Members
 
+            public SerializableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> kvp)
+            {
+                foreach (var i in kvp)
+                {
+                    Add(i.Key, i.Value);
+                }
+            }
+
+            public SerializableDictionary()
+            {
+                
+            } 
+
             /// <summary>
             ///     Deep-clones the serializable dictionary.
             /// </summary>

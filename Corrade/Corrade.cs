@@ -338,7 +338,8 @@ namespace Corrade
             [Status(02188)] [Reflection.DescriptionAttribute("could not get parcel info data")] NO_TARGET_SPECIFIED,
             [Status(47350)] [Reflection.DescriptionAttribute("no type provided")] NO_TYPE_PROVIDED,
             [Status(64450)] [Reflection.DescriptionAttribute("unknown sift")] UNKNOWN_SIFT,
-            [Status(28353)] [Reflection.DescriptionAttribute("invalid feed provided")] INVALID_FEED_PROVIDED
+            [Status(28353)] [Reflection.DescriptionAttribute("invalid feed provided")] INVALID_FEED_PROVIDED,
+            [Status(34869)] [Reflection.DescriptionAttribute("already subscribed to feed")] ALREADY_SUBSCRIBED_TO_FEED
         }
 
         /// <summary>
@@ -402,8 +403,9 @@ namespace Corrade
 
         private static readonly object InventoryOffersLock = new object();
 
-        private static readonly Collections.SerializableDictionary<string, HashSet<UUID>> GroupFeeds =
-            new Collections.SerializableDictionary<string, HashSet<UUID>>();
+        private static readonly
+            Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>> GroupFeeds =
+                new Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>>();
 
         private static readonly object GroupFeedsLock = new object();
 
@@ -672,7 +674,7 @@ namespace Corrade
             new Timer(GroupFeedsChanged =>
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.GROUP_FEEDS_FILE_MODIFIED));
-                LoadFeedState.Invoke();
+                LoadGroupFeedState.Invoke();
             });
 
         /// <summary>
@@ -1281,8 +1283,9 @@ namespace Corrade
         /// <summary>
         ///     Saves Corrade feeds.
         /// </summary>
-        private static readonly System.Action SaveFeedState = () =>
+        private static readonly System.Action SaveGroupFeedState = () =>
         {
+            FeedWatcher.EnableRaisingEvents = false;
             try
             {
                 using (
@@ -1293,7 +1296,7 @@ namespace Corrade
                     using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
                     {
                         XmlSerializer serializer =
-                            new XmlSerializer(typeof (Collections.SerializableDictionary<string, HashSet<UUID>>));
+                            new XmlSerializer(typeof (Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>>));
                         lock (GroupFeedsLock)
                         {
                             serializer.Serialize(writer, GroupFeeds);
@@ -1307,12 +1310,13 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_FEEDS_STATE),
                     e.Message);
             }
+            FeedWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
         ///     Loads Corrade notifications.
         /// </summary>
-        private static readonly System.Action LoadFeedState = () =>
+        private static readonly System.Action LoadGroupFeedState = () =>
         {
             string feedStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.FEEDS_STATE_FILE);
@@ -1328,19 +1332,30 @@ namespace Corrade
                         {
                             HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             XmlSerializer serializer =
-                                new XmlSerializer(typeof (Collections.SerializableDictionary<string, HashSet<UUID>>));
-                            ((Collections.SerializableDictionary<string, HashSet<UUID>>)
-                                serializer.Deserialize(streamReader)).AsParallel().ForAll(o =>
+                                new XmlSerializer(typeof (Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>>));
+                            ((
+                                Collections.SerializableDictionary
+                                    <string, Collections.SerializableDictionary<UUID, string>>)
+                                serializer.Deserialize(streamReader)).AsParallel()
+                                .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
+                                .ForAll(o =>
                                 {
                                     lock (GroupFeedsLock)
                                     {
                                         if (!GroupFeeds.ContainsKey(o.Key))
                                         {
-                                            GroupFeeds.Add(o.Key,
-                                                new HashSet<UUID>(o.Value.Where(p => groups.Contains(p))));
+                                            GroupFeeds.Add(o.Key, o.Value);
                                             return;
                                         }
-                                        GroupFeeds[o.Key].IntersectWith(groups);
+                                        GroupFeeds[o.Key].Clone().AsParallel().ForAll(p =>
+                                        {
+                                            if (!GroupFeeds[o.Key].ContainsKey(p.Key))
+                                            {
+                                                GroupFeeds[o.Key].Add(p.Key, p.Value);
+                                                return;
+                                            }
+                                            GroupFeeds[o.Key][p.Key] = p.Value;
+                                        });
                                     }
                                 });
                         }
@@ -1481,10 +1496,10 @@ namespace Corrade
         {
             while (runGroupFeedThread)
             {
-                Thread.Sleep(TimeSpan.FromSeconds(corradeConfiguration.FeedsUpdateInterval));
+                Thread.Sleep(TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval));
                 lock (GroupFeedsLock)
                 {
-                    Parallel.ForEach(GroupFeeds, o =>
+                    GroupFeeds.AsParallel().ForAll(o =>
                     {
                         try
                         {
@@ -1496,11 +1511,11 @@ namespace Corrade
                                             p != null && p.PublishDate != null && p.Title != null && p.Summary != null &&
                                             p.PublishDate.CompareTo(
                                                 DateTimeOffset.Now.Subtract(
-                                                    TimeSpan.FromSeconds(corradeConfiguration.FeedsUpdateInterval))) >
+                                                    TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval))) >
                                             0)
                                     .ForAll(p =>
                                     {
-                                        Parallel.ForEach(o.Value, q =>
+                                        o.Value.AsParallel().ForAll(q =>
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
@@ -1510,7 +1525,8 @@ namespace Corrade
                                                         Title = p.Title.Text,
                                                         Summary = p.Summary.Text,
                                                         Date = p.PublishDate,
-                                                        GroupUUID = q
+                                                        Name =  q.Value,
+                                                        GroupUUID = q.Key
                                                     }),
                                                 corradeConfiguration.MaximumNotificationThreads);
                                         });
@@ -3041,7 +3057,7 @@ namespace Corrade
             // Load movement state.
             LoadMovementState.Invoke();
             // Load feeds state.
-            LoadFeedState.Invoke();
+            LoadGroupFeedState.Invoke();
             // Start the callback thread to send callbacks.
             Thread CallbackThread = new Thread(() =>
             {
@@ -3156,7 +3172,7 @@ namespace Corrade
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Save feeds state.
-            SaveFeedState.Invoke();
+            SaveGroupFeedState.Invoke();
             // Save notification states.
             SaveNotificationState.Invoke();
             // Save group members.
@@ -7500,6 +7516,7 @@ namespace Corrade
             public UUID GroupUUID;
             public string Summary;
             public string Title;
+            public string Name;
         }
 
         private class OutfitEventArgs : EventArgs
@@ -8384,11 +8401,11 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("displayname")] [Reflection.NameAttribute("displayname")] DISPLAYNAME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=Owner|Group|Other|Sell:[position=<VECTOR2>]&type=ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=Owner|GroupUUID|Other|Sell:[position=<VECTOR2>]&type=ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("returnprimitives")] [Reflection.NameAttribute("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,GroupUUID...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupdata")] [Reflection.NameAttribute("getgroupdata")] GETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
@@ -8499,7 +8516,7 @@ namespace Corrade
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("leave")] [Reflection.NameAttribute("leave")] LEAVE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=setgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                "<command=setgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,GroupUUID...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("setgroupdata")] [Reflection.NameAttribute("setgroupdata")] SETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
@@ -8558,7 +8575,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("parceleject")] [Reflection.NameAttribute("parceleject")] PARCELEJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,GroupUUID...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group | (ulong) Configuration.Permissions.Economy)] [CorradeCommand("creategroup")] [Reflection.NameAttribute("creategroup")] CREATEGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
