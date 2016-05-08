@@ -50,7 +50,7 @@ namespace Corrade
                         .ForAll(
                             o => typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                    q => { permissions |= ((uint) q.GetValue(null)); }));
+                                    q => { permissions |= (uint) q.GetValue(null); }));
                     FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                            BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
@@ -112,7 +112,7 @@ namespace Corrade
                                     {
                                         try
                                         {
-                                            using (Image image = (Image) (new ImageConverter().ConvertFrom(data)))
+                                            using (Image image = (Image) new ImageConverter().ConvertFrom(data))
                                             {
                                                 using (Bitmap bitmap = new Bitmap(image))
                                                 {
@@ -140,10 +140,10 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     (InventoryType)
-                                        (typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                        typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
-                                                    StringComparison.Ordinal))).GetValue(null),
+                                                    StringComparison.Ordinal)).GetValue(null),
                                     Client.Inventory.FindFolderForType(assetType),
                                     delegate(bool completed, string status, UUID itemID, UUID assetID)
                                     {

@@ -57,7 +57,7 @@ namespace Corrade
                     }
                     List<string> data =
                         mapItems.AsParallel()
-                            .Where(o => (o as MapAgentLocation) != null)
+                            .Where(o => o as MapAgentLocation != null)
                             .Select(o => new[]
                             {
                                 ((MapAgentLocation) o).AvatarCount.ToString(Utils.EnUsCulture),

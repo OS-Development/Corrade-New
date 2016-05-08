@@ -36,8 +36,8 @@ namespace Corrade
                                                                                   BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
-                                    !(((uint) p.GetValue(null) &
-                                       (uint) scriptControlEventArgs.Controls)).Equals(0))
+                                    !((uint) p.GetValue(null) &
+                                      (uint) scriptControlEventArgs.Controls).Equals(0))
                             .Select(p => p.Name)));
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PASS),
                         scriptControlEventArgs.Pass.ToString());

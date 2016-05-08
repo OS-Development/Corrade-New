@@ -50,8 +50,8 @@ namespace Corrade
                                                                                  BindingFlags.Static)
                                     .AsParallel().Where(
                                         p =>
-                                            !(((int) p.GetValue(null) &
-                                               (int) o.Permission)).Equals(0))
+                                            !((int) p.GetValue(null) &
+                                              (int) o.Permission).Equals(0))
                                     .Select(p => p.Name).ToArray());
                                 csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Region), o.Region});
                             }

@@ -106,7 +106,7 @@ namespace Corrade
                                         .AsParallel()
                                         .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                         .ForAll(
-                                            q => { muteFlags |= ((int) q.GetValue(null)); }));
+                                            q => { muteFlags |= (int) q.GetValue(null); }));
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;

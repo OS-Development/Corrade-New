@@ -69,7 +69,7 @@ namespace Corrade
                         .ForAll(
                             o => typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                    q => { rights |= ((int) q.GetValue(null)); }));
+                                    q => { rights |= (int) q.GetValue(null); }));
                     lock (Locks.ClientInstanceFriendsLock)
                     {
                         Client.Friends.GrantRights(agentUUID, (FriendRights) rights);

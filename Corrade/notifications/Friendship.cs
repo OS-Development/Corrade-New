@@ -58,8 +58,8 @@ namespace Corrade
                                                                                BindingFlags.Static)
                                 .AsParallel().Where(
                                     p =>
-                                        !(((int) p.GetValue(null) &
-                                           (int) friendInfoEventArgs.Friend.MyFriendRights))
+                                        !((int) p.GetValue(null) &
+                                          (int) friendInfoEventArgs.Friend.MyFriendRights)
                                             .Equals(
                                                 0))
                                 .Select(p => p.Name)));

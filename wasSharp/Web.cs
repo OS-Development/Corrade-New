@@ -16,14 +16,14 @@ namespace wasSharp
         private static readonly Func<string, string> directURIEscapeDataString =
             ((Expression<Func<string, string>>)
                 (data => string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766).ToArray().AsParallel()
-                    .Select(o => Uri.EscapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
+                    .Select(o => Uri.EscapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - o*32766))))
                     .ToArray()))).Compile();
 
         private static readonly Func<string, string> directURIUnescapeDataString =
             ((Expression<Func<string, string>>)
                 (data => string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766).ToArray().AsParallel()
                     .Select(
-                        o => Uri.UnescapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
+                        o => Uri.UnescapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - o*32766))))
                     .ToArray()))).Compile();
 
         ///////////////////////////////////////////////////////////////////////////

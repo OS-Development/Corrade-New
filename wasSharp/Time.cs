@@ -274,8 +274,8 @@ namespace wasSharp
                                         (int) ((deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count)), 0);
                                     break;
                                 case DECAY_TYPE.GEOMETRIC:
-                                    alarm?.Change((int) (Math.Pow(deadline*times.Aggregate((a, b) => b*a),
-                                        1f/(1f + times.Count))), 0);
+                                    alarm?.Change((int) Math.Pow(deadline*times.Aggregate((a, b) => b*a),
+                                        1f/(1f + times.Count)), 0);
                                     break;
                                 case DECAY_TYPE.HARMONIC:
                                     alarm?.Change((int) ((1f + times.Count)/
@@ -285,7 +285,7 @@ namespace wasSharp
                                     HashSet<double> d = new HashSet<double>(times) {deadline};
                                     double total = d.Aggregate((a, b) => b + a);
                                     alarm?.Change(
-                                        (int) (d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total)), 0);
+                                        (int) d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total), 0);
                                     break;
                                 default:
                                     alarm?.Change((int) deadline, 0);

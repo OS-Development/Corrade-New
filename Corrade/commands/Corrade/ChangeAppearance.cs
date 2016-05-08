@@ -172,8 +172,8 @@ namespace Corrade
                                                     new OutfitEventArgs
                                                     {
                                                         Action =
-                                                            (inventoryItem is InventoryObject ||
-                                                             inventoryItem is InventoryAttachment)
+                                                            inventoryItem is InventoryObject ||
+                                                            inventoryItem is InventoryAttachment
                                                                 ? Action.DETACH
                                                                 : Action.UNWEAR,
                                                         Name = inventoryItem.Name,
@@ -256,7 +256,7 @@ namespace Corrade
                                 new OutfitEventArgs
                                 {
                                     Action =
-                                        (o is InventoryObject || o is InventoryAttachment)
+                                        o is InventoryObject || o is InventoryAttachment
                                             ? Action.ATTACH
                                             : Action.WEAR,
                                     Name = o.Name,

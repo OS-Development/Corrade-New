@@ -3174,8 +3174,8 @@ namespace Corrade
                 try
                 {
                     if (
-                        (EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
-                         EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                        EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
+                        EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                     {
                         if (!EffectsExpirationThread.Join(1000))
                         {
@@ -3204,8 +3204,8 @@ namespace Corrade
             {
                 runNotificationThread = false;
                 if (
-                    (NotificationThread.ThreadState.Equals(ThreadState.Running) ||
-                     NotificationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                    NotificationThread.ThreadState.Equals(ThreadState.Running) ||
+                    NotificationThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                 {
                     if (!NotificationThread.Join(1000))
                     {
@@ -3228,8 +3228,8 @@ namespace Corrade
             {
                 runCallbackThread = false;
                 if (
-                    (CallbackThread.ThreadState.Equals(ThreadState.Running) ||
-                     CallbackThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                    CallbackThread.ThreadState.Equals(ThreadState.Running) ||
+                    CallbackThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                 {
                     if (!CallbackThread.Join(1000))
                     {
@@ -3258,8 +3258,8 @@ namespace Corrade
                     {
                         HTTPListener.Stop();
                         if (
-                            (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
-                             HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                            HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
+                            HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                         {
                             if (!HTTPListenerThread.Join(1000))
                             {
@@ -4969,7 +4969,7 @@ namespace Corrade
             // Decrement the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[commandGroup.Name] = ((uint) GroupWorkers[commandGroup.Name]) - 1;
+                GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] - 1;
             }
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
@@ -5404,8 +5404,8 @@ namespace Corrade
                         if (GroupSchedulesThread != null)
                         {
                             if (
-                                (GroupSchedulesThread.ThreadState.Equals(ThreadState.Running) ||
-                                 GroupSchedulesThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                GroupSchedulesThread.ThreadState.Equals(ThreadState.Running) ||
+                                GroupSchedulesThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                             {
                                 if (!GroupSchedulesThread.Join(1000))
                                 {
@@ -5705,8 +5705,8 @@ namespace Corrade
                         if (EffectsExpirationThread != null)
                         {
                             if (
-                                (EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
-                                 EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
+                                EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                             {
                                 if (!EffectsExpirationThread.Join(1000))
                                 {
@@ -6056,8 +6056,8 @@ namespace Corrade
                         {
                             TCPListener.Stop();
                             if (
-                                (TCPNotificationsThread.ThreadState.Equals(ThreadState.Running) ||
-                                 TCPNotificationsThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                TCPNotificationsThread.ThreadState.Equals(ThreadState.Running) ||
+                                TCPNotificationsThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                             {
                                 if (!TCPNotificationsThread.Join(1000))
                                 {
@@ -6159,8 +6159,8 @@ namespace Corrade
                                 {
                                     HTTPListener.Stop();
                                     if (
-                                        (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
-                                         HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                        HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
+                                        HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                                     {
                                         if (!HTTPListenerThread.Join(1000))
                                         {

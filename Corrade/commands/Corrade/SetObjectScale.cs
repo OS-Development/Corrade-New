@@ -108,12 +108,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_SCALE);
                     }
                     if (Helpers.IsSecondLife(Client) &&
-                        ((scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
-                          scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
-                          scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
-                          scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
-                          scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
-                          scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                        (scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
+                         scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
+                         scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
+                         scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
+                         scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                         scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
                     {
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }

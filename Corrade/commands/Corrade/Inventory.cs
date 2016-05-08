@@ -330,7 +330,7 @@ namespace Corrade
                                     break;
                                 default:
                                     if (
-                                        !Inventory.wasSetInventoryItemPermissions(Client, (item as InventoryItem),
+                                        !Inventory.wasSetInventoryItemPermissions(Client, item as InventoryItem,
                                             itemPermissions, corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);

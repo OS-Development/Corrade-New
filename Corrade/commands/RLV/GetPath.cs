@@ -62,7 +62,7 @@ namespace Corrade
                                         )
                                         .AsParallel().FirstOrDefault(
                                             p =>
-                                                (p is InventoryItem) &&
+                                                p is InventoryItem &&
                                                 ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                                     break;
                                 default:
@@ -109,7 +109,7 @@ namespace Corrade
                                     )
                                     .AsParallel().FirstOrDefault(
                                         p =>
-                                            (p is InventoryItem) &&
+                                            p is InventoryItem &&
                                             ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                                 break;
                         }
