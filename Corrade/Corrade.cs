@@ -339,7 +339,13 @@ namespace Corrade
             [Status(47350)] [Reflection.DescriptionAttribute("no type provided")] NO_TYPE_PROVIDED,
             [Status(64450)] [Reflection.DescriptionAttribute("unknown sift")] UNKNOWN_SIFT,
             [Status(28353)] [Reflection.DescriptionAttribute("invalid feed provided")] INVALID_FEED_PROVIDED,
-            [Status(34869)] [Reflection.DescriptionAttribute("already subscribed to feed")] ALREADY_SUBSCRIBED_TO_FEED
+            [Status(34869)] [Reflection.DescriptionAttribute("already subscribed to feed")] ALREADY_SUBSCRIBED_TO_FEED,
+            [Status(32157)] [Reflection.DescriptionAttribute("no consumer key provided")] NO_CONSUMER_KEY_PROVIDED,
+            [Status(40762)] [Reflection.DescriptionAttribute("no consumer secret provided")] NO_CONSUMER_SECRET_PROVIDED,
+            [Status(13399)] [Reflection.DescriptionAttribute("no access token provided")] NO_ACCESS_TOKEN_PROVIDED,
+            [Status(55091)] [Reflection.DescriptionAttribute("no access token secret provided")] NO_ACCESS_TOKEN_SECRET_PROVIDED,
+            [Status(55051)] [Reflection.DescriptionAttribute("message too long")] MESSAGE_TOO_LONG,
+            [Status(18672)] [Reflection.DescriptionAttribute("could not post tweet")] COULD_NOT_POST_TWEET
         }
 
         /// <summary>
@@ -1296,7 +1302,10 @@ namespace Corrade
                     using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
                     {
                         XmlSerializer serializer =
-                            new XmlSerializer(typeof (Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>>));
+                            new XmlSerializer(
+                                typeof (
+                                    Collections.SerializableDictionary
+                                        <string, Collections.SerializableDictionary<UUID, string>>));
                         lock (GroupFeedsLock)
                         {
                             serializer.Serialize(writer, GroupFeeds);
@@ -1332,10 +1341,12 @@ namespace Corrade
                         {
                             HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             XmlSerializer serializer =
-                                new XmlSerializer(typeof (Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>>));
-                            ((
-                                Collections.SerializableDictionary
-                                    <string, Collections.SerializableDictionary<UUID, string>>)
+                                new XmlSerializer(
+                                    typeof (
+                                        Collections.SerializableDictionary
+                                            <string, Collections.SerializableDictionary<UUID, string>>));
+                            ((Collections.SerializableDictionary
+                                <string, Collections.SerializableDictionary<UUID, string>>)
                                 serializer.Deserialize(streamReader)).AsParallel()
                                 .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
                                 .ForAll(o =>
@@ -1525,7 +1536,7 @@ namespace Corrade
                                                         Title = p.Title.Text,
                                                         Summary = p.Summary.Text,
                                                         Date = p.PublishDate,
-                                                        Name =  q.Value,
+                                                        Name = q.Value,
                                                         GroupUUID = q.Key
                                                     }),
                                                 corradeConfiguration.MaximumNotificationThreads);
@@ -6335,7 +6346,9 @@ namespace Corrade
             [Reflection.NameAttribute("attach")] ATTACH,
             [Reflection.NameAttribute("detach")] DETACH,
             [Reflection.NameAttribute("wear")] WEAR,
-            [Reflection.NameAttribute("unwear")] UNWEAR
+            [Reflection.NameAttribute("unwear")] UNWEAR,
+            [Reflection.NameAttribute("post")] POST,
+            [Reflection.NameAttribute("tweet")] TWEET
         }
 
         /// <summary>
@@ -6399,6 +6412,7 @@ namespace Corrade
             /// </summary>
             public const string CLIENT_CHANNEL = @"[Wizardry and Steamworks]:Corrade";
 
+            public const uint TWITTER_MAXIMUM_TWEET_LENGTH = 140;
             public const string CURRENT_OUTFIT_FOLDER_NAME = @"Current Outfit";
             public const string DEFAULT_SERVICE_NAME = @"Corrade";
             public const string LOG_FACILITY = @"Application";
@@ -7514,9 +7528,9 @@ namespace Corrade
         {
             public DateTimeOffset Date;
             public UUID GroupUUID;
+            public string Name;
             public string Summary;
             public string Title;
-            public string Name;
         }
 
         private class OutfitEventArgs : EventArgs
@@ -7720,6 +7734,17 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=facebook>&<group=<UUID|STRING>>&<password=<STRING>>&<token=<ACCESS_TOKEN>>&<action=<post>>&action=post:<message=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("facebook")] [Reflection.NameAttribute("facebook")] FACEBOOK,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=tweet>&<group=<UUID|STRING>>&<password=<STRING>>&<key=<CONSUMER_KEY>>&<secret=<CONSUMER_SECRET>>&<token=<ACCESS_TOKEN>>&<access=<TOKEN_SECRET>>&<action=<post>>&action=post:<message=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("tweet")] [Reflection.NameAttribute("tweet")] TWEET,
+
+            [Reflection.NameAttribute("secret")] SECRET,
+            [Reflection.NameAttribute("token")] TOKEN,
+            [Reflection.NameAttribute("access")] ACCESS,
             [Reflection.NameAttribute("date")] DATE,
             [Reflection.NameAttribute("summary")] SUMMARY,
 

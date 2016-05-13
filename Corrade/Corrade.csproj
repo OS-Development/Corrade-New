@@ -70,8 +70,20 @@
     <Reference Include="CorradeConfiguration">
       <HintPath>..\CorradeConfiguration\bin\Release\CorradeConfiguration.dll</HintPath>
     </Reference>
+    <Reference Include="Facebook, Version=6.0.10.0, Culture=neutral, PublicKeyToken=58cb4f2111d1e6de, processorArchitecture=MSIL">
+      <HintPath>..\packages\Facebook.7.0.6\lib\net45\Facebook.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Hammock.ClientProfile, Version=1.0.0.0, Culture=neutral, PublicKeyToken=c148cfba29ed1a4d, processorArchitecture=MSIL">
+      <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\Hammock.ClientProfile.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Mono.Data.Sqlite">
       <HintPath>..\mono\Mono.Data.Sqlite\Mono.Data.Sqlite.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="OpenMetaverse, Version=0.9.2.3173, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -108,6 +120,10 @@
     </Reference>
     <Reference Include="System.Xml">
       <Private>False</Private>
+    </Reference>
+    <Reference Include="TweetSharp, Version=2.0.0.0, Culture=neutral, PublicKeyToken=c148cfba29ed1a4d, processorArchitecture=MSIL">
+      <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\TweetSharp.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="wasOpenMetaverse">
       <HintPath>..\wasOpenMetaverse\bin\Release\wasOpenMetaverse.dll</HintPath>
@@ -247,6 +263,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\ExportXML.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\Facebook.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Feed.cs">
@@ -750,6 +769,9 @@
     <Compile Include="commands\Corrade\TurnTo.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Twitter.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Typing.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -1036,6 +1058,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <SubType>Designer</SubType>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
