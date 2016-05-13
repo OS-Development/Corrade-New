@@ -7735,12 +7735,12 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=facebook>&<group=<UUID|STRING>>&<password=<STRING>>&<token=<ACCESS_TOKEN>>&<action=<post>>&action=post:<message=<STRING>>&[callback=<STRING>]"
+                "<command=facebook>&<group=<UUID|STRING>>&<password=<STRING>>&<token=<USER_ACCESS_TOKEN>>&<action=<post>>&action=post:[ID=<STRING>]&action=post:[message=<STRING>]&action=post:[name=<STRING>]&action=post:[URL=<STRING>]&action=post:[description=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("facebook")] [Reflection.NameAttribute("facebook")] FACEBOOK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=tweet>&<group=<UUID|STRING>>&<password=<STRING>>&<key=<CONSUMER_KEY>>&<secret=<CONSUMER_SECRET>>&<token=<ACCESS_TOKEN>>&<access=<TOKEN_SECRET>>&<action=<post>>&action=post:<message=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("tweet")] [Reflection.NameAttribute("tweet")] TWEET,
+                "<command=twitter>&<group=<UUID|STRING>>&<password=<STRING>>&<key=<CONSUMER_KEY>>&<secret=<CONSUMER_SECRET>>&<token=<ACCESS_TOKEN>>&<access=<TOKEN_SECRET>>&<action=<post>>&action=post:<message=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("twitter")] [Reflection.NameAttribute("twitter")] TWITTER,
 
             [Reflection.NameAttribute("secret")] SECRET,
             [Reflection.NameAttribute("token")] TOKEN,
