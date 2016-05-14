@@ -111,9 +111,7 @@ namespace Corrade
                                                     false))
                                             {
                                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                             }
                                             Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                         }
@@ -121,9 +119,7 @@ namespace Corrade
                                         {
                                             if (estateList.Count >= Constants.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
                                             {
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED));
+                                                throw new ScriptException(ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED);
                                             }
                                         }
                                     }
@@ -194,9 +190,7 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout, false))
                                             {
                                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                             }
                                             Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                         }
@@ -205,9 +199,7 @@ namespace Corrade
                                             if (estateList.Count >=
                                                 Constants.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
                                             {
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED));
+                                                throw new ScriptException(ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED);
                                             }
                                         }
                                     }
@@ -284,9 +276,7 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout, false))
                                             {
                                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                             }
                                             Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                         }
@@ -294,9 +284,7 @@ namespace Corrade
                                         {
                                             if (estateList.Count >= Constants.ESTATE.MAXIMUM_USER_LIST_LENGTH)
                                             {
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED));
+                                                throw new ScriptException(ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED);
                                             }
                                         }
                                     }
@@ -373,9 +361,7 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout, false))
                                             {
                                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                             }
                                             Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                         }
@@ -384,9 +370,7 @@ namespace Corrade
                                             if (estateList.Count >=
                                                 Constants.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
                                             {
-                                                throw new Exception(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED));
+                                                throw new ScriptException(ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED);
                                             }
                                         }
                                     }

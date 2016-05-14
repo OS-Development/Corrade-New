@@ -65,9 +65,7 @@ namespace Corrade
                                 (name.Length > Constants.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
                                  name.Length < Constants.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
                             {
-                                throw new Exception(
-                                    Reflection.GetNameFromEnumValue(
-                                        ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME));
+                                throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME);
                             }
                             bool succeeded = true;
                             ManualResetEvent SetDisplayNameEvent = new ManualResetEvent(false);

@@ -43,9 +43,7 @@ namespace Corrade
                     if (Helpers.IsSecondLife(Client) &&
                         position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
-                        throw new Exception(
-                            Reflection.GetNameFromEnumValue(
-                                ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE));
+                        throw new ScriptException(ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
                     }
                     Quaternion rotation;
                     if (

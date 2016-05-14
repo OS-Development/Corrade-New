@@ -384,7 +384,7 @@ namespace Corrade
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher SchedulesWatcher = new FileSystemWatcher();
-        private static readonly FileSystemWatcher FeedWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher GroupFeedWatcher = new FileSystemWatcher();
         private static readonly object AIMLBotLock = new object();
         private static readonly object ConfigurationFileLock = new object();
         private static readonly object ClientLogFileLock = new object();
@@ -1291,7 +1291,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveGroupFeedState = () =>
         {
-            FeedWatcher.EnableRaisingEvents = false;
+            GroupFeedWatcher.EnableRaisingEvents = false;
             try
             {
                 using (
@@ -1319,7 +1319,7 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_FEEDS_STATE),
                     e.Message);
             }
-            FeedWatcher.EnableRaisingEvents = true;
+            GroupFeedWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
@@ -2948,13 +2948,13 @@ namespace Corrade
             FileSystemEventHandler HandleGroupFeedsFileChanged = null;
             try
             {
-                FeedWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
+                GroupFeedWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
-                FeedWatcher.Filter = CORRADE_CONSTANTS.FEEDS_STATE_FILE;
-                FeedWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                GroupFeedWatcher.Filter = CORRADE_CONSTANTS.FEEDS_STATE_FILE;
+                GroupFeedWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleGroupFeedsFileChanged = (sender, args) => GroupFeedsChangedTimer.Change(1000, 0);
-                FeedWatcher.Changed += HandleGroupFeedsFileChanged;
-                FeedWatcher.EnableRaisingEvents = true;
+                GroupFeedWatcher.Changed += HandleGroupFeedsFileChanged;
+                GroupFeedWatcher.EnableRaisingEvents = true;
             }
             catch (Exception ex)
             {
@@ -3146,6 +3146,64 @@ namespace Corrade
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
             // Now log-out.
             Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
+            // Disable the configuration watcher.
+            try
+            {
+                ConfigurationWatcher.EnableRaisingEvents = false;
+                ConfigurationWatcher.Changed -= HandleConfigurationFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Disable the notifications watcher.
+            try
+            {
+                NotificationsWatcher.EnableRaisingEvents = false;
+                NotificationsWatcher.Changed -= HandleNotificationsFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Disable the group schedule watcher.
+            try
+            {
+                SchedulesWatcher.EnableRaisingEvents = false;
+                SchedulesWatcher.Changed -= HandleGroupSchedulesFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Disable the AIML bot configuration watcher.
+            try
+            {
+                AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Disable the RSS feeds watcher.
+            try
+            {
+                GroupFeedWatcher.EnableRaisingEvents = false;
+                GroupFeedWatcher.Changed -= HandleGroupFeedsFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Save the AIML user session.
+            lock (AIMLBotLock)
+            {
+                if (AIMLBotBrainCompiled)
+                {
+                    SaveChatBotFiles.Invoke();
+                }
+            }
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
             Client.Network.SimChanged -= HandleRadarObjects;
@@ -3313,54 +3371,6 @@ namespace Corrade
                     o.Key.Accept = false;
                     o.Value.Set();
                 });
-            }
-            // Disable the configuration watcher.
-            try
-            {
-                ConfigurationWatcher.EnableRaisingEvents = false;
-                ConfigurationWatcher.Changed -= HandleConfigurationFileChanged;
-            }
-            catch (Exception)
-            {
-                /* We are going down and we do not care. */
-            }
-            // Disable the notifications watcher.
-            try
-            {
-                NotificationsWatcher.EnableRaisingEvents = false;
-                NotificationsWatcher.Changed -= HandleNotificationsFileChanged;
-            }
-            catch (Exception)
-            {
-                /* We are going down and we do not care. */
-            }
-            // Disable the group schedule watcher.
-            try
-            {
-                SchedulesWatcher.EnableRaisingEvents = false;
-                SchedulesWatcher.Changed -= HandleGroupSchedulesFileChanged;
-            }
-            catch (Exception)
-            {
-                /* We are going down and we do not care. */
-            }
-            // Disable the AIML bot configuration watcher.
-            try
-            {
-                AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
-            }
-            catch (Exception)
-            {
-                /* We are going down and we do not care. */
-            }
-            // Save the AIML user session.
-            lock (AIMLBotLock)
-            {
-                if (AIMLBotBrainCompiled)
-                {
-                    SaveChatBotFiles.Invoke();
-                }
             }
             // Logout
             if (Client.Network.Connected)

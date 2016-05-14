@@ -221,9 +221,7 @@ namespace Corrade
                                 ManagedImage managedImage;
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                 {
-                                    throw new Exception(
-                                        Reflection.GetNameFromEnumValue(
-                                            ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                    throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                 }
                                 using (MemoryStream imageStream = new MemoryStream())
                                 {
@@ -250,9 +248,7 @@ namespace Corrade
                                     }
                                     catch (Exception)
                                     {
-                                        throw new Exception(
-                                            Reflection.GetNameFromEnumValue(
-                                                ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                        throw new ScriptException(ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
                                     }
                                     lock (LockObject)
                                     {

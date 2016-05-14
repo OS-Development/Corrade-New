@@ -122,9 +122,7 @@ namespace Corrade
                                         }
                                         catch (Exception)
                                         {
-                                            throw new Exception(
-                                                Reflection.GetNameFromEnumValue(
-                                                    ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED));
+                                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
                                         }
                                     }
                                     break;
