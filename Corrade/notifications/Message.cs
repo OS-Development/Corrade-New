@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -30,7 +31,8 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
+                    IEnumerable<string> name =
+                        wasOpenMetaverse.Helpers.GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
                     if (name != null)
                     {
                         List<string> fullName = new List<string>(name);
@@ -46,6 +48,8 @@ namespace Corrade
                         notificationInstantMessage.IM.FromAgentID.ToString());
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                         notificationInstantMessage.IM.Message);
+                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATE),
+                        notificationInstantMessage.IM.Timestamp.ToString(Constants.LSL.DATE_TIME_STAMP));
                 };
         }
     }

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -31,6 +32,30 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
+                    IEnumerable<string> name =
+                        wasOpenMetaverse.Helpers.GetAvatarNames(scriptQuestionEventArgs.ObjectOwnerName);
+                    if (name != null)
+                    {
+                        List<string> fullName = new List<string>(name);
+                        if (fullName.Count.Equals(2))
+                        {
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                fullName.First());
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                fullName.Last());
+
+                            UUID agentUUID = UUID.Zero;
+                            if (Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
+                            {
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
+                                    agentUUID.ToString());
+                            }
+                        }
+                    }
+                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
+                        scriptQuestionEventArgs.ObjectName);
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                         scriptQuestionEventArgs.ItemID.ToString());
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TASK),
