@@ -310,6 +310,12 @@
     <Compile Include="commands\Corrade\GetConnectedRegions.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetCurrentGroups.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetCurrentGroupsData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetEstateCovenant.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -338,6 +344,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetGroupMemberData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetGroupsData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetInventoryData.cs">

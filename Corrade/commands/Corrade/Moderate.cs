@@ -26,8 +26,26 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    UUID groupUUID;
+                    string target = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            corradeCommandParameters.Message));
+                    switch (string.IsNullOrEmpty(target))
+                    {
+                        case false:
+                            if (!UUID.TryParse(target, out groupUUID) &&
+                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            break;
+                        default:
+                            groupUUID = corradeCommandParameters.Group.UUID;
+                            break;
+                    }
                     if (
-                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.ModerateChat,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
@@ -62,7 +80,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -89,7 +107,7 @@ namespace Corrade
                         case Type.VOICE:
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.ModerateChatSessions(corradeCommandParameters.Group.UUID, agentUUID,
+                                Client.Self.ModerateChatSessions(groupUUID, agentUUID,
                                     Reflection.GetNameFromEnumValue(type),
                                     silence);
                             }

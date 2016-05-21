@@ -30,7 +30,6 @@ namespace Corrade
                     }
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
-
                     ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();

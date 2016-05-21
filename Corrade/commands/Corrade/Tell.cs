@@ -131,6 +131,24 @@ namespace Corrade
                             }
                             break;
                         case Entity.GROUP:
+                            UUID groupUUID;
+                            string target = wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                                    corradeCommandParameters.Message));
+                            switch (string.IsNullOrEmpty(target))
+                            {
+                                case false:
+                                    if (!UUID.TryParse(target, out groupUUID) &&
+                                        !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                            corradeConfiguration.DataTimeout,
+                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                        throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                                    break;
+                                default:
+                                    groupUUID = corradeCommandParameters.Group.UUID;
+                                    break;
+                            }
                             IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                             if (
                                 !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
@@ -138,7 +156,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                             }
-                            if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                            if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                             {
                                 throw new ScriptException(ScriptError.NOT_IN_GROUP);
                             }
@@ -152,13 +170,13 @@ namespace Corrade
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 gotChatSession =
-                                    Client.Self.GroupChatSessions.ContainsKey(corradeCommandParameters.Group.UUID);
+                                    Client.Self.GroupChatSessions.ContainsKey(groupUUID);
                             }
                             if (!gotChatSession)
                             {
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                        corradeCommandParameters.Group.UUID,
+                                        groupUUID,
                                         GroupPowers.JoinChat,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
@@ -167,7 +185,7 @@ namespace Corrade
                                 }
 
                                 if (
-                                    !Services.JoinGroupChat(Client, corradeCommandParameters.Group.UUID,
+                                    !Services.JoinGroupChat(Client, groupUUID,
                                         corradeConfiguration.ServicesTimeout))
                                 {
                                     throw new ScriptException(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
@@ -175,10 +193,10 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.InstantMessageGroup(corradeCommandParameters.Group.UUID, data);
+                                Client.Self.InstantMessageGroup(groupUUID, data);
                             }
                             corradeConfiguration.Groups.AsParallel().Where(
-                                o => o.UUID.Equals(corradeCommandParameters.Group.UUID) && o.ChatLogEnabled).ForAll(
+                                o => o.UUID.Equals(groupUUID) && o.ChatLogEnabled).ForAll(
                                     o =>
                                     {
                                         CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>

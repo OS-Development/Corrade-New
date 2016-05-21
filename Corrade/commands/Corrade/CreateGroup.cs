@@ -27,9 +27,15 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    string target = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(target))
+                        target = corradeCommandParameters.Group.Name;
                     // if the grid is SecondLife and the group name length exceeds the allowed length...
                     if (Helpers.IsSecondLife(Client) &&
-                        corradeCommandParameters.Group.Name.Length > Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
+                        target.Length > Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
                     }
@@ -49,7 +55,7 @@ namespace Corrade
                     }
                     Group targetGroup = new Group
                     {
-                        Name = corradeCommandParameters.Group.Name
+                        Name = target
                     };
                     wasCSVToStructure(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),

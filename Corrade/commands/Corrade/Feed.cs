@@ -36,7 +36,7 @@ namespace Corrade
                     string name = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
-                    if(string.IsNullOrEmpty(name))
+                    if (string.IsNullOrEmpty(name))
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     Action action =
                         Reflection.GetEnumValueFromName<Action>(
@@ -83,9 +83,9 @@ namespace Corrade
                                     return;
                                 }
                                 GroupFeeds.Add(url, new Collections.SerializableDictionary<UUID, string>
-                                    {
-                                        {corradeCommandParameters.Group.UUID, name}
-                                    });
+                                {
+                                    {corradeCommandParameters.Group.UUID, name}
+                                });
                             }
                             break;
                         case Action.REMOVE:

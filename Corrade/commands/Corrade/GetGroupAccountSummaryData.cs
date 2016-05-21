@@ -27,6 +27,24 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    UUID groupUUID;
+                    string target = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            corradeCommandParameters.Message));
+                    switch (string.IsNullOrEmpty(target))
+                    {
+                        case false:
+                            if (!UUID.TryParse(target, out groupUUID) &&
+                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            break;
+                        default:
+                            groupUUID = corradeCommandParameters.Group.UUID;
+                            break;
+                    }
                     int days;
                     if (
                         !int.TryParse(
@@ -59,7 +77,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                        Client.Groups.RequestGroupAccountSummary(corradeCommandParameters.Group.UUID, days, interval);
+                        Client.Groups.RequestGroupAccountSummary(groupUUID, days, interval);
                         if (
                             !RequestGroupAccountSummaryEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
                                 false))

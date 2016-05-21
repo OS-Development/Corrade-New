@@ -26,11 +26,26 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    UUID groupUUID;
+                    string target = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            corradeCommandParameters.Message));
+                    switch (string.IsNullOrEmpty(target))
+                    {
+                        case false:
+                            if (!UUID.TryParse(target, out groupUUID) &&
+                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            break;
+                        default:
+                            groupUUID = corradeCommandParameters.Group.UUID;
+                            break;
+                    }
                     Group dataGroup = new Group();
-                    if (
-                        !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
-                            corradeConfiguration.ServicesTimeout,
-                            ref dataGroup))
+                    if (!Services.RequestGroup(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref dataGroup))
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }

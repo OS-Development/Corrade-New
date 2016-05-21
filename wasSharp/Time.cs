@@ -200,11 +200,11 @@ namespace wasSharp
             [Flags]
             public enum DECAY_TYPE
             {
-                [XmlEnum(Name = "none")] NONE = 0,
-                [XmlEnum(Name = "arithmetic")] ARITHMETIC = 1,
-                [XmlEnum(Name = "geometric")] GEOMETRIC = 2,
-                [XmlEnum(Name = "harmonic")] HARMONIC = 4,
-                [XmlEnum(Name = "weighted")] WEIGHTED = 5
+                [Reflection.NameAttribute("none")] [XmlEnum(Name = "none")] NONE = 0,
+                [Reflection.NameAttribute("arithmetic")] [XmlEnum(Name = "arithmetic")] ARITHMETIC = 1,
+                [Reflection.NameAttribute("geometric")] [XmlEnum(Name = "geometric")] GEOMETRIC = 2,
+                [Reflection.NameAttribute("harmonic")] [XmlEnum(Name = "harmonic")] HARMONIC = 4,
+                [Reflection.NameAttribute("weighted")] [XmlEnum(Name = "weighted")] WEIGHTED = 5
             }
 
             private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;

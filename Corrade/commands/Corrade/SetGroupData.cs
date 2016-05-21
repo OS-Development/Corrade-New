@@ -27,6 +27,24 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    UUID groupUUID;
+                    string target = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            corradeCommandParameters.Message));
+                    switch (string.IsNullOrEmpty(target))
+                    {
+                        case false:
+                            if (!UUID.TryParse(target, out groupUUID) &&
+                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            break;
+                        default:
+                            groupUUID = corradeCommandParameters.Group.UUID;
+                            break;
+                    }
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
@@ -34,7 +52,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -46,7 +64,7 @@ namespace Corrade
                     }
                     Group targetGroup = new Group();
                     if (
-                        !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
+                        !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
                     {
@@ -62,7 +80,7 @@ namespace Corrade
                             case "AllowPublish":
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                        corradeCommandParameters.Group.UUID,
+                                        groupUUID,
                                         GroupPowers.ChangeIdentity,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
@@ -75,7 +93,7 @@ namespace Corrade
                             case "OpenEnrollment":
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                        corradeCommandParameters.Group.UUID,
+                                        groupUUID,
                                         GroupPowers.ChangeOptions,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
@@ -87,7 +105,7 @@ namespace Corrade
                             case "ShowInList":
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                        corradeCommandParameters.Group.UUID,
+                                        groupUUID,
                                         GroupPowers.FindPlaces,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
@@ -105,10 +123,10 @@ namespace Corrade
                     wasCSVToStructure(data, ref targetGroup);
                     lock (Locks.ClientInstanceGroupsLock)
                     {
-                        Client.Groups.SetGroupAcceptNotices(corradeCommandParameters.Group.UUID,
+                        Client.Groups.SetGroupAcceptNotices(groupUUID,
                             targetGroup.AcceptNotices,
                             targetGroup.ListInProfile);
-                        Client.Groups.UpdateGroup(corradeCommandParameters.Group.UUID, targetGroup);
+                        Client.Groups.UpdateGroup(groupUUID, targetGroup);
                     }
                 };
         }

@@ -1303,9 +1303,8 @@ namespace Corrade
                     {
                         XmlSerializer serializer =
                             new XmlSerializer(
-                                typeof (
-                                    Collections.SerializableDictionary
-                                        <string, Collections.SerializableDictionary<UUID, string>>));
+                                typeof (Collections.SerializableDictionary
+                                    <string, Collections.SerializableDictionary<UUID, string>>));
                         lock (GroupFeedsLock)
                         {
                             serializer.Serialize(writer, GroupFeeds);
@@ -1342,9 +1341,8 @@ namespace Corrade
                             HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             XmlSerializer serializer =
                                 new XmlSerializer(
-                                    typeof (
-                                        Collections.SerializableDictionary
-                                            <string, Collections.SerializableDictionary<UUID, string>>));
+                                    typeof (Collections.SerializableDictionary
+                                        <string, Collections.SerializableDictionary<UUID, string>>));
                             ((Collections.SerializableDictionary
                                 <string, Collections.SerializableDictionary<UUID, string>>)
                                 serializer.Deserialize(streamReader)).AsParallel()
@@ -7745,6 +7743,18 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=getcurrentgroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getcurrentgroupsdata")] [Reflection.NameAttribute("getcurrentgroupsdata")] GETCURRENTGROUPSDATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=getcurrentgroups>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getcurrentgroups")] [Reflection.NameAttribute("getcurrentgroups")] GETCURRENTGROUPS,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=getgroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<target=<UUID|STRING,...>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupsdata")] [Reflection.NameAttribute("getgroupsdata")] GETGROUPSDATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=facebook>&<group=<UUID|STRING>>&<password=<STRING>>&<token=<USER_ACCESS_TOKEN>>&<action=<post>>&action=post:[ID=<STRING>]&action=post:[message=<STRING>]&action=post:[name=<STRING>]&action=post:[URL=<STRING>]&action=post:[description=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("facebook")] [Reflection.NameAttribute("facebook")] FACEBOOK,
 
@@ -8440,7 +8450,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("returnprimitives")] [Reflection.NameAttribute("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,GroupUUID...]>>&[callback=<STRING>]"
+                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&[target=<STRING|UUID>]&<data=<Group[,Group...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupdata")] [Reflection.NameAttribute("getgroupdata")] GETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(

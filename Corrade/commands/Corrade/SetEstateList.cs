@@ -370,7 +370,8 @@ namespace Corrade
                                             if (estateList.Count >=
                                                 Constants.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
                                             {
-                                                throw new ScriptException(ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED);
+                                                throw new ScriptException(
+                                                    ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED);
                                             }
                                         }
                                     }

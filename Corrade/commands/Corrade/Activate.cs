@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -26,6 +27,24 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    UUID groupUUID;
+                    string target = wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            corradeCommandParameters.Message));
+                    switch (string.IsNullOrEmpty(target))
+                    {
+                        case false:
+                            if (!UUID.TryParse(target, out groupUUID) &&
+                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            break;
+                        default:
+                            groupUUID = corradeCommandParameters.Group.UUID;
+                            break;
+                    }
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
@@ -33,13 +52,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     lock (Locks.ClientInstanceGroupsLock)
                     {
-                        Client.Groups.ActivateGroup(corradeCommandParameters.Group.UUID);
+                        Client.Groups.ActivateGroup(groupUUID);
                     }
                 };
         }
