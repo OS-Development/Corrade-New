@@ -99,74 +99,75 @@ namespace Corrade
                             string item = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(item))
+                            if (!string.IsNullOrEmpty(item))
                             {
-                                throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
-                            }
-                            InventoryItem inventoryItem;
-                            UUID itemUUID;
-                            if (UUID.TryParse(item, out itemUUID))
-                            {
-                                InventoryBase inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                        itemUUID
-                                        ).FirstOrDefault();
-                                if (inventoryBaseItem == null)
+                                InventoryItem inventoryItem;
+                                UUID itemUUID;
+                                if (UUID.TryParse(item, out itemUUID))
+                                {
+                                    InventoryBase inventoryBaseItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            itemUUID
+                                            ).FirstOrDefault();
+                                    if (inventoryBaseItem == null)
+                                    {
+                                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                    }
+                                    inventoryItem = inventoryBaseItem as InventoryItem;
+                                }
+                                else
+                                {
+                                    // attempt regex and then fall back to string
+                                    InventoryBase inventoryBaseItem = null;
+                                    try
+                                    {
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client,
+                                                Client.Inventory.Store.RootNode,
+                                                new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                                .FirstOrDefault();
+                                    }
+                                    catch (Exception)
+                                    {
+                                        // not a regex so we do not care
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client,
+                                                Client.Inventory.Store.RootNode,
+                                                item)
+                                                .FirstOrDefault();
+                                    }
+                                    if (inventoryBaseItem == null)
+                                    {
+                                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                    }
+                                    inventoryItem = inventoryBaseItem as InventoryItem;
+                                }
+                                if (inventoryItem == null)
                                 {
                                     throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                                 }
-                                inventoryItem = inventoryBaseItem as InventoryItem;
-                            }
-                            else
-                            {
-                                // attempt regex and then fall back to string
-                                InventoryBase inventoryBaseItem = null;
-                                try
+                                // Sending a notice attachment requires copy and transfer permission on the object.
+                                if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Copy) ||
+                                    !inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
                                 {
-                                    inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                            .FirstOrDefault();
+                                    throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
                                 }
-                                catch (Exception)
+                                // Set requested permissions if any on the item.
+                                string permissions = wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                        corradeCommandParameters.Message));
+                                if (!string.IsNullOrEmpty(permissions))
                                 {
-                                    // not a regex so we do not care
-                                    inventoryBaseItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            item)
-                                            .FirstOrDefault();
+                                    if (
+                                        !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
+                                            corradeConfiguration.ServicesTimeout))
+                                    {
+                                        throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                    }
                                 }
-                                if (inventoryBaseItem == null)
-                                {
-                                    throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                }
-                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                notice.AttachmentID = inventoryItem.UUID;
                             }
-                            if (inventoryItem == null)
-                            {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            // Sending a notice attachment requires copy and transfer permission on the object.
-                            if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Copy) ||
-                                !inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
-                            {
-                                throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
-                            }
-                            // Set requested permissions if any on the item.
-                            string permissions = wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                    corradeCommandParameters.Message));
-                            if (!string.IsNullOrEmpty(permissions))
-                            {
-                                if (
-                                    !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
-                                        corradeConfiguration.ServicesTimeout))
-                                {
-                                    throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
-                                }
-                            }
-                            notice.AttachmentID = inventoryItem.UUID;
                             lock (Locks.ClientInstanceGroupsLock)
                             {
                                 Client.Groups.SendGroupNotice(groupUUID, notice);
