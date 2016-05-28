@@ -199,8 +199,9 @@ namespace Corrade
                     }
 
                     // allow partial results
-                    Services.UpdateAvatars(Client, ref avatars, corradeConfiguration.ServicesTimeout,
-                        corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType));
+                    Services.UpdateAvatars(Client, ref avatars, range, corradeConfiguration.Range,
+                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType));
 
                     List<string> data = new List<string>();
 

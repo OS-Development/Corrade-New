@@ -406,7 +406,7 @@ namespace wasOpenMetaverse
                     lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                        lock (Locks.ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.Movement.Camera.Far = range;
                         }
@@ -416,7 +416,7 @@ namespace wasOpenMetaverse
                             Client.Network.Simulators.AsParallel().Select(o => o.ObjectsPrimitives)
                                 .Select(o => o.Copy().Values)
                                 .SelectMany(o => o);
-                        lock (Locks.ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.Movement.Camera.Far = maxRange;
                         }
@@ -461,11 +461,60 @@ namespace wasOpenMetaverse
                     Client.Objects.SelectObject(Client.Network.Simulators.AsParallel()
                         .FirstOrDefault(p => p.Handle.Equals(updatePrimitive.RegionHandle)), updatePrimitive.LocalID,
                         true);
+                    ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
+                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+                }
+            } while (primitiveQueue.Any());
+            return primitiveUpdatesCount.Equals(primitives.Count);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Updates a set of primitives by scanning their properties.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="primitives">a list of primitives to update</param>
+        /// <param name="range">the range in which to search in</param>
+        /// <param name="maxRange">the maximum range in which to search in</param>
+        /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
+        /// <returns>a list of updated primitives</returns>
+        public static bool UpdatePrimitives(GridClient Client, ref HashSet<Primitive> primitives, float range,
+            float maxRange, uint dataTimeout)
+        {
+            int primitiveUpdatesCount = 0;
+            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
+            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
+                (sender, args) =>
+                {
+                    Interlocked.Increment(ref primitiveUpdatesCount);
+                    ObjectPropertiesEvent.Set();
+                };
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.Movement.Camera.Far = range;
+            }
+            BlockingQueue<Primitive> primitiveQueue = new BlockingQueue<Primitive>(primitives);
+            do
+            {
+                Primitive updatePrimitive = primitiveQueue.Dequeue();
+                lock (Locks.ClientInstanceObjectsLock)
+                {
+                    Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+                    ObjectPropertiesEvent.Reset();
+                    Client.Objects.SelectObject(Client.Network.Simulators.AsParallel()
+                        .FirstOrDefault(p => p.Handle.Equals(updatePrimitive.RegionHandle)), updatePrimitive.LocalID,
+                        true);
                     ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 }
             } while (primitiveQueue.Any());
-            return primitiveUpdatesCount.Equals(primitives.Count());
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.Movement.Camera.Far = maxRange;
+            }
+            return primitiveUpdatesCount.Equals(primitives.Count);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -476,9 +525,11 @@ namespace wasOpenMetaverse
         /// </summary>
         /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="primitive">a primitive to update</param>
+        /// <param name="range">the range in which to search in</param>
+        /// <param name="maxRange">the maximum range in which to search in</param>
         /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
         /// <returns>a list of updated primitives</returns>
-        public static bool UpdatePrimitives(GridClient Client, ref Primitive primitive, uint dataTimeout)
+        public static bool UpdatePrimitives(GridClient Client, ref Primitive primitive, float range, float maxRange, uint dataTimeout)
         {
             int primitiveUpdatesCount = 0;
             ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
@@ -488,6 +539,10 @@ namespace wasOpenMetaverse
                     Interlocked.Increment(ref primitiveUpdatesCount);
                     ObjectPropertiesEvent.Set();
                 };
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.Movement.Camera.Far = range;
+            }
             Primitive updatePrimitive = primitive;
             lock (Locks.ClientInstanceObjectsLock)
             {
@@ -498,6 +553,10 @@ namespace wasOpenMetaverse
                     true);
                 ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+            }
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.Movement.Camera.Far = maxRange;
             }
             return primitiveUpdatesCount.Equals(1);
         }
@@ -533,7 +592,7 @@ namespace wasOpenMetaverse
                     lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.AvatarUpdate += AvatarUpdateEventHandler;
-                        lock (Locks.ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.Movement.Camera.Far = range;
                         }
@@ -543,7 +602,7 @@ namespace wasOpenMetaverse
                             Client.Network.Simulators.AsParallel().Select(o => o.ObjectsAvatars)
                                 .Select(o => o.Copy().Values)
                                 .SelectMany(o => o);
-                        lock (Locks.ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.Movement.Camera.Far = maxRange;
                         }
@@ -565,11 +624,13 @@ namespace wasOpenMetaverse
         /// </summary>
         /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="avatars">a list of avatars to update</param>
+        /// <param name="range">the range in which to search in</param>
+        /// <param name="maxRange">the maximum range in which to search in</param>
         /// <param name="millisecondsTimeout">the amount of time in milliseconds to timeout</param>
         /// <param name="dataTimeout">the data timeout</param>
         /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <returns>true if any avatars were updated</returns>
-        public static bool UpdateAvatars(GridClient Client, ref HashSet<Avatar> avatars, uint millisecondsTimeout,
+        public static bool UpdateAvatars(GridClient Client, ref HashSet<Avatar> avatars, float range, float maxRange, uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
             HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
@@ -620,6 +681,10 @@ namespace wasOpenMetaverse
                         avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                     }
                 };
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.Movement.Camera.Far = range;
+            }
             lock (Locks.ClientInstanceAvatarsLock)
             {
                 Parallel.ForEach(scansAvatars, o =>
@@ -645,7 +710,10 @@ namespace wasOpenMetaverse
                     Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                 });
             }
-
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.Movement.Camera.Far = maxRange;
+            }
             if (
                 avatarUpdates.Values.AsParallel()
                     .Any(
@@ -737,7 +805,7 @@ namespace wasOpenMetaverse
                     }
                 }
             });
-            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
+            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, range, maxRange, dataTimeout))
                 return false;
             Primitive localPrimitive =
                 primitives.FirstOrDefault(o => o.ID.Equals(item));
@@ -824,7 +892,7 @@ namespace wasOpenMetaverse
                     primitives.Add(o);
                 }
             });
-            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
+            if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, range, maxRange, dataTimeout))
                 return false;
             Primitive localPrimitive =
                 primitives.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));

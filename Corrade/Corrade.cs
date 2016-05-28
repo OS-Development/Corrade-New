@@ -1951,7 +1951,7 @@ namespace Corrade
             // Handle arrays and lists
             if (data is Array || data is IList)
             {
-                IList iList = (IList) data;
+                IList iList = (IList)data;
                 foreach (object item in iList.Cast<object>().Where(o => o != null))
                 {
                     // These are index collections so pre-prend an index.
@@ -1990,7 +1990,7 @@ namespace Corrade
             // Handle Dictionary
             if (data is IDictionary)
             {
-                IDictionary dictionary = (IDictionary) data;
+                IDictionary dictionary = (IDictionary)data;
                 foreach (DictionaryEntry entry in dictionary)
                 {
                     // First the keys.
@@ -2112,7 +2112,7 @@ namespace Corrade
             // Handle date and time as an LSL timestamp
             if (data is DateTime)
             {
-                yield return ((DateTime) data).ToString(Constants.LSL.DATE_TIME_STAMP);
+                yield return ((DateTime)data).ToString(Constants.LSL.DATE_TIME_STAMP);
             }
 
             string @string = data.ToString();
@@ -5195,7 +5195,6 @@ namespace Corrade
                 case false:
                     return result.SelectMany(o => o);
             }
-            List<string> data;
             object LockObject = new object();
             CSV.ToEnumerable(query).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
             {
@@ -5203,28 +5202,24 @@ namespace Corrade
                     wasGetFields(structure, structure.GetType().Name).ToArray().AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
-                lock (LockObject)
-                {
-                    data = new List<string> {name};
-                    data.AddRange(wasGetInfo(fi.Key, fi.Value));
-                    if (data.Count >= 2)
-                    {
-                        result.Add(data.ToArray());
-                    }
-                }
-
                 KeyValuePair<PropertyInfo, object> pi =
                     wasGetProperties(structure, structure.GetType().Name).ToArray().AsParallel().FirstOrDefault(
                         o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
+                List<string> data = new List<string> {name};
+                List<string> info = wasGetInfo(fi.Key, fi.Value).Union(wasGetInfo(pi.Key, pi.Value)).ToList();
+                switch (info.Count.Equals(0))
+                {
+                    case true:
+                        data.Add(string.Empty);
+                        break;
+                    default:
+                        data.AddRange(info);
+                        break;
+                }
                 lock (LockObject)
                 {
-                    data = new List<string> {name};
-                    data.AddRange(wasGetInfo(pi.Key, pi.Value));
-                    if (data.Count >= 2)
-                    {
-                        result.Add(data.ToArray());
-                    }
+                    result.Add(data.ToArray());
                 }
             });
             return result.SelectMany(o => o);

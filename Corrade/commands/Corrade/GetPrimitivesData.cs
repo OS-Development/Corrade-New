@@ -219,7 +219,8 @@ namespace Corrade
                     }
 
                     // allow partial results
-                    Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
+                    Services.UpdatePrimitives(Client, ref updatePrimitives, range, corradeConfiguration.Range,
+                        corradeConfiguration.DataTimeout);
 
                     List<string> data = new List<string>();
                     Parallel.ForEach(updatePrimitives, o =>

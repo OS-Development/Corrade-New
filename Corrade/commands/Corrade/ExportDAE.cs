@@ -125,7 +125,9 @@ namespace Corrade
                         });
 
                     // update the primitives in the link set
-                    if (!Services.UpdatePrimitives(Client, ref exportPrimitivesSet, corradeConfiguration.DataTimeout))
+                    if (
+                        !Services.UpdatePrimitives(Client, ref exportPrimitivesSet, range, corradeConfiguration.Range,
+                            corradeConfiguration.DataTimeout))
                         throw new ScriptException(ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES);
 
                     // add all the textures to export
