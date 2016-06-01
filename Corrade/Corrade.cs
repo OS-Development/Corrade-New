@@ -1679,13 +1679,15 @@ namespace Corrade
                             continue;
                         }
                     }
-
+                    
                     if (memberCount.Any())
                     {
                         if (!memberCount.Dequeue().Equals(groupMembers.Count))
                         {
+                            bool groupMembersChanged = false;
                             if (joinedMembers.Any())
                             {
+                                groupMembersChanged = true;
                                 Parallel.ForEach(
                                     joinedMembers,
                                     o =>
@@ -1719,6 +1721,7 @@ namespace Corrade
                             }
                             if (partedMembers.Any())
                             {
+                                groupMembersChanged = true;
                                 Parallel.ForEach(
                                     partedMembers,
                                     o =>
@@ -1749,20 +1752,22 @@ namespace Corrade
                                     });
                                 partedMembers.Clear();
                             }
+                            if (groupMembersChanged)
+                            {
+                                lock (GroupMembersLock)
+                                {
+                                    GroupMembers[groupUUID].Clear();
+                                    Parallel.ForEach(groupMembers, o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            GroupMembers[groupUUID].Add(o);
+                                        }
+                                    });
+                                }
+                            }
                         }
                     }
-                    lock (GroupMembersLock)
-                    {
-                        GroupMembers[groupUUID].Clear();
-                        Parallel.ForEach(groupMembers, o =>
-                        {
-                            lock (LockObject)
-                            {
-                                GroupMembers[groupUUID].Add(o);
-                            }
-                        });
-                    }
-                    groupMembers.Clear();
                 } while (groupUUIDs.Any() && runGroupMembershipSweepThread);
             }
         }
