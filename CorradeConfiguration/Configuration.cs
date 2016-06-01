@@ -421,7 +421,7 @@ namespace CorradeConfiguration
             }
         }
 
-        public bool EnableAIML
+        public bool EnableSIML
         {
             get
             {

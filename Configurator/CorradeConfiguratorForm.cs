@@ -116,8 +116,8 @@ namespace Configurator
                 mainForm.AESIV.Text = Encoding.UTF8.GetString(corradeConfiguration.AESIV);
             }
 
-            // AIML
-            mainForm.AIMLEnabled.Checked = corradeConfiguration.EnableAIML;
+            // SIML
+            mainForm.SIMLEnabled.Checked = corradeConfiguration.EnableSIML;
             // RLV
             mainForm.RLVEnabled.Checked = corradeConfiguration.EnableRLV;
 
@@ -294,8 +294,8 @@ namespace Configurator
                     break;
             }
 
-            // AIML
-            corradeConfiguration.EnableAIML = mainForm.AIMLEnabled.Checked;
+            // SIML
+            corradeConfiguration.EnableSIML = mainForm.SIMLEnabled.Checked;
             // RLV
             corradeConfiguration.EnableRLV = mainForm.RLVEnabled.Checked;
 
@@ -1773,7 +1773,7 @@ namespace Configurator
                             {
                                 throw new Exception("error in AIML section");
                             }
-                            corradeConfiguration.EnableAIML = enable;
+                            corradeConfiguration.EnableSIML = enable;
                             break;
                     }
             }

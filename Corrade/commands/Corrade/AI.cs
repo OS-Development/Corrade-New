@@ -7,9 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using AIMLbot;
 using CorradeConfiguration;
+using Syn.Bot;
 using wasSharp;
 
 namespace Corrade
@@ -41,67 +40,32 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_MESSAGE_PROVIDED);
                             }
-                            if (AIMLBot.isAcceptingUserInput)
+                            lock (SIMLBotLock)
                             {
-                                lock (AIMLBotLock)
-                                {
-                                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                                        AIMLBot.Chat(new Request(request, AIMLBotUser, AIMLBot)).Output);
-                                }
-                            }
-                            break;
-                        case Action.ENABLE:
-                            lock (AIMLBotLock)
-                            {
-                                switch (!AIMLBotBrainCompiled)
-                                {
-                                    case true:
-                                        new Thread(
-                                            () =>
-                                            {
-                                                lock (AIMLBotLock)
-                                                {
-                                                    LoadChatBotFiles.Invoke();
-                                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                                }
-                                            })
-                                        {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
-                                        break;
-                                    default:
-                                        AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                        AIMLBot.isAcceptingUserInput = true;
-                                        break;
-                                }
-                            }
-                            break;
-                        case Action.DISABLE:
-                            lock (AIMLBotLock)
-                            {
-                                AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                                AIMLBot.isAcceptingUserInput = false;
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                    SynBot.Chat(new ChatRequest(request, SynBotUser)).BotMessage);
                             }
                             break;
                         case Action.REBUILD:
-                            lock (AIMLBotLock)
+                            lock (SIMLBotLock)
                             {
-                                AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                                string AIMLBotBrain =
-                                    Path.Combine(
-                                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
-                                if (File.Exists(AIMLBotBrain))
+                                SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                                string SIMLPackage = Path.Combine(
+                                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                                    SIML_BOT_CONSTANTS.PACKAGE_FILE);
+                                if (File.Exists(SIMLPackage))
                                 {
                                     try
                                     {
-                                        File.Delete(AIMLBotBrain);
+                                        File.Delete(SIMLPackage);
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_REMOVE_BRAIN_FILE);
+                                        throw new ScriptException(ScriptError.COULD_NOT_REMOVE_SIML_PACKAGE_FILE);
                                     }
                                 }
                                 LoadChatBotFiles.Invoke();
-                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                             }
                             break;
                         default:

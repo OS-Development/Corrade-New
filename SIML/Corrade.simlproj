@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<simlproject>
+  <name>Corrade</name>
+  <directory>Corrade</directory>
+  <botname>Corrade</botname>
+  <personality>Corrade</personality>
+  <author>Wizardry and Steamworks</author>
+  <description>Corrade OpenMetaverse Scripted Agents</description>
+  <date>12:56:25, 1 June 2016</date>
+  <notes></notes>
+</simlproject>

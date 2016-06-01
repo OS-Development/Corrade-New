@@ -28,16 +28,19 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Serialization;
-using AIMLbot;
 using CorradeConfiguration;
 using OpenMetaverse;
+using Syn.Bot;
+using Syn.Bot.Events;
 using wasOpenMetaverse;
 using wasSharp;
 using Group = OpenMetaverse.Group;
 using Helpers = OpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
+using Settings = OpenMetaverse.Settings;
 using ThreadState = System.Threading.ThreadState;
 
 #endregion
@@ -228,7 +231,7 @@ namespace Corrade
             [Status(37559)] [Reflection.DescriptionAttribute("destination too close")] DESTINATION_TOO_CLOSE,
             [Status(11229)] [Reflection.DescriptionAttribute("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES,
             [Status(47101)] [Reflection.DescriptionAttribute("no message provided")] NO_MESSAGE_PROVIDED,
-            [Status(04075)] [Reflection.DescriptionAttribute("could not remove brain file")] COULD_NOT_REMOVE_BRAIN_FILE,
+            [Status(04075)] [Reflection.DescriptionAttribute("could not remove SIML package file")] COULD_NOT_REMOVE_SIML_PACKAGE_FILE,
             [Status(54456)] [Reflection.DescriptionAttribute("unknown effect")] UNKNOWN_EFFECT,
             [Status(48775)] [Reflection.DescriptionAttribute("no effect UUID provided")] NO_EFFECT_UUID_PROVIDED,
             [Status(38858)] [Reflection.DescriptionAttribute("effect not found")] EFFECT_NOT_FOUND,
@@ -374,18 +377,15 @@ namespace Corrade
         private static readonly GridClient Client = new GridClient();
         private static InventoryFolder CurrentOutfitFolder;
 
-        private static readonly Bot AIMLBot = new Bot
-        {
-            TrustAIML = false
-        };
+        private static readonly SynBot SynBot = new SynBot();
+        private static readonly BotUser SynBotUser = new BotUser(SynBot, CORRADE_CONSTANTS.CORRADE);
 
-        private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
-        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher SchedulesWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher GroupFeedWatcher = new FileSystemWatcher();
-        private static readonly object AIMLBotLock = new object();
+        private static readonly object SIMLBotLock = new object();
         private static readonly object ConfigurationFileLock = new object();
         private static readonly object ClientLogFileLock = new object();
         private static readonly object GroupLogFileLock = new object();
@@ -466,7 +466,6 @@ namespace Corrade
         private static readonly object OutputFiltersLock = new object();
         private static readonly HashSet<GroupSchedule> GroupSchedules = new HashSet<GroupSchedule>();
         private static readonly object GroupSchedulesLock = new object();
-        private static volatile bool AIMLBotBrainCompiled;
 
         private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
             corradeCommands = typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
@@ -646,16 +645,16 @@ namespace Corrade
             });
 
         /// <summary>
-        ///     Schedules a load of the AIML configuration file.
+        ///     Schedules a load of the SIML configuration file.
         /// </summary>
-        private static readonly Timer AIMLConfigurationChangedTimer =
-            new Timer(AIMLConfigurationChanged =>
+        private static readonly Timer SIMLConfigurationChangedTimer =
+            new Timer(SIMLConfigurationChanged =>
             {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.SIML_CONFIGURATION_MODIFIED));
                 new Thread(
                     () =>
                     {
-                        lock (AIMLBotLock)
+                        lock (SIMLBotLock)
                         {
                             LoadChatBotFiles.Invoke();
                         }
@@ -1380,80 +1379,75 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Loads the chatbot configuration and AIML files.
+        ///     Loads the chatbot configuration and SIML files.
         /// </summary>
         private static readonly System.Action LoadChatBotFiles = () =>
         {
-            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
+            if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
+                SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_SIML_BOT_CONFIGURATION));
             try
             {
-                AIMLBot.isAcceptingUserInput = false;
-                AIMLBot.loadSettings(Path.Combine(
-                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                    AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
-                string AIMLBotBrain =
-                    Path.Combine(
-                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
-                switch (File.Exists(AIMLBotBrain))
+                string SIMLPackage = Path.Combine(
+                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY, SIML_BOT_CONSTANTS.PACKAGE_FILE);
+                switch (File.Exists(SIMLPackage))
                 {
                     case true:
-                        AIMLBot.loadFromBinaryFile(AIMLBotBrain);
+                        SynBot.PackageManager.LoadFromString(File.ReadAllText(SIMLPackage));
                         break;
                     default:
-                        AIMLBot.loadAIMLFromFiles();
-                        AIMLBot.saveToBinaryFile(AIMLBotBrain);
+                        List<XDocument> elementList = new List<XDocument>();
+                        foreach (XDocument simlDocument in Directory.GetFiles(Path.Combine(
+                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                            SIML_BOT_CONSTANTS.SIML_SETTINGS_DIRECTORY), "*.siml")
+                            .Select(simlFile => XDocument.Load(File.ReadAllText(simlFile))))
+                        {
+                            elementList.Add(simlDocument);
+                            SynBot.AddSiml(simlDocument, SynBotUser);
+                        }
+                        foreach (XDocument simlDocument in Directory.GetFiles(Path.Combine(
+                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                            SIML_BOT_CONSTANTS.SIML_DIRECTORY), "*.siml")
+                            .Select(simlFile => XDocument.Load(File.ReadAllText(simlFile))))
+                        {
+                            elementList.Add(simlDocument);
+                            SynBot.AddSiml(simlDocument, SynBotUser);
+                        }
+                        File.WriteAllText(Path.Combine(
+                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                            SIML_BOT_CONSTANTS.PACKAGE_FILE), SynBot.PackageManager.ConvertToPackage(elementList));
                         break;
                 }
-                string AIMLBotUserBrain =
-                    Path.Combine(
-                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
-                if (File.Exists(AIMLBotUserBrain))
-                {
-                    AIMLBotUser.Predicates.loadSettings(AIMLBotUserBrain);
-                }
-                AIMLBot.isAcceptingUserInput = true;
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES),
-                    ex.Message);
-                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                return;
-            }
-            finally
-            {
-                AIMLBotBrainCompiled = true;
-            }
-            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
-            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-        };
 
-        /// <summary>
-        ///     Saves the chatbot configuration and AIML files.
-        /// </summary>
-        private static readonly System.Action SaveChatBotFiles = () =>
-        {
-            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
-            try
-            {
-                AIMLBot.isAcceptingUserInput = false;
-                AIMLBotUser.Predicates.DictionaryAsXML.Save(Path.Combine(
-                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                    AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
-                AIMLBot.isAcceptingUserInput = true;
+                // Load learned and memorized.
+                string SIMLLearned = Path.Combine(
+                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
+                    SIML_BOT_CONSTANTS.LEARNED_FILE);
+                if (File.Exists(SIMLLearned))
+                {
+                    SynBot.AddSiml(XDocument.Load(SIMLLearned));
+                }
+                string SIMLMemorized = Path.Combine(
+                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
+                    SIML_BOT_CONSTANTS.MEMORIZED_FILE);
+                if (File.Exists(SIMLMemorized))
+                {
+                    SynBot.AddSiml(XDocument.Load(SIMLMemorized));
+                }
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
-                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_SIML_BOT_FILES),
+                    ex.Message);
+                if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
+                    SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                 return;
             }
-            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
-            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READ_SIML_BOT_CONFIGURATION));
+            if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
+                SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
         };
 
         private static volatile bool runHTTPServer;
@@ -1679,7 +1673,7 @@ namespace Corrade
                             continue;
                         }
                     }
-                    
+
                     if (memberCount.Any())
                     {
                         if (!memberCount.Dequeue().Equals(groupMembers.Count))
@@ -1956,7 +1950,7 @@ namespace Corrade
             // Handle arrays and lists
             if (data is Array || data is IList)
             {
-                IList iList = (IList)data;
+                IList iList = (IList) data;
                 foreach (object item in iList.Cast<object>().Where(o => o != null))
                 {
                     // These are index collections so pre-prend an index.
@@ -1995,7 +1989,7 @@ namespace Corrade
             // Handle Dictionary
             if (data is IDictionary)
             {
-                IDictionary dictionary = (IDictionary)data;
+                IDictionary dictionary = (IDictionary) data;
                 foreach (DictionaryEntry entry in dictionary)
                 {
                     // First the keys.
@@ -2117,13 +2111,13 @@ namespace Corrade
             // Handle date and time as an LSL timestamp.
             if (data is DateTime)
             {
-                yield return ((DateTime)data).ToString(Constants.LSL.DATE_TIME_STAMP);
+                yield return ((DateTime) data).ToString(Constants.LSL.DATE_TIME_STAMP);
             }
 
             // Use the Corrade permission system instead.
             if (data is Permissions)
             {
-                yield return Inventory.wasPermissionsToString((Permissions)data);
+                yield return Inventory.wasPermissionsToString((Permissions) data);
                 yield break;
             }
 
@@ -2132,7 +2126,7 @@ namespace Corrade
                 ParcelFlags parcelFlags = (ParcelFlags) data;
                 foreach (string flag in typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
-                    .Where(o => !((uint) o.GetValue(null) & (uint)parcelFlags).Equals(0))
+                    .Where(o => !((uint) o.GetValue(null) & (uint) parcelFlags).Equals(0))
                     .Select(o => o.Name))
                 {
                     yield return flag;
@@ -2142,7 +2136,7 @@ namespace Corrade
 
             if (data is GroupPowers)
             {
-                GroupPowers groupPowers = (GroupPowers)data;
+                GroupPowers groupPowers = (GroupPowers) data;
                 foreach (string power in typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => !((ulong) o.GetValue(null) & (ulong) groupPowers).Equals(0))
@@ -3000,20 +2994,22 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
-            // Set-up the AIML bot in case it has been enabled.
-            FileSystemEventHandler HandleAIMLBotConfigurationChanged = null;
+            // Set-up the SIML bot in case it has been enabled.
+            FileSystemEventHandler HandleSIMLBotConfigurationChanged = null;
             try
             {
-                AIMLBotConfigurationWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
-                    AIML_BOT_CONSTANTS.DIRECTORY);
-                AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
-                HandleAIMLBotConfigurationChanged = (sender, args) => AIMLConfigurationChangedTimer.Change(1000, 0);
-                AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
+                SIMLBotConfigurationWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
+                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY);
+                SIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                HandleSIMLBotConfigurationChanged = (sender, args) => SIMLConfigurationChangedTimer.Change(1000, 0);
+                SIMLBotConfigurationWatcher.Changed += HandleSIMLBotConfigurationChanged;
+                if (corradeConfiguration.EnableSIML)
+                    SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
             }
             catch (Exception ex)
             {
                 Feedback(
-                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SIML_CONFIGURATION_WATCHER),
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
@@ -3214,11 +3210,11 @@ namespace Corrade
             {
                 /* We are going down and we do not care. */
             }
-            // Disable the AIML bot configuration watcher.
+            // Disable the SIML bot configuration watcher.
             try
             {
-                AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
+                SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                SIMLBotConfigurationWatcher.Changed -= HandleSIMLBotConfigurationChanged;
             }
             catch (Exception)
             {
@@ -3234,14 +3230,7 @@ namespace Corrade
             {
                 /* We are going down and we do not care. */
             }
-            // Save the AIML user session.
-            lock (AIMLBotLock)
-            {
-                if (AIMLBotBrainCompiled)
-                {
-                    SaveChatBotFiles.Invoke();
-                }
-            }
+
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
             Client.Network.SimChanged -= HandleRadarObjects;
@@ -5495,42 +5484,34 @@ namespace Corrade
                     }
                     break;
             }
-            // Enable AIML in case it was enabled in the configuration file.
+            // Enable SIML in case it was enabled in the configuration file.
             try
             {
-                switch (configuration.EnableAIML)
+                switch (configuration.EnableSIML)
                 {
                     case true:
-                        switch (!AIMLBotBrainCompiled)
+                        lock (SIMLBotLock)
                         {
-                            case true:
-                                new Thread(
-                                    () =>
-                                    {
-                                        lock (AIMLBotLock)
-                                        {
-                                            LoadChatBotFiles.Invoke();
-                                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                        }
-                                    })
-                                {IsBackground = true}.Start();
-                                break;
-                            default:
-                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                AIMLBot.isAcceptingUserInput = true;
-                                break;
+                            SynBot.Learning += HandleSynBotLearning;
+                            SynBot.Memorizing += HandleSynBotMemorizing;
+                            LoadChatBotFiles.Invoke();
                         }
                         break;
                     default:
-                        AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                        AIMLBot.isAcceptingUserInput = false;
+                        lock (SIMLBotLock)
+                        {
+                            SynBot.Learning -= HandleSynBotLearning;
+                            SynBot.Memorizing -= HandleSynBotMemorizing;
+                            if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
+                                SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                        }
                         break;
                 }
             }
             catch (Exception ex)
             {
                 Feedback(
-                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SIML_CONFIGURATION_WATCHER),
                     ex.Message);
             }
 
@@ -6288,39 +6269,50 @@ namespace Corrade
             Client.Settings.CLIENT_IDENTIFICATION_TAG = corradeConfiguration.ClientIdentificationTag;
         }
 
+        private static void HandleSynBotLearning(object sender, LearningEventArgs e)
+        {
+            try
+            {
+                e.Document.Save(Path.Combine(
+                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
+                    SIML_BOT_CONSTANTS.LEARNED_FILE));
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_SIML_BOT_LEARNING_FILE),
+                    ex.Message);
+            }
+        }
+
+        private static void HandleSynBotMemorizing(object sender, MemorizingEventArgs e)
+        {
+            try
+            {
+                e.Document.Save(Path.Combine(
+                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
+                    SIML_BOT_CONSTANTS.MEMORIZED_FILE));
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_SIML_BOT_MEMORIZING_FILE),
+                    ex.Message);
+            }
+        }
+
         /// <summary>
         ///     Constants for Corrade's integrated chat bot.
         /// </summary>
-        private struct AIML_BOT_CONSTANTS
+        private struct SIML_BOT_CONSTANTS
         {
-            public const string DIRECTORY = @"AIMLBot";
-            public const string BRAIN_FILE = @"AIMLBot.brain";
-            public const string BRAIN_SESSION_FILE = @"AIMLbot.session";
-
-            public struct AIML
-            {
-                public const string DIRECTORY = @"AIML";
-            }
-
-            public struct BRAIN
-            {
-                public const string DIRECTORY = @"brain";
-            }
-
-            public struct CONFIG
-            {
-                public const string DIRECTORY = @"config";
-                public const string SETTINGS_FILE = @"Settings.xml";
-                public const string NAME = @"NAME";
-                public const string AIMLDIRECTORY = @"AIMLDIRECTORY";
-                public const string CONFIGDIRECTORY = @"CONFIGDIRECTORY";
-                public const string LOGDIRECTORY = @"LOGDIRECTORY";
-            }
-
-            public struct LOG
-            {
-                public const string DIRECTORY = @"logs";
-            }
+            public const string ROOT_DIRECTORY = @"SIML";
+            public const string SIML_DIRECTORY = @"SIML";
+            public const string SIML_SETTINGS_DIRECTORY = @"Settings";
+            public const string PACKAGE_FILE = @"Corrade.simlpk";
+            public const string EVOLVE_DIRECTORY = @"Evolve";
+            public const string LEARNED_FILE = @"Learned.siml";
+            public const string MEMORIZED_FILE = @"Memorized.siml";
         }
 
         /// <summary>
@@ -6939,13 +6931,13 @@ namespace Corrade
             [Reflection.DescriptionAttribute("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
             [Reflection.DescriptionAttribute("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
             [Reflection.DescriptionAttribute("workers exceeded")] WORKERS_EXCEEDED,
-            [Reflection.DescriptionAttribute("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
-            [Reflection.DescriptionAttribute("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
-            [Reflection.DescriptionAttribute("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION,
-            [Reflection.DescriptionAttribute("wrote AIML bot configuration")] WROTE_AIML_BOT_CONFIGURATION,
-            [Reflection.DescriptionAttribute("writing AIML bot configuration")] WRITING_AIML_BOT_CONFIGURATION,
-            [Reflection.DescriptionAttribute("error loading AIML bot files")] ERROR_LOADING_AIML_BOT_FILES,
-            [Reflection.DescriptionAttribute("error saving AIML bot files")] ERROR_SAVING_AIML_BOT_FILES,
+            [Reflection.DescriptionAttribute("SIML bot configuration modified")] SIML_CONFIGURATION_MODIFIED,
+            [Reflection.DescriptionAttribute("read SIML bot configuration")] READ_SIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("reading SIML bot configuration")] READING_SIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("wrote SIML bot configuration")] WROTE_SIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("writing SIML bot configuration")] WRITING_SIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("error loading SIML bot files")] ERROR_LOADING_SIML_BOT_FILES,
+            [Reflection.DescriptionAttribute("error saving SIML bot files")] ERROR_SAVING_SIML_BOT_FILES,
             [Reflection.DescriptionAttribute("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOG_FILE,
             [Reflection.DescriptionAttribute("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
             [Reflection.DescriptionAttribute("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
@@ -6958,7 +6950,7 @@ namespace Corrade
             [Reflection.DescriptionAttribute("teleport throttled")] TELEPORT_THROTTLED,
             [Reflection.DescriptionAttribute("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
             [Reflection.DescriptionAttribute("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
-            [Reflection.DescriptionAttribute("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
+            [Reflection.DescriptionAttribute("error setting up SIML configuration watcher")] ERROR_SETTING_UP_SIML_CONFIGURATION_WATCHER,
             [Reflection.DescriptionAttribute("callback throttled")] CALLBACK_THROTTLED,
             [Reflection.DescriptionAttribute("notification throttled")] NOTIFICATION_THROTTLED,
             [Reflection.DescriptionAttribute("error updating inventory")] ERROR_UPDATING_INVENTORY,
@@ -6984,7 +6976,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("unable to save Corrade feeds state")] UNABLE_TO_SAVE_CORRADE_FEEDS_STATE,
             [Reflection.DescriptionAttribute("unable to load Corrade feeds state")] UNABLE_TO_LOAD_CORRADE_FEEDS_STATE,
             [Reflection.DescriptionAttribute("error setting up feeds watcher")] ERROR_SETTING_UP_FEEDS_WATCHER,
-            [Reflection.DescriptionAttribute("error loading feed")] ERROR_LOADING_FEED
+            [Reflection.DescriptionAttribute("error loading feed")] ERROR_LOADING_FEED,
+            [Reflection.DescriptionAttribute("error saving SIML bot learning file")] ERROR_SAVING_SIML_BOT_LEARNING_FILE,
+            [Reflection.DescriptionAttribute("error saving SIML bot memorizing file")] ERROR_SAVING_SIML_BOT_MEMORIZING_FILE
         }
 
         /// <summary>
@@ -7777,14 +7771,9 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
-            [IsCorradeCommand(true)]
-            [CommandInputSyntax(
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<GroupMember[,GroupMember...]>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Group)]
-            [CorradeCommand("getgroupmemberdata")]
-            [Reflection.NameAttribute("getgroupmemberdata")]
-            GETGROUPMEMBERDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Reflection.NameAttribute("getgroupmemberdata")] GETGROUPMEMBERDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcurrentgroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"

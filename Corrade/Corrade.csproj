@@ -63,10 +63,6 @@
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AIMLbot, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\AIMLBot\AIMLbot\bin\Release\AIMLbot.dll</HintPath>
-    </Reference>
     <Reference Include="CorradeConfiguration">
       <HintPath>..\CorradeConfiguration\bin\Release\CorradeConfiguration.dll</HintPath>
     </Reference>
@@ -99,6 +95,9 @@
     <Reference Include="OpenMetaverseTypes">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="Syn.Bot">
+      <HintPath>..\packages\Syn.Bot.1.2.3\lib\portable-net45+sl5+wp8+win8\Syn.Bot.dll</HintPath>
+    </Reference>
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
@@ -121,6 +120,7 @@
     <Reference Include="System.Xml">
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Xml.Linq" />
     <Reference Include="TweetSharp, Version=2.0.0.0, Culture=neutral, PublicKeyToken=c148cfba29ed1a4d, processorArchitecture=MSIL">
       <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\TweetSharp.dll</HintPath>
       <Private>True</Private>
@@ -1065,6 +1065,286 @@
       <Link>Mono.Data.Sqlite.dll.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\SIML\Corrade.simlpk">
+      <Link>SIML\Corrade.simlpk</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\Corrade.simlproj">
+      <Link>SIML\Corrade.simlproj</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\AI.siml">
+      <Link>SIML\SIML\AI.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Astrology.siml">
+      <Link>SIML\SIML\Astrology.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Atomic.siml">
+      <Link>SIML\SIML\Atomic.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Badanswer.siml">
+      <Link>SIML\SIML\Badanswer.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Biography.siml">
+      <Link>SIML\SIML\Biography.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Blackjack.siml">
+      <Link>SIML\SIML\Blackjack.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Bot.siml">
+      <Link>SIML\SIML\Bot.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Botmaster.siml">
+      <Link>SIML\SIML\Botmaster.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Client.siml">
+      <Link>SIML\SIML\Client.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Common.siml">
+      <Link>SIML\SIML\Common.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Computers.siml">
+      <Link>SIML\SIML\Computers.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Date.siml">
+      <Link>SIML\SIML\Date.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Default.siml">
+      <Link>SIML\SIML\Default.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Dialog.siml">
+      <Link>SIML\SIML\Dialog.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Drugs.siml">
+      <Link>SIML\SIML\Drugs.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Emotion.siml">
+      <Link>SIML\SIML\Emotion.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Food.siml">
+      <Link>SIML\SIML\Food.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\General Public Query.siml">
+      <Link>SIML\SIML\General Public Query.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Geography.siml">
+      <Link>SIML\SIML\Geography.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Gossip.siml">
+      <Link>SIML\SIML\Gossip.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Happy.siml">
+      <Link>SIML\SIML\Happy.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\History.siml">
+      <Link>SIML\SIML\History.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Human.siml">
+      <Link>SIML\SIML\Human.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Humor.siml">
+      <Link>SIML\SIML\Humor.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Inquiry.siml">
+      <Link>SIML\SIML\Inquiry.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Integer.siml">
+      <Link>SIML\SIML\Integer.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Interjection.siml">
+      <Link>SIML\SIML\Interjection.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\IU.siml">
+      <Link>SIML\SIML\IU.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Knowledge.siml">
+      <Link>SIML\SIML\Knowledge.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Literature.siml">
+      <Link>SIML\SIML\Literature.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Luckyslots.siml">
+      <Link>SIML\SIML\Luckyslots.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Math.siml">
+      <Link>SIML\SIML\Math.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\MathFacts.siml">
+      <Link>SIML\SIML\MathFacts.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Money.siml">
+      <Link>SIML\SIML\Money.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Movies.siml">
+      <Link>SIML\SIML\Movies.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Multiple.siml">
+      <Link>SIML\SIML\Multiple.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Music.siml">
+      <Link>SIML\SIML\Music.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Parts.siml">
+      <Link>SIML\SIML\Parts.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Personality.siml">
+      <Link>SIML\SIML\Personality.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Philosophy.siml">
+      <Link>SIML\SIML\Philosophy.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Pickup.siml">
+      <Link>SIML\SIML\Pickup.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Politics.siml">
+      <Link>SIML\SIML\Politics.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Predicates.siml">
+      <Link>SIML\SIML\Predicates.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Previous.siml">
+      <Link>SIML\SIML\Previous.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Psychology.siml">
+      <Link>SIML\SIML\Psychology.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Reduce.siml">
+      <Link>SIML\SIML\Reduce.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Reducer.siml">
+      <Link>SIML\SIML\Reducer.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Reductions.siml">
+      <Link>SIML\SIML\Reductions.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Religion.siml">
+      <Link>SIML\SIML\Religion.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Salutations.siml">
+      <Link>SIML\SIML\Salutations.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Science.siml">
+      <Link>SIML\SIML\Science.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Bot-Settings.siml">
+      <Link>SIML\SIML\Settings\Bot-Settings.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\EmotionML.siml">
+      <Link>SIML\SIML\Settings\EmotionML.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Maps.siml">
+      <Link>SIML\SIML\Settings\Maps.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Normalizations.siml">
+      <Link>SIML\SIML\Settings\Normalizations.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Pattern Reductions.siml">
+      <Link>SIML\SIML\Settings\Pattern Reductions.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Random Responses.siml">
+      <Link>SIML\SIML\Settings\Random Responses.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Regular Expressions.siml">
+      <Link>SIML\SIML\Settings\Regular Expressions.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Repetition.siml">
+      <Link>SIML\SIML\Settings\Repetition.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Scripts.siml">
+      <Link>SIML\SIML\Settings\Scripts.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\Sets.siml">
+      <Link>SIML\SIML\Settings\Sets.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Settings\User-Settings.siml">
+      <Link>SIML\SIML\Settings\User-Settings.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Sex.siml">
+      <Link>SIML\SIML\Sex.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Spam.siml">
+      <Link>SIML\SIML\Spam.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Sports.siml">
+      <Link>SIML\SIML\Sports.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Stack.siml">
+      <Link>SIML\SIML\Stack.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Stories.siml">
+      <Link>SIML\SIML\Stories.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SIML\SIML\Websites.siml">
+      <Link>SIML\SIML\Websites.siml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="app.config" />
     <None Include="Corrade.ini">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1113,222 +1393,6 @@
       <Link>openmetaverse_data\avatar_skeleton.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Include="..\AIMLBot-data\AIML\Adverbs.aiml">
-      <Link>AIMLBot\AIML\Adverbs.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\AI.aiml">
-      <Link>AIMLBot\AIML\AI.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Astrology.aiml">
-      <Link>AIMLBot\AIML\Astrology.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Atomic.aiml">
-      <Link>AIMLBot\AIML\Atomic.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Badanswer.aiml">
-      <Link>AIMLBot\AIML\Badanswer.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Biography.aiml">
-      <Link>AIMLBot\AIML\Biography.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Blackjack.aiml">
-      <Link>AIMLBot\AIML\Blackjack.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Bot.aiml">
-      <Link>AIMLBot\AIML\Bot.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Botmaster.aiml">
-      <Link>AIMLBot\AIML\Botmaster.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Chomsky_jokes.aiml">
-      <Link>AIMLBot\AIML\Chomsky_jokes.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Client.aiml">
-      <Link>AIMLBot\AIML\Client.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Computers.aiml">
-      <Link>AIMLBot\AIML\Computers.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Date.aiml">
-      <Link>AIMLBot\AIML\Date.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Default.aiml">
-      <Link>AIMLBot\AIML\Default.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Dialog.aiml">
-      <Link>AIMLBot\AIML\Dialog.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Drugs.aiml">
-      <Link>AIMLBot\AIML\Drugs.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Emotion.aiml">
-      <Link>AIMLBot\AIML\Emotion.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Food.aiml">
-      <Link>AIMLBot\AIML\Food.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Geography.aiml">
-      <Link>AIMLBot\AIML\Geography.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Gossip.aiml">
-      <Link>AIMLBot\AIML\Gossip.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Happy.aiml">
-      <Link>AIMLBot\AIML\Happy.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\History.aiml">
-      <Link>AIMLBot\AIML\History.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Human.aiml">
-      <Link>AIMLBot\AIML\Human.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Humor.aiml">
-      <Link>AIMLBot\AIML\Humor.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Inquiry.aiml">
-      <Link>AIMLBot\AIML\Inquiry.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Integer.aiml">
-      <Link>AIMLBot\AIML\Integer.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Interjection.aiml">
-      <Link>AIMLBot\AIML\Interjection.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\IU.aiml">
-      <Link>AIMLBot\AIML\IU.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Knowledge.aiml">
-      <Link>AIMLBot\AIML\Knowledge.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Literature.aiml">
-      <Link>AIMLBot\AIML\Literature.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Money.aiml">
-      <Link>AIMLBot\AIML\Money.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Movies.aiml">
-      <Link>AIMLBot\AIML\Movies.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Multiple.aiml">
-      <Link>AIMLBot\AIML\Multiple.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Music.aiml">
-      <Link>AIMLBot\AIML\Music.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Parts.aiml">
-      <Link>AIMLBot\AIML\Parts.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Personality.aiml">
-      <Link>AIMLBot\AIML\Personality.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Philosophy.aiml">
-      <Link>AIMLBot\AIML\Philosophy.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Pickup.aiml">
-      <Link>AIMLBot\AIML\Pickup.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Politics.aiml">
-      <Link>AIMLBot\AIML\Politics.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Predicates.aiml">
-      <Link>AIMLBot\AIML\Predicates.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Psychology.aiml">
-      <Link>AIMLBot\AIML\Psychology.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Reduce.aiml">
-      <Link>AIMLBot\AIML\Reduce.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Reducer.aiml">
-      <Link>AIMLBot\AIML\Reducer.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Reductions.aiml">
-      <Link>AIMLBot\AIML\Reductions.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Religion.aiml">
-      <Link>AIMLBot\AIML\Religion.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Salutations.aiml">
-      <Link>AIMLBot\AIML\Salutations.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Science.aiml">
-      <Link>AIMLBot\AIML\Science.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Sex.aiml">
-      <Link>AIMLBot\AIML\Sex.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Sports.aiml">
-      <Link>AIMLBot\AIML\Sports.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Stack.aiml">
-      <Link>AIMLBot\AIML\Stack.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\Stories.aiml">
-      <Link>AIMLBot\AIML\Stories.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\That.aiml">
-      <Link>AIMLBot\AIML\That.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\AIML\update.aiml">
-      <Link>AIMLBot\AIML\update.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\brain\AIMLBot.brain">
-      <Link>AIMLBot\brain\AIMLBot.brain</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="..\libopenmetaverse\bin\openjpeg-dotnet-x86_64.dll">
       <Link>openjpeg-dotnet-x86_64.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1581,34 +1645,6 @@
       <Link>openmetaverse_data\avatar_lad.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="..\AIMLBot-data\config\DefaultPredicates.xml">
-      <Link>AIMLBot\config\DefaultPredicates.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\config\GenderSubstitutions.xml">
-      <Link>AIMLBot\config\GenderSubstitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\config\Person2Substitutions.xml">
-      <Link>AIMLBot\config\Person2Substitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\config\PersonSubstitutions.xml">
-      <Link>AIMLBot\config\PersonSubstitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\config\Settings.xml">
-      <Link>AIMLBot\config\Settings.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\config\Splitters.xml">
-      <Link>AIMLBot\config\Splitters.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\AIMLBot-data\config\Substitutions.xml">
-      <Link>AIMLBot\config\Substitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="Corrade.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1626,13 +1662,14 @@
     <Content Include="Corrade.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="AIMLBot\logs\" />
     <Folder Include="cache\assets\" />
     <Folder Include="databases\" />
     <Folder Include="libs\" />
     <Folder Include="logs\groupchat\" />
     <Folder Include="logs\im\" />
     <Folder Include="logs\local\" />
+    <Folder Include="SIML\Evolve\" />
+    <Folder Include="SIML\SIML\Templates\" />
     <Folder Include="state\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

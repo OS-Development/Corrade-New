@@ -139,7 +139,7 @@
             this.tabPage5 = new System.Windows.Forms.TabPage();
             this.groupBox38 = new System.Windows.Forms.GroupBox();
             this.pictureBox21 = new System.Windows.Forms.PictureBox();
-            this.AIMLEnabled = new System.Windows.Forms.CheckBox();
+            this.SIMLEnabled = new System.Windows.Forms.CheckBox();
             this.tabPage6 = new System.Windows.Forms.TabPage();
             this.groupBox39 = new System.Windows.Forms.GroupBox();
             this.pictureBox22 = new System.Windows.Forms.PictureBox();
@@ -230,6 +230,11 @@
             this.pictureBox32 = new System.Windows.Forms.PictureBox();
             this.ThrottlesTotalThrottle = new System.Windows.Forms.TextBox();
             this.tabPage10 = new System.Windows.Forms.TabPage();
+            this.groupBox86 = new System.Windows.Forms.GroupBox();
+            this.pictureBox93 = new System.Windows.Forms.PictureBox();
+            this.label32 = new System.Windows.Forms.Label();
+            this.label33 = new System.Windows.Forms.Label();
+            this.LimitsFeedsUpdate = new System.Windows.Forms.TextBox();
             this.groupBox82 = new System.Windows.Forms.GroupBox();
             this.pictureBox82 = new System.Windows.Forms.PictureBox();
             this.pictureBox83 = new System.Windows.Forms.PictureBox();
@@ -379,11 +384,6 @@
             this.SaveConfigurationDialog = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.Version = new System.Windows.Forms.Label();
-            this.groupBox86 = new System.Windows.Forms.GroupBox();
-            this.pictureBox93 = new System.Windows.Forms.PictureBox();
-            this.label32 = new System.Windows.Forms.Label();
-            this.label33 = new System.Windows.Forms.Label();
-            this.LimitsFeedsUpdate = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -507,6 +507,8 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.tabPage10.SuspendLayout();
+            this.groupBox86.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
             this.groupBox82.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox82)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox83)).BeginInit();
@@ -577,8 +579,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).BeginInit();
             this.groupBox21.SuspendLayout();
             this.Status.SuspendLayout();
-            this.groupBox86.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -1832,19 +1832,19 @@
             this.tabPage5.Name = "tabPage5";
             this.tabPage5.Size = new System.Drawing.Size(672, 363);
             this.tabPage5.TabIndex = 4;
-            this.tabPage5.Text = "AIML";
+            this.tabPage5.Text = "SIML";
             this.tabPage5.UseVisualStyleBackColor = true;
             // 
             // groupBox38
             // 
             this.groupBox38.Controls.Add(this.pictureBox21);
-            this.groupBox38.Controls.Add(this.AIMLEnabled);
+            this.groupBox38.Controls.Add(this.SIMLEnabled);
             this.groupBox38.Location = new System.Drawing.Point(4, 4);
             this.groupBox38.Name = "groupBox38";
             this.groupBox38.Size = new System.Drawing.Size(665, 323);
             this.groupBox38.TabIndex = 0;
             this.groupBox38.TabStop = false;
-            this.groupBox38.Text = "Artificial Intelligence Markup Language (AIML)";
+            this.groupBox38.Text = "Synthetic Intelligence Markup Language (SIML)";
             // 
             // pictureBox21
             // 
@@ -1857,16 +1857,16 @@
             this.pictureBox21.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox21, resources.GetString("pictureBox21.ToolTip"));
             // 
-            // AIMLEnabled
+            // SIMLEnabled
             // 
-            this.AIMLEnabled.AutoSize = true;
-            this.AIMLEnabled.Location = new System.Drawing.Point(293, 150);
-            this.AIMLEnabled.Name = "AIMLEnabled";
-            this.AIMLEnabled.Size = new System.Drawing.Size(66, 20);
-            this.AIMLEnabled.TabIndex = 0;
-            this.AIMLEnabled.Text = "Enabled";
-            this.toolTip1.SetToolTip(this.AIMLEnabled, "Whether to enable the AIML component.");
-            this.AIMLEnabled.UseVisualStyleBackColor = true;
+            this.SIMLEnabled.AutoSize = true;
+            this.SIMLEnabled.Location = new System.Drawing.Point(293, 150);
+            this.SIMLEnabled.Name = "SIMLEnabled";
+            this.SIMLEnabled.Size = new System.Drawing.Size(66, 20);
+            this.SIMLEnabled.TabIndex = 0;
+            this.SIMLEnabled.Text = "Enabled";
+            this.toolTip1.SetToolTip(this.SIMLEnabled, "Whether to enable the AIML component.");
+            this.SIMLEnabled.UseVisualStyleBackColor = true;
             // 
             // tabPage6
             // 
@@ -2823,6 +2823,55 @@
             this.tabPage10.TabIndex = 9;
             this.tabPage10.Text = "Limits";
             this.tabPage10.UseVisualStyleBackColor = true;
+            // 
+            // groupBox86
+            // 
+            this.groupBox86.Controls.Add(this.pictureBox93);
+            this.groupBox86.Controls.Add(this.label32);
+            this.groupBox86.Controls.Add(this.label33);
+            this.groupBox86.Controls.Add(this.LimitsFeedsUpdate);
+            this.groupBox86.Location = new System.Drawing.Point(488, 213);
+            this.groupBox86.Name = "groupBox86";
+            this.groupBox86.Size = new System.Drawing.Size(181, 51);
+            this.groupBox86.TabIndex = 16;
+            this.groupBox86.TabStop = false;
+            this.groupBox86.Text = "RSS Feeds";
+            // 
+            // pictureBox93
+            // 
+            this.pictureBox93.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox93.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox93.Image")));
+            this.pictureBox93.Location = new System.Drawing.Point(155, 17);
+            this.pictureBox93.Name = "pictureBox93";
+            this.pictureBox93.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox93.TabIndex = 17;
+            this.pictureBox93.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox93, "The time to wait in seconds between checking\r\nfor new RSS feed updates.");
+            // 
+            // label32
+            // 
+            this.label32.AutoSize = true;
+            this.label32.Location = new System.Drawing.Point(40, 49);
+            this.label32.Name = "label32";
+            this.label32.Size = new System.Drawing.Size(0, 16);
+            this.label32.TabIndex = 16;
+            // 
+            // label33
+            // 
+            this.label33.AutoSize = true;
+            this.label33.Location = new System.Drawing.Point(34, 19);
+            this.label33.Name = "label33";
+            this.label33.Size = new System.Drawing.Size(42, 16);
+            this.label33.TabIndex = 15;
+            this.label33.Text = "Update";
+            // 
+            // LimitsFeedsUpdate
+            // 
+            this.LimitsFeedsUpdate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsFeedsUpdate.Location = new System.Drawing.Point(83, 17);
+            this.LimitsFeedsUpdate.Name = "LimitsFeedsUpdate";
+            this.LimitsFeedsUpdate.Size = new System.Drawing.Size(66, 20);
+            this.LimitsFeedsUpdate.TabIndex = 13;
             // 
             // groupBox82
             // 
@@ -4420,55 +4469,6 @@
             this.Version.TabIndex = 6;
             this.Version.Text = "                ";
             // 
-            // groupBox86
-            // 
-            this.groupBox86.Controls.Add(this.pictureBox93);
-            this.groupBox86.Controls.Add(this.label32);
-            this.groupBox86.Controls.Add(this.label33);
-            this.groupBox86.Controls.Add(this.LimitsFeedsUpdate);
-            this.groupBox86.Location = new System.Drawing.Point(488, 213);
-            this.groupBox86.Name = "groupBox86";
-            this.groupBox86.Size = new System.Drawing.Size(181, 51);
-            this.groupBox86.TabIndex = 16;
-            this.groupBox86.TabStop = false;
-            this.groupBox86.Text = "RSS Feeds";
-            // 
-            // pictureBox93
-            // 
-            this.pictureBox93.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox93.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox93.Image")));
-            this.pictureBox93.Location = new System.Drawing.Point(155, 17);
-            this.pictureBox93.Name = "pictureBox93";
-            this.pictureBox93.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox93.TabIndex = 17;
-            this.pictureBox93.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox93, "The time to wait in seconds between checking\r\nfor new RSS feed updates.");
-            // 
-            // label32
-            // 
-            this.label32.AutoSize = true;
-            this.label32.Location = new System.Drawing.Point(40, 49);
-            this.label32.Name = "label32";
-            this.label32.Size = new System.Drawing.Size(0, 16);
-            this.label32.TabIndex = 16;
-            // 
-            // label33
-            // 
-            this.label33.AutoSize = true;
-            this.label33.Location = new System.Drawing.Point(34, 19);
-            this.label33.Name = "label33";
-            this.label33.Size = new System.Drawing.Size(42, 16);
-            this.label33.TabIndex = 15;
-            this.label33.Text = "Update";
-            // 
-            // LimitsFeedsUpdate
-            // 
-            this.LimitsFeedsUpdate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsFeedsUpdate.Location = new System.Drawing.Point(83, 17);
-            this.LimitsFeedsUpdate.Name = "LimitsFeedsUpdate";
-            this.LimitsFeedsUpdate.Size = new System.Drawing.Size(66, 20);
-            this.LimitsFeedsUpdate.TabIndex = 13;
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -4650,6 +4650,9 @@
             this.groupBox49.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.tabPage10.ResumeLayout(false);
+            this.groupBox86.ResumeLayout(false);
+            this.groupBox86.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
             this.groupBox82.ResumeLayout(false);
             this.groupBox82.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox82)).EndInit();
@@ -4746,9 +4749,6 @@
             this.groupBox21.ResumeLayout(false);
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox86.ResumeLayout(false);
-            this.groupBox86.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -4865,7 +4865,7 @@
         private System.Windows.Forms.ComboBox ENIGMARing;
         private System.Windows.Forms.ListBox ENIGMAPlugSequence;
         private System.Windows.Forms.GroupBox groupBox38;
-        private System.Windows.Forms.CheckBox AIMLEnabled;
+        private System.Windows.Forms.CheckBox SIMLEnabled;
         private System.Windows.Forms.GroupBox groupBox39;
         private System.Windows.Forms.CheckBox RLVEnabled;
         private System.Windows.Forms.GroupBox groupBox43;
