@@ -18,7 +18,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getgroupmemberdata =
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getavatargroupdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (

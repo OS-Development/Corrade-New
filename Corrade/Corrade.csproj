@@ -289,6 +289,9 @@
     <Compile Include="commands\Corrade\GetAvatarData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetAvatarGroupData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetAvatarPositions.cs">
       <SubType>Component</SubType>
     </Compile>

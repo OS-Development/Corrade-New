@@ -2109,10 +2109,43 @@ namespace Corrade
                 }
                 yield break;
             }
-            // Handle date and time as an LSL timestamp
+            // Handle date and time as an LSL timestamp.
             if (data is DateTime)
             {
                 yield return ((DateTime)data).ToString(Constants.LSL.DATE_TIME_STAMP);
+            }
+
+            // Use the Corrade permission system instead.
+            if (data is Permissions)
+            {
+                yield return Inventory.wasPermissionsToString((Permissions)data);
+                yield break;
+            }
+
+            if (data is ParcelFlags)
+            {
+                ParcelFlags parcelFlags = (ParcelFlags) data;
+                foreach (string flag in typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                    .AsParallel()
+                    .Where(o => !((uint) o.GetValue(null) & (uint)parcelFlags).Equals(0))
+                    .Select(o => o.Name))
+                {
+                    yield return flag;
+                }
+                yield break;
+            }
+
+            if (data is GroupPowers)
+            {
+                GroupPowers groupPowers = (GroupPowers)data;
+                foreach (string power in typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                    .AsParallel()
+                    .Where(o => !((ulong) o.GetValue(null) & (ulong) groupPowers).Equals(0))
+                    .Select(o => o.Name))
+                {
+                    yield return power;
+                }
+                yield break;
             }
 
             string @string = data.ToString();
@@ -2135,8 +2168,10 @@ namespace Corrade
         {
             if (info == null) return;
 
+            object data = wasGetInfoValue(info, value);
+
             // OpenMetaverse particular flags.
-            if (wasGetInfoValue(info, value) is ParcelFlags)
+            if (data is ParcelFlags)
             {
                 uint parcelFlags;
                 switch (!uint.TryParse(setting, out parcelFlags))
@@ -2159,7 +2194,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, parcelFlags);
                 return;
             }
-            if (wasGetInfoValue(info, value) is GroupPowers)
+            if (data is GroupPowers)
             {
                 uint groupPowers;
                 switch (!uint.TryParse(setting, out groupPowers))
@@ -2182,7 +2217,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, groupPowers);
                 return;
             }
-            if (wasGetInfoValue(info, value) is AttachmentPoint)
+            if (data is AttachmentPoint)
             {
                 byte attachmentPoint;
                 switch (!byte.TryParse(setting, out attachmentPoint))
@@ -2199,7 +2234,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, attachmentPoint);
                 return;
             }
-            if (wasGetInfoValue(info, value) is Tree)
+            if (data is Tree)
             {
                 byte tree;
                 switch (!byte.TryParse(setting, out tree))
@@ -2215,7 +2250,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, tree);
                 return;
             }
-            if (wasGetInfoValue(info, value) is Material)
+            if (data is Material)
             {
                 byte material;
                 switch (!byte.TryParse(setting, out material))
@@ -2231,7 +2266,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, material);
                 return;
             }
-            if (wasGetInfoValue(info, value) is PathCurve)
+            if (data is PathCurve)
             {
                 byte pathCurve;
                 switch (!byte.TryParse(setting, out pathCurve))
@@ -2247,7 +2282,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, pathCurve);
                 return;
             }
-            if (wasGetInfoValue(info, value) is PCode)
+            if (data is PCode)
             {
                 byte pCode;
                 switch (!byte.TryParse(setting, out pCode))
@@ -2262,7 +2297,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, pCode);
                 return;
             }
-            if (wasGetInfoValue(info, value) is ProfileCurve)
+            if (data is ProfileCurve)
             {
                 byte profileCurve;
                 switch (!byte.TryParse(setting, out profileCurve))
@@ -2279,7 +2314,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, profileCurve);
                 return;
             }
-            if (wasGetInfoValue(info, value) is HoleType)
+            if (data is HoleType)
             {
                 byte holeType;
                 switch (!byte.TryParse(setting, out holeType))
@@ -2295,7 +2330,7 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, holeType);
                 return;
             }
-            if (wasGetInfoValue(info, value) is SculptType)
+            if (data is SculptType)
             {
                 byte sculptType;
                 switch (!byte.TryParse(setting, out sculptType))
@@ -2312,7 +2347,7 @@ namespace Corrade
                 return;
             }
             // OpenMetaverse Primitive Types
-            if (wasGetInfoValue(info, value) is UUID)
+            if (data is UUID)
             {
                 UUID UUIDData;
                 if (!UUID.TryParse(setting, out UUIDData))
@@ -2338,7 +2373,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                 }
             }
-            if (wasGetInfoValue(info, value) is Vector3)
+            if (data is Vector3)
             {
                 Vector3 vector3Data;
                 if (Vector3.TryParse(setting, out vector3Data))
@@ -2347,7 +2382,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is Vector2)
+            if (data is Vector2)
             {
                 Vector3 vector2Data;
                 if (Vector2.TryParse(setting, out vector2Data))
@@ -2356,7 +2391,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is Vector3d)
+            if (data is Vector3d)
             {
                 Vector3d vector3DData;
                 if (Vector3d.TryParse(setting, out vector3DData))
@@ -2365,7 +2400,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is Vector4)
+            if (data is Vector4)
             {
                 Vector4 vector4Data;
                 if (Vector4.TryParse(setting, out vector4Data))
@@ -2374,7 +2409,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is Quaternion)
+            if (data is Quaternion)
             {
                 Quaternion quaternionData;
                 if (Quaternion.TryParse(setting, out quaternionData))
@@ -2384,7 +2419,7 @@ namespace Corrade
                 }
             }
             // Primitive types.
-            if (wasGetInfoValue(info, value) is bool)
+            if (data is bool)
             {
                 bool boolData;
                 if (bool.TryParse(setting, out boolData))
@@ -2393,7 +2428,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is char)
+            if (data is char)
             {
                 char charData;
                 if (char.TryParse(setting, out charData))
@@ -2402,7 +2437,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is decimal)
+            if (data is decimal)
             {
                 decimal decimalData;
                 if (decimal.TryParse(setting, out decimalData))
@@ -2411,7 +2446,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is byte)
+            if (data is byte)
             {
                 byte byteData;
                 if (byte.TryParse(setting, out byteData))
@@ -2420,7 +2455,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is int)
+            if (data is int)
             {
                 int intData;
                 if (int.TryParse(setting, out intData))
@@ -2429,7 +2464,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is uint)
+            if (data is uint)
             {
                 uint uintData;
                 if (uint.TryParse(setting, out uintData))
@@ -2438,7 +2473,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is float)
+            if (data is float)
             {
                 float floatData;
                 if (float.TryParse(setting, out floatData))
@@ -2447,7 +2482,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is long)
+            if (data is long)
             {
                 long longData;
                 if (long.TryParse(setting, out longData))
@@ -2456,7 +2491,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is float)
+            if (data is float)
             {
                 float singleData;
                 if (float.TryParse(setting, out singleData))
@@ -2465,7 +2500,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is DateTime)
+            if (data is DateTime)
             {
                 DateTime dateTimeData;
                 if (DateTime.TryParse(setting, out dateTimeData))
@@ -2474,7 +2509,7 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is string)
+            if (data is string)
             {
                 wasSetInfoValue(info, ref @object, setting);
             }
@@ -7737,6 +7772,15 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<GroupMember[,GroupMember...]>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Group)]
+            [CorradeCommand("getgroupmemberdata")]
+            [Reflection.NameAttribute("getgroupmemberdata")]
+            GETGROUPMEMBERDATA,
+
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcurrentgroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getcurrentgroupsdata")] [Reflection.NameAttribute("getcurrentgroupsdata")] GETCURRENTGROUPSDATA,
@@ -8047,8 +8091,8 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("changeprimitivelink")] [Reflection.NameAttribute("changeprimitivelink")] CHANGEPRIMITIVELINK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Reflection.NameAttribute("getgroupmemberdata")] GETGROUPMEMBERDATA,
+                "<command=getavatargroupdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getavatargroupdata")] [Reflection.NameAttribute("getavatargroupdata")] GETAVATARGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcommand>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<entity=<syntax|permission>>&entity=syntax:<type=<input>>&[callback=<STRING>]"
