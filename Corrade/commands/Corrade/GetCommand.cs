@@ -27,16 +27,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
-                    IsCorradeCommandAttribute isCommandAttribute =
-                        Reflection.GetAttributeFromEnumValue<IsCorradeCommandAttribute>(
-                            Reflection.GetEnumValueFromName<ScriptKeys>(name));
-                    if (isCommandAttribute == null || isCommandAttribute.IsCorradeCorradeCommand.Equals(false))
+                    ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(name);
+                    if (scriptKey.Equals(default(ScriptKeys)))
                     {
                         throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
                     }
                     CommandPermissionMaskAttribute commandPermissionMaskAttribute =
-                        Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(
-                            Reflection.GetEnumValueFromName<ScriptKeys>(name));
+                        Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                     if (commandPermissionMaskAttribute == null)
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

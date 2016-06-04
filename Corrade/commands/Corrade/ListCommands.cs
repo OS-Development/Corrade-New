@@ -25,9 +25,7 @@ namespace Corrade
                     Parallel.ForEach(Reflection.GetEnumNames<ScriptKeys>(), o =>
                     {
                         ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(o);
-                        IsCorradeCommandAttribute isCommandAttribute =
-                            Reflection.GetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
-                        if (isCommandAttribute == null || !isCommandAttribute.IsCorradeCorradeCommand)
+                        if (scriptKey.Equals(default(ScriptKeys)))
                             return;
                         CommandPermissionMaskAttribute commandPermissionMaskAttribute =
                             Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
