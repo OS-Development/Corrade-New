@@ -11,7 +11,6 @@ using System.Threading;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -29,7 +28,6 @@ namespace Corrade
                 InventoryNode RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
-                        .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
@@ -45,7 +43,6 @@ namespace Corrade
                     RLVFolder,
                     CORRADE_CONSTANTS.OneOrMoRegex,
                     new LinkedList<string>())
-                    .ToArray()
                     .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                     .FirstOrDefault(
                         o =>
@@ -61,70 +58,85 @@ namespace Corrade
                         return;
                 }
 
-                HashSet<InventoryItem> currentWearables =
-                    new HashSet<InventoryItem>(Inventory.GetWearables(Client, CurrentOutfitFolder));
-                Dictionary<Primitive, AttachmentPoint> currentAttachments =
+                HashSet<UUID> currentWearables =
+                    new HashSet<UUID>(Inventory.GetWearables(Client, CurrentOutfitFolder).Select(o => o.UUID));
+                HashSet<UUID> currentAttachments = new HashSet<UUID>(
                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                        .ToDictionary(o => o.Key, p => p.Value);
+                        .Select(o => o.Key.Properties.ItemID));
 
                 Func<InventoryNode, string> GetWornIndicator = node =>
                 {
                     int myItemsCount = 0;
                     int myItemsWornCount = 0;
 
-                    Parallel.ForEach(
-                        node.Nodes.Values.AsParallel().Where(
-                            n =>
-                                !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
-                                n.Data is InventoryItem && Inventory.CanBeWorn(n.Data)
-                            ), n =>
+                    node.Nodes.Values.AsParallel().Where(
+                        n =>
+                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                            n.Data is InventoryItem && Inventory.CanBeWorn(n.Data)
+                        ).ForAll(n =>
+                        {
+                            Interlocked.Increment(ref myItemsCount);
+                            InventoryItem inventoryItem = Inventory.ResolveItemLink(Client, n.Data as InventoryItem);
+                            if (inventoryItem == null) return;
+                            UUID itemUUID = inventoryItem.UUID;
+                            bool increment = false;
+                            switch (n.Data is InventoryWearable)
                             {
-                                Interlocked.Increment(ref myItemsCount);
-                                if ((n.Data is InventoryWearable &&
-                                     currentWearables.AsParallel().Any(
-                                         o =>
-                                             o.UUID.Equals(
-                                                 Inventory.ResolveItemLink(Client, n.Data as InventoryItem).UUID))) ||
-                                    currentAttachments.AsParallel().Any(
-                                        o =>
-                                            o.Key.Properties.ItemID.Equals(
-                                                Inventory.ResolveItemLink(Client, n.Data as InventoryItem).UUID)))
-                                {
-                                    Interlocked.Increment(ref myItemsWornCount);
-                                }
-                            });
+                                case true:
+                                    if (currentWearables.Contains(itemUUID))
+                                        increment = true;
+                                    break;
+                                default:
+                                    if (currentAttachments.Contains(itemUUID))
+                                        increment = true;
+                                    break;
+                            }
+
+                            if (increment == false) return;
+
+                            Interlocked.Increment(ref myItemsWornCount);
+                        });
 
 
                     int allItemsCount = 0;
                     int allItemsWornCount = 0;
 
-                    Parallel.ForEach(
-                        node.Nodes.Values.AsParallel().Where(
-                            n =>
-                                !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
-                                n.Data is InventoryFolder
-                            ),
-                        n => Parallel.ForEach(n.Nodes.Values
-                            .AsParallel().Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
-                            .Where(
-                                o =>
-                                    !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) && o.Data is InventoryItem &&
-                                    Inventory.CanBeWorn(o.Data)), p =>
-                                    {
-                                        Interlocked.Increment(ref allItemsCount);
-                                        if ((p.Data is InventoryWearable &&
-                                             currentWearables.AsParallel().Any(
-                                                 o =>
-                                                     o.UUID.Equals(
-                                                         Inventory.ResolveItemLink(Client, p.Data as InventoryItem).UUID))) ||
-                                            currentAttachments.AsParallel().Any(
-                                                o =>
-                                                    o.Key.Properties.ItemID.Equals(
-                                                        Inventory.ResolveItemLink(Client, p.Data as InventoryItem).UUID)))
+                    node.Nodes.Values.AsParallel().Where(
+                        n =>
+                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                            n.Data is InventoryFolder
+                        ).ForAll(
+                            n => n.Nodes.Values
+                                .AsParallel().Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                .Where(
+                                    o =>
+                                        o.Data is InventoryItem && Inventory.CanBeWorn(o.Data) &&
+                                        !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)).ForAll(p =>
                                         {
+                                            Interlocked.Increment(ref allItemsCount);
+
+                                            Interlocked.Increment(ref myItemsCount);
+                                            InventoryItem inventoryItem = Inventory.ResolveItemLink(Client,
+                                                p.Data as InventoryItem);
+                                            if (inventoryItem == null) return;
+                                            UUID itemUUID = inventoryItem.UUID;
+                                            bool increment = false;
+                                            switch (p.Data is InventoryWearable)
+                                            {
+                                                case true:
+                                                    if (currentWearables.Contains(itemUUID))
+                                                        increment = true;
+                                                    break;
+                                                default:
+                                                    if (currentAttachments.Contains(itemUUID))
+                                                        increment = true;
+                                                    break;
+                                            }
+
+                                            if (increment == false) return;
+
                                             Interlocked.Increment(ref allItemsWornCount);
-                                        }
-                                    }));
+                                        }));
 
 
                     Func<int, int, string> WornIndicator =
@@ -133,16 +145,13 @@ namespace Corrade
                     return WornIndicator(myItemsCount, myItemsWornCount) +
                            WornIndicator(allItemsCount, allItemsWornCount);
                 };
+
                 List<string> response = new List<string>();
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    response.Add($"{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
-                    response.AddRange(
-                        folderPath.Key.Nodes.Values.AsParallel().Where(o => o.Data is InventoryFolder)
-                            .Select(
-                                o =>
-                                    $"{o.Data.Name}{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
-                }
+                response.Add($"{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
+                response.AddRange(
+                    folderPath.Key.Nodes.Values.AsParallel().Where(o => o.Data is InventoryFolder)
+                        .Select(o => $"{o.Data.Name}{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
+
                 lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),

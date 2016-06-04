@@ -6181,8 +6181,7 @@ namespace Corrade
                                         {
                                             IAsyncResult result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
                                                 HTTPListener);
-                                            WaitHandle.WaitAny(new[] {result.AsyncWaitHandle},
-                                                (int) configuration.HTTPServerTimeout);
+                                            WaitHandle.WaitAny(new[] {result.AsyncWaitHandle});
                                         }
                                     }
                                 }
