@@ -67,17 +67,68 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            if (string.IsNullOrEmpty(data) ||
-                                (Helpers.IsSecondLife(Client) &&
-                                 Encoding.UTF8.GetByteCount(data) >
-                                 Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
+                            // get instant message dialog type
+                            FieldInfo instantMessageDialogInfo = typeof (InstantMessageDialog).GetFields(
+                                BindingFlags.Public |
+                                BindingFlags.Static)
+                                .AsParallel().FirstOrDefault(
+                                    o =>
+                                        o.Name.Equals(
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIALOG)),
+                                                    corradeCommandParameters.Message)),
+                                            StringComparison.Ordinal));
+                            InstantMessageDialog instantMessageDialog = instantMessageDialogInfo != null
+                                ? (InstantMessageDialog)
+                                    instantMessageDialogInfo
+                                        .GetValue(null)
+                                : InstantMessageDialog.MessageFromAgent;
+                            // in case it is a regular instant message and this is Second Life check message length
+                            if (Helpers.IsSecondLife(Client) &&
+                                instantMessageDialog.Equals(InstantMessageDialog.MessageFromAgent) &&
+                                (string.IsNullOrEmpty(data) ||
+                                 Encoding.UTF8.GetByteCount(data) > Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
+                            // get whether the message is online of offline (defaults to offline)
+                            FieldInfo instantMessageOnlineInfo = typeof (InstantMessageOnline).GetFields(
+                                BindingFlags.Public |
+                                BindingFlags.Static)
+                                .AsParallel().FirstOrDefault(
+                                    o =>
+                                        o.Name.Equals(
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ONLINE)),
+                                                    corradeCommandParameters.Message)),
+                                            StringComparison.Ordinal));
+                            InstantMessageOnline instantMessageOnline = instantMessageOnlineInfo != null
+                                ? (InstantMessageOnline)
+                                    instantMessageOnlineInfo
+                                        .GetValue(null)
+                                : InstantMessageOnline.Offline;
+                            // get the session UUID (defaults to UUID.Zero)
+                            UUID sessionUUID;
+                            if (!UUID.TryParse(wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
+                                    corradeCommandParameters.Message)), out sessionUUID))
+                            {
+                                sessionUUID = UUID.Zero;
+                            }
+                            // send the message
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.InstantMessage(agentUUID, data);
+                                //Client.Self.InstantMessage(agentUUID, data);
+                                Client.Self.InstantMessage(Client.Self.FirstName + @" " + Client.Self.LastName,
+                                    agentUUID, data, sessionUUID, instantMessageDialog,
+                                    instantMessageOnline, Client.Self.SimPosition,
+                                    Client.Network.CurrentSim.RegionID, new byte[] {});
                             }
+                            // do not log empty messages
+                            if (string.IsNullOrEmpty(data))
+                                break;
                             // Log instant messages,
                             if (corradeConfiguration.InstantMessageLogEnabled)
                             {
@@ -268,6 +319,7 @@ namespace Corrade
                                     chatTypeInfo
                                         .GetValue(null)
                                 : ChatType.Normal;
+                            // send the message
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Chat(
@@ -275,6 +327,9 @@ namespace Corrade
                                     chatChannel,
                                     chatType);
                             }
+                            // do not log empty messages
+                            if (string.IsNullOrEmpty(data))
+                                break;
                             // Log local chat,
                             if (corradeConfiguration.LocalMessageLogEnabled)
                             {

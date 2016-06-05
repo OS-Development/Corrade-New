@@ -7764,6 +7764,11 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("online")]
+            ONLINE,
+            [Reflection.NameAttribute("dialog")]
+            DIALOG,
+
             [CommandInputSyntax(
                 "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<GroupMember[,GroupMember...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Reflection.NameAttribute("getgroupmemberdata")] GETGROUPMEMBERDATA,
