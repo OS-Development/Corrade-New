@@ -84,13 +84,20 @@ namespace Corrade
                                     instantMessageDialogInfo
                                         .GetValue(null)
                                 : InstantMessageDialog.MessageFromAgent;
-                            // in case it is a regular instant message and this is Second Life check message length
-                            if (Helpers.IsSecondLife(Client) &&
-                                instantMessageDialog.Equals(InstantMessageDialog.MessageFromAgent) &&
-                                (string.IsNullOrEmpty(data) ||
-                                 Encoding.UTF8.GetByteCount(data) > Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
+                            // check message length for SecondLife grids
+                            if (Helpers.IsSecondLife(Client))
                             {
-                                throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                                switch (instantMessageDialog)
+                                {
+                                    case InstantMessageDialog.MessageFromAgent:
+                                    case InstantMessageDialog.BusyAutoResponse:
+                                        if (string.IsNullOrEmpty(data) ||
+                                            Encoding.UTF8.GetByteCount(data) > Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
+                                        {
+                                            throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                                        }
+                                        break;
+                                }
                             }
                             // get whether the message is online of offline (defaults to offline)
                             FieldInfo instantMessageOnlineInfo = typeof (InstantMessageOnline).GetFields(
@@ -287,12 +294,6 @@ namespace Corrade
                                     });
                             break;
                         case Entity.LOCAL:
-                            if (string.IsNullOrEmpty(data) || (Helpers.IsSecondLife(Client) &&
-                                                               Encoding.UTF8.GetByteCount(data) >
-                                                               Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
-                            {
-                                throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
-                            }
                             int chatChannel;
                             if (
                                 !int.TryParse(
@@ -319,6 +320,27 @@ namespace Corrade
                                     chatTypeInfo
                                         .GetValue(null)
                                 : ChatType.Normal;
+                            // check for message length depending on the type of message
+                            if (Helpers.IsSecondLife(Client))
+                            {
+                                switch (chatType)
+                                {
+                                    case ChatType.Normal:
+                                    case ChatType.Debug:
+                                    case ChatType.OwnerSay:
+                                    case ChatType.RegionSay:
+                                    case ChatType.RegionSayTo:
+                                    case ChatType.Shout:
+                                    case ChatType.Whisper:
+                                        if (string.IsNullOrEmpty(data) || Encoding.UTF8.GetByteCount(data) >
+                                             Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
+                                        {
+                                            throw new ScriptException(
+                                                ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                                        }
+                                        break;
+                                }
+                            }
                             // send the message
                             lock (Locks.ClientInstanceSelfLock)
                             {
