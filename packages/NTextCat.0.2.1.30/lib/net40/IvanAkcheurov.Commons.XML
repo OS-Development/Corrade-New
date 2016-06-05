@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>IvanAkcheurov.Commons</name>
+    </assembly>
+    <members>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.AddLine(System.String,System.String)">
+            <summary>
+            Appends <see cref="P:System.Environment.NewLine"/> followed by <paramref name="tail"/> to the end of <paramref name="head"/>
+            </summary>
+            <param name="head"></param>
+            <param name="tail"></param>
+            <returns>reference to <paramref name="head"/> passed</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.AddLine(System.Text.StringBuilder)">
+            <summary>
+            Appends <see cref="P:System.Environment.NewLine"/> to the end of <paramref name="head"/>
+            Basically the same as <see cref="M:System.Text.StringBuilder.AppendLine"/>
+            </summary>
+            <param name="head"></param>
+            <returns>reference to <paramref name="head"/> passed</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.AddLine(System.Text.StringBuilder,System.String)">
+            <summary>
+            Appends <see cref="P:System.Environment.NewLine"/> followed by <paramref name="tail"/> to the end of <paramref name="head"/>
+            </summary>
+            <param name="head"></param>
+            <param name="tail"></param>
+            <returns>reference to <paramref name="head"/> passed</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.ToStrings``1(System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            Returns sequence of string representations of original items converted with <seealso cref="M:System.Object.ToString"/>
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="sequence">Sequence of items that need to be represented as strings</param>
+            <returns>Sequence of strings</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.Interleave``1(System.Collections.Generic.IEnumerable{``0},``0,System.Boolean,System.Boolean)">
+            <summary>
+            interleaves initial sequence with specified interleaver. 
+            Output sequence looks like megasandwich, each bread is each intital sequence element and each cheese is interleaver.
+            </summary>
+            <typeparam name="T">type of sequence elements</typeparam>
+            <param name="sequence">initial sequence</param>
+            <param name="interleaver">"cheese" instance to put between elements of intital sequence</param>
+            <param name="startsWithInterleaver">
+            if true, additional interleaver is added to the beginnig of output sequence but not in case if intial sequence is empty</param>
+            <param name="endsWithInterleaver">
+            if true, additional interleaver is added to the end of output sequence but not in case if intial sequence is empty</param>
+            <returns>elements of initial sequence interleaved by interleaver</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.Interleave``1(System.Collections.Generic.IEnumerable{``0},``0)">
+            <summary>
+            interleaves initial sequence with specified interleaver. 
+            Output sequence looks like megasandwich, each bread is each intital sequence element and each cheese is interleaver.
+            Is equivalent to calling <see cref="M:IvanAkcheurov.Commons.StringExtensions.Interleave``1(System.Collections.Generic.IEnumerable{``0},``0,System.Boolean,System.Boolean)"/> with false for "starts/ends with interleaver"
+            </summary>
+            <typeparam name="T">type of sequence elements</typeparam>
+            <param name="sequence">initial sequence</param>
+            <param name="interleaver">"cheese" instance to put between elements of intital sequence</param>
+            <returns>elements of initial sequence interleaved by interleaver</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.Join(System.Collections.Generic.IEnumerable{System.String},System.String)">
+            <summary>
+            Glues all <paramref name="strings"/> in a single string. Puts <paramref name="separator"/> between any two adjacent strings.
+            </summary>
+            <param name="strings"></param>
+            <param name="separator">is put between strings</param>
+            <returns>String in format: {Item1}[{separator}{Item2}[{separator}{Item3}...]]</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.Split(System.String,System.String)">
+            <summary>
+            Returns substrings which were delimited in <paramref name="sourceString"/> with separator specified.
+            </summary>
+            <param name="sourceString">input string</param>
+            <param name="separator">separator between substrings</param>
+            <returns>sequence of strings</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.Split(System.String,System.String,System.Int32)">
+            <summary>
+            Returns substrings which were delimited in <paramref name="sourceString"/> with separator specified.
+            </summary>
+            <param name="sourceString">input string</param>
+            <param name="separator">separator between substrings</param>
+            <param name="startInx">the begininning index of <paramref name="sourceString"/> from which separators are sought (any text before this index is ignored)</param>
+            <returns>sequence of strings</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.Split(System.String,System.String,System.Int32,System.Int32)">
+            <summary>
+            Returns substrings which were delimited in <paramref name="sourceString"/> with separator specified.
+            </summary>
+            <param name="sourceString">input string</param>
+            <param name="separator">separator between substrings</param>
+            <param name="startInx">the begininning index of <paramref name="sourceString"/> from which separators are sought (any text before this index is ignored)</param>
+            <param name="endInx">the end index of <paramref name="sourceString"/> up to which separators are sought (any text on or after this index is ignored)</param>
+            <returns>sequence of strings</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.ForEach``1(System.Collections.Generic.IEnumerable{``0},System.Action{``0})">
+            <summary>
+            Invokes an <paramref name="action"/> on each element of sequence
+            </summary>
+            <typeparam name="T">type of sequence elements</typeparam>
+            <param name="sequence">initial sequence</param>
+            <param name="action">Invokes an <paramref name="action"/> on each element of sequence</param>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.WhereNot``1(System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Boolean})">
+            <summary>
+            Returns those items of input sequence for which <paramref name="whereFunc"/> returns false
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="sequence">Input sequence of items</param>
+            <param name="whereFunc">Predicate filter</param>
+            <returns>Sequence of those items of input sequence for which <paramref name="whereFunc"/> returns false</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.StringIsLong(System.String)">
+            <summary>
+            Checks if input string is valid integer number
+            </summary>
+            <param name="str">input string</param>
+            <returns>true if <paramref name="str"/> is valid integer, otherwise false</returns>
+        </member>
+        <member name="M:IvanAkcheurov.Commons.StringExtensions.StringIsDouble(System.String)">
+            <summary>
+            Checks if input string is valid number (integer or fractional)
+            </summary>
+            <param name="str">input string</param>
+            <returns>true if input string is valid number (integer or fractional), otherwise false</returns>
+        </member>
+    </members>
+</doc>

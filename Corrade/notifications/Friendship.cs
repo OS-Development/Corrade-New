@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -34,7 +35,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(friendInfoEventArgs.Friend.Name);
+                        IEnumerable<string> name = Helpers.GetAvatarNames(friendInfoEventArgs.Friend.Name);
                         if (name != null)
                         {
                             List<string> fullName = new List<string>(name);
@@ -80,7 +81,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(friendshipResponseEventArgs.AgentName);
+                        IEnumerable<string> name = Helpers.GetAvatarNames(friendshipResponseEventArgs.AgentName);
                         if (name != null)
                         {
                             List<string> fullName = new List<string>(name);
@@ -111,7 +112,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(friendshipOfferedEventArgs.AgentName);
+                        IEnumerable<string> name = Helpers.GetAvatarNames(friendshipOfferedEventArgs.AgentName);
                         if (name != null)
                         {
                             List<string> fullName = new List<string>(name);

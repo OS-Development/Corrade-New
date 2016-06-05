@@ -94,7 +94,8 @@ namespace Corrade
                                         if (string.IsNullOrEmpty(data) ||
                                             Encoding.UTF8.GetByteCount(data) > Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
                                         {
-                                            throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                                            throw new ScriptException(
+                                                ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                                         }
                                         break;
                                 }
@@ -333,7 +334,7 @@ namespace Corrade
                                     case ChatType.Shout:
                                     case ChatType.Whisper:
                                         if (string.IsNullOrEmpty(data) || Encoding.UTF8.GetByteCount(data) >
-                                             Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
+                                            Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
                                         {
                                             throw new ScriptException(
                                                 ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);

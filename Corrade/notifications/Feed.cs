@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 
@@ -21,7 +20,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     FeedEventArgs feedEventArgs =
-                        (FeedEventArgs)corradeNotificationParameters.Event;
+                        (FeedEventArgs) corradeNotificationParameters.Event;
                     // Set-up filters.
                     if (!feedEventArgs.GroupUUID.Equals(corradeNotificationParameters.Notification.GroupUUID))
                         return;

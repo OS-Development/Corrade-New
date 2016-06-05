@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NTextCat</name>
+    </assembly>
+    <members>
+        <member name="T:NTextCat.BagOfWordsFeatureExtractor">
+            <summary>
+            This implementation is not robust or production ready.
+            </summary>
+        </member>
+        <member name="M:NTextCat.BasicProfileFactoryBase`1.TrainModels(System.Collections.Generic.IEnumerable{System.Tuple{NTextCat.LanguageInfo,System.IO.TextReader}})">
+            <summary>
+            Disposes TextReader instances!
+            </summary>
+            <param name="input"></param>
+            <returns></returns>
+        </member>
+        <member name="P:NTextCat.BasicProfileFactoryBase`1.AllowUsingMultipleThreadsForTraining">
+            <summary>
+            true if it is allowed to use more than one thread for training
+            </summary>
+        </member>
+        <member name="T:NTextCat.CharacterNGramExtractor">
+            <summary>
+            Extracts char-ngrams out of TextReader, char[] or string.
+            </summary>
+        </member>
+        <member name="M:NTextCat.CharacterNGramExtractor.GetFeatures(System.String)">
+            <summary>
+            Splits text into tokens, transforms each "token" into "_token_" (prepends and appends underscores) 
+            and then extracts proper ngrams out of each "_token_".
+            </summary>
+            <param name="text"></param>
+            <returns>the sequence of ngrams extracted</returns>
+        </member>
+        <member name="M:NTextCat.CharacterNGramExtractor.GetFeatures(System.Char[])">
+            <summary>
+            Splits text into tokens, transforms each "token" into "_token_" (prepends and appends underscores) 
+            and then extracts proper ngrams out of each "_token_".
+            </summary>
+            <param name="text"></param>
+            <returns>the sequence of ngrams extracted</returns>
+        </member>
+        <member name="M:NTextCat.CharacterNGramExtractor.GetFeatures(System.IO.TextReader)">
+            <summary>
+            Splits text into tokens, transforms each "token" into "_token_" (prepends and appends underscores) 
+            and then extracts proper ngrams out of each "_token_".
+            </summary>
+            <param name="text"></param>
+            <returns>the sequence of ngrams extracted</returns>
+        </member>
+        <member name="P:NTextCat.LanguageInfo.Iso639_2T">
+            <summary>
+            A code of the language according to ISO639-2 (Part2T)
+            </summary>
+        </member>
+        <member name="T:NTextCat.NaiveBayesLanguageIdentifierFactory">
+            <summary>
+            Loads an instance of <see cref="T:NTextCat.NaiveBayesLanguageIdentifier"/> from file or trains a new instance out of a data set.
+            </summary>
+        </member>
+        <member name="T:NTextCat.RankedClassifier`1">
+            <summary>
+            
+            </summary>
+            <remarks>Used because KnnMonoCategorizedClassifier stores ranked events dictionary and not a regular distribution.
+            Any new distribution gets converted to the ranked events dictionary and gets compared to the known language ranked events dictionaries.
+            We could just compare distributions directly but then they have to get ranked each time 
+            inside of RankingDistanceCalculator (including the known language distributions) which imposes a performance hit.
+            </remarks>
+            <typeparam name="T">type of event of distribution</typeparam>
+        </member>
+        <member name="T:NTextCat.RankingDistanceCalculator`1">
+            <summary>
+            A non-linear distance calculator which calculates distance between two distributions
+            </summary>
+            <typeparam name="T">type of token used in Language Models</typeparam>
+        </member>
+        <member name="M:NTextCat.RankingDistanceCalculator`1.#ctor(System.Int32)">
+            <summary>
+            
+            </summary>
+            <param name="defaultRankDistanceOnAbsence">if ngram is absent in known language model, this number will be used as rank distance for this ngram between unknown and known language models</param>
+        </member>
+        <member name="T:NTextCat.RankedLanguageIdentifier">
+            <summary>
+            Identifies the language of a given text.
+            Please use <see cref="T:NTextCat.RankedLanguageIdentifierFactory"/> to load an instance of this class from a file
+            </summary>
+        </member>
+        <member name="T:NTextCat.RankedLanguageIdentifierFactory">
+            <summary>
+            Loads an instance of <see cref="T:NTextCat.RankedLanguageIdentifier"/> from file or trains a new instance out of a data set.
+            </summary>
+        </member>
+    </members>
+</doc>

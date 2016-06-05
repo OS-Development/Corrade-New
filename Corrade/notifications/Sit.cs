@@ -20,7 +20,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     AvatarSitChangedEventArgs sitChangedEventArgs =
-                        (AvatarSitChangedEventArgs)corradeNotificationParameters.Event;
+                        (AvatarSitChangedEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())

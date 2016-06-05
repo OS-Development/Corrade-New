@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>IvanAkcheurov.NClassify</name>
+    </assembly>
+    <members>
+        <member name="T:IvanAkcheurov.NClassify.Distribution`1">
+            <summary>
+            
+            </summary>
+            <typeparam name="T"></typeparam>
+            <remarks>
+            Implementation of <see cref="T:IvanAkcheurov.NClassify.IDistribution`1"/> is not strict as <see cref="T:IvanAkcheurov.NClassify.Bag`1"/> cannot contain more than int.MaxValue numbers.
+            </remarks>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.DistinctRepresentedEvents">
+            <summary>
+            Distinct events represented (noise events are not included)
+            </summary>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.DistinctRepresentedEventsCount">
+            <summary>
+            Total count of distinct events represented (noise events are not included)
+            </summary>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.DistinctEventsCountWithNoise">
+            <summary>
+            Count of all distinct events including those that have been considered as noise and have no representative
+            </summary>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.DistinctNoiseEventsCount">
+            <summary>
+            Count of distinct events that have been considered as noise and have no representative (<see cref="M:IvanAkcheurov.NClassify.IDistribution`1.GetEventCount(`0)"/> returns 0)
+            </summary>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.TotalRepresentedEventCount">
+            <summary>
+            Total count of events (including repetitions) that are represented in the distribution (<see cref="M:IvanAkcheurov.NClassify.IDistribution`1.GetEventCount(`0)"/> returns value &gt; 0)
+            </summary>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.TotalEventCountWithNoise">
+            <summary>
+            Total count of all events (including repetitions) including those that have been considered as noise and have no representative (<see cref="M:IvanAkcheurov.NClassify.IDistribution`1.GetEventCount(`0)"/> returns 0)
+            </summary>
+        </member>
+        <member name="P:IvanAkcheurov.NClassify.IDistribution`1.TotalNoiseEventsCount">
+            <summary>
+            Total count of events (including repetitions) that have been considered as noise and have no representative (<see cref="M:IvanAkcheurov.NClassify.IDistribution`1.GetEventCount(`0)"/> returns 0)
+            </summary>
+        </member>
+        <member name="M:IvanAkcheurov.NClassify.IModifiableDistribution`1.AddNoise(System.Int64,System.Int64)">
+            <summary>
+            Adds noise to the distribution (unrepresented items that effect frequency and TotalCount values)
+            </summary>
+            <param name="totalCount">total count of events (including repetitions) that are considered as noise</param>
+            <param name="distinctCount">count of distinct events that are considered as noise and have not been seen by this distribution ever before 
+            (it's a burden of a client of the function to guarantee this)</param>
+        </member>
+        <member name="T:IvanAkcheurov.NClassify.KnnMonoCategorizedClassifier`2">
+            <summary>
+            Finds the most probable label (category) for the item that hasn't been seen before.
+            Given unknown item, finds N the closest known and labeled items. With that information produces the rankings for all labels.
+            Label's rank is calculated as an average distance to its N closest items.
+            Current implementation has N set to infinity.
+            </summary>
+            <typeparam name="TItem">known items that have been labeled</typeparam>
+            <typeparam name="TCategory">labels</typeparam>
+        </member>
+    </members>
+</doc>

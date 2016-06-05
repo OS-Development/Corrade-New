@@ -6,9 +6,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using NTextCat;
 using OpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -30,7 +33,7 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
+                    IEnumerable<string> name = Helpers.GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
                     if (name != null)
                     {
                         List<string> fullName = new List<string>(name);
@@ -46,6 +49,20 @@ namespace Corrade
                         notificationRegionMessage.IM.FromAgentID.ToString());
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                         notificationRegionMessage.IM.Message);
+                    // language detection
+                    string profilePath = IO.PathCombine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
+                        CORRADE_CONSTANTS.LANGUAGE_PROFILE_FILE);
+                    string mostCertainLanguage = @"Unknown";
+                    if (File.Exists(profilePath))
+                    {
+                        Tuple<LanguageInfo, double> detectedLanguage =
+                            new RankedLanguageIdentifierFactory().Load(profilePath)
+                                .Identify(notificationRegionMessage.IM.Message)
+                                .FirstOrDefault();
+                        if (detectedLanguage != null)
+                            mostCertainLanguage = detectedLanguage.Item1.Iso639_3;
+                    }
+                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE), mostCertainLanguage);
                 };
         }
     }

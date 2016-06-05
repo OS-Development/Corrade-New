@@ -10,6 +10,7 @@ using System.Linq;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -31,7 +32,7 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = wasOpenMetaverse.Helpers.GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
+                    IEnumerable<string> name = Helpers.GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
                     if (name != null)
                     {
                         List<string> fullName = new List<string>(name);

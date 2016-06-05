@@ -6376,7 +6376,8 @@ namespace Corrade
             [Reflection.NameAttribute("wear")] WEAR,
             [Reflection.NameAttribute("unwear")] UNWEAR,
             [Reflection.NameAttribute("post")] POST,
-            [Reflection.NameAttribute("tweet")] TWEET
+            [Reflection.NameAttribute("tweet")] TWEET,
+            [Reflection.NameAttribute("detect")] DETECT
         }
 
         /// <summary>
@@ -6462,6 +6463,7 @@ namespace Corrade
             public const string MOVEMENT_STATE_FILE = @"Movement.state";
             public const string FEEDS_STATE_FILE = @"Feeds.state";
             public const string LIBS_DIRECTORY = @"libs";
+            public const string LANGUAGE_PROFILE_FILE = @"Core14.profile.xml";
 
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
 
@@ -7763,6 +7765,14 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=language>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<detect>>&action=detect:<message=<STRING>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Talk)]
+            [CorradeCommand("language")]
+            [Reflection.NameAttribute("language")]
+            LANGUAGE,
 
             [Reflection.NameAttribute("online")]
             ONLINE,
