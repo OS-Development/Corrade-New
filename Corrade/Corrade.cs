@@ -381,9 +381,7 @@ namespace Corrade
         private static readonly SynBot SynBot = new SynBot();
         private static readonly BotUser SynBotUser = new BotUser(SynBot, CORRADE_CONSTANTS.CORRADE);
 
-        private static readonly RankedLanguageIdentifier rankedLanguageIdentifier =
-            new RankedLanguageIdentifierFactory().Load(IO.PathCombine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
-                CORRADE_CONSTANTS.LANGUAGE_PROFILE_FILE));
+        private static RankedLanguageIdentifier rankedLanguageIdentifier = null;
 
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
@@ -2926,6 +2924,20 @@ namespace Corrade
                         }
                     }
                     break;
+            }
+            // Load language detection
+            try
+            {
+                rankedLanguageIdentifier =
+                    new RankedLanguageIdentifierFactory().Load(IO.PathCombine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
+                        CORRADE_CONSTANTS.LANGUAGE_PROFILE_FILE));
+            }
+            catch (Exception ex)
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_LANGUAGE_DETECTION),
+                    ex.Message);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemEventHandler HandleConfigurationFileChanged = null;
@@ -6978,7 +6990,8 @@ namespace Corrade
             [Reflection.DescriptionAttribute("error setting up feeds watcher")] ERROR_SETTING_UP_FEEDS_WATCHER,
             [Reflection.DescriptionAttribute("error loading feed")] ERROR_LOADING_FEED,
             [Reflection.DescriptionAttribute("error saving SIML bot learning file")] ERROR_SAVING_SIML_BOT_LEARNING_FILE,
-            [Reflection.DescriptionAttribute("error saving SIML bot memorizing file")] ERROR_SAVING_SIML_BOT_MEMORIZING_FILE
+            [Reflection.DescriptionAttribute("error saving SIML bot memorizing file")] ERROR_SAVING_SIML_BOT_MEMORIZING_FILE,
+            [Reflection.DescriptionAttribute("error loading language detection")] ERROR_LOADING_LANGUAGE_DETECTION
         }
 
         /// <summary>
