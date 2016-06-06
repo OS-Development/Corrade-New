@@ -34,20 +34,6 @@ namespace Corrade
                     }
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                         alertMessageEventArgs.Message);
-                    // language detection
-                    string profilePath = IO.PathCombine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
-                        CORRADE_CONSTANTS.LANGUAGE_PROFILE_FILE);
-                    string mostCertainLanguage = @"Unknown";
-                    if (File.Exists(profilePath))
-                    {
-                        Tuple<LanguageInfo, double> detectedLanguage =
-                            new RankedLanguageIdentifierFactory().Load(profilePath)
-                                .Identify(alertMessageEventArgs.Message)
-                                .FirstOrDefault();
-                        if (detectedLanguage != null)
-                            mostCertainLanguage = detectedLanguage.Item1.Iso639_3;
-                    }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE), mostCertainLanguage);
                 };
         }
     }

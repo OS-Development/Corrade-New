@@ -42,6 +42,7 @@ using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 using Settings = OpenMetaverse.Settings;
 using ThreadState = System.Threading.ThreadState;
+using NTextCat;
 
 #endregion
 
@@ -379,6 +380,10 @@ namespace Corrade
 
         private static readonly SynBot SynBot = new SynBot();
         private static readonly BotUser SynBotUser = new BotUser(SynBot, CORRADE_CONSTANTS.CORRADE);
+
+        private static readonly RankedLanguageIdentifier rankedLanguageIdentifier =
+            new RankedLanguageIdentifierFactory().Load(IO.PathCombine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
+                CORRADE_CONSTANTS.LANGUAGE_PROFILE_FILE));
 
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();

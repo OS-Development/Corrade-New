@@ -151,7 +151,6 @@ namespace Corrade
                                 {
                                     case true:
                                         ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
-                                        bool succeeded = false;
                                         lock (Locks.ClientInstanceAssetsLock)
                                         {
                                             Client.Assets.RequestImage(itemUUID, ImageType.Normal,
@@ -160,7 +159,6 @@ namespace Corrade
                                                     if (!asset.AssetID.Equals(itemUUID)) return;
                                                     if (!state.Equals(TextureRequestState.Finished)) return;
                                                     assetData = asset.AssetData;
-                                                    succeeded = true;
                                                     RequestAssetEvent.Set();
                                                 });
                                             if (
