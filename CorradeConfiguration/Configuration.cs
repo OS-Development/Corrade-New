@@ -131,7 +131,7 @@ namespace CorradeConfiguration
         private Time.DecayingAlarm.DECAY_TYPE _dataDecayType = Time.DecayingAlarm.DECAY_TYPE.ARITHMETIC;
         private uint _dataTimeout = 2500;
         private string _driveIdentifierHash = string.Empty;
-        private bool _enableAIML;
+        private bool _enableSIML;
         private bool _enableHTTPServer;
         private bool _enableRLV;
         private bool _enableTCPNotificationsServer;
@@ -427,14 +427,14 @@ namespace CorradeConfiguration
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    return _enableAIML;
+                    return _enableSIML;
                 }
             }
             set
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    _enableAIML = value;
+                    _enableSIML = value;
                 }
             }
         }

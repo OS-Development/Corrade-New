@@ -3132,7 +3132,7 @@ namespace Corrade
                         if (CallbackQueue.Dequeue((int) corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
-                                () => wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
+                                async () => await wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
                                     corradeConfiguration.CallbackTimeout), corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
@@ -3157,7 +3157,7 @@ namespace Corrade
                             ref notificationQueueElement))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
-                                () => wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
+                                async () => await wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
                                     corradeConfiguration.NotificationTimeout), corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
@@ -5315,19 +5315,18 @@ namespace Corrade
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
         /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        private static string wasPOST(string URL, Dictionary<string, string> message, uint millisecondsTimeout)
+        private static async System.Threading.Tasks.Task<byte[]> wasPOST(string URL, Dictionary<string, string> message, uint millisecondsTimeout)
         {
             try
             {
-                HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(URL);
                 request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
                 request.Proxy = WebRequest.DefaultWebProxy;
-                //request.Pipelined = true;
-                //request.KeepAlive = true;
-                request.Timeout = (int) millisecondsTimeout;
-                request.ReadWriteTimeout = (int) millisecondsTimeout;
+                request.ProtocolVersion = HttpVersion.Version11;
+                request.Pipelined = true;
+                request.KeepAlive = true;
+                request.Timeout = (int)millisecondsTimeout;
                 request.AllowAutoRedirect = true;
-                request.AllowWriteStreamBuffering = true;
                 request.Method = WebRequestMethods.Http.Post;
                 request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                 // set the content type based on chosen output filers
@@ -5340,24 +5339,24 @@ namespace Corrade
                         request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                         break;
                 }
+                byte[] data = Encoding.UTF8.GetBytes(KeyValue.Encode(message));
+                request.ContentLength = data.Length;
                 // send request
-                using (Stream requestStream = request.GetRequestStream())
+                using (var requestStream = await request.GetRequestStreamAsync())
                 {
-                    using (StreamWriter dataStream = new StreamWriter(requestStream))
-                    {
-                        dataStream.Write(KeyValue.Encode(message));
-                    }
+                    await requestStream.WriteAsync(data, 0, data.Length);
                 }
                 // read response
-                using (HttpWebResponse response = (HttpWebResponse) request.GetResponse())
+                using (MemoryStream responseMemoryStream = new MemoryStream())
                 {
-                    using (Stream responseStream = response.GetResponseStream())
+                    using (var response = await request.GetResponseAsync())
                     {
-                        using (StreamReader streamReader = new StreamReader(responseStream))
+                        using (Stream responseStream = response.GetResponseStream())
                         {
-                            return streamReader.ReadToEnd();
+                            await responseStream.CopyToAsync(responseMemoryStream);
                         }
                     }
+                    return responseMemoryStream.ToArray();
                 }
             }
             catch (Exception ex)
@@ -5366,7 +5365,7 @@ namespace Corrade
                     ex.Message);
             }
 
-            return string.Empty;
+            return null;
         }
 
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
