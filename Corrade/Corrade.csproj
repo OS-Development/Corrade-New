@@ -361,6 +361,9 @@
     <Compile Include="commands\Corrade\GetGroupMemberData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetGroupMembersData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetGroupsData.cs">
       <SubType>Component</SubType>
     </Compile>

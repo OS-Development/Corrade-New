@@ -12,7 +12,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -65,27 +64,9 @@ namespace Corrade
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
                     if (!UUID.TryParse(item, out itemUUID))
                     {
-                        // attempt regex and then fall back to string
-                        InventoryBase inventoryBaseItem = null;
-                        try
-                        {
-                            inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                    .FirstOrDefault();
-                        }
-                        catch (Exception)
-                        {
-                            // not a regex so we do not care
-                            inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
-                                    .FirstOrDefault();
-                        }
-                        if (inventoryBaseItem == null)
-                        {
-                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                        }
-                        inventoryItem = inventoryBaseItem as InventoryItem;
+                        inventoryItem =
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                .FirstOrDefault() as InventoryItem;
                         if (inventoryItem == null)
                         {
                             throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -40,28 +39,25 @@ namespace Corrade
                     HashSet<InventoryItem> items =
                         new HashSet<InventoryItem>();
                     UUID itemUUID;
-                    if (UUID.TryParse(item, out itemUUID))
+                    switch (UUID.TryParse(item, out itemUUID))
                     {
-                        items.UnionWith(Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                            itemUUID).Select(o => o as InventoryItem));
-                    }
-                    else
-                    {
-                        // attempt regex and then fall back to string
-                        try
-                        {
+                        case true:
+                            items.UnionWith(Inventory
+                                .FindInventory<InventoryBase>(Client,
+                                    Client.Inventory.Store.RootNode,
+                                    itemUUID)
+                                .ToArray()
+                                .AsParallel()
+                                .OfType<InventoryItem>());
+                            break;
+                        default:
                             items.UnionWith(
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                    .Select(o => o as InventoryItem));
-                        }
-                        catch (Exception)
-                        {
-                            // not a regex so we do not care
-                            items.UnionWith(
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
-                                    .Select(o => o as InventoryItem));
-                        }
+                                Inventory
+                                    .FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .ToArray()
+                                    .AsParallel()
+                                    .OfType<InventoryItem>());
+                            break;
                     }
                     if (!items.Any())
                     {

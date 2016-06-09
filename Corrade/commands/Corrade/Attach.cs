@@ -8,14 +8,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -103,7 +101,7 @@ namespace Corrade
                             break;
                     }
 
-                    Parallel.ForEach(items, o =>
+                    items.AsParallel().ForAll(o =>
                         typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
@@ -112,40 +110,19 @@ namespace Corrade
                                         {
                                             InventoryItem inventoryItem;
                                             UUID itemUUID;
-                                            if (UUID.TryParse(o.Value, out itemUUID))
+                                            switch (UUID.TryParse(o.Value, out itemUUID))
                                             {
-                                                InventoryBase inventoryBaseItem =
-                                                    Inventory.FindInventory<InventoryBase>(Client,
+                                                case true:
+                                                    inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
                                                         Client.Inventory.Store.RootNode, itemUUID
-                                                        ).FirstOrDefault();
-                                                if (inventoryBaseItem == null)
-                                                    return;
-                                                inventoryItem = inventoryBaseItem as InventoryItem;
-                                            }
-                                            else
-                                            {
-                                                // attempt regex and then fall back to string
-                                                InventoryBase inventoryBaseItem;
-                                                try
-                                                {
-                                                    inventoryBaseItem =
-                                                        Inventory.FindInventory<InventoryBase>(Client,
-                                                            Client.Inventory.Store.RootNode,
-                                                            new Regex(o.Value,
-                                                                RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                                            .FirstOrDefault();
-                                                }
-                                                catch (Exception)
-                                                {
-                                                    // not a regex so we do not care
-                                                    inventoryBaseItem =
+                                                        ).FirstOrDefault() as InventoryItem;
+                                                    break;
+                                                default:
+                                                    inventoryItem =
                                                         Inventory.FindInventory<InventoryBase>(Client,
                                                             Client.Inventory.Store.RootNode, o.Value)
-                                                            .FirstOrDefault();
-                                                }
-                                                if (inventoryBaseItem == null)
-                                                    return;
-                                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                                            .FirstOrDefault() as InventoryItem;
+                                                    break;
                                             }
                                             if (inventoryItem == null)
                                                 return;

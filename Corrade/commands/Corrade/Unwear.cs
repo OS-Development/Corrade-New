@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -41,38 +40,18 @@ namespace Corrade
                         {
                             InventoryItem inventoryItem;
                             UUID itemUUID;
-                            if (UUID.TryParse(o, out itemUUID))
+                            switch (UUID.TryParse(o, out itemUUID))
                             {
-                                InventoryBase inventoryBaseItem =
-                                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                        itemUUID
-                                        ).FirstOrDefault();
-                                if (inventoryBaseItem == null)
-                                    return;
-                                inventoryItem = inventoryBaseItem as InventoryItem;
-                            }
-                            else
-                            {
-                                // attempt regex and then fall back to string
-                                InventoryBase inventoryBaseItem = null;
-                                try
-                                {
-                                    inventoryBaseItem =
+                                case true:
+                                    inventoryItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                            .FirstOrDefault();
-                                }
-                                catch (Exception)
-                                {
-                                    // not a regex so we do not care
-                                    inventoryBaseItem =
+                                            itemUUID).FirstOrDefault() as InventoryItem;
+                                    break;
+                                default:
+                                    inventoryItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            o)
-                                            .FirstOrDefault();
-                                }
-                                if (inventoryBaseItem == null)
-                                    return;
-                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                            o).FirstOrDefault() as InventoryItem;
+                                    break;
                             }
                             if (inventoryItem == null)
                                 return;

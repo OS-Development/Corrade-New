@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -80,7 +79,7 @@ namespace Corrade
                     CSV.ToEnumerable(
                         attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
-                            InventoryBase inventoryBaseItem = null;
+                            InventoryItem inventoryItem = null;
                             switch (detachType)
                             {
                                 case Type.SLOT:
@@ -91,7 +90,7 @@ namespace Corrade
                                             attached.AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
                                         if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                         {
-                                            inventoryBaseItem =
+                                            inventoryItem =
                                                 Inventory.FindInventory<InventoryBase>(Client,
                                                     Client.Inventory.Store.RootNode,
                                                     attachment.Key.Properties.ItemID
@@ -99,49 +98,28 @@ namespace Corrade
                                                     .AsParallel().FirstOrDefault(
                                                         p =>
                                                             p is InventoryItem &&
-                                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                            if (inventoryBaseItem == null)
-                                                return;
+                                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object)) as
+                                                    InventoryItem;
                                         }
                                     }
                                     break;
                                 case Type.NAME:
-                                    // attempt regex and then fall back to string
-                                    try
-                                    {
-                                        inventoryBaseItem =
-                                            Inventory.FindInventory<InventoryBase>(Client,
-                                                Client.Inventory.Store.RootNode,
-                                                new Regex(o, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                                .FirstOrDefault();
-                                    }
-                                    catch (Exception)
-                                    {
-                                        // not a regex so we do not care
-                                        inventoryBaseItem =
-                                            Inventory.FindInventory<InventoryBase>(Client,
-                                                Client.Inventory.Store.RootNode,
-                                                o)
-                                                .FirstOrDefault();
-                                    }
-                                    if (inventoryBaseItem == null)
-                                        return;
+                                    inventoryItem =
+                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                            o).FirstOrDefault() as InventoryItem;
                                     break;
                                 case Type.UUID:
                                     UUID itemUUID;
                                     if (UUID.TryParse(o, out itemUUID))
                                     {
-                                        inventoryBaseItem =
+                                        inventoryItem =
                                             Inventory.FindInventory<InventoryBase>(Client,
                                                 Client.Inventory.Store.RootNode,
                                                 itemUUID
-                                                ).FirstOrDefault();
-                                        if (inventoryBaseItem == null)
-                                            return;
+                                                ).FirstOrDefault() as InventoryItem;
                                     }
                                     break;
                             }
-                            InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
                             if (inventoryItem == null)
                                 return;
 

@@ -10,7 +10,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using CorradeConfiguration;
 using Facebook;
@@ -100,36 +99,15 @@ namespace Corrade
                             if (!string.IsNullOrEmpty(item))
                             {
                                 var facebookMediaObject = new FacebookMediaObject();
-                                InventoryItem inventoryItem;
                                 UUID itemUUID;
                                 // If the asset is of an asset type that can only be retrieved locally or the item is a string
                                 // then attempt to resolve the item to an inventory item or else the item cannot be found.
                                 switch (!UUID.TryParse(item, out itemUUID))
                                 {
                                     case true:
-                                        // attempt regex and then fall back to string
-                                        InventoryBase inventoryBaseItem;
-                                        try
-                                        {
-                                            inventoryBaseItem =
-                                                Inventory.FindInventory<InventoryBase>(Client,
-                                                    Client.Inventory.Store.RootNode,
-                                                    new Regex(item, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                                    .FirstOrDefault();
-                                        }
-                                        catch (Exception)
-                                        {
-                                            // not a regex so we do not care
-                                            inventoryBaseItem =
-                                                Inventory.FindInventory<InventoryBase>(Client,
-                                                    Client.Inventory.Store.RootNode, item)
-                                                    .FirstOrDefault();
-                                        }
-                                        if (inventoryBaseItem == null)
-                                        {
-                                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                        }
-                                        inventoryItem = inventoryBaseItem as InventoryItem;
+                                        InventoryItem inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
+                                            Client.Inventory.Store.RootNode, item)
+                                            .FirstOrDefault() as InventoryItem;
                                         if (inventoryItem == null)
                                         {
                                             throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

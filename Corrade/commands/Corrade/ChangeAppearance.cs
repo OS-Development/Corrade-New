@@ -40,42 +40,20 @@ namespace Corrade
                     }
                     InventoryFolder inventoryFolder;
                     UUID folderUUID;
-                    if (UUID.TryParse(folder, out folderUUID))
+                    switch (UUID.TryParse(folder, out folderUUID))
                     {
-                        InventoryBase inventoryBaseItem =
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                folderUUID
-                                ).FirstOrDefault();
-                        if (inventoryBaseItem == null)
-                        {
-                            throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
-                        }
-                        inventoryFolder = inventoryBaseItem as InventoryFolder;
-                    }
-                    else
-                    {
-                        // attempt regex and then fall back to string
-                        InventoryBase inventoryBaseItem = null;
-                        try
-                        {
-                            inventoryBaseItem =
+                        case true:
+                            inventoryFolder =
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                                    folderUUID
+                                    ).FirstOrDefault() as InventoryFolder;
+                            break;
+                        default:
+                            inventoryFolder =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                                     new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase))
-                                    .FirstOrDefault();
-                        }
-                        catch (Exception)
-                        {
-                            // not a regex so we do not care
-                            inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    folder)
-                                    .FirstOrDefault();
-                        }
-                        if (inventoryBaseItem == null)
-                        {
-                            throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
-                        }
-                        inventoryFolder = inventoryBaseItem as InventoryFolder;
+                                    .FirstOrDefault() as InventoryFolder;
+                            break;
                     }
                     if (inventoryFolder == null)
                     {
