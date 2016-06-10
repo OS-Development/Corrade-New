@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -66,13 +66,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    AvatarGroup avatarGroup = new AvatarGroup();
-                    Time.DecayingAlarm AvatarGroupsReceivedEvent =
+                    var avatarGroup = new AvatarGroup();
+                    var AvatarGroupsReceivedEvent =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                     {
                         AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
-                        AvatarGroup receivedAvatarGroup =
+                        var receivedAvatarGroup =
                             args.Groups.AsParallel()
                                 .FirstOrDefault(o => o.GroupID.Equals(groupUUID));
                         if (!receivedAvatarGroup.Equals(default(AvatarGroup)))
@@ -94,7 +94,7 @@ namespace Corrade
                         }
                         Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                     }
-                    List<string> data = GetStructuredData(avatarGroup,
+                    var data = GetStructuredData(avatarGroup,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

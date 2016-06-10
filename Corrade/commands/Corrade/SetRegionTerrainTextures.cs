@@ -12,7 +12,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -42,11 +41,11 @@ namespace Corrade
                             Client.Network.CurrentSim.TerrainDetail3
                         };
                     }
-                    UUID[] setTextures = new UUID[4];
-                    List<string> data = CSV.ToEnumerable(
+                    var setTextures = new UUID[4];
+                    var data = CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
-                    Parallel.ForEach(Enumerable.Range(0, 4),
+                    Enumerable.Range(0, 4).ToArray().AsParallel().ForAll(
                         o =>
                         {
                             switch (data.ElementAtOrDefault(o) != null)
@@ -59,7 +58,7 @@ namespace Corrade
                                             setTextures[o] = textureUUID;
                                             break;
                                         default:
-                                            InventoryBase inventoryBaseItem =
+                                            var inventoryBaseItem =
                                                 Inventory.FindInventory<InventoryBase>(Client,
                                                     Client.Inventory.Store.RootNode, data[o]
                                                     ).FirstOrDefault();

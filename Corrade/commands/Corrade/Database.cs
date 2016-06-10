@@ -32,29 +32,29 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_DATABASE_FILE_CONFIGURED);
                     }
-                    string sql = wasInput(
+                    var sql = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SQL)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(sql))
                     {
                         throw new ScriptException(ScriptError.NO_SQL_STRING_PROVIDED);
                     }
-                    List<string> data = new List<string>();
+                    var data = new List<string>();
 
                     using (IDbConnection dbcon =
                         new SqliteConnection(@"URI=file:" + corradeCommandParameters.Group.DatabaseFile))
                     {
                         dbcon.Open();
-                        using (IDbCommand dbcmd = dbcon.CreateCommand())
+                        using (var dbcmd = dbcon.CreateCommand())
                         {
                             dbcmd.CommandText = sql;
-                            using (IDbTransaction dbtransaction = dbcon.BeginTransaction())
+                            using (var dbtransaction = dbcon.BeginTransaction())
                             {
-                                using (IDataReader reader = dbcmd.ExecuteReader())
+                                using (var reader = dbcmd.ExecuteReader())
                                 {
                                     while (reader.Read())
                                     {
-                                        for (int i = 0; i < reader.FieldCount; ++i)
+                                        for (var i = 0; i < reader.FieldCount; ++i)
                                         {
                                             data.Add(reader.GetName(i));
                                             data.Add(reader.GetValue(i).ToString());

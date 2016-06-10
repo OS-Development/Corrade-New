@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -46,7 +45,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     // Get all sim parcels
-                    ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                    var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                         (sender, args) => SimParcelsDownloadedEvent.Set();
                     lock (Locks.ClientInstanceParcelsLock)
@@ -87,10 +86,10 @@ namespace Corrade
                         northeast = new Vector3(255, 255, 0);
                     }
 
-                    int x1 = Convert.ToInt32(southwest.X);
-                    int y1 = Convert.ToInt32(southwest.Y);
-                    int x2 = Convert.ToInt32(northeast.X);
-                    int y2 = Convert.ToInt32(northeast.Y);
+                    var x1 = Convert.ToInt32(southwest.X);
+                    var y1 = Convert.ToInt32(southwest.Y);
+                    var x2 = Convert.ToInt32(northeast.X);
+                    var y2 = Convert.ToInt32(northeast.Y);
 
                     if (x1 > x2)
                     {
@@ -101,17 +100,20 @@ namespace Corrade
                         BitTwiddling.XORSwap(ref y1, ref y2);
                     }
 
-                    int sx = x2 - x1 + 1;
-                    int sy = y2 - y1 + 1;
+                    var sx = x2 - x1 + 1;
+                    var sy = y2 - y1 + 1;
 
-                    float[] csv = new float[sx*sy];
-                    Parallel.ForEach(Enumerable.Range(x1, sx), x => Parallel.ForEach(Enumerable.Range(y1, sy), y =>
-                    {
-                        float height;
-                        csv[sx*x + y] = simulator.TerrainHeightAtPoint(x, y, out height)
-                            ? height
-                            : -1;
-                    }));
+                    var csv = new float[sx*sy];
+                    Enumerable.Range(x1, sx)
+                        .ToArray()
+                        .AsParallel()
+                        .ForAll(x => Enumerable.Range(y1, sy).ToArray().AsParallel().ForAll(y =>
+                        {
+                            float height;
+                            csv[sx*x + y] = simulator.TerrainHeightAtPoint(x, y, out height)
+                                ? height
+                                : -1;
+                        }));
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

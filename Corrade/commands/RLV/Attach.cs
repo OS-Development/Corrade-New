@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -25,7 +24,7 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryNode RLVFolder =
+                var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .ToArray()
@@ -35,15 +34,14 @@ namespace Corrade
                 {
                     return;
                 }
-                List<InventoryBase> attachmentInventoryBases =
+                var attachmentInventoryBases =
                     new List<InventoryBase>(rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                         .AsParallel().Select(
                             p =>
-                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
-                                    new Regex(Regex.Escape(p),
-                                        RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                    ).AsParallel().FirstOrDefault(o => o is InventoryFolder)).Where(o => o != null));
-                List<InventoryBase> wearableAttachments = new List<InventoryBase>();
+                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder, p)
+                                    .AsParallel()
+                                    .FirstOrDefault(o => o is InventoryFolder)).Where(o => o != null));
+                var wearableAttachments = new List<InventoryBase>();
                 lock (Locks.ClientInstanceInventoryLock)
                 {
                     wearableAttachments.AddRange(attachmentInventoryBases
@@ -55,7 +53,7 @@ namespace Corrade
                 }
                 wearableAttachments.AsParallel().ForAll(o =>
                 {
-                    InventoryItem inventoryItem = o as InventoryItem;
+                    var inventoryItem = o as InventoryItem;
                     if (inventoryItem is InventoryWearable)
                     {
                         Inventory.Wear(Client, CurrentOutfitFolder, inventoryItem, true,
@@ -86,7 +84,7 @@ namespace Corrade
                     {
                         Inventory.Attach(Client, CurrentOutfitFolder, inventoryItem,
                             AttachmentPoint.Default, true, corradeConfiguration.ServicesTimeout);
-                        string slot = Inventory.GetAttachments(
+                        var slot = Inventory.GetAttachments(
                             Client,
                             corradeConfiguration.DataTimeout)
                             .ToArray()

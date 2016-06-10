@@ -5,7 +5,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -27,12 +26,12 @@ namespace Corrade
                 {
                     return;
                 }
-                IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                var currentGroups = Enumerable.Empty<UUID>();
                 if (
                     !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                         ref currentGroups))
                     return;
-                UUID currentGroup =
+                var currentGroup =
                     currentGroups.ToArray().AsParallel().FirstOrDefault(o => o.Equals(groupUUID));
                 if (!currentGroup.Equals(UUID.Zero))
                 {

@@ -25,7 +25,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -43,7 +43,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    List<string> data = GetStructuredData(simulator,
+                    var data = GetStructuredData(simulator,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

@@ -40,8 +40,8 @@ namespace Corrade
                     {
                         allEstates = false;
                     }
-                    List<UUID> estateList = new List<UUID>();
-                    Time.DecayingAlarm EstateListReceivedAlarm =
+                    var estateList = new List<UUID>();
+                    var EstateListReceivedAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     UUID targetUUID;
                     switch (

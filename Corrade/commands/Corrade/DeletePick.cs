@@ -28,18 +28,18 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
-                    string input =
+                    var AvatarPicksReplyEvent = new ManualResetEvent(false);
+                    var input =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(input))
                     {
                         throw new ScriptException(ScriptError.EMPTY_PICK_NAME);
                     }
-                    UUID pickUUID = UUID.Zero;
+                    var pickUUID = UUID.Zero;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
-                        KeyValuePair<UUID, string> pick = args.Picks.AsParallel().FirstOrDefault(
+                        var pick = args.Picks.AsParallel().FirstOrDefault(
                             o => string.Equals(input, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
                             pickUUID = pick.Key;

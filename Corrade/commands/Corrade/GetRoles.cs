@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -45,7 +45,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -56,8 +56,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
-                    List<string> csv = new List<string>();
+                    var GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                    var csv = new List<string>();
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRolesDataEventHandler = (sender, args) =>
                     {
                         csv.AddRange(args.Roles.AsParallel().Select(o => new[]

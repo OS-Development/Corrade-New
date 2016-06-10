@@ -12,7 +12,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -29,14 +28,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string item = wasInput(
+                    var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    HashSet<InventoryItem> items =
+                    var items =
                         new HashSet<InventoryItem>();
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -63,7 +62,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    Parallel.ForEach(items, o =>
+                    items.AsParallel().ForAll(o =>
                     {
                         switch (o.AssetType)
                         {

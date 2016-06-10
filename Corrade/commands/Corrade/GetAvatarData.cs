@@ -58,7 +58,7 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                    var avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
                         .ToArray()
@@ -66,9 +66,9 @@ namespace Corrade
                         .FirstOrDefault(o => o.ID.Equals(agentUUID));
                     if (avatar == null)
                         throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
-                    Time.DecayingAlarm ProfileDataReceivedAlarm =
+                    var ProfileDataReceivedAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    object LockObject = new object();
+                    var LockObject = new object();
                     EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                     {
                         ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
@@ -119,7 +119,7 @@ namespace Corrade
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                     }
-                    List<string> data = GetStructuredData(avatar,
+                    var data = GetStructuredData(avatar,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

@@ -30,7 +30,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string text =
+                    var text =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (Helpers.IsSecondLife(Client) &&
@@ -39,15 +39,15 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE);
                     }
-                    string name =
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
-                    ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
-                    bool succeeded = false;
+                    var CreateNotecardEvent = new ManualResetEvent(false);
+                    var succeeded = false;
                     InventoryItem newItem = null;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
@@ -74,12 +74,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
                     }
-                    AssetNotecard blank = new AssetNotecard
+                    var blank = new AssetNotecard
                     {
                         BodyText = Constants.ASSETS.NOTECARD.NEWLINE
                     };
                     blank.Encode();
-                    ManualResetEvent UploadBlankNotecardEvent = new ManualResetEvent(false);
+                    var UploadBlankNotecardEvent = new ManualResetEvent(false);
                     succeeded = false;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
@@ -100,12 +100,12 @@ namespace Corrade
                     }
                     if (!string.IsNullOrEmpty(text))
                     {
-                        AssetNotecard notecard = new AssetNotecard
+                        var notecard = new AssetNotecard
                         {
                             BodyText = text
                         };
                         notecard.Encode();
-                        ManualResetEvent UploadNotecardDataEvent = new ManualResetEvent(false);
+                        var UploadNotecardDataEvent = new ManualResetEvent(false);
                         succeeded = false;
                         lock (Locks.ClientInstanceInventoryLock)
                         {

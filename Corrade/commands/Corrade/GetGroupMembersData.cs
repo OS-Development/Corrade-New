@@ -29,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -47,7 +47,7 @@ namespace Corrade
                             break;
                     }
                     Dictionary<UUID, GroupMember> groupMembers = null;
-                    ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersReceivedEvent = new ManualResetEvent(false);
                     EventHandler<GroupMembersReplyEventArgs> GroupMembersReplyEventHandler = (sender, args) =>
                     {
                         groupMembers = args.Members;
@@ -70,11 +70,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    List<string> data = new List<string>();
-                    object LockObject = new object();
+                    var data = new List<string>();
+                    var LockObject = new object();
                     groupMembers.Values.AsParallel().ForAll(o =>
                     {
-                        IEnumerable<string> groupMemberData = GetStructuredData(o,
+                        var groupMemberData = GetStructuredData(o,
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                         lock (LockObject)

@@ -31,7 +31,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string name =
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
@@ -51,8 +51,8 @@ namespace Corrade
                             o => typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
                                     q => { permissions |= (uint) q.GetValue(null); }));
-                    FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.Static)
+                    var assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                     BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
                             o.Name.Equals(
                                 wasInput(
@@ -65,7 +65,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
                     }
-                    AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
+                    var assetType = (AssetType) assetTypeInfo.GetValue(null);
                     byte[] data;
                     try
                     {
@@ -78,7 +78,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
                     }
-                    bool succeeded = false;
+                    var succeeded = false;
                     switch (assetType)
                     {
                         case AssetType.Texture:
@@ -112,9 +112,9 @@ namespace Corrade
                                     {
                                         try
                                         {
-                                            using (Image image = (Image) new ImageConverter().ConvertFrom(data))
+                                            using (var image = (Image) new ImageConverter().ConvertFrom(data))
                                             {
-                                                using (Bitmap bitmap = new Bitmap(image))
+                                                using (var bitmap = new Bitmap(image))
                                                 {
                                                     data = OpenJPEG.EncodeFromImage(bitmap, true);
                                                 }
@@ -128,7 +128,7 @@ namespace Corrade
                                     break;
                             }
                             // now create and upload the asset
-                            ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
+                            var CreateItemFromAssetEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestCreateItemFromAsset(data, name,
@@ -156,8 +156,8 @@ namespace Corrade
                             break;
                         case AssetType.Bodypart:
                         case AssetType.Clothing:
-                            FieldInfo wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
-                                                                                 BindingFlags.Static)
+                            var wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
+                                                                           BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
@@ -170,12 +170,12 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.UNKNOWN_WEARABLE_TYPE);
                             }
-                            UUID wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
+                            var wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
                             if (wearableUUID.Equals(UUID.Zero))
                             {
                                 throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
                             }
-                            ManualResetEvent CreateWearableEvent = new ManualResetEvent(false);
+                            var CreateWearableEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
@@ -199,12 +199,12 @@ namespace Corrade
                             }
                             break;
                         case AssetType.Landmark:
-                            UUID landmarkUUID = Client.Assets.RequestUpload(assetType, data, false);
+                            var landmarkUUID = Client.Assets.RequestUpload(assetType, data, false);
                             if (landmarkUUID.Equals(UUID.Zero))
                             {
                                 throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
                             }
-                            ManualResetEvent CreateLandmarkEvent = new ManualResetEvent(false);
+                            var CreateLandmarkEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
@@ -227,7 +227,7 @@ namespace Corrade
                             }
                             break;
                         case AssetType.Gesture:
-                            ManualResetEvent CreateGestureEvent = new ManualResetEvent(false);
+                            var CreateGestureEvent = new ManualResetEvent(false);
                             InventoryItem newGesture = null;
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -255,7 +255,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
                             }
-                            ManualResetEvent UploadGestureAssetEvent = new ManualResetEvent(false);
+                            var UploadGestureAssetEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
@@ -271,7 +271,7 @@ namespace Corrade
                             }
                             break;
                         case AssetType.Notecard:
-                            ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
+                            var CreateNotecardEvent = new ManualResetEvent(false);
                             InventoryItem newNotecard = null;
                             lock (Locks.ClientInstanceNetworkLock)
                             {
@@ -299,7 +299,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
                             }
-                            ManualResetEvent UploadNotecardAssetEvent = new ManualResetEvent(false);
+                            var UploadNotecardAssetEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
@@ -315,7 +315,7 @@ namespace Corrade
                             }
                             break;
                         case AssetType.LSLText:
-                            ManualResetEvent CreateScriptEvent = new ManualResetEvent(false);
+                            var CreateScriptEvent = new ManualResetEvent(false);
                             InventoryItem newScript = null;
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -339,7 +339,7 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
-                            ManualResetEvent UpdateScriptEvent = new ManualResetEvent(false);
+                            var UpdateScriptEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,

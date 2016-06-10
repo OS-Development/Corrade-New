@@ -11,7 +11,6 @@ using System.Text;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -26,13 +25,13 @@ namespace Corrade
                 {
                     return;
                 }
-                HashSet<InventoryBase> wearables =
+                var wearables =
                     new HashSet<InventoryBase>(Inventory.GetWearables(Client, CurrentOutfitFolder));
-                StringBuilder response = new StringBuilder();
+                var response = new StringBuilder();
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        RLVWearable RLVwearable = RLVWearables.AsParallel()
+                        var RLVwearable = RLVWearables.AsParallel()
                             .FirstOrDefault(
                                 o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVwearable.Equals(default(RLVWearable)))
@@ -52,8 +51,8 @@ namespace Corrade
                         }
                         break;
                     default:
-                        string[] data = new string[RLVWearables.Count];
-                        Parallel.ForEach(Enumerable.Range(0, RLVWearables.Count), o =>
+                        var data = new string[RLVWearables.Count];
+                        Enumerable.Range(0, RLVWearables.Count).ToArray().AsParallel().ForAll(o =>
                         {
                             if (
                                 !wearables.AsParallel()

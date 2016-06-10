@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> attachments = Inventory.GetAttachments(Client,
+                    var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
                         .ToArray()
                         .AsParallel()

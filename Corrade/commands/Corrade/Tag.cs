@@ -29,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -46,7 +46,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -64,8 +64,8 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.SET:
-                            ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
-                            Dictionary<string, UUID> roleData = new Dictionary<string, UUID>();
+                            var GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                            var roleData = new Dictionary<string, UUID>();
                             EventHandler<GroupRolesDataReplyEventArgs> Groups_GroupRoleDataReply = (sender, args) =>
                             {
                                 roleData = args.Roles.ToDictionary(o => o.Value.Title, o => o.Value.ID);
@@ -84,7 +84,7 @@ namespace Corrade
                                 }
                                 Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                             }
-                            KeyValuePair<string, UUID> role = roleData.AsParallel().FirstOrDefault(
+                            var role = roleData.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Key.Equals(
                                         wasInput(
@@ -103,11 +103,11 @@ namespace Corrade
                             }
                             break;
                         case Action.GET:
-                            string title = string.Empty;
-                            ManualResetEvent GroupTitlesReplyEvent = new ManualResetEvent(false);
+                            var title = string.Empty;
+                            var GroupTitlesReplyEvent = new ManualResetEvent(false);
                             EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                             {
-                                KeyValuePair<UUID, GroupTitle> pair =
+                                var pair =
                                     args.Titles.AsParallel().FirstOrDefault(o => o.Value.Selected);
                                 if (!pair.Equals(default(KeyValuePair<UUID, GroupTitle>)))
                                 {

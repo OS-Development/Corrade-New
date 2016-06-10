@@ -35,8 +35,8 @@ namespace Corrade
                         new ManualResetEvent(false),
                         new ManualResetEvent(false)
                     };
-                    Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
-                    Avatar.Interests interests = new Avatar.Interests();
+                    var properties = new Avatar.AvatarProperties();
+                    var interests = new Avatar.Interests();
                     EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesEventHandler = (sender, args) =>
                     {
                         properties = args.Properties;
@@ -63,7 +63,7 @@ namespace Corrade
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
                     }
-                    string fields =
+                    var fields =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     wasCSVToStructure(fields, ref properties);

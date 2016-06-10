@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasSharp;
 
@@ -20,19 +19,19 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getcommand =
                 (corradeCommandParameters, result) =>
                 {
-                    string name =
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
-                    ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(name);
+                    var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(name);
                     if (scriptKey.Equals(default(ScriptKeys)))
                     {
                         throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
                     }
-                    CommandPermissionMaskAttribute commandPermissionMaskAttribute =
+                    var commandPermissionMaskAttribute =
                         Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                     if (commandPermissionMaskAttribute == null)
                     {
@@ -59,7 +58,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Type.INPUT:
-                                    CommandInputSyntaxAttribute commandInputSyntaxAttribute = Reflection
+                                    var commandInputSyntaxAttribute = Reflection
                                         .GetAttributeFromEnumValue
                                         <CommandInputSyntaxAttribute>(
                                             Reflection.GetEnumValueFromName<ScriptKeys>(name));
@@ -75,11 +74,11 @@ namespace Corrade
                             }
                             break;
                         case Entity.PERMISSION:
-                            HashSet<string> data = new HashSet<string>();
-                            object LockObject = new object();
-                            Parallel.ForEach(Reflection.GetEnumNames<Configuration.Permissions>(), o =>
+                            var data = new HashSet<string>();
+                            var LockObject = new object();
+                            Reflection.GetEnumNames<Configuration.Permissions>().ToArray().AsParallel().ForAll(o =>
                             {
-                                Configuration.Permissions permission =
+                                var permission =
                                     Reflection.GetEnumValueFromName<Configuration.Permissions>(o);
                                 if ((commandPermissionMaskAttribute.PermissionMask & (uint) permission).Equals(0))
                                     return;

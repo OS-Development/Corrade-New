@@ -62,9 +62,9 @@ namespace Corrade
                         throw new ScriptException(ScriptError.FRIEND_DOES_NOT_ALLOW_MAPPING);
                     }
                     ulong regionHandle = 0;
-                    Vector3 position = Vector3.Zero;
-                    ManualResetEvent FriendFoundEvent = new ManualResetEvent(false);
-                    bool offline = false;
+                    var position = Vector3.Zero;
+                    var FriendFoundEvent = new ManualResetEvent(false);
+                    var offline = false;
                     EventHandler<FriendFoundReplyEventArgs> FriendFoundEventHandler = (sender, args) =>
                     {
                         if (args.RegionHandle.Equals(0))
@@ -92,9 +92,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.FRIEND_OFFLINE);
                     }
-                    UUID parcelUUID = Client.Parcels.RequestRemoteParcelID(position, regionHandle, UUID.Zero);
-                    ManualResetEvent ParcelInfoEvent = new ManualResetEvent(false);
-                    string regionName = string.Empty;
+                    var parcelUUID = Client.Parcels.RequestRemoteParcelID(position, regionHandle, UUID.Zero);
+                    var ParcelInfoEvent = new ManualResetEvent(false);
+                    var regionName = string.Empty;
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                     {
                         regionName = args.Parcel.SimName;

@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
@@ -27,11 +26,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = new List<string>();
-                    object LockObject = new object();
-                    Parallel.ForEach(Client.Friends.FriendRequests.Copy(), o =>
+                    var csv = new List<string>();
+                    var LockObject = new object();
+                    Client.Friends.FriendRequests.Copy().AsParallel().ForAll(o =>
                     {
-                        string name = string.Empty;
+                        var name = string.Empty;
                         if (
                             !Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout,
                                 ref name))

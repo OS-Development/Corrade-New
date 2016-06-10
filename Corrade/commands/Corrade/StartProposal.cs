@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -78,7 +78,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_QUORUM);
                     }
-                    string text =
+                    var text =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(text))

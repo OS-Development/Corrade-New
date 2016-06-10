@@ -34,7 +34,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_EFFECT_UUID_PROVIDED);
                     }
-                    ViewerEffectType viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
+                    var viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))

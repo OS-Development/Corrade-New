@@ -10,7 +10,6 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -27,11 +26,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = new List<string>();
-                    object LockObject = new object();
+                    var csv = new List<string>();
+                    var LockObject = new object();
                     lock (ScriptDialogLock)
                     {
-                        Parallel.ForEach(ScriptDialogs, o =>
+                        ScriptDialogs.AsParallel().ForAll(o =>
                         {
                             lock (LockObject)
                             {

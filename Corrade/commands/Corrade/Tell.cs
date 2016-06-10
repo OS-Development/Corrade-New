@@ -29,10 +29,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string data = wasInput(
+                    var data = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                             corradeCommandParameters.Message));
-                    List<string> myName =
+                    var myName =
                         new List<string>(
                             Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
                     switch (
@@ -68,7 +68,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
                             // get instant message dialog type
-                            FieldInfo instantMessageDialogInfo = typeof (InstantMessageDialog).GetFields(
+                            var instantMessageDialogInfo = typeof (InstantMessageDialog).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
@@ -79,7 +79,7 @@ namespace Corrade
                                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIALOG)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
-                            InstantMessageDialog instantMessageDialog = instantMessageDialogInfo != null
+                            var instantMessageDialog = instantMessageDialogInfo != null
                                 ? (InstantMessageDialog)
                                     instantMessageDialogInfo
                                         .GetValue(null)
@@ -101,7 +101,7 @@ namespace Corrade
                                 }
                             }
                             // get whether the message is online of offline (defaults to offline)
-                            FieldInfo instantMessageOnlineInfo = typeof (InstantMessageOnline).GetFields(
+                            var instantMessageOnlineInfo = typeof (InstantMessageOnline).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
@@ -112,7 +112,7 @@ namespace Corrade
                                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ONLINE)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
-                            InstantMessageOnline instantMessageOnline = instantMessageOnlineInfo != null
+                            var instantMessageOnline = instantMessageOnlineInfo != null
                                 ? (InstantMessageOnline)
                                     instantMessageOnlineInfo
                                         .GetValue(null)
@@ -140,7 +140,7 @@ namespace Corrade
                             // Log instant messages,
                             if (corradeConfiguration.InstantMessageLogEnabled)
                             {
-                                string agentName = string.Empty;
+                                var agentName = string.Empty;
                                 if (!Resolvers.AgentUUIDToName(Client,
                                     agentUUID,
                                     corradeConfiguration.ServicesTimeout,
@@ -148,7 +148,7 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                                 }
-                                List<string> fullName =
+                                var fullName =
                                     new List<string>(
                                         Helpers.GetAvatarNames(agentName));
                                 CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
@@ -157,15 +157,15 @@ namespace Corrade
                                     {
                                         lock (InstantMessageLogFileLock)
                                         {
-                                            using (FileStream fileStream = File.Open(Path.Combine(
+                                            using (var fileStream = File.Open(Path.Combine(
                                                 corradeConfiguration.InstantMessageLogDirectory,
                                                 string.Join(" ", fullName.First(), fullName.Last())) + "." +
-                                                                                     CORRADE_CONSTANTS
-                                                                                         .LOG_FILE_EXTENSION,
+                                                                              CORRADE_CONSTANTS
+                                                                                  .LOG_FILE_EXTENSION,
                                                 FileMode.Append, FileAccess.Write, FileShare.None))
                                             {
                                                 using (
-                                                    StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8)
+                                                    var logWriter = new StreamWriter(fileStream, Encoding.UTF8)
                                                     )
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
@@ -191,7 +191,7 @@ namespace Corrade
                             break;
                         case Entity.GROUP:
                             UUID groupUUID;
-                            string target = wasInput(
+                            var target = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                     corradeCommandParameters.Message));
@@ -208,7 +208,7 @@ namespace Corrade
                                     groupUUID = corradeCommandParameters.Group.UUID;
                                     break;
                             }
-                            IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                            var currentGroups = Enumerable.Empty<UUID>();
                             if (
                                 !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                                     ref currentGroups))
@@ -265,11 +265,11 @@ namespace Corrade
                                             {
                                                 lock (GroupLogFileLock)
                                                 {
-                                                    using (FileStream fileStream = File.Open(o.ChatLog,
+                                                    using (var fileStream = File.Open(o.ChatLog,
                                                         FileMode.Append, FileAccess.Write, FileShare.None))
                                                     {
                                                         using (
-                                                            StreamWriter logWriter = new StreamWriter(fileStream,
+                                                            var logWriter = new StreamWriter(fileStream,
                                                                 Encoding.UTF8)
                                                             )
                                                         {
@@ -306,8 +306,8 @@ namespace Corrade
                             {
                                 chatChannel = 0;
                             }
-                            FieldInfo chatTypeInfo = typeof (ChatType).GetFields(BindingFlags.Public |
-                                                                                 BindingFlags.Static)
+                            var chatTypeInfo = typeof (ChatType).GetFields(BindingFlags.Public |
+                                                                           BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
@@ -316,7 +316,7 @@ namespace Corrade
                                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
-                            ChatType chatType = chatTypeInfo != null
+                            var chatType = chatTypeInfo != null
                                 ? (ChatType)
                                     chatTypeInfo
                                         .GetValue(null)
@@ -356,7 +356,7 @@ namespace Corrade
                             // Log local chat,
                             if (corradeConfiguration.LocalMessageLogEnabled)
                             {
-                                List<string> fullName =
+                                var fullName =
                                     new List<string>(
                                         Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName,
                                             Client.Self.LastName)));
@@ -366,15 +366,15 @@ namespace Corrade
                                     {
                                         lock (LocalLogFileLock)
                                         {
-                                            using (FileStream fileStream = File.Open(Path.Combine(
+                                            using (var fileStream = File.Open(Path.Combine(
                                                 corradeConfiguration.LocalMessageLogDirectory,
                                                 Client.Network.CurrentSim.Name) + "." +
-                                                                                     CORRADE_CONSTANTS
-                                                                                         .LOG_FILE_EXTENSION,
+                                                                              CORRADE_CONSTANTS
+                                                                                  .LOG_FILE_EXTENSION,
                                                 FileMode.Append, FileAccess.Write, FileShare.None))
                                             {
                                                 using (
-                                                    StreamWriter logWriter = new StreamWriter(fileStream,
+                                                    var logWriter = new StreamWriter(fileStream,
                                                         Encoding.UTF8)
                                                     )
                                                 {

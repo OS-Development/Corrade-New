@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -45,7 +45,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     // Get all sim parcels
-                    ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                    var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                         (sender, args) => SimParcelsDownloadedEvent.Set();
                     lock (Locks.ClientInstanceParcelsLock)
@@ -63,7 +63,7 @@ namespace Corrade
                         }
                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                     }
-                    List<Vector3> csv = new List<Vector3>();
+                    var csv = new List<Vector3>();
                     simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
                     if (csv.Any())
                     {

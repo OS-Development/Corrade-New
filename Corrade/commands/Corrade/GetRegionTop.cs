@@ -30,7 +30,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                     }
-                    Dictionary<UUID, EstateTask> topTasks = new Dictionary<UUID, EstateTask>();
+                    var topTasks = new Dictionary<UUID, EstateTask>();
                     switch (
                         Reflection.GetEnumValueFromName<Type>(
                             wasInput(KeyValue.Get(
@@ -39,7 +39,7 @@ namespace Corrade
                                 .ToLowerInvariant()))
                     {
                         case Type.SCRIPTS:
-                            ManualResetEvent TopScriptsReplyEvent = new ManualResetEvent(false);
+                            var TopScriptsReplyEvent = new ManualResetEvent(false);
                             EventHandler<TopScriptsReplyEventArgs> TopScriptsReplyEventHandler = (sender, args) =>
                             {
                                 topTasks =
@@ -60,7 +60,7 @@ namespace Corrade
                             }
                             break;
                         case Type.COLLIDERS:
-                            ManualResetEvent TopCollidersReplyEvent = new ManualResetEvent(false);
+                            var TopCollidersReplyEvent = new ManualResetEvent(false);
                             EventHandler<TopCollidersReplyEventArgs> TopCollidersReplyEventHandler =
                                 (sender, args) =>
                                 {
@@ -97,7 +97,7 @@ namespace Corrade
                     {
                         amount = topTasks.Count;
                     }
-                    List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
+                    var data = new List<string>(topTasks.Take(amount).Select(o => new[]
                     {
                         o.Value.Score.ToString(Utils.EnUsCulture),
                         o.Value.TaskName,

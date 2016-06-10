@@ -27,9 +27,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    CORRADE_CONSTANTS.PRIMTIVE_BODIES primitiveBodies = new CORRADE_CONSTANTS.PRIMTIVE_BODIES();
-                    List<string> data = typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                     BindingFlags.Static)
+                    var primitiveBodies = new CORRADE_CONSTANTS.PRIMTIVE_BODIES();
+                    var data = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                            BindingFlags.Static)
                         .AsParallel().Select(
                             o =>
                                 Reflection.GetStructureMemberName(primitiveBodies, o)).ToList();

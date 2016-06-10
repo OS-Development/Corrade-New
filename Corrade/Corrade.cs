@@ -378,12 +378,9 @@ namespace Corrade
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
         private static InventoryFolder CurrentOutfitFolder;
-
         private static readonly SynBot SynBot = new SynBot();
         private static readonly BotUser SynBotUser = new BotUser(SynBot, CORRADE_CONSTANTS.CORRADE);
-
         private static RankedLanguageIdentifier rankedLanguageIdentifier;
-
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
@@ -693,7 +690,7 @@ namespace Corrade
         {
             lock (Locks.ClientInstanceAppearanceLock)
             {
-                ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+                var AppearanceSetEvent = new ManualResetEvent(false);
                 EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
                 Client.Appearance.AppearanceSet += HandleAppearanceSet;
                 Client.Appearance.RequestSetAppearance(true);
@@ -712,7 +709,7 @@ namespace Corrade
                 if (
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
                         corradeConfiguration.ServicesTimeout, ref parcel)) return;
-                HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                 if (!groups.Contains(parcel.GroupID)) return;
                 Client.Groups.ActivateGroup(parcel.GroupID);
             });
@@ -731,7 +728,7 @@ namespace Corrade
             {
                 safeFilters = corradeConfiguration.InputFilters;
             }
-            foreach (Configuration.Filter filter in safeFilters)
+            foreach (var filter in safeFilters)
             {
                 switch (filter)
                 {
@@ -775,7 +772,7 @@ namespace Corrade
             {
                 safeFilters = corradeConfiguration.OutputFilters;
             }
-            foreach (Configuration.Filter filter in safeFilters)
+            foreach (var filter in safeFilters)
             {
                 switch (filter)
                 {
@@ -813,7 +810,7 @@ namespace Corrade
         /// <returns>true if the string is a Corrade command</returns>
         private static readonly Func<string, bool> IsCorradeCommand = o =>
         {
-            Dictionary<string, string> data = KeyValue.Decode(o);
+            var data = KeyValue.Decode(o);
             return data.Any() && data.ContainsKey(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)) &&
                    data.ContainsKey(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)) &&
                    data.ContainsKey(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD));
@@ -840,7 +837,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveInventoryCache = () =>
         {
-            string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+            var path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
             int itemsSaved;
             lock (Locks.ClientInstanceInventoryLock)
@@ -941,13 +938,13 @@ namespace Corrade
                 lock (GroupMembersLock)
                 {
                     using (
-                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                             CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), FileMode.Create,
                             FileAccess.Write, FileShare.None))
                     {
-                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer =
+                            var serializer =
                                 new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
                             serializer.Serialize(writer, GroupMembers);
                             writer.Flush();
@@ -967,19 +964,19 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadGroupMembersState = () =>
         {
-            string groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+            var groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
             if (File.Exists(groupMembersStateFile))
             {
                 try
                 {
                     using (
-                        FileStream fileStream = File.Open(groupMembersStateFile, FileMode.Open, FileAccess.Read,
+                        var fileStream = File.Open(groupMembersStateFile, FileMode.Open, FileAccess.Read,
                             FileShare.Read))
                     {
-                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                             ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
                                 new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>))
                                     .Deserialize(streamReader))
@@ -1019,13 +1016,13 @@ namespace Corrade
                 lock (GroupSchedulesLock)
                 {
                     using (
-                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                             CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE), FileMode.Create,
                             FileAccess.Write, FileShare.None))
                     {
-                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
+                            var serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
                             serializer.Serialize(writer, GroupSchedules);
                             writer.Flush();
                         }
@@ -1047,19 +1044,19 @@ namespace Corrade
         private static readonly System.Action LoadGroupSchedulesState = () =>
         {
             SchedulesWatcher.EnableRaisingEvents = false;
-            string groupSchedulesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+            var groupSchedulesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
             if (File.Exists(groupSchedulesStateFile))
             {
                 try
                 {
                     using (
-                        FileStream fileStream = File.Open(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
+                        var fileStream = File.Open(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
                             FileShare.Read))
                     {
-                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            HashSet<UUID> groups =
+                            var groups =
                                 new HashSet<UUID>(
                                     corradeConfiguration.Groups
                                         .AsParallel()
@@ -1107,13 +1104,13 @@ namespace Corrade
                 lock (GroupNotificationsLock)
                 {
                     using (
-                        FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                             CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), FileMode.Create,
                             FileAccess.Write, FileShare.None))
                     {
-                        using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                            var serializer = new XmlSerializer(typeof (HashSet<Notification>));
                             serializer.Serialize(writer, GroupNotifications);
                             writer.Flush();
                         }
@@ -1135,18 +1132,18 @@ namespace Corrade
         private static readonly System.Action LoadNotificationState = () =>
         {
             NotificationsWatcher.EnableRaisingEvents = false;
-            string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+            var groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
             if (File.Exists(groupNotificationsStateFile))
             {
-                HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                 try
                 {
                     using (
-                        FileStream fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
+                        var fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
                             FileShare.Read))
                     {
-                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
                             ((HashSet<Notification>)
                                 new XmlSerializer(typeof (HashSet<Notification>)).Deserialize(streamReader))
@@ -1175,7 +1172,7 @@ namespace Corrade
                 }
 
                 // Build the group notification cache.
-                object LockObject = new object();
+                var LockObject = new object();
                 new List<Configuration.Notifications>(Reflection.GetEnumValues<Configuration.Notifications>())
                     .AsParallel().ForAll(o =>
                     {
@@ -1208,13 +1205,13 @@ namespace Corrade
             try
             {
                 using (
-                    FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                         CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), FileMode.Create,
                         FileAccess.Write, FileShare.None))
                 {
-                    using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                    using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
+                        var serializer = new XmlSerializer(typeof (AgentMovement));
                         lock (Locks.ClientInstanceSelfLock)
                         {
                             serializer.Serialize(writer, new AgentMovement
@@ -1248,20 +1245,20 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadMovementState = () =>
         {
-            string movementStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+            var movementStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
             if (File.Exists(movementStateFile))
             {
                 try
                 {
                     using (
-                        FileStream fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
+                        var fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
                             FileShare.Read))
                     {
-                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
-                            AgentMovement movement = (AgentMovement) serializer.Deserialize(streamReader);
+                            var serializer = new XmlSerializer(typeof (AgentMovement));
+                            var movement = (AgentMovement) serializer.Deserialize(streamReader);
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
@@ -1298,13 +1295,13 @@ namespace Corrade
             try
             {
                 using (
-                    FileStream fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                         CORRADE_CONSTANTS.FEEDS_STATE_FILE), FileMode.Create,
                         FileAccess.Write, FileShare.None))
                 {
-                    using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                    using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                     {
-                        XmlSerializer serializer =
+                        var serializer =
                             new XmlSerializer(
                                 typeof (Collections.SerializableDictionary
                                     <string, Collections.SerializableDictionary<UUID, string>>));
@@ -1329,20 +1326,20 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadGroupFeedState = () =>
         {
-            string feedStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+            var feedStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.FEEDS_STATE_FILE);
             if (File.Exists(feedStateFile))
             {
                 try
                 {
                     using (
-                        FileStream fileStream = File.Open(feedStateFile, FileMode.Open, FileAccess.Read,
+                        var fileStream = File.Open(feedStateFile, FileMode.Open, FileAccess.Read,
                             FileShare.Read))
                     {
-                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
-                            HashSet<UUID> groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                            XmlSerializer serializer =
+                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                            var serializer =
                                 new XmlSerializer(
                                     typeof (Collections.SerializableDictionary
                                         <string, Collections.SerializableDictionary<UUID, string>>));
@@ -1392,7 +1389,7 @@ namespace Corrade
             Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_SIML_BOT_CONFIGURATION));
             try
             {
-                string SIMLPackage = Path.Combine(
+                var SIMLPackage = Path.Combine(
                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY, SIML_BOT_CONSTANTS.PACKAGE_FILE);
                 switch (File.Exists(SIMLPackage))
                 {
@@ -1400,8 +1397,8 @@ namespace Corrade
                         SynBot.PackageManager.LoadFromString(File.ReadAllText(SIMLPackage));
                         break;
                     default:
-                        List<XDocument> elementList = new List<XDocument>();
-                        foreach (XDocument simlDocument in Directory.GetFiles(Path.Combine(
+                        var elementList = new List<XDocument>();
+                        foreach (var simlDocument in Directory.GetFiles(Path.Combine(
                             Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                             SIML_BOT_CONSTANTS.SIML_DIRECTORY,
                             SIML_BOT_CONSTANTS.SIML_SETTINGS_DIRECTORY), @"*.siml")
@@ -1410,7 +1407,7 @@ namespace Corrade
                             elementList.Add(simlDocument);
                             SynBot.AddSiml(simlDocument, SynBotUser);
                         }
-                        foreach (XDocument simlDocument in Directory.GetFiles(Path.Combine(
+                        foreach (var simlDocument in Directory.GetFiles(Path.Combine(
                             Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                             SIML_BOT_CONSTANTS.SIML_DIRECTORY), @"*.siml")
                             .Select(XDocument.Load))
@@ -1425,7 +1422,7 @@ namespace Corrade
                 }
 
                 // Load learned and memorized.
-                string SIMLLearned = Path.Combine(
+                var SIMLLearned = Path.Combine(
                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.LEARNED_FILE);
@@ -1433,7 +1430,7 @@ namespace Corrade
                 {
                     SynBot.AddSiml(XDocument.Load(SIMLLearned));
                 }
-                string SIMLMemorized = Path.Combine(
+                var SIMLMemorized = Path.Combine(
                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.MEMORIZED_FILE);
@@ -1511,7 +1508,7 @@ namespace Corrade
                     {
                         try
                         {
-                            using (XmlReader reader = XmlReader.Create(o.Key))
+                            using (var reader = XmlReader.Create(o.Key))
                             {
                                 SyndicationFeed.Load(reader).Items.AsParallel()
                                     .Where(
@@ -1558,25 +1555,24 @@ namespace Corrade
         /// </summary>
         private static void GroupMembershipSweep()
         {
-            Queue<UUID> groupUUIDs = new Queue<UUID>();
-            Queue<int> memberCount = new Queue<int>();
+            var groupUUIDs = new Queue<UUID>();
+            var memberCount = new Queue<int>();
             // The total list of members.
-            HashSet<UUID> groupMembers = new HashSet<UUID>();
+            var groupMembers = new HashSet<UUID>();
             // New members that have joined the group.
-            HashSet<UUID> joinedMembers = new HashSet<UUID>();
+            var joinedMembers = new HashSet<UUID>();
             // Members that have parted the group.
-            HashSet<UUID> partedMembers = new HashSet<UUID>();
+            var partedMembers = new HashSet<UUID>();
 
-            ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
+            var GroupMembersReplyEvent = new ManualResetEvent(false);
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
                 lock (GroupMembersLock)
                 {
                     if (GroupMembers.ContainsKey(args.GroupID))
                     {
-                        object LockObject = new object();
-                        Parallel.ForEach(
-                            args.Members.Values,
+                        var LockObject = new object();
+                        args.Members.Values.AsParallel().ForAll(
                             o =>
                             {
                                 if (GroupMembers[args.GroupID].Contains(o.ID)) return;
@@ -1585,8 +1581,7 @@ namespace Corrade
                                     joinedMembers.Add(o.ID);
                                 }
                             });
-                        Parallel.ForEach(
-                            GroupMembers[args.GroupID],
+                        GroupMembers[args.GroupID].AsParallel().ForAll(
                             o =>
                             {
                                 if (args.Members.Values.Any(p => p.ID.Equals(o))) return;
@@ -1606,14 +1601,14 @@ namespace Corrade
                 Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
                 if (!Client.Network.Connected) continue;
 
-                IEnumerable<UUID> groups = Enumerable.Empty<UUID>();
+                var groups = Enumerable.Empty<UUID>();
                 if (!Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout, ref groups))
                     continue;
 
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
-                object LockObject = new object();
-                HashSet<UUID> currentGroups = new HashSet<UUID>(groups);
+                var LockObject = new object();
+                var currentGroups = new HashSet<UUID>(groups);
                 corradeConfiguration.Groups.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
                     .Where(p => currentGroups.Contains(p.groupUUID))
                     .Select(o => o.group).ForAll(o =>
@@ -1650,7 +1645,7 @@ namespace Corrade
                     // Pause a second between group sweeps.
                     Thread.Yield();
                     // Dequeue the first group.
-                    UUID groupUUID = groupUUIDs.Dequeue();
+                    var groupUUID = groupUUIDs.Dequeue();
                     // Clear the total list of members.
                     groupMembers.Clear();
                     // Clear the members that have joined the group.
@@ -1683,16 +1678,15 @@ namespace Corrade
                     {
                         if (!memberCount.Dequeue().Equals(groupMembers.Count))
                         {
-                            bool groupMembersChanged = false;
+                            var groupMembersChanged = false;
                             if (joinedMembers.Any())
                             {
                                 groupMembersChanged = true;
-                                Parallel.ForEach(
-                                    joinedMembers,
+                                joinedMembers.AsParallel().ForAll(
                                     o =>
                                     {
-                                        string agentName = string.Empty;
-                                        string groupName = string.Empty;
+                                        var agentName = string.Empty;
+                                        var groupName = string.Empty;
                                         if (Resolvers.AgentUUIDToName(Client,
                                             o,
                                             corradeConfiguration.ServicesTimeout,
@@ -1721,12 +1715,11 @@ namespace Corrade
                             if (partedMembers.Any())
                             {
                                 groupMembersChanged = true;
-                                Parallel.ForEach(
-                                    partedMembers,
+                                partedMembers.AsParallel().ForAll(
                                     o =>
                                     {
-                                        string agentName = string.Empty;
-                                        string groupName = string.Empty;
+                                        var agentName = string.Empty;
+                                        var groupName = string.Empty;
                                         if (Resolvers.AgentUUIDToName(Client,
                                             o,
                                             corradeConfiguration.ServicesTimeout,
@@ -1756,7 +1749,7 @@ namespace Corrade
                                 lock (GroupMembersLock)
                                 {
                                     GroupMembers[groupUUID].Clear();
-                                    Parallel.ForEach(groupMembers, o =>
+                                    groupMembers.AsParallel().ForAll(o =>
                                     {
                                         lock (LockObject)
                                         {
@@ -1792,15 +1785,15 @@ namespace Corrade
             if (string.IsNullOrEmpty(message)) yield break;
 
             // Split all commands.
-            string[] unpack = message.Split(RLV_CONSTANTS.CSV_DELIMITER[0]);
+            var unpack = message.Split(RLV_CONSTANTS.CSV_DELIMITER[0]);
             // Pop first command to process.
-            string first = unpack.First();
+            var first = unpack.First();
             // Remove command.
             unpack = unpack.AsParallel().Where(o => !o.Equals(first)).ToArray();
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
-            Match match = RLV_CONSTANTS.RLVRegEx.Match(first);
+            var match = RLV_CONSTANTS.RLVRegEx.Match(first);
             if (!match.Success) goto CONTINUE;
 
             yield return match.Groups["behaviour"].ToString().ToLowerInvariant();
@@ -1808,7 +1801,7 @@ namespace Corrade
             yield return match.Groups["param"].ToString().ToLowerInvariant();
 
             CONTINUE:
-            foreach (string slice in wasRLVToString(message))
+            foreach (var slice in wasRLVToString(message))
             {
                 yield return slice;
             }
@@ -1828,12 +1821,12 @@ namespace Corrade
         {
             if (@object == null) yield break;
 
-            foreach (FieldInfo fi in @object.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public))
+            foreach (var fi in @object.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public))
             {
                 if (fi.FieldType.FullName.Split('.', '+')
                     .Contains(@namespace, StringComparer.OrdinalIgnoreCase))
                 {
-                    foreach (KeyValuePair<FieldInfo, object> sf in wasGetFields(fi.GetValue(@object), @namespace))
+                    foreach (var sf in wasGetFields(fi.GetValue(@object), @namespace))
                     {
                         yield return sf;
                     }
@@ -1857,23 +1850,23 @@ namespace Corrade
         {
             if (@object == null) yield break;
 
-            foreach (PropertyInfo pi in @object.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
+            foreach (var pi in @object.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
                 if (pi.PropertyType.FullName.Split('.', '+')
                     .Contains(@namespace, StringComparer.OrdinalIgnoreCase))
                 {
-                    MethodInfo getMethod = pi.GetGetMethod();
+                    var getMethod = pi.GetGetMethod();
                     if (getMethod.ReturnType.IsArray)
                     {
                         var array = (Array) getMethod.Invoke(@object, null);
-                        foreach (KeyValuePair<PropertyInfo, object> sp in
+                        foreach (var sp in
                             array.Cast<object>().SelectMany(element => wasGetProperties(element, @namespace)))
                         {
                             yield return sp;
                         }
                     }
                     foreach (
-                        KeyValuePair<PropertyInfo, object> sp in
+                        var sp in
                             wasGetProperties(pi.GetValue(@object, null), @namespace))
                     {
                         yield return sp;
@@ -1895,14 +1888,14 @@ namespace Corrade
         private static void wasSetInfoValue<TK, TV>(TK info, ref TV @object, object value)
         {
             object o = @object;
-            FieldInfo fi = (object) info as FieldInfo;
+            var fi = (object) info as FieldInfo;
             if (fi != null)
             {
                 fi.SetValue(o, value);
                 @object = (TV) o;
                 return;
             }
-            PropertyInfo pi = (object) info as PropertyInfo;
+            var pi = (object) info as PropertyInfo;
             if (pi != null)
             {
                 pi.SetValue(o, value, null);
@@ -1921,12 +1914,12 @@ namespace Corrade
         /// <returns>the value of the field or property</returns>
         private static object wasGetInfoValue<T>(T info, object value)
         {
-            FieldInfo fi = (object) info as FieldInfo;
+            var fi = (object) info as FieldInfo;
             if (fi != null)
             {
                 return fi.GetValue(value);
             }
-            PropertyInfo pi = (object) info as PropertyInfo;
+            var pi = (object) info as PropertyInfo;
             if (pi != null)
             {
                 if (pi.GetIndexParameters().Any())
@@ -1950,33 +1943,33 @@ namespace Corrade
         private static IEnumerable<string> wasGetInfo(object info, object value)
         {
             if (info == null) yield break;
-            object data = wasGetInfoValue(info, value);
+            var data = wasGetInfoValue(info, value);
             if (data == null) yield break;
             // Handle arrays and lists
             if (data is Array || data is IList)
             {
-                IList iList = (IList) data;
-                foreach (object item in iList.Cast<object>().Where(o => o != null))
+                var iList = (IList) data;
+                foreach (var item in iList.Cast<object>().Where(o => o != null))
                 {
                     // These are index collections so pre-prend an index.
                     yield return "Index";
                     yield return iList.IndexOf(item).ToString();
-                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(item, item.GetType().Name))
+                    foreach (var fi in wasGetFields(item, item.GetType().Name))
                     {
                         if (fi.Key != null)
                         {
-                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
                             {
                                 yield return fi.Key.Name;
                                 yield return fieldString;
                             }
                         }
                     }
-                    foreach (KeyValuePair<PropertyInfo, object> pi in wasGetProperties(item, item.GetType().Name))
+                    foreach (var pi in wasGetProperties(item, item.GetType().Name))
                     {
                         if (pi.Key != null)
                         {
-                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
                             {
                                 yield return pi.Key.Name;
                                 yield return propertyString;
@@ -1994,15 +1987,15 @@ namespace Corrade
             // Handle Dictionary
             if (data is IDictionary)
             {
-                IDictionary dictionary = (IDictionary) data;
+                var dictionary = (IDictionary) data;
                 foreach (DictionaryEntry entry in dictionary)
                 {
                     // First the keys.
-                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
+                    foreach (var fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
                     {
                         if (fi.Key != null)
                         {
-                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
                             {
                                 yield return fi.Key.Name;
                                 yield return fieldString;
@@ -2010,11 +2003,11 @@ namespace Corrade
                         }
                     }
                     foreach (
-                        KeyValuePair<PropertyInfo, object> pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
+                        var pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
                     {
                         if (pi.Key != null)
                         {
-                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
                             {
                                 yield return pi.Key.Name;
                                 yield return propertyString;
@@ -2022,12 +2015,12 @@ namespace Corrade
                         }
                     }
                     // Then the values.
-                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
+                    foreach (var fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
                         )
                     {
                         if (fi.Key != null)
                         {
-                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
                             {
                                 yield return fi.Key.Name;
                                 yield return fieldString;
@@ -2035,12 +2028,12 @@ namespace Corrade
                         }
                     }
                     foreach (
-                        KeyValuePair<PropertyInfo, object> pi in
+                        var pi in
                             wasGetProperties(entry.Value, entry.Value.GetType().Name))
                     {
                         if (pi.Key != null)
                         {
-                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
                             {
                                 yield return pi.Key.Name;
                                 yield return propertyString;
@@ -2051,21 +2044,21 @@ namespace Corrade
                 yield break;
             }
             // Handle InternalDictionary
-            FieldInfo internalDictionaryInfo = data.GetType()
+            var internalDictionaryInfo = data.GetType()
                 .GetField("Dictionary",
                     BindingFlags.Default | BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.NonPublic);
             if (internalDictionaryInfo != null)
             {
-                IDictionary iDictionary = internalDictionaryInfo.GetValue(data) as IDictionary;
+                var iDictionary = internalDictionaryInfo.GetValue(data) as IDictionary;
                 if (iDictionary == null) yield break;
                 foreach (DictionaryEntry entry in iDictionary)
                 {
                     // First the keys.
-                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
+                    foreach (var fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
                     {
                         if (fi.Key != null)
                         {
-                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
                             {
                                 yield return fi.Key.Name;
                                 yield return fieldString;
@@ -2073,11 +2066,11 @@ namespace Corrade
                         }
                     }
                     foreach (
-                        KeyValuePair<PropertyInfo, object> pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
+                        var pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
                     {
                         if (pi.Key != null)
                         {
-                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
                             {
                                 yield return pi.Key.Name;
                                 yield return propertyString;
@@ -2085,12 +2078,12 @@ namespace Corrade
                         }
                     }
                     // Then the values.
-                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
+                    foreach (var fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
                         )
                     {
                         if (fi.Key != null)
                         {
-                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
                             {
                                 yield return fi.Key.Name;
                                 yield return fieldString;
@@ -2098,12 +2091,12 @@ namespace Corrade
                         }
                     }
                     foreach (
-                        KeyValuePair<PropertyInfo, object> pi in
+                        var pi in
                             wasGetProperties(entry.Value, entry.Value.GetType().Name))
                     {
                         if (pi.Key != null)
                         {
-                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
                             {
                                 yield return pi.Key.Name;
                                 yield return propertyString;
@@ -2128,8 +2121,8 @@ namespace Corrade
 
             if (data is ParcelFlags)
             {
-                ParcelFlags parcelFlags = (ParcelFlags) data;
-                foreach (string flag in typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                var parcelFlags = (ParcelFlags) data;
+                foreach (var flag in typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => !((uint) o.GetValue(null) & (uint) parcelFlags).Equals(0))
                     .Select(o => o.Name))
@@ -2141,8 +2134,8 @@ namespace Corrade
 
             if (data is GroupPowers)
             {
-                GroupPowers groupPowers = (GroupPowers) data;
-                foreach (string power in typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                var groupPowers = (GroupPowers) data;
+                foreach (var power in typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => !((ulong) o.GetValue(null) & (ulong) groupPowers).Equals(0))
                     .Select(o => o.Name))
@@ -2152,7 +2145,7 @@ namespace Corrade
                 yield break;
             }
 
-            string @string = data.ToString();
+            var @string = data.ToString();
             if (string.IsNullOrEmpty(@string)) yield break;
             yield return @string;
         }
@@ -2172,7 +2165,7 @@ namespace Corrade
         {
             if (info == null) return;
 
-            object data = wasGetInfoValue(info, value);
+            var data = wasGetInfoValue(info, value);
 
             // OpenMetaverse particular flags.
             if (data is ParcelFlags)
@@ -2181,7 +2174,7 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out parcelFlags))
                 {
                     case true:
-                        Dictionary<string, uint> allFlags =
+                        var allFlags =
                             typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .ToDictionary(o => o.Name, o => (uint) o.GetValue(null));
                         CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
@@ -2204,7 +2197,7 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out groupPowers))
                 {
                     case true:
-                        Dictionary<string, uint> allPowers =
+                        var allPowers =
                             typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .ToDictionary(o => o.Name, o => (uint) o.GetValue(null));
                         CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
@@ -2227,7 +2220,7 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out attachmentPoint))
                 {
                     case true:
-                        FieldInfo attachmentPointFieldInfo =
+                        var attachmentPointFieldInfo =
                             typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
@@ -2244,8 +2237,8 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out tree))
                 {
                     case true:
-                        FieldInfo treeFieldInfo = typeof (Tree).GetFields(BindingFlags.Public |
-                                                                          BindingFlags.Static)
+                        var treeFieldInfo = typeof (Tree).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (treeFieldInfo == null) break;
                         tree = (byte) treeFieldInfo.GetValue(null);
@@ -2260,8 +2253,8 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out material))
                 {
                     case true:
-                        FieldInfo materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
-                                                                                  BindingFlags.Static)
+                        var materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
+                                                                            BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (materialFieldInfo == null) break;
                         material = (byte) materialFieldInfo.GetValue(null);
@@ -2276,8 +2269,8 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out pathCurve))
                 {
                     case true:
-                        FieldInfo pathCurveFieldInfo = typeof (PathCurve).GetFields(BindingFlags.Public |
-                                                                                    BindingFlags.Static)
+                        var pathCurveFieldInfo = typeof (PathCurve).GetFields(BindingFlags.Public |
+                                                                              BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (pathCurveFieldInfo == null) break;
                         pathCurve = (byte) pathCurveFieldInfo.GetValue(null);
@@ -2292,7 +2285,7 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out pCode))
                 {
                     case true:
-                        FieldInfo pCodeFieldInfo = typeof (PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
+                        var pCodeFieldInfo = typeof (PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (pCodeFieldInfo == null) break;
                         pCode = (byte) pCodeFieldInfo.GetValue(null);
@@ -2307,7 +2300,7 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out profileCurve))
                 {
                     case true:
-                        FieldInfo profileCurveFieldInfo =
+                        var profileCurveFieldInfo =
                             typeof (ProfileCurve).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
@@ -2324,8 +2317,8 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out holeType))
                 {
                     case true:
-                        FieldInfo holeTypeFieldInfo = typeof (HoleType).GetFields(BindingFlags.Public |
-                                                                                  BindingFlags.Static)
+                        var holeTypeFieldInfo = typeof (HoleType).GetFields(BindingFlags.Public |
+                                                                            BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (holeTypeFieldInfo == null) break;
                         holeType = (byte) holeTypeFieldInfo.GetValue(null);
@@ -2340,8 +2333,8 @@ namespace Corrade
                 switch (!byte.TryParse(setting, out sculptType))
                 {
                     case true:
-                        FieldInfo sculptTypeFieldInfo = typeof (SculptType).GetFields(BindingFlags.Public |
-                                                                                      BindingFlags.Static)
+                        var sculptTypeFieldInfo = typeof (SculptType).GetFields(BindingFlags.Public |
+                                                                                BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => string.Equals(setting, p.Name, StringComparison.Ordinal));
                         if (sculptTypeFieldInfo == null) break;
                         sculptType = (byte) sculptTypeFieldInfo.GetValue(null);
@@ -2584,7 +2577,7 @@ namespace Corrade
         /// <returns>the configured group</returns>
         private static Configuration.Group GetCorradeGroupFromMessage(string message)
         {
-            string group =
+            var group =
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
                     message));
             UUID groupUUID;
@@ -2629,7 +2622,7 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(
                 () =>
                 {
-                    List<string> output = new List<string>
+                    var output = new List<string>
                     {
                         !string.IsNullOrEmpty(InstalledServiceName)
                             ? InstalledServiceName
@@ -2649,11 +2642,11 @@ namespace Corrade
                             lock (ClientLogFileLock)
                             {
                                 using (
-                                    FileStream fileStream = File.Open(corradeConfiguration.ClientLogFile,
+                                    var fileStream = File.Open(corradeConfiguration.ClientLogFile,
                                         FileMode.Append,
                                         FileAccess.Write, FileShare.None))
                                 {
-                                    using (StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                    using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
                                     {
                                         logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
                                             output.ToArray()));
@@ -2707,7 +2700,7 @@ namespace Corrade
                         return;
                     }
 
-                    List<string> output =
+                    var output =
                         new List<string>(
                             messages.Select(
                                 o => string.Format(Utils.EnUsCulture, "{0}{1}[{2}]{3}{4}",
@@ -2727,13 +2720,13 @@ namespace Corrade
                             lock (ClientLogFileLock)
                             {
                                 using (
-                                    FileStream fileStream = File.Open(corradeConfiguration.ClientLogFile,
+                                    var fileStream = File.Open(corradeConfiguration.ClientLogFile,
                                         FileMode.Append,
                                         FileAccess.Write, FileShare.None))
                                 {
-                                    using (StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                    using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
                                     {
-                                        foreach (string message in output)
+                                        foreach (var message in output)
                                         {
                                             logWriter.WriteLine(message);
                                         }
@@ -2757,7 +2750,7 @@ namespace Corrade
                             switch (Environment.OSVersion.Platform)
                             {
                                 case PlatformID.Win32NT:
-                                    foreach (string message in output)
+                                    foreach (var message in output)
                                     {
                                         CorradeEventLog.WriteEntry(message, EventLogEntryType.Information);
                                     }
@@ -2765,7 +2758,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            foreach (string message in output)
+                            foreach (var message in output)
                             {
                                 Console.WriteLine(message);
                             }
@@ -2781,8 +2774,8 @@ namespace Corrade
             {
                 if (args.Any())
                 {
-                    string action = string.Empty;
-                    for (int i = 0; i < args.Length; ++i)
+                    var action = string.Empty;
+                    for (var i = 0; i < args.Length; ++i)
                     {
                         switch (args[i].ToUpper())
                         {
@@ -2810,7 +2803,7 @@ namespace Corrade
                     }
                 }
                 // run interactively and log to console
-                Corrade corrade = new Corrade();
+                var corrade = new Corrade();
                 corrade.OnStart(null);
                 return 0;
             }
@@ -2831,7 +2824,7 @@ namespace Corrade
             {
                 if (ex.InnerException != null && ex.InnerException.GetType() == typeof (Win32Exception))
                 {
-                    Win32Exception we = (Win32Exception) ex.InnerException;
+                    var we = (Win32Exception) ex.InnerException;
                     Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
                     return we.ErrorCode;
                 }
@@ -2853,7 +2846,7 @@ namespace Corrade
             {
                 if (ex.InnerException.GetType() == typeof (Win32Exception))
                 {
-                    Win32Exception we = (Win32Exception) ex.InnerException;
+                    var we = (Win32Exception) ex.InnerException;
                     Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
                     return we.ErrorCode;
                 }
@@ -3073,7 +3066,7 @@ namespace Corrade
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Proceed to log-in.
-            LoginParams login = new LoginParams(
+            var login = new LoginParams(
                 Client,
                 corradeConfiguration.FirstName,
                 corradeConfiguration.LastName,
@@ -3123,13 +3116,13 @@ namespace Corrade
             // Load feeds state.
             LoadGroupFeedState.Invoke();
             // Start the callback thread to send callbacks.
-            Thread CallbackThread = new Thread(() =>
+            var CallbackThread = new Thread(() =>
             {
                 do
                 {
                     try
                     {
-                        CallbackQueueElement callbackQueueElement = new CallbackQueueElement();
+                        var callbackQueueElement = new CallbackQueueElement();
                         if (CallbackQueue.Dequeue((int) corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
@@ -3147,13 +3140,13 @@ namespace Corrade
             {IsBackground = true};
             CallbackThread.Start();
             // Start the notification thread for notifications.
-            Thread NotificationThread = new Thread(() =>
+            var NotificationThread = new Thread(() =>
             {
                 do
                 {
                     try
                     {
-                        NotificationQueueElement notificationQueueElement = new NotificationQueueElement();
+                        var notificationQueueElement = new NotificationQueueElement();
                         if (NotificationQueue.Dequeue((int) corradeConfiguration.NotificationThrottle,
                             ref notificationQueueElement))
                         {
@@ -3414,7 +3407,7 @@ namespace Corrade
             // Reject any inventory that has not been accepted.
             lock (InventoryOffersLock)
             {
-                Parallel.ForEach(InventoryOffers, o =>
+                InventoryOffers.AsParallel().ForAll(o =>
                 {
                     o.Key.Accept = false;
                     o.Value.Set();
@@ -3424,7 +3417,7 @@ namespace Corrade
             if (Client.Network.Connected)
             {
                 // Full speed ahead; do not even attempt to grab a lock.
-                ManualResetEvent LoggedOutEvent = new ManualResetEvent(false);
+                var LoggedOutEvent = new ManualResetEvent(false);
                 EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
                 Client.Network.LoggedOut += LoggedOutEventHandler;
                 Client.Network.RequestLogout();
@@ -3563,7 +3556,7 @@ namespace Corrade
             // Now grab the message and check that the group is set or abandon.
             try
             {
-                HttpListener httpListener = (HttpListener) ar.AsyncState;
+                var httpListener = (HttpListener) ar.AsyncState;
                 // bail if we are not listening
                 if (httpListener == null || !httpListener.IsListening) return;
                 httpContext = httpListener.EndGetContext(ar);
@@ -3580,9 +3573,9 @@ namespace Corrade
                 switch (httpRequest.ContentEncoding.EncodingName.ToLower())
                 {
                     case "gzip":
-                        using (MemoryStream inputStream = new MemoryStream())
+                        using (var inputStream = new MemoryStream())
                         {
-                            using (GZipStream dataGZipStream = new GZipStream(httpRequest.InputStream,
+                            using (var dataGZipStream = new GZipStream(httpRequest.InputStream,
                                 CompressionMode.Decompress, false))
                             {
                                 dataGZipStream.CopyTo(inputStream);
@@ -3592,10 +3585,10 @@ namespace Corrade
                         }
                         break;
                     case "deflate":
-                        using (MemoryStream inputStream = new MemoryStream())
+                        using (var inputStream = new MemoryStream())
                         {
                             using (
-                                DeflateStream dataDeflateStream = new DeflateStream(httpRequest.InputStream,
+                                var dataDeflateStream = new DeflateStream(httpRequest.InputStream,
                                     CompressionMode.Decompress, false))
                             {
                                 dataDeflateStream.CopyTo(inputStream);
@@ -3606,7 +3599,7 @@ namespace Corrade
                         break;
                     default:
                         using (
-                            StreamReader reader = new StreamReader(httpRequest.InputStream,
+                            var reader = new StreamReader(httpRequest.InputStream,
                                 httpRequest.ContentEncoding))
                         {
                             message = reader.ReadToEnd();
@@ -3642,10 +3635,10 @@ namespace Corrade
             {
                 try
                 {
-                    Dictionary<string, string> result = HandleCorradeCommand(message,
+                    var result = HandleCorradeCommand(message,
                         CORRADE_CONSTANTS.WEB_REQUEST,
                         httpRequest.RemoteEndPoint.ToString(), commandGroup);
-                    using (HttpListenerResponse response = httpContext.Response)
+                    using (var response = httpContext.Response)
                     {
                         // set the content type based on chosen output filers
                         switch (corradeConfiguration.OutputFilters.Last())
@@ -3670,15 +3663,15 @@ namespace Corrade
                                 response.KeepAlive = false;
                                 break;
                         }
-                        byte[] data =
+                        var data =
                             Encoding.UTF8.GetBytes(
                                 KeyValue.Encode(KeyValue.Escape(result, wasOutput)));
-                        using (MemoryStream outputStream = new MemoryStream())
+                        using (var outputStream = new MemoryStream())
                         {
                             switch (corradeConfiguration.HTTPServerCompression)
                             {
                                 case Configuration.HTTPCompressionMethod.GZIP:
-                                    using (GZipStream dataGZipStream = new GZipStream(outputStream,
+                                    using (var dataGZipStream = new GZipStream(outputStream,
                                         CompressionMode.Compress, false))
                                     {
                                         dataGZipStream.Write(data, 0, data.Length);
@@ -3689,7 +3682,7 @@ namespace Corrade
                                     break;
                                 case Configuration.HTTPCompressionMethod.DEFLATE:
                                     using (
-                                        DeflateStream dataDeflateStream = new DeflateStream(outputStream,
+                                        var dataDeflateStream = new DeflateStream(outputStream,
                                             CompressionMode.Compress, false))
                                     {
                                         dataDeflateStream.Write(data, 0, data.Length);
@@ -3703,9 +3696,9 @@ namespace Corrade
                                     break;
                             }
                         }
-                        using (Stream responseStream = response.OutputStream)
+                        using (var responseStream = response.OutputStream)
                         {
-                            using (BinaryWriter responseBinaryWriter = new BinaryWriter(responseStream))
+                            using (var responseBinaryWriter = new BinaryWriter(responseStream))
                             {
                                 responseBinaryWriter.Write(data);
                             }
@@ -3746,7 +3739,7 @@ namespace Corrade
             }
 
             // Find the notification action.
-            Action<CorradeNotificationParameters, Dictionary<string, string>> CorradeNotification =
+            var CorradeNotification =
                 corradeNotifications[Reflection.GetNameFromEnumValue(notification)];
             if (CorradeNotification == null)
             {
@@ -3757,10 +3750,10 @@ namespace Corrade
             }
 
             // For each group build the notification.
-            Parallel.ForEach(notifications, z =>
+            notifications.AsParallel().ForAll(z =>
             {
                 // Create the notification data storage for this notification.
-                Dictionary<string, string> notificationData = new Dictionary<string, string>();
+                var notificationData = new Dictionary<string, string>();
 
                 try
                 {
@@ -3795,7 +3788,7 @@ namespace Corrade
                     HashSet<string> URLdestinations;
                     if (z.NotificationURLDestination.TryGetValue(notification, out URLdestinations))
                     {
-                        Parallel.ForEach(URLdestinations, p =>
+                        URLdestinations.AsParallel().ForAll(p =>
                         {
                             // Check that the notification queue is not already full.
                             switch (NotificationQueue.Count <= corradeConfiguration.NotificationQueueLength)
@@ -3823,7 +3816,7 @@ namespace Corrade
                     HashSet<IPEndPoint> TCPdestinations;
                     if (z.NotificationTCPDestination.TryGetValue(notification, out TCPdestinations))
                     {
-                        Parallel.ForEach(TCPdestinations, p =>
+                        TCPdestinations.AsParallel().ForAll(p =>
                         {
                             switch (
                                 NotificationTCPQueue.Count <= corradeConfiguration.TCPNotificationQueueLength)
@@ -3898,7 +3891,7 @@ namespace Corrade
             if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(e.SourceID) || o.ID.Equals(e.OwnerID)))
                 return;
             // Get the full name.
-            List<string> fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.FromName));
+            var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.FromName));
             Configuration.Group commandGroup;
             switch (e.Type)
             {
@@ -3988,14 +3981,14 @@ namespace Corrade
                                 lock (LocalLogFileLock)
                                 {
                                     using (
-                                        FileStream fileStream =
+                                        var fileStream =
                                             File.Open(Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
                                                 Client.Network.CurrentSim.Name) +
                                                       "." +
                                                       CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
                                                 FileAccess.Write, FileShare.None))
                                     {
-                                        using (StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                        using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
                                         {
                                             logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
                                                 DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -4080,7 +4073,7 @@ namespace Corrade
             }
 
             // We need to block until we get a reply from a script.
-            ManualResetEvent wait = new ManualResetEvent(false);
+            var wait = new ManualResetEvent(false);
             // Add the inventory offer to the list of inventory items.
             lock (InventoryOffersLock)
             {
@@ -4107,7 +4100,7 @@ namespace Corrade
                     Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                         ((Func<string>) (() =>
                         {
-                            GroupCollection groups =
+                            var groups =
                                 CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
                             return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
                         }))()
@@ -4182,8 +4175,8 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
-            List<string> owner = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.ObjectOwnerName));
-            UUID ownerUUID = UUID.Zero;
+            var owner = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.ObjectOwnerName));
+            var ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
             if (
                 !Resolvers.AgentNameToUUID(Client, owner.First(), owner.Last(), corradeConfiguration.ServicesTimeout,
@@ -4308,7 +4301,7 @@ namespace Corrade
                     // Request the mute list.
                     new Thread(() =>
                     {
-                        IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
+                        var mutes = Enumerable.Empty<MuteEntry>();
                         if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                             return;
                         Cache.MutesCache.UnionWith(mutes);
@@ -4387,7 +4380,7 @@ namespace Corrade
             // Check if message is from muted agent and ignore it.
             if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(args.IM.FromAgentID)))
                 return;
-            List<string> fullName =
+            var fullName =
                 new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(args.IM.FromAgentName));
             // Process dialog messages.
             switch (args.IM.Dialog)
@@ -4510,14 +4503,14 @@ namespace Corrade
                     return;
                 // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
-                    Group inviteGroup = new Group();
+                    var inviteGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, args.IM.FromAgentID, corradeConfiguration.ServicesTimeout,
                             ref inviteGroup))
                         return;
                     // Add the group to the cache.
                     Cache.AddGroup(inviteGroup.Name, inviteGroup.ID);
-                    UUID inviteGroupAgent = UUID.Zero;
+                    var inviteGroupAgent = UUID.Zero;
                     if (
                         !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                             corradeConfiguration.ServicesTimeout,
@@ -4560,7 +4553,7 @@ namespace Corrade
                     return;
                 // Notice received.
                 case InstantMessageDialog.GroupNotice:
-                    Group noticeGroup = new Group();
+                    var noticeGroup = new Group();
                     if (
                         !Services.RequestGroup(Client,
                             args.IM.BinaryBucket.Length >= 18 ? new UUID(args.IM.BinaryBucket, 2) : args.IM.FromAgentID,
@@ -4568,7 +4561,7 @@ namespace Corrade
                         return;
                     // Add the group to the cache.
                     Cache.AddGroup(noticeGroup.Name, noticeGroup.ID);
-                    UUID noticeGroupAgent = UUID.Zero;
+                    var noticeGroupAgent = UUID.Zero;
                     if (
                         !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                             corradeConfiguration.ServicesTimeout,
@@ -4578,8 +4571,8 @@ namespace Corrade
                         return;
                     // message contains an attachment
                     bool noticeAttachment;
-                    AssetType noticeAssetType = AssetType.Unknown;
-                    UUID noticeFolder = UUID.Zero;
+                    var noticeAssetType = AssetType.Unknown;
+                    var noticeFolder = UUID.Zero;
                     switch (args.IM.BinaryBucket.Length > 18 && !args.IM.BinaryBucket[0].Equals(0))
                     {
                         case true:
@@ -4592,9 +4585,9 @@ namespace Corrade
                             break;
                     }
                     // get the subject and the message
-                    string noticeSubject = string.Empty;
-                    string noticeMessage = string.Empty;
-                    string[] noticeData = args.IM.Message.Split('|');
+                    var noticeSubject = string.Empty;
+                    var noticeMessage = string.Empty;
+                    var noticeData = args.IM.Message.Split('|');
                     if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
                     {
                         noticeSubject = noticeData[0];
@@ -4633,7 +4626,7 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -4641,7 +4634,7 @@ namespace Corrade
 
                     if (new HashSet<UUID>(currentGroups).Contains(args.IM.IMSessionID))
                     {
-                        Configuration.Group messageGroup =
+                        var messageGroup =
                             corradeConfiguration.Groups.AsParallel()
                                 .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Configuration.Group)))
@@ -4677,11 +4670,11 @@ namespace Corrade
                                                 lock (GroupLogFileLock)
                                                 {
                                                     using (
-                                                        FileStream fileStream = File.Open(o.ChatLog, FileMode.Append,
+                                                        var fileStream = File.Open(o.ChatLog, FileMode.Append,
                                                             FileAccess.Write, FileShare.None))
                                                     {
                                                         using (
-                                                            StreamWriter logWriter = new StreamWriter(fileStream,
+                                                            var logWriter = new StreamWriter(fileStream,
                                                                 Encoding.UTF8))
                                                         {
                                                             logWriter.WriteLine(
@@ -4719,7 +4712,7 @@ namespace Corrade
                                 () => SendNotification(Configuration.Notifications.InstantMessage, args),
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Check if we were ejected.
-                            UUID groupUUID = UUID.Zero;
+                            var groupUUID = UUID.Zero;
                             if (
                                 Resolvers.GroupNameToUUID(
                                     Client,
@@ -4742,7 +4735,7 @@ namespace Corrade
                                         lock (InstantMessageLogFileLock)
                                         {
                                             using (
-                                                FileStream fileStream =
+                                                var fileStream =
                                                     File.Open(
                                                         Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
                                                             args.IM.FromAgentName) +
@@ -4750,7 +4743,7 @@ namespace Corrade
                                                         FileAccess.Write, FileShare.None))
                                             {
                                                 using (
-                                                    StreamWriter logWriter = new StreamWriter(fileStream,
+                                                    var logWriter = new StreamWriter(fileStream,
                                                         Encoding.UTF8))
                                                 {
                                                     logWriter.WriteLine(
@@ -4795,7 +4788,7 @@ namespace Corrade
                                         lock (RegionLogFileLock)
                                         {
                                             using (
-                                                FileStream fileStream =
+                                                var fileStream =
                                                     File.Open(
                                                         Path.Combine(corradeConfiguration.RegionMessageLogDirectory,
                                                             Client.Network.CurrentSim.Name) + "." +
@@ -4803,7 +4796,7 @@ namespace Corrade
                                                         FileAccess.Write, FileShare.None))
                                             {
                                                 using (
-                                                    StreamWriter logWriter = new StreamWriter(fileStream, Encoding.UTF8)
+                                                    var logWriter = new StreamWriter(fileStream, Encoding.UTF8)
                                                     )
                                                 {
                                                     logWriter.WriteLine(
@@ -4843,7 +4836,7 @@ namespace Corrade
             }
 
             // If the group was not set properly, then bail.
-            Configuration.Group commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
+            var commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
             switch (!commandGroup.Equals(default(Configuration.Group)))
             {
                 case false:
@@ -4868,18 +4861,18 @@ namespace Corrade
             if (string.IsNullOrEmpty(message)) return;
 
             // Split all commands.
-            string[] unpack = message.Split(RLV_CONSTANTS.CSV_DELIMITER[0]);
+            var unpack = message.Split(RLV_CONSTANTS.CSV_DELIMITER[0]);
             // Pop first command to process.
-            string first = unpack.First();
+            var first = unpack.First();
             // Remove command.
             unpack = unpack.AsParallel().Where(o => !o.Equals(first)).ToArray();
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
-            Match match = RLV_CONSTANTS.RLVRegEx.Match(first);
+            var match = RLV_CONSTANTS.RLVRegEx.Match(first);
             if (!match.Success) goto CONTINUE;
 
-            RLVRule RLVrule = new RLVRule
+            var RLVrule = new RLVRule
             {
                 Behaviour = match.Groups["behaviour"].ToString().ToLowerInvariant(),
                 Option = match.Groups["option"].ToString().ToLowerInvariant(),
@@ -4934,14 +4927,14 @@ namespace Corrade
             try
             {
                 // Find RLV behaviour.
-                RLVBehaviour RLVBehaviour = Reflection.GetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
+                var RLVBehaviour = Reflection.GetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
                 if (RLVBehaviour.Equals(default(RLVBehaviour)))
                 {
                     throw new Exception(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
                         Reflection.GetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
                         RLVrule.Behaviour));
                 }
-                RLVBehaviourAttribute execute =
+                var execute =
                     Reflection.GetAttributeFromEnumValue<RLVBehaviourAttribute>(RLVBehaviour);
 
                 // Execute the command.
@@ -4962,7 +4955,7 @@ namespace Corrade
             Configuration.Group commandGroup)
         {
             // Get password.
-            string password =
+            var password =
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD)),
                     message));
             // Bail if no password set.
@@ -5012,7 +5005,7 @@ namespace Corrade
                 }
             }
 
-            Configuration.Group configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
+            var configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
                 o => commandGroup.UUID.Equals(o.UUID));
             if (configuredGroup.Equals(default(Configuration.Group)))
             {
@@ -5042,7 +5035,7 @@ namespace Corrade
                 GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] + 1;
             }
             // Perform the command.
-            Dictionary<string, string> result = ProcessCommand(new CorradeCommandParameters
+            var result = ProcessCommand(new CorradeCommandParameters
             {
                 Message = message,
                 Sender = sender,
@@ -5061,7 +5054,7 @@ namespace Corrade
                 return result;
             }
             // send callback if registered
-            string url =
+            var url =
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CALLBACK)),
                     message));
             // if no url was provided, do not send the callback
@@ -5081,14 +5074,14 @@ namespace Corrade
         /// <returns>a dictionary of key-value pairs representing the results of the command</returns>
         private static Dictionary<string, string> ProcessCommand(CorradeCommandParameters corradeCommandParameters)
         {
-            Dictionary<string, string> result = new Dictionary<string, string>
+            var result = new Dictionary<string, string>
             {
                 // add the command group to the response.
                 {Reflection.GetNameFromEnumValue(ScriptKeys.GROUP), corradeCommandParameters.Group.Name}
             };
 
             // retrieve the command from the message.
-            string command =
+            var command =
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
                     corradeCommandParameters.Message));
             if (!string.IsNullOrEmpty(command))
@@ -5097,29 +5090,29 @@ namespace Corrade
             }
 
             // execute command, sift data and check for errors
-            bool success = false;
+            var success = false;
             try
             {
                 // Find command.
-                ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(command);
+                var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(command);
                 if (scriptKey.Equals(default(ScriptKeys)))
                 {
                     throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
                 }
-                CorradeCommandAttribute execute =
+                var execute =
                     Reflection.GetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
 
                 // Execute the command.
                 execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
                 // Sifting was requested so apply the filters in order.
-                string data = string.Empty;
-                string sift = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
+                var data = string.Empty;
+                var sift = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
                     corradeCommandParameters.Message));
                 if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
                     !string.IsNullOrEmpty(sift))
                 {
-                    foreach (KeyValuePair<string, string> kvp in CSV.ToKeyValue(sift))
+                    foreach (var kvp in CSV.ToKeyValue(sift))
                     {
                         switch (Reflection.GetEnumValueFromName<Sift>(wasInput(kvp.Key).ToLowerInvariant()))
                         {
@@ -5149,7 +5142,7 @@ namespace Corrade
                                 break;
                             case Sift.MATCH:
                                 // Match the results if requested.
-                                string regex = wasInput(kvp.Value);
+                                var regex = wasInput(kvp.Value);
                                 if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
                                 {
                                     data =
@@ -5202,10 +5195,10 @@ namespace Corrade
                 DateTime.Now.ToUniversalTime().ToString(Constants.LSL.DATE_TIME_STAMP));
 
             // build afterburn
-            object AfterBurnLock = new object();
+            var AfterBurnLock = new object();
             // remove keys that are script keys, result keys or invalid key-value pairs
-            HashSet<string> resultKeys = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
-            HashSet<string> scriptKeys = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
+            var resultKeys = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
+            var scriptKeys = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
             KeyValue.Decode(corradeCommandParameters.Message)
                 .AsParallel()
                 .Where(
@@ -5235,25 +5228,25 @@ namespace Corrade
         /// <returns>value strings</returns>
         private static IEnumerable<string> GetStructuredData<T>(T structure, string query)
         {
-            HashSet<string[]> result = new HashSet<string[]>();
+            var result = new HashSet<string[]>();
             switch (!structure.Equals(default(T)))
             {
                 case false:
                     return result.SelectMany(o => o);
             }
-            object LockObject = new object();
+            var LockObject = new object();
             CSV.ToEnumerable(query).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
             {
-                KeyValuePair<FieldInfo, object> fi =
+                var fi =
                     wasGetFields(structure, structure.GetType().Name).ToArray().AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
-                KeyValuePair<PropertyInfo, object> pi =
+                var pi =
                     wasGetProperties(structure, structure.GetType().Name).ToArray().AsParallel().FirstOrDefault(
                         o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
-                List<string> data = new List<string> {name};
-                List<string> info = wasGetInfo(fi.Key, fi.Value).Union(wasGetInfo(pi.Key, pi.Value)).ToList();
+                var data = new List<string> {name};
+                var info = wasGetInfo(fi.Key, fi.Value).Union(wasGetInfo(pi.Key, pi.Value)).ToList();
                 switch (info.Count.Equals(0))
                 {
                     case true:
@@ -5284,10 +5277,10 @@ namespace Corrade
         private static void wasCSVToStructure<T>(string data, ref T structure)
         {
             foreach (
-                KeyValuePair<string, string> match in CSV.ToKeyValue(data))
+                var match in CSV.ToKeyValue(data))
             {
-                KeyValuePair<string, string> localMatch = match;
-                KeyValuePair<FieldInfo, object> fi =
+                var localMatch = match;
+                var fi =
                     wasGetFields(structure, structure.GetType().Name)
                         .ToArray()
                         .AsParallel().FirstOrDefault(
@@ -5297,7 +5290,7 @@ namespace Corrade
 
                 wasSetInfo(fi.Key, fi.Value, match.Value, ref structure);
 
-                KeyValuePair<PropertyInfo, object> pi =
+                var pi =
                     wasGetProperties(structure, structure.GetType().Name)
                         .ToArray()
                         .AsParallel().FirstOrDefault(
@@ -5323,7 +5316,7 @@ namespace Corrade
         {
             try
             {
-                HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
+                var request = (HttpWebRequest) WebRequest.Create(URL);
                 request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
                 request.Proxy = WebRequest.DefaultWebProxy;
                 request.ProtocolVersion = HttpVersion.Version11;
@@ -5343,7 +5336,7 @@ namespace Corrade
                         request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                         break;
                 }
-                byte[] data = Encoding.UTF8.GetBytes(KeyValue.Encode(message));
+                var data = Encoding.UTF8.GetBytes(KeyValue.Encode(message));
                 request.ContentLength = data.Length;
                 // send request
                 using (var requestStream = await request.GetRequestStreamAsync())
@@ -5351,11 +5344,11 @@ namespace Corrade
                     await requestStream.WriteAsync(data, 0, data.Length);
                 }
                 // read response
-                using (MemoryStream responseMemoryStream = new MemoryStream())
+                using (var responseMemoryStream = new MemoryStream())
                 {
                     using (var response = await request.GetResponseAsync())
                     {
-                        using (Stream responseStream = response.GetResponseStream())
+                        using (var responseStream = response.GetResponseStream())
                         {
                             await responseStream.CopyToAsync(responseMemoryStream);
                         }
@@ -5432,7 +5425,7 @@ namespace Corrade
                     if (GroupSchedulesThread != null) return;
                     // Start the group expiration thread.
                     runGroupSchedulesThread = true;
-                    HashSet<GroupSchedule> groupSchedules = new HashSet<GroupSchedule>();
+                    var groupSchedules = new HashSet<GroupSchedule>();
                     GroupSchedulesThread = new Thread(() =>
                     {
                         do
@@ -5450,7 +5443,7 @@ namespace Corrade
                             }
                             if (groupSchedules.Any())
                             {
-                                Parallel.ForEach(groupSchedules,
+                                groupSchedules.AsParallel().ForAll(
                                     o =>
                                     {
                                         // Spawn the command.
@@ -5532,7 +5525,7 @@ namespace Corrade
             // Dynamically disable or enable notifications.
             Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
             {
-                bool enabled = configuration.Groups.AsParallel().Any(
+                var enabled = configuration.Groups.AsParallel().Any(
                     p =>
                         !(p.NotificationMask & (ulong) o).Equals(0));
                 switch (o)
@@ -5833,25 +5826,25 @@ namespace Corrade
 
                         do
                         {
-                            TcpClient TCPClient = TCPListener.AcceptTcpClient();
+                            var TCPClient = TCPListener.AcceptTcpClient();
 
                             new Thread(() =>
                             {
                                 IPEndPoint remoteEndPoint = null;
-                                Configuration.Group commandGroup = new Configuration.Group();
+                                var commandGroup = new Configuration.Group();
                                 try
                                 {
                                     remoteEndPoint = TCPClient.Client.RemoteEndPoint as IPEndPoint;
-                                    using (NetworkStream networkStream = TCPClient.GetStream())
+                                    using (var networkStream = TCPClient.GetStream())
                                     {
                                         using (
-                                            StreamReader streamReader = new StreamReader(networkStream,
+                                            var streamReader = new StreamReader(networkStream,
                                                 Encoding.UTF8))
                                         {
-                                            string receiveLine = streamReader.ReadLine();
+                                            var receiveLine = streamReader.ReadLine();
 
                                             using (
-                                                StreamWriter streamWriter = new StreamWriter(networkStream,
+                                                var streamWriter = new StreamWriter(networkStream,
                                                     Encoding.UTF8))
                                             {
                                                 commandGroup = GetCorradeGroupFromMessage(receiveLine);
@@ -5880,7 +5873,7 @@ namespace Corrade
                                                         return;
                                                 }
 
-                                                string notificationTypes =
+                                                var notificationTypes =
                                                     wasInput(
                                                         KeyValue.Get(
                                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
@@ -5894,13 +5887,13 @@ namespace Corrade
                                                                 o.GroupUUID.Equals(commandGroup.UUID));
                                                 }
                                                 // Build any requested data for raw notifications.
-                                                string fields =
+                                                var fields =
                                                     wasInput(
                                                         KeyValue.Get(
                                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                                             receiveLine));
-                                                HashSet<string> data = new HashSet<string>();
-                                                object LockObject = new object();
+                                                var data = new HashSet<string>();
+                                                var LockObject = new object();
                                                 if (!string.IsNullOrEmpty(fields))
                                                 {
                                                     CSV.ToEnumerable(fields)
@@ -5946,7 +5939,7 @@ namespace Corrade
                                                         break;
                                                 }
 
-                                                bool succeeded = true;
+                                                var succeeded = true;
                                                 Parallel.ForEach(CSV.ToEnumerable(
                                                     notificationTypes)
                                                     .ToArray()
@@ -5954,7 +5947,7 @@ namespace Corrade
                                                     .Where(o => !string.IsNullOrEmpty(o)),
                                                     (o, state) =>
                                                     {
-                                                        ulong notificationValue =
+                                                        var notificationValue =
                                                             (ulong)
                                                                 Reflection
                                                                     .GetEnumValueFromName
@@ -6033,7 +6026,7 @@ namespace Corrade
                                                 }
                                                 do
                                                 {
-                                                    NotificationTCPQueueElement notificationTCPQueueElement =
+                                                    var notificationTCPQueueElement =
                                                         new NotificationTCPQueueElement();
                                                     if (!NotificationTCPQueue.Dequeue(
                                                         (int) configuration.TCPNotificationThrottle,
@@ -6064,22 +6057,22 @@ namespace Corrade
                                     {
                                         lock (GroupNotificationsLock)
                                         {
-                                            Notification notification =
+                                            var notification =
                                                 GroupNotifications.AsParallel().FirstOrDefault(
                                                     o =>
                                                         o.GroupUUID.Equals(commandGroup.UUID));
                                             if (notification != null)
                                             {
-                                                Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
+                                                var
                                                     notificationTCPDestination =
                                                         new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
                                                             ();
-                                                Parallel.ForEach(notification.NotificationTCPDestination, o =>
+                                                notification.NotificationTCPDestination.AsParallel().ForAll(o =>
                                                 {
                                                     switch (o.Value.Contains(remoteEndPoint))
                                                     {
                                                         case true:
-                                                            HashSet<IPEndPoint> destinations =
+                                                            var destinations =
                                                                 new HashSet<IPEndPoint>(
                                                                     o.Value.Where(p => !p.Equals(remoteEndPoint)));
                                                             notificationTCPDestination.Add(o.Key, destinations);
@@ -6166,11 +6159,11 @@ namespace Corrade
                                         {
                                             case PlatformID.Win32NT:
                                                 // We have to set this through reflection to prevent mono from bombing.
-                                                PropertyInfo pi =
+                                                var pi =
                                                     HTTPListener.GetType()
                                                         .GetProperty("TimeoutManager",
                                                             BindingFlags.Public | BindingFlags.Instance);
-                                                object timeoutManager = pi?.GetValue(HTTPListener, null);
+                                                var timeoutManager = pi?.GetValue(HTTPListener, null);
                                                 // Check if we have TimeoutManager.
                                                 if (timeoutManager == null) break;
                                                 // Now, set the properties through reflection.
@@ -6199,7 +6192,7 @@ namespace Corrade
                                         HTTPListener.Start();
                                         while (runHTTPServer && HTTPListener.IsListening)
                                         {
-                                            IAsyncResult result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
+                                            var result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
                                                 HTTPListener);
                                             WaitHandle.WaitAny(new[] {result.AsyncWaitHandle});
                                         }
@@ -6484,7 +6477,6 @@ namespace Corrade
             public const string FEEDS_STATE_FILE = @"Feeds.state";
             public const string LIBS_DIRECTORY = @"libs";
             public const string LANGUAGE_PROFILE_FILE = @"Core14.profile.xml";
-
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
 
             public static readonly Regex InventoryOfferObjectNameRegEx = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
@@ -7053,7 +7045,7 @@ namespace Corrade
                     }
                 }
                 Thread t = null;
-                CorradeThreadType threadType = corradeThreadType;
+                var threadType = corradeThreadType;
                 t = new Thread(() =>
                 {
                     // Wait for previous sequential thread to complete.
@@ -7101,7 +7093,7 @@ namespace Corrade
                     }
                 }
                 Thread t = null;
-                CorradeThreadType threadType = corradeThreadType;
+                var threadType = corradeThreadType;
                 t = new Thread(() =>
                 {
                     // protect inner thread
@@ -7151,7 +7143,7 @@ namespace Corrade
                     }
                 }
                 Thread t = null;
-                CorradeThreadType threadType = corradeThreadType;
+                var threadType = corradeThreadType;
                 t = new Thread(() =>
                 {
                     // protect inner thread
@@ -7165,8 +7157,8 @@ namespace Corrade
                                     o => (DateTime.Now - o.Value.TimeStamp).Milliseconds < expiration)
                                     .ToDictionary(o => o.Key, o => o.Value);
                         }
-                        int sleepTime = 0;
-                        List<int> sortedTimeGroups = new List<int>();
+                        var sleepTime = 0;
+                        var sortedTimeGroups = new List<int>();
                         lock (GroupExecutionTimeLock)
                         {
                             // In case only one group is involved, then do not schedule the group.
@@ -7180,9 +7172,9 @@ namespace Corrade
                         switch (sortedTimeGroups.Any())
                         {
                             case true:
-                                int draw = CorradeRandom.Next(sortedTimeGroups.Sum(o => o));
-                                int accu = 0;
-                                foreach (int time in sortedTimeGroups)
+                                var draw = CorradeRandom.Next(sortedTimeGroups.Sum(o => o));
+                                var accu = 0;
+                                foreach (var time in sortedTimeGroups)
                                 {
                                     accu += time;
                                     if (accu < draw) continue;
@@ -7258,7 +7250,7 @@ namespace Corrade
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
             {
-                DirItem item = new DirItem
+                var item = new DirItem
                 {
                     Name = inventoryBase.Name,
                     Item = inventoryBase.UUID,
@@ -7273,7 +7265,7 @@ namespace Corrade
 
                 if (!(inventoryBase is InventoryItem)) return item;
 
-                InventoryItem inventoryItem = inventoryBase as InventoryItem;
+                var inventoryItem = inventoryBase as InventoryItem;
                 item.Permissions = Inventory.wasPermissionsToString(inventoryItem.Permissions);
 
                 if (inventoryItem is InventoryWearable)
@@ -7554,12 +7546,12 @@ namespace Corrade
         [Serializable]
         public struct LocalMessage
         {
+            public ChatType ChatType;
             public DateTime DateTime;
-            public string RegionName;
             public string FirstName;
             public string LastName;
             public string Message;
-            public ChatType ChatType;
+            public string RegionName;
         }
 
         /// <summary>
@@ -8939,7 +8931,7 @@ namespace Corrade
         private static string wasAESEncrypt(string data, byte[] Key, byte[] IV)
         {
             byte[] encryptedData;
-            using (RijndaelManaged rijdanelManaged = new RijndaelManaged())
+            using (var rijdanelManaged = new RijndaelManaged())
             {
                 //  FIPS-197 / CBC
                 rijdanelManaged.BlockSize = 128;
@@ -8948,14 +8940,14 @@ namespace Corrade
                 rijdanelManaged.Key = Key;
                 rijdanelManaged.IV = IV;
 
-                ICryptoTransform encryptor = rijdanelManaged.CreateEncryptor(rijdanelManaged.Key, rijdanelManaged.IV);
+                var encryptor = rijdanelManaged.CreateEncryptor(rijdanelManaged.Key, rijdanelManaged.IV);
 
-                using (MemoryStream memoryStream = new MemoryStream())
+                using (var memoryStream = new MemoryStream())
                 {
-                    using (CryptoStream cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write)
+                    using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write)
                         )
                     {
-                        using (StreamWriter streamWriter = new StreamWriter(cryptoStream))
+                        using (var streamWriter = new StreamWriter(cryptoStream))
                         {
                             streamWriter.Write(data);
                             streamWriter.Flush();
@@ -8977,7 +8969,7 @@ namespace Corrade
         private static string wasAESDecrypt(string data, byte[] Key, byte[] IV)
         {
             string plaintext;
-            using (RijndaelManaged rijdanelManaged = new RijndaelManaged())
+            using (var rijdanelManaged = new RijndaelManaged())
             {
                 //  FIPS-197 / CBC
                 rijdanelManaged.BlockSize = 128;
@@ -8986,13 +8978,13 @@ namespace Corrade
                 rijdanelManaged.Key = Key;
                 rijdanelManaged.IV = IV;
 
-                ICryptoTransform decryptor = rijdanelManaged.CreateDecryptor(rijdanelManaged.Key, rijdanelManaged.IV);
+                var decryptor = rijdanelManaged.CreateDecryptor(rijdanelManaged.Key, rijdanelManaged.IV);
 
-                using (MemoryStream memoryStream = new MemoryStream(Convert.FromBase64String(data)))
+                using (var memoryStream = new MemoryStream(Convert.FromBase64String(data)))
                 {
-                    using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+                    using (var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
                     {
-                        using (StreamReader streamReader = new StreamReader(cryptoStream))
+                        using (var streamReader = new StreamReader(cryptoStream))
                         {
                             plaintext = streamReader.ReadToEnd();
                         }

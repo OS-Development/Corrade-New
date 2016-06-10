@@ -11,7 +11,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -30,10 +29,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                     }
-                    List<UUID> estateList = new List<UUID>();
-                    Time.DecayingAlarm EstateListReceivedAlarm =
+                    var estateList = new List<UUID>();
+                    var EstateListReceivedAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    Type type =
+                    var type =
                         Reflection.GetEnumValueFromName<Type>(
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
@@ -164,16 +163,16 @@ namespace Corrade
                             throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST);
                     }
                     // resolve UUIDs to names
-                    object LockObject = new object();
-                    List<string> csv = new List<string>();
+                    var LockObject = new object();
+                    var csv = new List<string>();
                     switch (type)
                     {
                         case Type.BAN:
                         case Type.MANAGER:
                         case Type.USER:
-                            Parallel.ForEach(estateList, o =>
+                            estateList.AsParallel().ForAll(o =>
                             {
-                                string agentName = string.Empty;
+                                var agentName = string.Empty;
                                 if (
                                     !Resolvers.AgentUUIDToName(Client, o, corradeConfiguration.ServicesTimeout,
                                         ref agentName))
@@ -186,9 +185,9 @@ namespace Corrade
                             });
                             break;
                         case Type.GROUP:
-                            Parallel.ForEach(estateList, o =>
+                            estateList.AsParallel().ForAll(o =>
                             {
-                                string groupName = string.Empty;
+                                var groupName = string.Empty;
                                 if (
                                     !Resolvers.GroupUUIDToName(Client, o, corradeConfiguration.ServicesTimeout,
                                         ref groupName))

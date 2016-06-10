@@ -25,12 +25,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
+                    var mutes = Enumerable.Empty<MuteEntry>();
                     if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                     }
-                    List<string> data = mutes.ToArray().AsParallel().Select(o => new[]
+                    var data = mutes.ToArray().AsParallel().Select(o => new[]
                     {
                         o.Name,
                         o.ID.ToString(),

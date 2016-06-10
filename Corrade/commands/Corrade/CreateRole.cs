@@ -30,7 +30,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -47,7 +47,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -66,8 +66,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
-                    int roleCount = 0;
+                    var GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                    var roleCount = 0;
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRolesDataEventHandler = (sender, args) =>
                     {
                         roleCount = args.Roles.Count;
@@ -88,7 +88,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED);
                     }
-                    string role =
+                    var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(role))
@@ -116,7 +116,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    string title = wasInput(KeyValue.Get(
+                    var title = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TITLE)),
                         corradeCommandParameters.Message));
                     if (Helpers.IsSecondLife(Client) && title.Length > Constants.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
@@ -139,7 +139,7 @@ namespace Corrade
                             Title = title
                         });
                     }
-                    UUID roleUUID = UUID.Zero;
+                    var roleUUID = UUID.Zero;
                     if (
                         !Resolvers.RoleNameToUUID(Client, role, groupUUID,
                             corradeConfiguration.ServicesTimeout, ref roleUUID))

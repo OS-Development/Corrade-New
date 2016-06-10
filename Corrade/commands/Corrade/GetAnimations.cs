@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = new List<string>();
+                    var csv = new List<string>();
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.SignaledAnimations.ForEach(

@@ -23,11 +23,11 @@ namespace Corrade
                 {
                     return;
                 }
-                string separator = RLV_CONSTANTS.PATH_SEPARATOR;
-                string filter = string.Empty;
+                var separator = RLV_CONSTANTS.PATH_SEPARATOR;
+                var filter = string.Empty;
                 if (!string.IsNullOrEmpty(rule.Option))
                 {
-                    string[] parts = rule.Option.Split(RLV_CONSTANTS.STATUS_SEPARATOR[0]);
+                    var parts = rule.Option.Split(RLV_CONSTANTS.STATUS_SEPARATOR[0]);
                     if (parts.Length > 1 && parts[1].Length > 0)
                     {
                         separator = parts[1].Substring(0, 1);
@@ -37,10 +37,10 @@ namespace Corrade
                         filter = parts[0].ToLowerInvariant();
                     }
                 }
-                StringBuilder response = new StringBuilder();
+                var response = new StringBuilder();
                 lock (RLVRulesLock)
                 {
-                    object LockObject = new object();
+                    var LockObject = new object();
                     RLVRules.AsParallel().Where(o =>
                         o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
                         ).ForAll(o =>

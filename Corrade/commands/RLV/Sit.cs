@@ -35,7 +35,7 @@ namespace Corrade
                 {
                     return;
                 }
-                ManualResetEvent SitEvent = new ManualResetEvent(false);
+                var SitEvent = new ManualResetEvent(false);
                 EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler =
                     (sender, args) =>
                         SitEvent.Set();

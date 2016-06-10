@@ -11,7 +11,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -28,18 +27,18 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    Time.DecayingAlarm DirectorySearchResultsAlarm =
+                    var DirectorySearchResultsAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    string name =
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
-                    string fields =
+                    var fields =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
-                    object LockObject = new object();
-                    List<string> csv = new List<string>();
-                    int handledEvents = 0;
-                    int counter = 1;
+                    var LockObject = new object();
+                    var csv = new List<string>();
+                    var handledEvents = 0;
+                    var counter = 1;
                     switch (
                         Reflection.GetEnumValueFromName<Type>(
                             wasInput(KeyValue.Get(
@@ -48,20 +47,20 @@ namespace Corrade
                                 .ToLowerInvariant()))
                     {
                         case Type.CLASSIFIED:
-                            DirectoryManager.Classified searchClassified = new DirectoryManager.Classified();
+                            var searchClassified = new DirectoryManager.Classified();
                             wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchClassified);
-                            Dictionary<DirectoryManager.Classified, int> classifieds =
+                            var classifieds =
                                 new Dictionary<DirectoryManager.Classified, int>();
                             EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
-                                (sender, args) => Parallel.ForEach(args.Classifieds, o =>
+                                (sender, args) => args.Classifieds.AsParallel().ForAll(o =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
-                                    int score = !string.IsNullOrEmpty(fields)
+                                    var score = !string.IsNullOrEmpty(fields)
                                         ? wasGetFields(searchClassified, searchClassified.GetType().Name)
                                             .Sum(
                                                 p =>
@@ -99,8 +98,8 @@ namespace Corrade
                                     classifieds.OrderByDescending(o => o.Value)
                                         .ToDictionary(o => o.Key, p => p.Value);
                             }
-                            Parallel.ForEach(safeClassifieds,
-                                o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
+                            safeClassifieds.AsParallel().ForAll(
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -110,23 +109,23 @@ namespace Corrade
                                 }));
                             break;
                         case Type.EVENT:
-                            DirectoryManager.EventsSearchData searchEvent = new DirectoryManager.EventsSearchData();
+                            var searchEvent = new DirectoryManager.EventsSearchData();
                             wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchEvent);
-                            Dictionary<DirectoryManager.EventsSearchData, int> events =
+                            var events =
                                 new Dictionary<DirectoryManager.EventsSearchData, int>();
                             EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
                                 (sender, args) =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.MatchedEvents.Count;
-                                    Parallel.ForEach(args.MatchedEvents, o =>
+                                    args.MatchedEvents.AsParallel().ForAll(o =>
                                     {
-                                        int score = !string.IsNullOrEmpty(fields)
+                                        var score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchEvent, searchEvent.GetType().Name)
                                                 .Sum(
                                                     p =>
@@ -171,8 +170,8 @@ namespace Corrade
                                 safeEvents = events.OrderByDescending(o => o.Value)
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
-                            Parallel.ForEach(safeEvents,
-                                o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
+                            safeEvents.AsParallel().ForAll(
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -186,23 +185,23 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
-                            DirectoryManager.GroupSearchData searchGroup = new DirectoryManager.GroupSearchData();
+                            var searchGroup = new DirectoryManager.GroupSearchData();
                             wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchGroup);
-                            Dictionary<DirectoryManager.GroupSearchData, int> groups =
+                            var groups =
                                 new Dictionary<DirectoryManager.GroupSearchData, int>();
                             EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
                                 (sender, args) =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.MatchedGroups.Count;
-                                    Parallel.ForEach(args.MatchedGroups, o =>
+                                    args.MatchedGroups.AsParallel().ForAll(o =>
                                     {
-                                        int score = !string.IsNullOrEmpty(fields)
+                                        var score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchGroup, searchGroup.GetType().Name)
                                                 .Sum(
                                                     p =>
@@ -246,8 +245,8 @@ namespace Corrade
                                 safeGroups = groups.OrderByDescending(o => o.Value)
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
-                            Parallel.ForEach(safeGroups,
-                                o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
+                            safeGroups.AsParallel().ForAll(
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -257,23 +256,23 @@ namespace Corrade
                                 }));
                             break;
                         case Type.LAND:
-                            DirectoryManager.DirectoryParcel searchLand = new DirectoryManager.DirectoryParcel();
+                            var searchLand = new DirectoryManager.DirectoryParcel();
                             wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchLand);
-                            Dictionary<DirectoryManager.DirectoryParcel, int> lands =
+                            var lands =
                                 new Dictionary<DirectoryManager.DirectoryParcel, int>();
                             EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                                 (sender, args) =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.DirParcels.Count;
-                                    Parallel.ForEach(args.DirParcels, o =>
+                                    args.DirParcels.AsParallel().ForAll(o =>
                                     {
-                                        int score = !string.IsNullOrEmpty(fields)
+                                        var score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchLand, searchLand.GetType().Name)
                                                 .Sum(
                                                     p =>
@@ -320,8 +319,8 @@ namespace Corrade
                                 safeLands = lands.OrderByDescending(o => o.Value)
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
-                            Parallel.ForEach(safeLands,
-                                o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
+                            safeLands.AsParallel().ForAll(
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -335,17 +334,17 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
-                            DirectoryManager.AgentSearchData searchAgent = new DirectoryManager.AgentSearchData();
-                            Dictionary<DirectoryManager.AgentSearchData, int> agents =
+                            var searchAgent = new DirectoryManager.AgentSearchData();
+                            var agents =
                                 new Dictionary<DirectoryManager.AgentSearchData, int>();
                             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyEventHandler =
                                 (sender, args) =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.MatchedPeople.Count;
-                                    Parallel.ForEach(args.MatchedPeople, o =>
+                                    args.MatchedPeople.AsParallel().ForAll(o =>
                                     {
-                                        int score = !string.IsNullOrEmpty(fields)
+                                        var score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchAgent, searchAgent.GetType().Name)
                                                 .Sum(
                                                     p =>
@@ -389,8 +388,8 @@ namespace Corrade
                                 safeAgents = agents.OrderByDescending(o => o.Value)
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
-                            Parallel.ForEach(safeAgents,
-                                o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
+                            safeAgents.AsParallel().ForAll(
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -404,20 +403,20 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
-                            DirectoryManager.PlacesSearchData searchPlaces = new DirectoryManager.PlacesSearchData();
+                            var searchPlaces = new DirectoryManager.PlacesSearchData();
                             wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchPlaces);
-                            Dictionary<DirectoryManager.PlacesSearchData, int> places =
+                            var places =
                                 new Dictionary<DirectoryManager.PlacesSearchData, int>();
                             EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =
-                                (sender, args) => Parallel.ForEach(args.MatchedPlaces, o =>
+                                (sender, args) => args.MatchedPlaces.AsParallel().ForAll(o =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
-                                    int score = !string.IsNullOrEmpty(fields)
+                                    var score = !string.IsNullOrEmpty(fields)
                                         ? wasGetFields(searchPlaces, searchPlaces.GetType().Name)
                                             .Sum(
                                                 p =>
@@ -453,8 +452,8 @@ namespace Corrade
                                 safePlaces = places.OrderByDescending(o => o.Value)
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
-                            Parallel.ForEach(safePlaces,
-                                o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
+                            safePlaces.AsParallel().ForAll(
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {

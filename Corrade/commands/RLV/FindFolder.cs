@@ -11,7 +11,6 @@ using System.Threading;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -34,7 +33,7 @@ namespace Corrade
                     }
                     return;
                 }
-                InventoryNode RLVFolder =
+                var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .ToArray()
@@ -45,10 +44,10 @@ namespace Corrade
                     Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                     return;
                 }
-                List<string> folders = new List<string>();
-                HashSet<string> parts =
+                var folders = new List<string>();
+                var parts =
                     new HashSet<string>(rule.Option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
-                object LockObject = new object();
+                var LockObject = new object();
                 Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder,
                     CORRADE_CONSTANTS.OneOrMoRegex,
                     new LinkedList<string>())
@@ -59,8 +58,8 @@ namespace Corrade
                             !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.DOT_MARKER) &&
                             !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.TILDE_MARKER)).ForAll(o =>
                             {
-                                int count = 0;
-                                Parallel.ForEach(parts, p => Parallel.ForEach(o.Value, q =>
+                                var count = 0;
+                                parts.AsParallel().ForAll(p => o.Value.AsParallel().ForAll(q =>
                                 {
                                     if (q.Contains(p))
                                     {

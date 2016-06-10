@@ -63,10 +63,10 @@ namespace Corrade
                     }
 
                     // Generate the powers.
-                    HashSet<int> segments =
+                    var segments =
                         new HashSet<int>(Enumerable.Range(0, affinity).Select(x => (int) Math.Pow(2, x)).Reverse());
 
-                    ManualResetEvent PositionReachedEvent = new ManualResetEvent(false);
+                    var PositionReachedEvent = new ManualResetEvent(false);
                     EventHandler<TerseObjectUpdateEventArgs> TerseObjectUpdateEvent = (sender, args) =>
                     {
                         // If the distance is within the vicinity
@@ -84,7 +84,7 @@ namespace Corrade
                         if (!args.Update.LocalID.Equals(Client.Self.LocalID)) return;
 
                         // ZMovement
-                        float diff = position.Z - Client.Self.SimPosition.Z;
+                        var diff = position.Z - Client.Self.SimPosition.Z;
                         Client.Self.Movement.UpPos = diff > 16 || segments.Select(
                             o =>
                                 new
@@ -107,7 +107,7 @@ namespace Corrade
                         // XYMovement
                         diff = Vector2.Distance(new Vector2(position.X, position.Y),
                             new Vector2(Client.Self.SimPosition.X, Client.Self.SimPosition.Y));
-                        float velocity = new Vector2(Client.Self.Velocity.X, Client.Self.Velocity.Y).Length();
+                        var velocity = new Vector2(Client.Self.Velocity.X, Client.Self.Velocity.Y).Length();
                         Client.Self.Movement.AtPos = diff >= 16 || segments.Select(o => new
                         {
                             f = new Func<int, bool>(
@@ -119,7 +119,7 @@ namespace Corrade
                         Client.Self.Movement.TurnToward(position);
                     };
 
-                    bool succeeded = true;
+                    var succeeded = true;
 
                     lock (Locks.ClientInstanceSelfLock)
                     {

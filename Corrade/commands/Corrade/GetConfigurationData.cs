@@ -25,7 +25,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> data = new List<string>();
+                    var data = new List<string>();
                     lock (ConfigurationFileLock)
                     {
                         data.AddRange(GetStructuredData(corradeConfiguration,

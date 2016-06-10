@@ -26,7 +26,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
-                    Action action = Reflection.GetEnumValueFromName<Action>(wasInput(
+                    var action = Reflection.GetEnumValueFromName<Action>(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
                         .ToLowerInvariant());
@@ -65,7 +65,7 @@ namespace Corrade
                             break;
                         case Action.SET:
                         case Action.GET:
-                            string path =
+                            var path =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
@@ -74,7 +74,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
                             }
-                            XmlDocument conf = new XmlDocument();
+                            var conf = new XmlDocument();
                             try
                             {
                                 lock (ConfigurationFileLock)

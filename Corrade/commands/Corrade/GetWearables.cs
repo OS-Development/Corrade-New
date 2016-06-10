@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv =
+                    var csv =
                         Inventory.GetWearables(Client, CurrentOutfitFolder)
                             .Select(o => new[]
                             {

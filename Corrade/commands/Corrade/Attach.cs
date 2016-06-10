@@ -30,7 +30,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string attachments =
+                    var attachments =
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
@@ -50,7 +50,7 @@ namespace Corrade
                     {
                         replace = true;
                     }
-                    Dictionary<string, string> items = CSV.ToKeyValue(attachments)
+                    var items = CSV.ToKeyValue(attachments)
                         .ToDictionary(o => o.Key, o => o.Value);
                     // if this is SecondLife, check that the additional attachments would not exceed the maximum attachment limit
                     if (Helpers.IsSecondLife(Client))
@@ -133,7 +133,7 @@ namespace Corrade
                                                     inventoryItem,
                                                     (AttachmentPoint) q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
-                                                string slot = Inventory.GetAttachments(
+                                                var slot = Inventory.GetAttachments(
                                                     Client,
                                                     corradeConfiguration.DataTimeout)
                                                     .ToArray()

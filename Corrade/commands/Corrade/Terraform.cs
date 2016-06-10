@@ -52,7 +52,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_HEIGHT);
                     }
-                    string action = wasInput(
+                    var action = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                             corradeCommandParameters.Message));
@@ -60,7 +60,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_TERRAFORM_ACTION_SPECIFIED);
                     }
-                    FieldInfo terraformActionFieldInfo = typeof (TerraformAction).GetFields(
+                    var terraformActionFieldInfo = typeof (TerraformAction).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -71,8 +71,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_TERRAFORM_ACTION);
                     }
-                    TerraformAction terraformAction = (TerraformAction) terraformActionFieldInfo.GetValue(null);
-                    string brush = wasInput(
+                    var terraformAction = (TerraformAction) terraformActionFieldInfo.GetValue(null);
+                    var brush = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BRUSH)),
                             corradeCommandParameters.Message));
@@ -80,7 +80,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_TERRAFORM_BRUSH_SPECIFIED);
                     }
-                    FieldInfo terraformBrushFieldInfo = typeof (TerraformBrushSize).GetFields(
+                    var terraformBrushFieldInfo = typeof (TerraformBrushSize).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -91,7 +91,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_TERRAFORM_BRUSH);
                     }
-                    TerraformBrushSize terraformBrush = (TerraformBrushSize) terraformBrushFieldInfo.GetValue(null);
+                    var terraformBrush = (TerraformBrushSize) terraformBrushFieldInfo.GetValue(null);
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -103,7 +103,7 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));

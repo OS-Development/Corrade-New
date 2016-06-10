@@ -26,8 +26,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> data = new List<string>();
-                    object LockObject = new object();
+                    var data = new List<string>();
+                    var LockObject = new object();
                     CSV.ToEnumerable(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
@@ -39,14 +39,14 @@ namespace Corrade
                                         corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                     return;
-                                Group dataGroup = new Group();
+                                var dataGroup = new Group();
                                 if (
                                     !Services.RequestGroup(Client, groupUUID, corradeConfiguration.ServicesTimeout,
                                         ref dataGroup))
                                 {
                                     throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                                 }
-                                IEnumerable<string> groupData = GetStructuredData(dataGroup,
+                                var groupData = GetStructuredData(dataGroup,
                                     wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
                                 lock (LockObject)

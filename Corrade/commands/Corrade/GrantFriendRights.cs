@@ -58,7 +58,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
                     }
-                    int rights = 0;
+                    var rights = 0;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RIGHTS)),

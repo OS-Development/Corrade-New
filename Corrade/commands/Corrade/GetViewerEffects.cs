@@ -10,7 +10,6 @@ using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -27,9 +26,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = new List<string>();
-                    object LockObject = new object();
-                    ViewerEffectType viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
+                    var csv = new List<string>();
+                    var LockObject = new object();
+                    var viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
@@ -37,7 +36,7 @@ namespace Corrade
                     switch (viewerEffectType)
                     {
                         case ViewerEffectType.LOOK:
-                            Parallel.ForEach(LookAtEffects, o =>
+                            LookAtEffects.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
                                 {
@@ -58,7 +57,7 @@ namespace Corrade
                             });
                             break;
                         case ViewerEffectType.POINT:
-                            Parallel.ForEach(PointAtEffects, o =>
+                            PointAtEffects.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
                                 {
@@ -81,7 +80,7 @@ namespace Corrade
                         case ViewerEffectType.SPHERE:
                             lock (SphereEffectsLock)
                             {
-                                Parallel.ForEach(SphereEffects, o =>
+                                SphereEffects.AsParallel().ForAll(o =>
                                 {
                                     lock (LockObject)
                                     {
@@ -113,7 +112,7 @@ namespace Corrade
                         case ViewerEffectType.BEAM:
                             lock (BeamEffectsLock)
                             {
-                                Parallel.ForEach(BeamEffects, o =>
+                                BeamEffects.AsParallel().ForAll(o =>
                                 {
                                     lock (LockObject)
                                     {

@@ -37,7 +37,7 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -72,8 +72,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    ManualResetEvent ParcelInfoEvent = new ManualResetEvent(false);
-                    ParcelInfo parcelInfo = new ParcelInfo();
+                    var ParcelInfoEvent = new ManualResetEvent(false);
+                    var parcelInfo = new ParcelInfo();
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                     {
                         if (args.Parcel.ID.Equals(parcelUUID))
@@ -97,7 +97,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_PARCEL_INFO);
                     }
-                    List<string> data = GetStructuredData(parcelInfo,
+                    var data = GetStructuredData(parcelInfo,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

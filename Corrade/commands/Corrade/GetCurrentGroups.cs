@@ -26,18 +26,18 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    List<string> data = new List<string>();
-                    object LockObject = new object();
+                    var data = new List<string>();
+                    var LockObject = new object();
                     currentGroups.ToArray().AsParallel().ForAll(o =>
                     {
-                        string groupName = string.Empty;
+                        var groupName = string.Empty;
                         if (!Resolvers.GroupUUIDToName(Client, o, corradeConfiguration.ServicesTimeout, ref groupName))
                             return;
                         lock (LockObject)

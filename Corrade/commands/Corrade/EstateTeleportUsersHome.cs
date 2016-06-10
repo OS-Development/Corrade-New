@@ -33,7 +33,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                         }
                     }
-                    string avatars =
+                    var avatars =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
                                 corradeCommandParameters.Message));
@@ -43,14 +43,14 @@ namespace Corrade
                         Client.Estate.TeleportHomeAllUsers();
                         return;
                     }
-                    HashSet<string> data = new HashSet<string>();
+                    var data = new HashSet<string>();
                     CSV.ToEnumerable(avatars).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                     {
                         UUID agentUUID;
                         switch (!UUID.TryParse(o, out agentUUID))
                         {
                             case true:
-                                List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                var fullName = new List<string>(Helpers.GetAvatarNames(o));
                                 switch (
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,

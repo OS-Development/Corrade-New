@@ -66,7 +66,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    Group targetGroup = new Group();
+                    var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,
@@ -74,8 +74,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
-                    ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
-                    List<KeyValuePair<UUID, UUID>> rolesMembers = new List<KeyValuePair<UUID, UUID>>();
+                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
                         rolesMembers = args.RolesMembers;
@@ -109,8 +109,8 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.CANNOT_EJECT_OWNERS);
                         }
                     }
-                    ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
-                    bool succeeded = false;
+                    var GroupEjectEvent = new ManualResetEvent(false);
+                    var succeeded = false;
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                     {
                         succeeded = args.Success;

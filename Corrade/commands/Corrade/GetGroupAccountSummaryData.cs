@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -66,8 +66,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_INTERVAL);
                     }
-                    ManualResetEvent RequestGroupAccountSummaryEvent = new ManualResetEvent(false);
-                    GroupAccountSummary summary = new GroupAccountSummary();
+                    var RequestGroupAccountSummaryEvent = new ManualResetEvent(false);
+                    var summary = new GroupAccountSummary();
                     EventHandler<GroupAccountSummaryReplyEventArgs> RequestGroupAccountSummaryEventHandler =
                         (sender, args) =>
                         {
@@ -87,7 +87,7 @@ namespace Corrade
                         }
                         Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                     }
-                    List<string> data = GetStructuredData(summary,
+                    var data = GetStructuredData(summary,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

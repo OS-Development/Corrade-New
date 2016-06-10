@@ -32,12 +32,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
+                    var MuteListUpdatedEvent = new ManualResetEvent(false);
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();
                     UUID targetUUID;
                     string name;
-                    IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
+                    var mutes = Enumerable.Empty<MuteEntry>();
                     switch (
                         Reflection.GetEnumValueFromName<Action>(
                             wasInput(
@@ -75,8 +75,8 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.MUTE_ENTRY_ALREADY_EXISTS);
 
                             // Get the mute type
-                            FieldInfo muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
-                                                                                 BindingFlags.Static)
+                            var muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
+                                                                           BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
@@ -86,13 +86,13 @@ namespace Corrade
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             // ...or assume "Default" mute type from MuteType
-                            MuteType muteType = muteTypeInfo != null
+                            var muteType = muteTypeInfo != null
                                 ? (MuteType)
                                     muteTypeInfo
                                         .GetValue(null)
                                 : MuteType.ByName;
                             // Get the mute flags - default is "Default" equivalent to 0
-                            int muteFlags = 0;
+                            var muteFlags = 0;
                             CSV.ToEnumerable(
                                 wasInput(
                                     KeyValue.Get(
@@ -138,7 +138,7 @@ namespace Corrade
                             Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
 
                             // find the mute either by name or by target
-                            MuteEntry mute =
+                            var mute =
                                 mutes.ToList().AsParallel()
                                     .FirstOrDefault(
                                         o =>

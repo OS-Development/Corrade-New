@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string wearables =
+                    var wearables =
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WEARABLES)),
                             corradeCommandParameters.Message));

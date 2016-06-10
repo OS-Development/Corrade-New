@@ -35,7 +35,7 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.DETECT:
-                            string message = wasInput(
+                            var message = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message));
@@ -44,12 +44,12 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_MESSAGE_PROVIDED);
                             }
                             // language detection
-                            List<string> csv = new List<string>();
-                            HashSet<Tuple<LanguageInfo, double>> detectedLanguages =
+                            var csv = new List<string>();
+                            var detectedLanguages =
                                 new HashSet<Tuple<LanguageInfo, double>>(rankedLanguageIdentifier.Identify(message));
                             if (detectedLanguages.Any())
                             {
-                                foreach (Tuple<LanguageInfo, double> language in detectedLanguages)
+                                foreach (var language in detectedLanguages)
                                 {
                                     csv.Add(language.Item1.Iso639_3);
                                     csv.Add(language.Item2.ToString(CultureInfo.InvariantCulture));

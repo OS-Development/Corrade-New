@@ -47,12 +47,12 @@ namespace Corrade
                     {
                         offset = Vector3.Zero;
                     }
-                    ViewerEffectType viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
+                    var viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
-                    UUID targetUUID = UUID.Zero;
+                    var targetUUID = UUID.Zero;
                     switch (viewerEffectType)
                     {
                         case ViewerEffectType.SPHERE:
@@ -64,7 +64,7 @@ namespace Corrade
                                 case ViewerEffectType.BEAM:
                                 case ViewerEffectType.POINT:
                                 case ViewerEffectType.LOOK:
-                                    string item = wasInput(KeyValue.Get(
+                                    var item = wasInput(KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                         corradeCommandParameters.Message));
                                     switch (!string.IsNullOrEmpty(item))
@@ -82,33 +82,34 @@ namespace Corrade
                                             }
                                             Primitive primitive = null;
                                             UUID itemUUID;
-                                            if (UUID.TryParse(item, out itemUUID))
+                                            switch (UUID.TryParse(item, out itemUUID))
                                             {
-                                                if (
-                                                    !Services.FindPrimitive(Client,
-                                                        itemUUID,
-                                                        range,
-                                                        corradeConfiguration.Range,
-                                                        ref primitive, corradeConfiguration.ServicesTimeout,
-                                                        corradeConfiguration.DataTimeout,
-                                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                                {
-                                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                                                }
-                                            }
-                                            else
-                                            {
-                                                if (
-                                                    !Services.FindPrimitive(Client,
-                                                        item,
-                                                        range,
-                                                        corradeConfiguration.Range,
-                                                        ref primitive, corradeConfiguration.ServicesTimeout,
-                                                        corradeConfiguration.DataTimeout,
-                                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                                {
-                                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                                                }
+                                                case true:
+                                                    if (
+                                                        !Services.FindPrimitive(Client,
+                                                            itemUUID,
+                                                            range,
+                                                            corradeConfiguration.Range,
+                                                            ref primitive, corradeConfiguration.ServicesTimeout,
+                                                            corradeConfiguration.DataTimeout,
+                                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                                    {
+                                                        throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                                    }
+                                                    break;
+                                                default:
+                                                    if (
+                                                        !Services.FindPrimitive(Client,
+                                                            item,
+                                                            range,
+                                                            corradeConfiguration.Range,
+                                                            ref primitive, corradeConfiguration.ServicesTimeout,
+                                                            corradeConfiguration.DataTimeout,
+                                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                                    {
+                                                        throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                                    }
+                                                    break;
                                             }
                                             targetUUID = primitive.ID;
                                             break;
@@ -143,8 +144,8 @@ namespace Corrade
                             switch (viewerEffectType)
                             {
                                 case ViewerEffectType.LOOK:
-                                    FieldInfo lookAtTypeInfo = typeof (LookAtType).GetFields(BindingFlags.Public |
-                                                                                             BindingFlags.Static)
+                                    var lookAtTypeInfo = typeof (LookAtType).GetFields(BindingFlags.Public |
+                                                                                       BindingFlags.Static)
                                         .AsParallel().FirstOrDefault(
                                             o =>
                                                 o.Name.Equals(
@@ -153,8 +154,8 @@ namespace Corrade
                                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    LookAtType lookAtType = (LookAtType?) lookAtTypeInfo?.GetValue(null) ??
-                                                            LookAtType.None;
+                                    var lookAtType = (LookAtType?) lookAtTypeInfo?.GetValue(null) ??
+                                                     LookAtType.None;
                                     // Check whether the specified UUID belongs to a different effect type.
                                     lock (PointAtEffectsLock)
                                     {
@@ -201,8 +202,8 @@ namespace Corrade
                                     }
                                     break;
                                 case ViewerEffectType.POINT:
-                                    FieldInfo pointAtTypeInfo = typeof (PointAtType).GetFields(BindingFlags.Public |
-                                                                                               BindingFlags.Static)
+                                    var pointAtTypeInfo = typeof (PointAtType).GetFields(BindingFlags.Public |
+                                                                                         BindingFlags.Static)
                                         .AsParallel().FirstOrDefault(
                                             o =>
                                                 o.Name.Equals(
@@ -211,8 +212,8 @@ namespace Corrade
                                                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    PointAtType pointAtType = (PointAtType?) pointAtTypeInfo?.GetValue(null) ??
-                                                              PointAtType.None;
+                                    var pointAtType = (PointAtType?) pointAtTypeInfo?.GetValue(null) ??
+                                                      PointAtType.None;
                                     // Check whether the specified UUID belongs to a different effect type.
                                     lock (LookAtEffectsLock)
                                     {
@@ -291,7 +292,7 @@ namespace Corrade
                                     {
                                         duration = 1;
                                     }
-                                    Color4 color = new Color4(RGB.X, RGB.Y, RGB.Z, alpha);
+                                    var color = new Color4(RGB.X, RGB.Y, RGB.Z, alpha);
                                     switch (viewerEffectType)
                                     {
                                         case ViewerEffectType.BEAM:

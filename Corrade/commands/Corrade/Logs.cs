@@ -29,8 +29,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    object LockObject = new object();
-                    List<string> csv = new List<string>();
+                    var LockObject = new object();
+                    var csv = new List<string>();
                     switch (Reflection.GetEnumValueFromName<Entity>(
                         wasInput(
                             KeyValue.Get(
@@ -46,10 +46,10 @@ namespace Corrade
                                 lock (GroupLogFileLock)
                                 {
                                     using (
-                                        FileStream fileStream = File.Open(corradeCommandParameters.Group.ChatLog,
+                                        var fileStream = File.Open(corradeCommandParameters.Group.ChatLog,
                                             FileMode.Open, FileAccess.Read, FileShare.Read))
                                     {
-                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
                                             groupChatLog = streamReader.ReadToEnd();
                                         }
@@ -61,30 +61,32 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.FAILED_TO_READ_LOG_FILE);
                             }
                             // process the log file and create the set of messages to process
-                            HashSet<GroupMessage> groupMessages = new HashSet<GroupMessage>();
-                            Parallel.ForEach(groupChatLog.Split(new[] {Environment.NewLine}, StringSplitOptions.None),
-                                o =>
-                                {
-                                    Match match = CORRADE_CONSTANTS.GroupMessageLogRegex.Match(o);
-                                    if (!match.Success) return;
-                                    DateTime messageDateTime;
-                                    if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
-                                    string messageFirstName = match.Groups[2].Value;
-                                    if (string.IsNullOrEmpty(messageFirstName)) return;
-                                    string messageLastName = match.Groups[3].Value;
-                                    if (string.IsNullOrEmpty(messageLastName)) return;
-                                    string message = match.Groups[4].Value;
-                                    lock (LockObject)
+                            var groupMessages = new HashSet<GroupMessage>();
+                            groupChatLog.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                .AsParallel()
+                                .ForAll(
+                                    o =>
                                     {
-                                        groupMessages.Add(new GroupMessage
+                                        var match = CORRADE_CONSTANTS.GroupMessageLogRegex.Match(o);
+                                        if (!match.Success) return;
+                                        DateTime messageDateTime;
+                                        if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
+                                        var messageFirstName = match.Groups[2].Value;
+                                        if (string.IsNullOrEmpty(messageFirstName)) return;
+                                        var messageLastName = match.Groups[3].Value;
+                                        if (string.IsNullOrEmpty(messageLastName)) return;
+                                        var message = match.Groups[4].Value;
+                                        lock (LockObject)
                                         {
-                                            DateTime = messageDateTime,
-                                            FirstName = messageFirstName,
-                                            LastName = messageLastName,
-                                            Message = message
-                                        });
-                                    }
-                                });
+                                            groupMessages.Add(new GroupMessage
+                                            {
+                                                DateTime = messageDateTime,
+                                                FirstName = messageFirstName,
+                                                LastName = messageLastName,
+                                                Message = message
+                                            });
+                                        }
+                                    });
                             switch (Reflection.GetEnumValueFromName<Action>(
                                 wasInput(
                                     KeyValue.Get(
@@ -146,30 +148,37 @@ namespace Corrade
                                         getGroupMessageMessageRegex = CORRADE_CONSTANTS.OneOrMoRegex;
                                     }
                                     // cull the message list depending on what parameters have been specified
-                                    groupMessages.RemoveWhere(
-                                        o =>
-                                            (getGroupMessageToDate < o.DateTime && getGroupMessageFromDate > o.DateTime) ||
-                                            !getGroupMessageFirstNameRegex.IsMatch(o.FirstName) ||
-                                            !getGroupMessageLastNameRegex.IsMatch(o.LastName) ||
-                                            !getGroupMessageMessageRegex.IsMatch(o.Message));
-                                    Parallel.ForEach(groupMessages, o =>
-                                    {
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    groupMessages.AsParallel()
+                                        .Where(
+                                            o =>
+                                                (getGroupMessageToDate >= o.DateTime ||
+                                                 getGroupMessageFromDate <= o.DateTime) &&
+                                                getGroupMessageFirstNameRegex.IsMatch(o.FirstName) &&
+                                                getGroupMessageLastNameRegex.IsMatch(o.LastName) &&
+                                                getGroupMessageMessageRegex.IsMatch(o.Message)).ForAll(o =>
+                                                {
+                                                    lock (LockObject)
+                                                    {
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                            o.DateTime.ToUniversalTime()
+                                                                .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            o.FirstName
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                            o.LastName
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
+                                                    }
+                                                });
                                     break;
                                 case Action.SEARCH:
                                     // build regular expressions based on fed data
@@ -185,74 +194,84 @@ namespace Corrade
                                     {
                                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
-                                    Parallel.ForEach(groupMessages, o =>
-                                    {
-                                        if (!searchGroupMessagesRegex.IsMatch(o.FirstName) &&
-                                            !searchGroupMessagesRegex.IsMatch(o.LastName) &&
-                                            !searchGroupMessagesRegex.IsMatch(o.Message)) return;
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    groupMessages.AsParallel()
+                                        .Where(o => searchGroupMessagesRegex.IsMatch(o.FirstName) ||
+                                                    searchGroupMessagesRegex.IsMatch(o.LastName) ||
+                                                    searchGroupMessagesRegex.IsMatch(o.Message)).ForAll(o =>
+                                                    {
+                                                        lock (LockObject)
+                                                        {
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                o.DateTime.ToUniversalTime()
+                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                o.FirstName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                o.LastName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                o.Message
+                                                            });
+                                                        }
+                                                    });
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                             }
                             break;
                         case Entity.MESSAGE:
-                            HashSet<InstantMessage> instantMessages = new HashSet<InstantMessage>();
-                            Parallel.ForEach(Directory.GetFiles(corradeConfiguration.InstantMessageLogDirectory), o =>
+                            var instantMessages = new HashSet<InstantMessage>();
+                            Directory.GetFiles(corradeConfiguration.InstantMessageLogDirectory).AsParallel().ForAll(o =>
                             {
                                 string messageLine;
                                 lock (InstantMessageLogFileLock)
                                 {
                                     using (
-                                        FileStream fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                        var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
                                             FileShare.Read))
                                     {
-                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
                                             messageLine = streamReader.ReadToEnd();
                                         }
                                     }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
-                                Parallel.ForEach(
-                                    messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None),
-                                    p =>
-                                    {
-                                        Match match = CORRADE_CONSTANTS.InstantMessageLogRegex.Match(p);
-                                        if (!match.Success) return;
-                                        DateTime messageDateTime;
-                                        if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
-                                        string messageFirstName = match.Groups[2].Value;
-                                        if (string.IsNullOrEmpty(messageFirstName)) return;
-                                        string messageLastName = match.Groups[3].Value;
-                                        if (string.IsNullOrEmpty(messageLastName)) return;
-                                        string message = match.Groups[4].Value;
-                                        lock (LockObject)
+                                messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                    .AsParallel()
+                                    .ForAll(
+                                        p =>
                                         {
-                                            instantMessages.Add(new InstantMessage
+                                            var match = CORRADE_CONSTANTS.InstantMessageLogRegex.Match(p);
+                                            if (!match.Success) return;
+                                            DateTime messageDateTime;
+                                            if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
+                                            var messageFirstName = match.Groups[2].Value;
+                                            if (string.IsNullOrEmpty(messageFirstName)) return;
+                                            var messageLastName = match.Groups[3].Value;
+                                            if (string.IsNullOrEmpty(messageLastName)) return;
+                                            var message = match.Groups[4].Value;
+                                            lock (LockObject)
                                             {
-                                                DateTime = messageDateTime,
-                                                FirstName = messageFirstName,
-                                                LastName = messageLastName,
-                                                Message = message
-                                            });
-                                        }
-                                    });
+                                                instantMessages.Add(new InstantMessage
+                                                {
+                                                    DateTime = messageDateTime,
+                                                    FirstName = messageFirstName,
+                                                    LastName = messageLastName,
+                                                    Message = message
+                                                });
+                                            }
+                                        });
                             });
                             switch (Reflection.GetEnumValueFromName<Action>(
                                 wasInput(
@@ -315,31 +334,50 @@ namespace Corrade
                                         getInstantMessageMessageRegex = CORRADE_CONSTANTS.OneOrMoRegex;
                                     }
                                     // cull the message list depending on what parameters have been specified
-                                    instantMessages.RemoveWhere(
-                                        o =>
-                                            (getInstantMessageToDate < o.DateTime &&
-                                             getInstantMessageFromDate > o.DateTime) ||
-                                            !getInstantMessageFirstNameRegex.IsMatch(o.FirstName) ||
-                                            !getInstantMessageLastNameRegex.IsMatch(o.LastName) ||
-                                            !getInstantMessageMessageRegex.IsMatch(o.Message));
-                                    Parallel.ForEach(instantMessages, o =>
-                                    {
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    instantMessages.AsParallel().Where(o => (getInstantMessageToDate >= o.DateTime ||
+                                                                             getInstantMessageFromDate <= o.DateTime) &&
+                                                                            getInstantMessageFirstNameRegex.IsMatch(
+                                                                                o.FirstName) &&
+                                                                            getInstantMessageLastNameRegex.IsMatch(
+                                                                                o.LastName) &&
+                                                                            getInstantMessageMessageRegex.IsMatch(
+                                                                                o.Message)).ForAll(o =>
+                                                                                {
+                                                                                    lock (LockObject)
+                                                                                    {
+                                                                                        csv.AddRange(new[]
+                                                                                        {
+                                                                                            Reflection
+                                                                                                .GetNameFromEnumValue(
+                                                                                                    ScriptKeys.TIME),
+                                                                                            o.DateTime.ToUniversalTime()
+                                                                                                .ToString(
+                                                                                                    Constants.LSL
+                                                                                                        .DATE_TIME_STAMP)
+                                                                                        });
+                                                                                        csv.AddRange(new[]
+                                                                                        {
+                                                                                            Reflection
+                                                                                                .GetNameFromEnumValue(
+                                                                                                    ScriptKeys.FIRSTNAME),
+                                                                                            o.FirstName
+                                                                                        });
+                                                                                        csv.AddRange(new[]
+                                                                                        {
+                                                                                            Reflection
+                                                                                                .GetNameFromEnumValue(
+                                                                                                    ScriptKeys.LASTNAME),
+                                                                                            o.LastName
+                                                                                        });
+                                                                                        csv.AddRange(new[]
+                                                                                        {
+                                                                                            Reflection
+                                                                                                .GetNameFromEnumValue(
+                                                                                                    ScriptKeys.MESSAGE),
+                                                                                            o.Message
+                                                                                        });
+                                                                                    }
+                                                                                });
                                     break;
                                 case Action.SEARCH:
                                     // build regular expressions based on fed data
@@ -355,79 +393,88 @@ namespace Corrade
                                     {
                                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
-                                    Parallel.ForEach(instantMessages, o =>
-                                    {
-                                        if (!searchInstantMessagesRegex.IsMatch(o.FirstName) &&
-                                            !searchInstantMessagesRegex.IsMatch(o.LastName) &&
-                                            !searchInstantMessagesRegex.IsMatch(o.Message))
-                                            return;
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    instantMessages.AsParallel()
+                                        .Where(o => searchInstantMessagesRegex.IsMatch(o.FirstName) ||
+                                                    searchInstantMessagesRegex.IsMatch(o.LastName) ||
+                                                    searchInstantMessagesRegex.IsMatch(o.Message)).ForAll(o =>
+                                                    {
+                                                        lock (LockObject)
+                                                        {
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                o.DateTime.ToUniversalTime()
+                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                o.FirstName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                o.LastName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                o.Message
+                                                            });
+                                                        }
+                                                    });
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                             }
                             break;
                         case Entity.LOCAL:
-                            HashSet<LocalMessage> localMessages = new HashSet<LocalMessage>();
-                            Parallel.ForEach(Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory), o =>
+                            var localMessages = new HashSet<LocalMessage>();
+                            Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory).AsParallel().ForAll(o =>
                             {
                                 string messageLine;
                                 lock (LocalLogFileLock)
                                 {
                                     using (
-                                        FileStream fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                        var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
                                             FileShare.Read))
                                     {
-                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
                                             messageLine = streamReader.ReadToEnd();
                                         }
                                     }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
-                                Parallel.ForEach(
-                                    messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None),
-                                    p =>
-                                    {
-                                        Match match = CORRADE_CONSTANTS.LocalMessageLogRegex.Match(p);
-                                        if (!match.Success) return;
-                                        DateTime messageDateTime;
-                                        if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
-                                        string messageFirstName = match.Groups[2].Value;
-                                        if (string.IsNullOrEmpty(messageFirstName)) return;
-                                        string messageLastName = match.Groups[3].Value;
-                                        if (string.IsNullOrEmpty(messageLastName)) return;
-                                        ChatType messageType;
-                                        if (!Enum.TryParse(match.Groups[4].Value, out messageType)) return;
-                                        string message = match.Groups[5].Value;
-                                        lock (LockObject)
+                                messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                    .AsParallel()
+                                    .ForAll(
+                                        p =>
                                         {
-                                            localMessages.Add(new LocalMessage
+                                            var match = CORRADE_CONSTANTS.LocalMessageLogRegex.Match(p);
+                                            if (!match.Success) return;
+                                            DateTime messageDateTime;
+                                            if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
+                                            var messageFirstName = match.Groups[2].Value;
+                                            if (string.IsNullOrEmpty(messageFirstName)) return;
+                                            var messageLastName = match.Groups[3].Value;
+                                            if (string.IsNullOrEmpty(messageLastName)) return;
+                                            ChatType messageType;
+                                            if (!Enum.TryParse(match.Groups[4].Value, out messageType)) return;
+                                            var message = match.Groups[5].Value;
+                                            lock (LockObject)
                                             {
-                                                DateTime = messageDateTime,
-                                                FirstName = messageFirstName,
-                                                LastName = messageLastName,
-                                                ChatType = messageType,
-                                                Message = message,
-                                                RegionName = Path.GetFileNameWithoutExtension(o)
-                                            });
-                                        }
-                                    });
+                                                localMessages.Add(new LocalMessage
+                                                {
+                                                    DateTime = messageDateTime,
+                                                    FirstName = messageFirstName,
+                                                    LastName = messageLastName,
+                                                    ChatType = messageType,
+                                                    Message = message,
+                                                    RegionName = Path.GetFileNameWithoutExtension(o)
+                                                });
+                                            }
+                                        });
                             });
                             switch (Reflection.GetEnumValueFromName<Action>(
                                 wasInput(
@@ -514,42 +561,54 @@ namespace Corrade
                                         getLocalMessageChatTypeRegex = CORRADE_CONSTANTS.OneOrMoRegex;
                                     }
                                     // cull the message list depending on what parameters have been specified
-                                    localMessages.RemoveWhere(
-                                        o =>
-                                            (getLocalMessageToDate < o.DateTime &&
-                                             getLocalMessageFromDate > o.DateTime) ||
-                                            !getLocalMessageFirstNameRegex.IsMatch(o.FirstName) ||
-                                            !getLocalMessageLastNameRegex.IsMatch(o.LastName) ||
-                                            !getLocalMessageMessageRegex.IsMatch(o.Message) ||
-                                            !getLocalMessageRegionNameRegex.IsMatch(o.RegionName) ||
-                                            !getLocalMessageChatTypeRegex.IsMatch(Enum.GetName(typeof (ChatType),
-                                                o.ChatType)));
-                                    Parallel.ForEach(localMessages, o =>
-                                    {
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
-                                                Enum.GetName(typeof (ChatType),
-                                                    o.ChatType)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    localMessages.AsParallel()
+                                        .Where(
+                                            o =>
+                                                (getLocalMessageToDate >= o.DateTime ||
+                                                 getLocalMessageFromDate <= o.DateTime) &&
+                                                getLocalMessageFirstNameRegex.IsMatch(o.FirstName) &&
+                                                getLocalMessageLastNameRegex.IsMatch(o.LastName) &&
+                                                getLocalMessageMessageRegex.IsMatch(o.Message) &&
+                                                getLocalMessageRegionNameRegex.IsMatch(o.RegionName) &&
+                                                getLocalMessageChatTypeRegex.IsMatch(Enum.GetName(typeof (ChatType),
+                                                    o.ChatType))).ForAll(o =>
+                                                    {
+                                                        lock (LockObject)
+                                                        {
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                o.DateTime.ToUniversalTime()
+                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                                o.RegionName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
+                                                                Enum.GetName(typeof (ChatType),
+                                                                    o.ChatType)
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                o.FirstName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                o.LastName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                o.Message
+                                                            });
+                                                        }
+                                                    });
                                     break;
                                 case Action.SEARCH:
                                     // build regular expressions based on fed data
@@ -565,86 +624,99 @@ namespace Corrade
                                     {
                                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
-                                    Parallel.ForEach(localMessages, o =>
-                                    {
-                                        if (!searchLocalMessagesRegex.IsMatch(o.FirstName) &&
-                                            !searchLocalMessagesRegex.IsMatch(o.LastName) &&
-                                            !searchLocalMessagesRegex.IsMatch(o.Message) &&
-                                            !searchLocalMessagesRegex.IsMatch(o.RegionName) &&
-                                            !searchLocalMessagesRegex.IsMatch(Enum.GetName(typeof (ChatType), o.ChatType)))
-                                            return;
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
-                                                Enum.GetName(typeof (ChatType),
-                                                    o.ChatType)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    localMessages.AsParallel()
+                                        .Where(o => searchLocalMessagesRegex.IsMatch(o.FirstName) ||
+                                                    searchLocalMessagesRegex.IsMatch(o.LastName) ||
+                                                    searchLocalMessagesRegex.IsMatch(o.Message) ||
+                                                    searchLocalMessagesRegex.IsMatch(o.RegionName) ||
+                                                    searchLocalMessagesRegex.IsMatch(Enum.GetName(typeof (ChatType),
+                                                        o.ChatType))).ForAll(o =>
+                                                        {
+                                                            lock (LockObject)
+                                                            {
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                    o.DateTime.ToUniversalTime()
+                                                                        .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                                    o.RegionName
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
+                                                                    Enum.GetName(typeof (ChatType),
+                                                                        o.ChatType)
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                    o.FirstName
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                    o.LastName
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                    o.Message
+                                                                });
+                                                            }
+                                                        });
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                             }
                             break;
                         case Entity.REGION:
-                            HashSet<RegionMessage> regionMessages = new HashSet<RegionMessage>();
-                            Parallel.ForEach(Directory.GetFiles(corradeConfiguration.RegionMessageLogDirectory), o =>
+                            var regionMessages = new HashSet<RegionMessage>();
+                            Directory.GetFiles(corradeConfiguration.RegionMessageLogDirectory).AsParallel().ForAll(o =>
                             {
                                 string messageLine;
                                 lock (RegionLogFileLock)
                                 {
                                     using (
-                                        FileStream fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                        var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
                                             FileShare.Read))
                                     {
-                                        using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
                                             messageLine = streamReader.ReadToEnd();
                                         }
                                     }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
-                                Parallel.ForEach(
-                                    messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None),
-                                    p =>
-                                    {
-                                        Match match = CORRADE_CONSTANTS.RegionMessageLogRegex.Match(p);
-                                        if (!match.Success) return;
-                                        DateTime messageDateTime;
-                                        if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
-                                        string messageFirstName = match.Groups[2].Value;
-                                        if (string.IsNullOrEmpty(messageFirstName)) return;
-                                        string messageLastName = match.Groups[3].Value;
-                                        if (string.IsNullOrEmpty(messageLastName)) return;
-                                        string message = match.Groups[4].Value;
-                                        lock (LockObject)
+                                messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                    .AsParallel()
+                                    .ForAll(
+                                        p =>
                                         {
-                                            regionMessages.Add(new RegionMessage
+                                            var match = CORRADE_CONSTANTS.RegionMessageLogRegex.Match(p);
+                                            if (!match.Success) return;
+                                            DateTime messageDateTime;
+                                            if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime)) return;
+                                            var messageFirstName = match.Groups[2].Value;
+                                            if (string.IsNullOrEmpty(messageFirstName)) return;
+                                            var messageLastName = match.Groups[3].Value;
+                                            if (string.IsNullOrEmpty(messageLastName)) return;
+                                            var message = match.Groups[4].Value;
+                                            lock (LockObject)
                                             {
-                                                DateTime = messageDateTime,
-                                                FirstName = messageFirstName,
-                                                LastName = messageLastName,
-                                                Message = message,
-                                                RegionName = Path.GetFileNameWithoutExtension(o)
-                                            });
-                                        }
-                                    });
+                                                regionMessages.Add(new RegionMessage
+                                                {
+                                                    DateTime = messageDateTime,
+                                                    FirstName = messageFirstName,
+                                                    LastName = messageLastName,
+                                                    Message = message,
+                                                    RegionName = Path.GetFileNameWithoutExtension(o)
+                                                });
+                                            }
+                                        });
                             });
                             switch (Reflection.GetEnumValueFromName<Action>(
                                 wasInput(
@@ -719,34 +791,43 @@ namespace Corrade
                                         getRegionMessageRegionNameRegex = CORRADE_CONSTANTS.OneOrMoRegex;
                                     }
                                     // cull the message list depending on what parameters have been specified
-                                    regionMessages.RemoveWhere(
-                                        o =>
-                                            (getRegionMessageToDate < o.DateTime &&
-                                             getRegionMessageFromDate > o.DateTime) ||
-                                            !getRegionMessageFirstNameRegex.IsMatch(o.FirstName) ||
-                                            !getRegionMessageLastNameRegex.IsMatch(o.LastName) ||
-                                            !getRegionMessageMessageRegex.IsMatch(o.Message) ||
-                                            !getRegionMessageRegionNameRegex.IsMatch(o.RegionName));
-                                    Parallel.ForEach(regionMessages, o =>
-                                    {
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    regionMessages.AsParallel()
+                                        .Where(
+                                            o =>
+                                                (getRegionMessageToDate >= o.DateTime ||
+                                                 getRegionMessageFromDate <= o.DateTime) &&
+                                                getRegionMessageFirstNameRegex.IsMatch(o.FirstName) &&
+                                                getRegionMessageLastNameRegex.IsMatch(o.LastName) &&
+                                                getRegionMessageMessageRegex.IsMatch(o.Message) &&
+                                                getRegionMessageRegionNameRegex.IsMatch(o.RegionName)).ForAll(o =>
+                                                {
+                                                    lock (LockObject)
+                                                    {
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                            o.DateTime.ToUniversalTime()
+                                                                .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                            o.RegionName
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            o.FirstName
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                            o.LastName
+                                                        });
+                                                        csv.AddRange(new[]
+                                                        {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
+                                                    }
+                                                });
                                     break;
                                 case Action.SEARCH:
                                     // build regular expressions based on fed data
@@ -762,31 +843,42 @@ namespace Corrade
                                     {
                                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
-                                    Parallel.ForEach(regionMessages, o =>
-                                    {
-                                        if (!searchRegionMessagesRegex.IsMatch(o.FirstName) &&
-                                            !searchRegionMessagesRegex.IsMatch(o.LastName) &&
-                                            !searchRegionMessagesRegex.IsMatch(o.Message) &&
-                                            !searchRegionMessagesRegex.IsMatch(o.RegionName))
-                                            return;
-                                        lock (LockObject)
-                                        {
-                                            csv.AddRange(new[]
-                                            {
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                                o.DateTime.ToUniversalTime()
-                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
-                                            });
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.REGION), o.RegionName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), o.FirstName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME), o.LastName});
-                                            csv.AddRange(new[]
-                                            {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
-                                        }
-                                    });
+                                    regionMessages.AsParallel()
+                                        .Where(o => searchRegionMessagesRegex.IsMatch(o.FirstName) ||
+                                                    searchRegionMessagesRegex.IsMatch(o.LastName) ||
+                                                    searchRegionMessagesRegex.IsMatch(o.Message) ||
+                                                    searchRegionMessagesRegex.IsMatch(o.RegionName)).ForAll(o =>
+                                                    {
+                                                        lock (LockObject)
+                                                        {
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                o.DateTime.ToUniversalTime()
+                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                                o.RegionName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                o.FirstName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                o.LastName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                o.Message
+                                                            });
+                                                        }
+                                                    });
                                     break;
                                 default:
                                     throw new ScriptException(ScriptError.UNKNOWN_ACTION);

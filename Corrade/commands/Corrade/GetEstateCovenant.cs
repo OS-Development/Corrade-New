@@ -26,8 +26,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    ManualResetEvent EstateCovenantReceivedEvent = new ManualResetEvent(false);
-                    List<string> csv = new List<string>();
+                    var EstateCovenantReceivedEvent = new ManualResetEvent(false);
+                    var csv = new List<string>();
                     EventHandler<EstateCovenantReplyEventArgs> EstateCovenantReplyEventhandler = (sender, args) =>
                     {
                         csv.AddRange(new[]

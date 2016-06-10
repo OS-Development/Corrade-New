@@ -38,7 +38,7 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    string entity =
+                    var entity =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message));
@@ -52,7 +52,7 @@ namespace Corrade
                         entityUUID = UUID.Zero;
                     }
                     Primitive primitive = null;
-                    string item = wasInput(KeyValue.Get(
+                    var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
@@ -60,36 +60,39 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
-                    if (UUID.TryParse(item, out itemUUID))
+                    switch (UUID.TryParse(item, out itemUUID))
                     {
-                        if (
-                            !Services.FindPrimitive(Client,
-                                itemUUID,
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                        }
+                        case true:
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    itemUUID,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            }
+                            break;
+                        default:
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    item,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            }
+                            break;
                     }
-                    else
-                    {
-                        if (
-                            !Services.FindPrimitive(Client,
-                                item,
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                        }
-                    }
-                    List<InventoryBase> inventory =
+                    var inventory =
                         Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                             (int) corradeConfiguration.ServicesTimeout).ToList();
-                    InventoryItem inventoryItem = !entityUUID.Equals(UUID.Zero)
+                    var inventoryItem = !entityUUID.Equals(UUID.Zero)
                         ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                         : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                     if (inventoryItem == null)
@@ -104,8 +107,8 @@ namespace Corrade
                         default:
                             throw new ScriptException(ScriptError.ITEM_IS_NOT_A_SCRIPT);
                     }
-                    ManualResetEvent ScriptRunningReplyEvent = new ManualResetEvent(false);
-                    bool running = false;
+                    var ScriptRunningReplyEvent = new ManualResetEvent(false);
+                    var running = false;
                     EventHandler<ScriptRunningReplyEventArgs> ScriptRunningEventHandler = (sender, args) =>
                     {
                         running = args.IsRunning;

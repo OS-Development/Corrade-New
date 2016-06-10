@@ -28,7 +28,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string previous = string.Empty;
+                    var previous = string.Empty;
                     lock (Locks.ClientInstanceAvatarsLock)
                     {
                         Client.Avatars.GetDisplayNames(new List<UUID> {Client.Self.AgentID},
@@ -52,7 +52,7 @@ namespace Corrade
                             result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), previous);
                             break;
                         case Action.SET:
-                            string name =
+                            var name =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
@@ -67,8 +67,8 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME);
                             }
-                            bool succeeded = true;
-                            ManualResetEvent SetDisplayNameEvent = new ManualResetEvent(false);
+                            var succeeded = true;
+                            var SetDisplayNameEvent = new ManualResetEvent(false);
                             EventHandler<SetDisplayNameReplyEventArgs> SetDisplayNameEventHandler =
                                 (sender, args) =>
                                 {

@@ -29,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -46,7 +46,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -57,7 +57,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    string role =
+                    var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     UUID roleUUID;
@@ -68,11 +68,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     }
-                    HashSet<string> data = new HashSet<string>();
-                    ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                    var data = new HashSet<string>();
+                    var GroupRoleDataReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataEventHandler = (sender, args) =>
                     {
-                        GroupRole queryRole =
+                        var queryRole =
                             args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
                         data.UnionWith(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(

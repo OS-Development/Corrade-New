@@ -13,7 +13,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -30,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -47,7 +46,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -67,20 +66,20 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    Action action = Reflection.GetEnumValueFromName<Action>(
+                    var action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
-                    object LockObject = new object();
-                    bool succeeded = false;
+                    var LockObject = new object();
+                    var succeeded = false;
                     switch (action)
                     {
                         case Action.BAN:
                         case Action.UNBAN:
-                            object AvatarsLock = new object();
-                            Dictionary<UUID, string> avatars = new Dictionary<UUID, string>();
-                            HashSet<string> data = new HashSet<string>();
+                            var AvatarsLock = new object();
+                            var avatars = new Dictionary<UUID, string>();
+                            var data = new HashSet<string>();
                             CSV.ToEnumerable(
                                 wasInput(
                                     KeyValue.Get(
@@ -93,7 +92,7 @@ namespace Corrade
                                     UUID agentUUID;
                                     if (!UUID.TryParse(o, out agentUUID))
                                     {
-                                        List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                        var fullName = new List<string>(Helpers.GetAvatarNames(o));
                                         if (
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
@@ -119,7 +118,7 @@ namespace Corrade
                             // ban or unban the avatars
                             lock (Locks.ClientInstanceGroupsLock)
                             {
-                                ManualResetEvent GroupBanEvent = new ManualResetEvent(false);
+                                var GroupBanEvent = new ManualResetEvent(false);
                                 switch (action)
                                 {
                                     case Action.BAN:
@@ -152,7 +151,7 @@ namespace Corrade
                                     {
                                         // Get the group members.
                                         Dictionary<UUID, GroupMember> groupMembers = null;
-                                        ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
+                                        var groupMembersReceivedEvent = new ManualResetEvent(false);
                                         EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate =
                                             (sender, args) =>
                                             {
@@ -172,7 +171,7 @@ namespace Corrade
                                             }
                                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                         }
-                                        Group targetGroup = new Group();
+                                        var targetGroup = new Group();
                                         if (
                                             !Services.RequestGroup(Client, groupUUID,
                                                 corradeConfiguration.ServicesTimeout,
@@ -182,7 +181,7 @@ namespace Corrade
                                         }
                                         // Get roles members.
                                         List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
-                                        ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                                        var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
                                             (sender, args) =>
                                             {
@@ -231,7 +230,7 @@ namespace Corrade
                                                             Client.Groups.RemoveFromRole(
                                                                 groupUUID, p.Key,
                                                                 o.Value.ID));
-                                                    ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
+                                                    var GroupEjectEvent = new ManualResetEvent(false);
                                                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                                                         (sender, args) =>
                                                         {
@@ -269,7 +268,7 @@ namespace Corrade
                             }
                             break;
                         case Action.LIST:
-                            ManualResetEvent BannedAgentsEvent = new ManualResetEvent(false);
+                            var BannedAgentsEvent = new ManualResetEvent(false);
                             Dictionary<UUID, DateTime> bannedAgents = null;
                             EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
                             {
@@ -288,13 +287,13 @@ namespace Corrade
                                 }
                                 Client.Groups.BannedAgents -= BannedAgentsEventHandler;
                             }
-                            List<string> csv = new List<string>();
+                            var csv = new List<string>();
                             switch (succeeded && bannedAgents != null)
                             {
                                 case true:
-                                    Parallel.ForEach(bannedAgents, o =>
+                                    bannedAgents.AsParallel().ForAll(o =>
                                     {
-                                        string agentName = string.Empty;
+                                        var agentName = string.Empty;
                                         switch (
                                             !Resolvers.AgentUUIDToName(Client, o.Key,
                                                 corradeConfiguration.ServicesTimeout,

@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using CorradeConfiguration;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    AgentManager.AgentMovement movement = Client.Self.Movement;
+                    var movement = Client.Self.Movement;
                     wasCSVToStructure(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),

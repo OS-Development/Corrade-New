@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -38,7 +37,7 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -102,7 +101,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    ManualResetEvent ParcelInfoEvent = new ManualResetEvent(false);
+                    var ParcelInfoEvent = new ManualResetEvent(false);
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                     {
                         if (args.Parcel.ID.Equals(parcelUUID))
@@ -121,23 +120,20 @@ namespace Corrade
                         }
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                     }
-                    bool forSale = false;
-                    int handledEvents = 0;
-                    int counter = 1;
-                    Time.DecayingAlarm DirectorySearchResultsAlarm =
+                    var forSale = false;
+                    var handledEvents = 0;
+                    var counter = 1;
+                    var DirectorySearchResultsAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                         (sender, args) =>
                         {
                             DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                             handledEvents += args.DirParcels.Count;
-                            Parallel.ForEach(args.DirParcels, o =>
+                            args.DirParcels.AsParallel().Where(o => o.ID.Equals(parcelUUID)).ForAll(o =>
                             {
-                                if (o.ID.Equals(parcelUUID))
-                                {
-                                    forSale = o.ForSale;
-                                    DirectorySearchResultsAlarm.Signal.Set();
-                                }
+                                forSale = o.ForSale;
+                                DirectorySearchResultsAlarm.Signal.Set();
                             });
                             if (handledEvents > Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
                                 ((handledEvents - counter)%

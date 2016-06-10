@@ -41,7 +41,7 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -66,7 +66,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    UUID targetUUID = UUID.Zero;
+                    var targetUUID = UUID.Zero;
                     if (
                         !UUID.TryParse(
                             wasInput(
@@ -90,7 +90,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    FieldInfo accessField = typeof (AccessList).GetFields(
+                    var accessField = typeof (AccessList).GetFields(
                         BindingFlags.Public | BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
@@ -104,7 +104,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
                     }
-                    AccessList accessType = (AccessList) accessField.GetValue(null);
+                    var accessType = (AccessList) accessField.GetValue(null);
                     if (!simulator.IsEstateManager)
                     {
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
@@ -140,7 +140,7 @@ namespace Corrade
                             }
                         }
                     }
-                    ManualResetEvent ParcelAccessListEvent = new ManualResetEvent(false);
+                    var ParcelAccessListEvent = new ManualResetEvent(false);
                     List<ParcelManager.ParcelAccessEntry> accessList = null;
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {

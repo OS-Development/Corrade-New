@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
@@ -27,13 +26,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    object LockObject = new object();
-                    List<string> csv = new List<string>();
+                    var LockObject = new object();
+                    var csv = new List<string>();
                     lock (InventoryOffersLock)
                     {
-                        Parallel.ForEach(InventoryOffers, o =>
+                        InventoryOffers.AsParallel().ForAll(o =>
                         {
-                            List<string> name =
+                            var name =
                                 new List<string>(
                                     Helpers.GetAvatarNames(o.Key.Offer.FromAgentName));
                             lock (LockObject)

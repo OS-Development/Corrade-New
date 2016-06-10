@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -29,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -46,7 +45,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -57,9 +56,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    ManualResetEvent agentInGroupEvent = new ManualResetEvent(false);
-                    List<string> csv = new List<string>();
-                    Dictionary<UUID, GroupMember> groupMembers = new Dictionary<UUID, GroupMember>();
+                    var agentInGroupEvent = new ManualResetEvent(false);
+                    var csv = new List<string>();
+                    var groupMembers = new Dictionary<UUID, GroupMember>();
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
                         groupMembers = args.Members;
@@ -76,10 +75,10 @@ namespace Corrade
                         }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
-                    object LockObject = new object();
-                    Parallel.ForEach(groupMembers, o =>
+                    var LockObject = new object();
+                    groupMembers.AsParallel().ForAll(o =>
                     {
-                        string agentName = string.Empty;
+                        var agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value.ID, corradeConfiguration.ServicesTimeout,
                             ref agentName))
                         {

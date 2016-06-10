@@ -51,7 +51,7 @@ namespace Corrade
                     {
                         rotation = Quaternion.Identity;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -121,7 +121,7 @@ namespace Corrade
                     {
                         newTree = true;
                     }
-                    FieldInfo treeFieldInfo = typeof (Tree).GetFields(
+                    var treeFieldInfo = typeof (Tree).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(

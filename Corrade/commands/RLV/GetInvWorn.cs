@@ -25,7 +25,7 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryNode RLVFolder =
+                var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .AsParallel()
@@ -38,7 +38,7 @@ namespace Corrade
                     }
                     return;
                 }
-                KeyValuePair<InventoryNode, LinkedList<string>> folderPath = Inventory.FindInventoryPath<InventoryNode>(
+                var folderPath = Inventory.FindInventoryPath<InventoryNode>(
                     Client,
                     RLVFolder,
                     CORRADE_CONSTANTS.OneOrMoRegex,
@@ -58,16 +58,16 @@ namespace Corrade
                         return;
                 }
 
-                HashSet<UUID> currentWearables =
+                var currentWearables =
                     new HashSet<UUID>(Inventory.GetWearables(Client, CurrentOutfitFolder).Select(o => o.UUID));
-                HashSet<UUID> currentAttachments = new HashSet<UUID>(
+                var currentAttachments = new HashSet<UUID>(
                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                         .Select(o => o.Key.Properties.ItemID));
 
                 Func<InventoryNode, string> GetWornIndicator = node =>
                 {
-                    int myItemsCount = 0;
-                    int myItemsWornCount = 0;
+                    var myItemsCount = 0;
+                    var myItemsWornCount = 0;
 
                     node.Nodes.Values.AsParallel().Where(
                         n =>
@@ -76,10 +76,10 @@ namespace Corrade
                         ).ForAll(n =>
                         {
                             Interlocked.Increment(ref myItemsCount);
-                            InventoryItem inventoryItem = Inventory.ResolveItemLink(Client, n.Data as InventoryItem);
+                            var inventoryItem = Inventory.ResolveItemLink(Client, n.Data as InventoryItem);
                             if (inventoryItem == null) return;
-                            UUID itemUUID = inventoryItem.UUID;
-                            bool increment = false;
+                            var itemUUID = inventoryItem.UUID;
+                            var increment = false;
                             switch (n.Data is InventoryWearable)
                             {
                                 case true:
@@ -98,8 +98,8 @@ namespace Corrade
                         });
 
 
-                    int allItemsCount = 0;
-                    int allItemsWornCount = 0;
+                    var allItemsCount = 0;
+                    var allItemsWornCount = 0;
 
                     node.Nodes.Values.AsParallel().Where(
                         n =>
@@ -116,11 +116,11 @@ namespace Corrade
                                             Interlocked.Increment(ref allItemsCount);
 
                                             Interlocked.Increment(ref myItemsCount);
-                                            InventoryItem inventoryItem = Inventory.ResolveItemLink(Client,
+                                            var inventoryItem = Inventory.ResolveItemLink(Client,
                                                 p.Data as InventoryItem);
                                             if (inventoryItem == null) return;
-                                            UUID itemUUID = inventoryItem.UUID;
-                                            bool increment = false;
+                                            var itemUUID = inventoryItem.UUID;
+                                            var increment = false;
                                             switch (p.Data is InventoryWearable)
                                             {
                                                 case true:
@@ -146,7 +146,7 @@ namespace Corrade
                            WornIndicator(allItemsCount, allItemsWornCount);
                 };
 
-                List<string> response = new List<string>();
+                var response = new List<string>();
                 response.Add($"{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
                 response.AddRange(
                     folderPath.Key.Nodes.Values.AsParallel().Where(o => o.Data is InventoryFolder)

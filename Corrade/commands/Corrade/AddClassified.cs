@@ -43,17 +43,17 @@ namespace Corrade
                     {
                         position = Client.Self.GlobalPosition;
                     }
-                    string item =
+                    var item =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
-                    UUID textureUUID = UUID.Zero;
+                    var textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
                     {
                         // if the item is an UUID, trust the sender otherwise search the inventory
                         if (!UUID.TryParse(item, out textureUUID))
                         {
-                            InventoryBase inventoryBaseItem =
+                            var inventoryBaseItem =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (!(inventoryBaseItem is InventoryTexture))
@@ -63,25 +63,25 @@ namespace Corrade
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
                     }
-                    string name =
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.EMPTY_CLASSIFIED_NAME);
                     }
-                    string classifiedDescription =
+                    var classifiedDescription =
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message));
-                    ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
-                    UUID classifiedUUID = UUID.Zero;
-                    int classifiedCount = 0;
+                    var AvatarClassifiedReplyEvent = new ManualResetEvent(false);
+                    var classifiedUUID = UUID.Zero;
+                    var classifiedCount = 0;
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                     {
                         classifiedCount = args.Classifieds.Count;
-                        KeyValuePair<UUID, string> classified = args.Classifieds.AsParallel().FirstOrDefault(
+                        var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
                                 string.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!classified.Equals(default(KeyValuePair<UUID, string>)))
@@ -133,7 +133,7 @@ namespace Corrade
                     {
                         renew = false;
                     }
-                    FieldInfo classifiedCategoriesField = typeof (DirectoryManager.ClassifiedCategories).GetFields(
+                    var classifiedCategoriesField = typeof (DirectoryManager.ClassifiedCategories).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>

@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<GroupSchedule> groupSchedules = new List<GroupSchedule>();
+                    var groupSchedules = new List<GroupSchedule>();
                     uint index;
                     switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
@@ -52,7 +52,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.UNKNOWN_DATE_TIME_STAMP);
                             }
-                            string data = wasInput(
+                            var data = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
@@ -88,7 +88,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_SCHEDULE_FOUND);
                             }
-                            GroupSchedule groupSchedule = groupSchedules[(int) index];
+                            var groupSchedule = groupSchedules[(int) index];
                             result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), CSV.FromEnumerable(new[]
                             {
                                 groupSchedule.Sender,
@@ -121,7 +121,7 @@ namespace Corrade
                             SaveGroupSchedulesState.Invoke();
                             break;
                         case Action.LIST:
-                            List<string> csv = new List<string>();
+                            var csv = new List<string>();
                             lock (GroupSchedulesLock)
                             {
                                 csv.AddRange(GroupSchedules.OrderByDescending(o => o.At)

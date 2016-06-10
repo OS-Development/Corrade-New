@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasSharp;
 
@@ -26,11 +25,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = new List<string>();
-                    object LockObject = new object();
+                    var csv = new List<string>();
+                    var LockObject = new object();
                     lock (TeleportLureLock)
                     {
-                        Parallel.ForEach(TeleportLures, o =>
+                        TeleportLures.AsParallel().ForAll(o =>
                         {
                             lock (LockObject)
                             {

@@ -53,8 +53,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.SCRIPT_PERMISSION_REQUEST_NOT_FOUND);
                     }
-                    bool succeeded = true;
-                    int permissionMask = 0;
+                    var succeeded = true;
+                    var permissionMask = 0;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
@@ -69,7 +69,7 @@ namespace Corrade
                                     .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
-                                            ScriptPermission permission = (ScriptPermission) q.GetValue(null);
+                                            var permission = (ScriptPermission) q.GetValue(null);
                                             switch (permission)
                                             {
                                                 case ScriptPermission.Debit:
@@ -131,7 +131,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region = wasInput(
+                    var region = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
                     Simulator simulator;

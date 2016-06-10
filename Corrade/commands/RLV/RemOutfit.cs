@@ -26,15 +26,15 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true: // A single wearable
-                        FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
-                                                                                 BindingFlags.Static)
+                        var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
+                                                                           BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 p => string.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (wearTypeInfo == null)
                         {
                             break;
                         }
-                        InventoryItem wearable =
+                        var wearable =
                             Inventory.GetWearables(Client, CurrentOutfitFolder)
                                 .ToArray()
                                 .AsParallel()

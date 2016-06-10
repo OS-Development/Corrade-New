@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasSharp;
 
@@ -20,14 +19,14 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> listcommands =
                 (corradeCommandParameters, result) =>
                 {
-                    HashSet<string> data = new HashSet<string>();
-                    object LockObject = new object();
-                    Parallel.ForEach(Reflection.GetEnumNames<ScriptKeys>(), o =>
+                    var data = new HashSet<string>();
+                    var LockObject = new object();
+                    Reflection.GetEnumNames<ScriptKeys>().ToArray().AsParallel().ForAll(o =>
                     {
-                        ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(o);
+                        var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(o);
                         if (scriptKey.Equals(default(ScriptKeys)))
                             return;
-                        CommandPermissionMaskAttribute commandPermissionMaskAttribute =
+                        var commandPermissionMaskAttribute =
                             Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
                         if (!corradeCommandParameters.Group.Equals(default(Configuration.Group)) &&

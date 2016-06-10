@@ -29,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -46,7 +46,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -71,7 +71,7 @@ namespace Corrade
                     }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
-                    ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersReceivedEvent = new ManualResetEvent(false);
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
                         groupMembers = args.Members;
@@ -88,7 +88,7 @@ namespace Corrade
                         }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
-                    Group targetGroup = new Group();
+                    var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
@@ -98,7 +98,7 @@ namespace Corrade
                     }
                     // Get roles members.
                     List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
-                    ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
                         groupRolesMembers = args.RolesMembers;
@@ -115,8 +115,8 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                     }
-                    HashSet<string> data = new HashSet<string>();
-                    object LockObject = new object();
+                    var data = new HashSet<string>();
+                    var LockObject = new object();
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
@@ -129,7 +129,7 @@ namespace Corrade
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))
                             {
-                                List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                var fullName = new List<string>(Helpers.GetAvatarNames(o));
                                 if (
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
@@ -183,8 +183,8 @@ namespace Corrade
                                         });
                             }
                             // And eject them.
-                            ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
-                            bool succeeded = false;
+                            var GroupEjectEvent = new ManualResetEvent(false);
+                            var succeeded = false;
                             EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                                 (sender, args) =>
                                 {

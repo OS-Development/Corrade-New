@@ -28,18 +28,18 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string name =
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.EMPTY_CLASSIFIED_NAME);
                     }
-                    ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
-                    UUID classifiedUUID = UUID.Zero;
+                    var AvatarClassifiedReplyEvent = new ManualResetEvent(false);
+                    var classifiedUUID = UUID.Zero;
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                     {
-                        KeyValuePair<UUID, string> classified = args.Classifieds.AsParallel().FirstOrDefault(
+                        var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
                                 string.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!classified.Equals(default(KeyValuePair<UUID, string>)))

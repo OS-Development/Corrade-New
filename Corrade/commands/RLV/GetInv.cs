@@ -24,7 +24,7 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryNode RLVFolder =
+                var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .ToArray()
@@ -42,12 +42,12 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        KeyValuePair<InventoryNode, LinkedList<string>> folderPath = Inventory.FindInventoryPath
+                        var folderPath = Inventory.FindInventoryPath
                             <InventoryNode>(Client,
                                 RLVFolder,
                                 CORRADE_CONSTANTS.OneOrMoRegex,
                                 new LinkedList<string>())
-                                .ToArray()
+                            .ToArray()
                             .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                             .FirstOrDefault(
                                 o =>
@@ -70,7 +70,7 @@ namespace Corrade
                         optionFolderNode = RLVFolder;
                         break;
                 }
-                HashSet<string> csv =
+                var csv =
                     new HashSet<string>(Inventory.FindInventory<InventoryBase>(Client, optionFolderNode,
                         CORRADE_CONSTANTS.OneOrMoRegex)
                         .ToArray()

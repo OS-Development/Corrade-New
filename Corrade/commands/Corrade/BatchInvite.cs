@@ -30,7 +30,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -47,7 +47,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -67,8 +67,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     // Get the roles to invite to.
-                    HashSet<UUID> roleUUIDs = new HashSet<UUID>();
-                    bool rolesFound = true;
+                    var roleUUIDs = new HashSet<UUID>();
+                    var rolesFound = true;
                     Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
@@ -101,8 +101,8 @@ namespace Corrade
                     if (!roleUUIDs.All(o => o.Equals(UUID.Zero)))
                     {
                         // get our current roles.
-                        HashSet<UUID> selfRoles = new HashSet<UUID>();
-                        ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        var selfRoles = new HashSet<UUID>();
+                        var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
                             selfRoles.UnionWith(
@@ -134,7 +134,7 @@ namespace Corrade
                     }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
-                    ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersReceivedEvent = new ManualResetEvent(false);
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
                         groupMembers = args.Members;
@@ -151,8 +151,8 @@ namespace Corrade
                         }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
-                    HashSet<string> data = new HashSet<string>();
-                    object LockObject = new object();
+                    var data = new HashSet<string>();
+                    var LockObject = new object();
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
@@ -165,7 +165,7 @@ namespace Corrade
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))
                             {
-                                List<string> fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                var fullName = new List<string>(Helpers.GetAvatarNames(o));
                                 if (
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,

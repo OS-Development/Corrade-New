@@ -13,7 +13,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -30,8 +29,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    HashSet<AssetType> assetTypes = new HashSet<AssetType>();
-                    object LockObject = new object();
+                    var assetTypes = new HashSet<AssetType>();
+                    var LockObject = new object();
                     CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message)))
@@ -48,7 +47,7 @@ namespace Corrade
                                             assetTypes.Add((AssetType) q.GetValue(null));
                                         }
                                     }));
-                    string pattern =
+                    var pattern =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATTERN)),
                                 corradeCommandParameters.Message));
@@ -65,26 +64,27 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
-                    List<string> csv = new List<string>();
-                    Parallel.ForEach(
-                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search
-                            ),
-                        o =>
-                        {
-                            InventoryItem inventoryItem = o as InventoryItem;
-                            if (inventoryItem == null) return;
-                            if (assetTypes.Any() && !assetTypes.Contains(inventoryItem.AssetType))
-                                return;
-                            lock (LockObject)
+                    var csv = new List<string>();
+                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search)
+                        .ToArray()
+                        .AsParallel()
+                        .ForAll(
+                            o =>
                             {
-                                csv.AddRange(new[]
+                                var inventoryItem = o as InventoryItem;
+                                if (inventoryItem == null) return;
+                                if (assetTypes.Any() && !assetTypes.Contains(inventoryItem.AssetType))
+                                    return;
+                                lock (LockObject)
                                 {
-                                    Enum.GetName(typeof (AssetType), inventoryItem.AssetType),
-                                    inventoryItem.Name,
-                                    inventoryItem.AssetUUID.ToString()
-                                });
-                            }
-                        });
+                                    csv.AddRange(new[]
+                                    {
+                                        Enum.GetName(typeof (AssetType), inventoryItem.AssetType),
+                                        inventoryItem.Name,
+                                        inventoryItem.AssetUUID.ToString()
+                                    });
+                                }
+                            });
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

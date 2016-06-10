@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string item = wasInput(
+                    var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
@@ -53,7 +53,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    List<string> data = GetStructuredData(inventoryItem,
+                    var data = GetStructuredData(inventoryItem,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
@@ -37,13 +36,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string item = wasInput(
+                    var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
-                    FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.Static)
+                    var assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                     BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(
@@ -57,7 +56,7 @@ namespace Corrade
                         case false:
                             throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
                     }
-                    AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
+                    var assetType = (AssetType) assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
@@ -82,8 +81,8 @@ namespace Corrade
                     switch (!cacheHasAsset)
                     {
                         case true:
-                            ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
-                            bool succeeded = false;
+                            var RequestAssetEvent = new ManualResetEvent(false);
+                            var succeeded = false;
                             switch (assetType)
                             {
                                 case AssetType.Mesh:
@@ -205,13 +204,13 @@ namespace Corrade
                     switch (assetType.Equals(AssetType.Texture))
                     {
                         case true:
-                            string format =
+                            var format =
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORMAT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(format))
                             {
-                                PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
+                                var formatProperty = typeof (ImageFormat).GetProperties(
                                     BindingFlags.Public |
                                     BindingFlags.Static)
                                     .AsParallel().FirstOrDefault(
@@ -226,13 +225,13 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                 }
-                                using (MemoryStream imageStream = new MemoryStream())
+                                using (var imageStream = new MemoryStream())
                                 {
                                     try
                                     {
-                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                        using (var bitmapImage = managedImage.ExportBitmap())
                                         {
-                                            EncoderParameters encoderParameters = new EncoderParameters(1);
+                                            var encoderParameters = new EncoderParameters(1);
                                             encoderParameters.Param[0] =
                                                 new EncoderParameter(Encoder.Quality, 100L);
                                             bitmapImage.Save(imageStream,
@@ -257,7 +256,7 @@ namespace Corrade
                             break;
                     }
                     // If no path was specificed, then send the data.
-                    string path =
+                    var path =
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
@@ -274,9 +273,9 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     // Otherwise, save it to the specified file.
-                    using (FileStream fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
-                        using (BinaryWriter binaryWriter = new BinaryWriter(fileStream, Encoding.UTF8))
+                        using (var binaryWriter = new BinaryWriter(fileStream, Encoding.UTF8))
                         {
                             binaryWriter.Write(assetData);
                             binaryWriter.Flush();

@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
@@ -41,7 +40,7 @@ namespace Corrade
                     * an user access token: https://developers.facebook.com/tools/explorer
                     * using the Graph API explorer whilst granting appropriate permissions.
                     */
-                    string accessToken = wasInput(
+                    var accessToken = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TOKEN)),
                             corradeCommandParameters.Message));
@@ -50,7 +49,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ACCESS_TOKEN_PROVIDED);
                     }
 
-                    FacebookClient client = new FacebookClient(accessToken);
+                    var client = new FacebookClient(accessToken);
 
                     switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
@@ -60,8 +59,8 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.POST:
-                            Dictionary<string, object> facebookPostObject = new Dictionary<string, object>();
-                            string message = wasInput(
+                            var facebookPostObject = new Dictionary<string, object>();
+                            var message = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message));
@@ -69,7 +68,7 @@ namespace Corrade
                             {
                                 facebookPostObject.Add("message", message);
                             }
-                            string name = wasInput(
+                            var name = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                                     corradeCommandParameters.Message));
@@ -77,7 +76,7 @@ namespace Corrade
                             {
                                 facebookPostObject.Add("name", name);
                             }
-                            string link = wasInput(
+                            var link = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.URL)),
                                     corradeCommandParameters.Message));
@@ -85,7 +84,7 @@ namespace Corrade
                             {
                                 facebookPostObject.Add("link", link);
                             }
-                            string description = wasInput(
+                            var description = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                     corradeCommandParameters.Message));
@@ -93,7 +92,7 @@ namespace Corrade
                             {
                                 facebookPostObject.Add("description", description);
                             }
-                            string item = wasInput(
+                            var item = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(item))
@@ -105,7 +104,7 @@ namespace Corrade
                                 switch (!UUID.TryParse(item, out itemUUID))
                                 {
                                     case true:
-                                        InventoryItem inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
+                                        var inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
                                             Client.Inventory.Store.RootNode, item)
                                             .FirstOrDefault() as InventoryItem;
                                         if (inventoryItem == null)
@@ -128,7 +127,7 @@ namespace Corrade
                                 switch (!cacheHasAsset)
                                 {
                                     case true:
-                                        ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                                        var RequestAssetEvent = new ManualResetEvent(false);
                                         lock (Locks.ClientInstanceAssetsLock)
                                         {
                                             Client.Assets.RequestImage(itemUUID, ImageType.Normal,
@@ -159,13 +158,13 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                 }
-                                using (MemoryStream imageStream = new MemoryStream())
+                                using (var imageStream = new MemoryStream())
                                 {
                                     try
                                     {
-                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                        using (var bitmapImage = managedImage.ExportBitmap())
                                         {
-                                            EncoderParameters encoderParameters = new EncoderParameters(1);
+                                            var encoderParameters = new EncoderParameters(1);
                                             encoderParameters.Param[0] =
                                                 new EncoderParameter(Encoder.Quality, 100L);
                                             bitmapImage.Save(imageStream,
@@ -189,7 +188,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
                             }
-                            string id = wasInput(
+                            var id = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ID)),
                                     corradeCommandParameters.Message));

@@ -39,7 +39,7 @@ namespace Corrade
                         range = corradeConfiguration.Range;
                     }
                     Primitive primitive = null;
-                    string item = wasInput(KeyValue.Get(
+                    var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
@@ -47,31 +47,34 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
-                    if (UUID.TryParse(item, out itemUUID))
+                    switch (UUID.TryParse(item, out itemUUID))
                     {
-                        if (
-                            !Services.FindPrimitive(Client,
-                                itemUUID,
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                        }
-                    }
-                    else
-                    {
-                        if (
-                            !Services.FindPrimitive(Client,
-                                item,
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                        }
+                        case true:
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    itemUUID,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            }
+                            break;
+                        default:
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    item,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            }
+                            break;
                     }
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -82,7 +85,7 @@ namespace Corrade
                     if (simulator == null)
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     // build the primitive shape from presets by supplying "type" (or not)...
-                    FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
+                    var primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(

@@ -29,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -80,9 +80,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                     }
-                    HashSet<UUID> roleUUIDs = new HashSet<UUID>();
-                    object LockObject = new object();
-                    bool rolesFound = true;
+                    var roleUUIDs = new HashSet<UUID>();
+                    var LockObject = new object();
+                    var rolesFound = true;
                     Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message)))
@@ -116,8 +116,8 @@ namespace Corrade
                     if (!roleUUIDs.All(o => o.Equals(UUID.Zero)))
                     {
                         // get our current roles.
-                        HashSet<UUID> selfRoles = new HashSet<UUID>();
-                        ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        var selfRoles = new HashSet<UUID>();
+                        var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
                             selfRoles.UnionWith(

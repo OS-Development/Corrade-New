@@ -32,7 +32,7 @@ namespace Corrade
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.DESCRIPTION:
-                            FieldInfo scriptErrorFieldInfo = typeof (ScriptError).GetFields(
+                            var scriptErrorFieldInfo = typeof (ScriptError).GetFields(
                                 BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(
@@ -42,7 +42,7 @@ namespace Corrade
                                             .Status.Equals(status));
                             if (scriptErrorFieldInfo == null)
                                 throw new ScriptException(ScriptError.STATUS_NOT_FOUND);
-                            string description =
+                            var description =
                                 Reflection.GetNameFromEnumValue((ScriptError) scriptErrorFieldInfo.GetValue(null));
                             if (string.IsNullOrEmpty(description))
                                 throw new ScriptException(ScriptError.NO_DESCRIPTION_FOR_STATUS);

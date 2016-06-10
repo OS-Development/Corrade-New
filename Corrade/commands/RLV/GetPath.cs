@@ -25,7 +25,7 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryNode RLVFolder =
+                var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .AsParallel()
@@ -45,7 +45,7 @@ namespace Corrade
                 {
                     case true:
                         // Try attachments
-                        RLVAttachment RLVattachment =
+                        var RLVattachment =
                             RLVAttachments.AsParallel().FirstOrDefault(
                                 o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (!RLVattachment.Equals(default(RLVAttachment)))
@@ -70,13 +70,13 @@ namespace Corrade
                             }
                             break;
                         }
-                        RLVWearable RLVwearable =
+                        var RLVwearable =
                             RLVWearables.AsParallel().FirstOrDefault(
                                 o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (!RLVwearable.Equals(default(RLVWearable)))
                         {
-                            FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
-                                                                                     BindingFlags.Static)
+                            var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     p =>
                                         p.Name.Equals(rule.Option,
@@ -123,7 +123,7 @@ namespace Corrade
                     }
                     return;
                 }
-                KeyValuePair<InventoryBase, LinkedList<string>> path =
+                var path =
                     Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder, inventoryBase.Name,
                         new LinkedList<string>()).FirstOrDefault();
                 switch (!path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))

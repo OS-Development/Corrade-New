@@ -37,7 +37,7 @@ namespace Corrade
                                 Client.Inventory.Store.RootFolder);
                         }
                     }
-                    string path =
+                    var path =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     Func<string, InventoryBase, InventoryBase> findPath = null;
@@ -46,18 +46,18 @@ namespace Corrade
                         if (string.IsNullOrEmpty(o)) return p;
 
                         // Split all paths.
-                        string[] unpack = o.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
+                        var unpack = o.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
                         // Pop first item to process.
-                        string first = unpack.First();
+                        var first = unpack.First();
                         // Remove item.
                         unpack = unpack.AsParallel().Where(q => !q.Equals(first)).ToArray();
 
-                        InventoryBase next = p;
+                        var next = p;
 
                         // Avoid preceeding slashes.
                         if (string.IsNullOrEmpty(first)) goto CONTINUE;
 
-                        HashSet<InventoryBase> contents = new HashSet<InventoryBase>();
+                        var contents = new HashSet<InventoryBase>();
                         lock (Locks.ClientInstanceInventoryLock)
                         {
                             contents.UnionWith(Client.Inventory.Store.GetContents(p.UUID));
@@ -96,8 +96,8 @@ namespace Corrade
                             Client.Inventory.Store[next.UUID]);
                     };
                     InventoryBase item;
-                    List<string> csv = new List<string>();
-                    Action action = Reflection.GetEnumValueFromName<Action>(
+                    var csv = new List<string>();
+                    var action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
@@ -129,14 +129,14 @@ namespace Corrade
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    List<DirItem> dirItems = new List<DirItem>();
+                                    var dirItems = new List<DirItem>();
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
                                         dirItems.AddRange(Client.Inventory.Store.GetContents(
                                             item.UUID).AsParallel().Select(
                                                 o => DirItem.FromInventoryBase(o)));
                                     }
-                                    foreach (DirItem dirItem in dirItems)
+                                    foreach (var dirItem in dirItems)
                                     {
                                         csv.AddRange(new[]
                                         {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
@@ -158,7 +158,7 @@ namespace Corrade
                                     }
                                     break;
                                 case false:
-                                    DirItem dir = DirItem.FromInventoryBase(item);
+                                    var dir = DirItem.FromInventoryBase(item);
                                     csv.AddRange(new[] {Reflection.GetStructureMemberName(dir, dir.Name), dir.Name});
                                     csv.AddRange(new[]
                                     {
@@ -181,7 +181,7 @@ namespace Corrade
                         case Action.CWD:
                             lock (GroupDirectoryTrackersLock)
                             {
-                                DirItem dirItem =
+                                var dirItem =
                                     DirItem.FromInventoryBase(
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase);
                                 csv.AddRange(new[]
@@ -232,7 +232,7 @@ namespace Corrade
                             }
                             break;
                         case Action.MKDIR:
-                            string mkdirName =
+                            var mkdirName =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
@@ -281,7 +281,7 @@ namespace Corrade
                             }
                             break;
                         case Action.CHMOD:
-                            string itemPermissions =
+                            var itemPermissions =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
@@ -399,7 +399,7 @@ namespace Corrade
                         case Action.CP:
                         case Action.MV:
                         case Action.LN:
-                            string lnSourcePath =
+                            var lnSourcePath =
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE)),
                                     corradeCommandParameters.Message));
@@ -432,7 +432,7 @@ namespace Corrade
                                     }
                                     break;
                             }
-                            string lnTargetPath =
+                            var lnTargetPath =
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                     corradeCommandParameters.Message));

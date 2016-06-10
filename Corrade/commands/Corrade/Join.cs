@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -45,19 +45,19 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    HashSet<UUID> groups = new HashSet<UUID>(currentGroups);
+                    var groups = new HashSet<UUID>(currentGroups);
                     if (groups.Contains(groupUUID))
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                     }
-                    Group targetGroup = new Group();
+                    var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
@@ -79,7 +79,7 @@ namespace Corrade
                             }
                         }
                     }
-                    ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
+                    var GroupJoinedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                         (sender, args) => GroupJoinedReplyEvent.Set();
                     lock (Locks.ClientInstanceGroupsLock)

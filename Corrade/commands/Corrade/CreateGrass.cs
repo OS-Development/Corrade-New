@@ -51,7 +51,7 @@ namespace Corrade
                     {
                         rotation = Quaternion.Identity;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -111,11 +111,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
-                    string type = wasInput(
+                    var type = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message));
-                    FieldInfo grassFieldInfo = typeof (Grass).GetFields(
+                    var grassFieldInfo = typeof (Grass).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(

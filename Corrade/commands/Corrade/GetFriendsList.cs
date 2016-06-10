@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = new List<string>();
+                    var csv = new List<string>();
                     lock (Locks.ClientInstanceFriendsLock)
                     {
                         Client.Friends.FriendList.ForEach(o =>

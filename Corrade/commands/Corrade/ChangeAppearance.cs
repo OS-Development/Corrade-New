@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -30,7 +29,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string folder = wasInput(
+                    var folder = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
                             corradeCommandParameters.Message));
@@ -50,8 +49,7 @@ namespace Corrade
                             break;
                         default:
                             inventoryFolder =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase))
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
                                     .FirstOrDefault() as InventoryFolder;
                             break;
                     }
@@ -60,12 +58,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
                     }
 
-                    List<InventoryBase> contents = new List<InventoryBase>();
+                    var contents = new List<InventoryBase>();
                     lock (Locks.ClientInstanceInventoryLock)
                     {
                         contents.AddRange(Client.Inventory.Store.GetContents(inventoryFolder));
                     }
-                    List<InventoryItem> equipItems = new List<InventoryItem>(contents
+                    var equipItems = new List<InventoryItem>(contents
                         .AsParallel()
                         .Where(o => o is InventoryItem)
                         .Select(o => Inventory.ResolveItemLink(Client, o as InventoryItem))
@@ -96,16 +94,16 @@ namespace Corrade
                     }
 
                     // Create a list of links that should be removed.
-                    List<UUID> removeItems = new List<UUID>();
-                    object LockObject = new object();
-                    Dictionary<Primitive, AttachmentPoint> attachments = Inventory.GetAttachments(Client,
+                    var removeItems = new List<UUID>();
+                    var LockObject = new object();
+                    var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
                         .ToDictionary(o => o.Key, o => o.Value);
                     new List<InventoryItem>(Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder))
                         .AsParallel().ForAll(
                             o =>
                             {
-                                InventoryItem inventoryItem = Inventory.ResolveItemLink(Client, o);
+                                var inventoryItem = Inventory.ResolveItemLink(Client, o);
                                 switch (Inventory.IsBodyPart(Client, o))
                                 {
                                     case true:
@@ -123,7 +121,7 @@ namespace Corrade
                                         lock (LockObject)
                                         {
                                             removeItems.Add(o.UUID);
-                                            string slot = string.Empty;
+                                            var slot = string.Empty;
                                             if (inventoryItem is InventoryWearable)
                                             {
                                                 slot = (inventoryItem as InventoryWearable).WearableType.ToString();
@@ -131,7 +129,7 @@ namespace Corrade
                                             else if (inventoryItem is InventoryObject ||
                                                      inventoryItem is InventoryAttachment)
                                             {
-                                                KeyValuePair<Primitive, AttachmentPoint> a =
+                                                var a =
                                                     attachments.AsParallel()
                                                         .FirstOrDefault(
                                                             p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID));
@@ -180,7 +178,7 @@ namespace Corrade
                     }
 
                     // Add links to new items.
-                    foreach (InventoryItem inventoryItem in equipItems)
+                    foreach (var inventoryItem in equipItems)
                     {
                         Inventory.AddLink(Client, inventoryItem, CurrentOutfitFolder);
                     }
@@ -208,14 +206,14 @@ namespace Corrade
                         .ToDictionary(o => o.Key, o => o.Value);
                     equipItems.AsParallel().Select(o => o).ForAll(o =>
                     {
-                        string slot = string.Empty;
+                        var slot = string.Empty;
                         if (o is InventoryWearable)
                         {
                             slot = (o as InventoryWearable).WearableType.ToString();
                         }
                         else if (o is InventoryObject || o is InventoryAttachment)
                         {
-                            KeyValuePair<Primitive, AttachmentPoint> a =
+                            var a =
                                 attachments.AsParallel()
                                     .FirstOrDefault(
                                         p => p.Key.Properties.ItemID.Equals(o.UUID));

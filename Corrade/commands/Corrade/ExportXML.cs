@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Compression;
@@ -23,7 +22,6 @@ using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Helpers = OpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -51,7 +49,7 @@ namespace Corrade
                         range = corradeConfiguration.Range;
                     }
                     Primitive primitive = null;
-                    string item = wasInput(KeyValue.Get(
+                    var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
@@ -59,31 +57,34 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
-                    if (UUID.TryParse(item, out itemUUID))
+                    switch (UUID.TryParse(item, out itemUUID))
                     {
-                        if (
-                            !Services.FindPrimitive(Client,
-                                itemUUID,
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                        }
-                    }
-                    else
-                    {
-                        if (
-                            !Services.FindPrimitive(Client,
-                                item,
-                                range,
-                                corradeConfiguration.Range,
-                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                        }
+                        case true:
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    itemUUID,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            }
+                            break;
+                        default:
+                            if (
+                                !Services.FindPrimitive(Client,
+                                    item,
+                                    range,
+                                    corradeConfiguration.Range,
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            {
+                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            }
+                            break;
                     }
                     // if the primitive is not an object (the root) or the primitive
                     // is not an object as an avatar attachment then do not export it.
@@ -98,33 +99,34 @@ namespace Corrade
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
 
-                    HashSet<Primitive> exportPrimitivesSet = new HashSet<Primitive>();
-                    Primitive root = new Primitive(primitive) {Position = Vector3.Zero};
+                    var exportPrimitivesSet = new HashSet<Primitive>();
+                    var root = new Primitive(primitive) {Position = Vector3.Zero};
                     exportPrimitivesSet.Add(root);
 
-                    object LockObject = new object();
+                    var LockObject = new object();
 
                     // find all the children that have the object as parent.
-                    Parallel.ForEach(
-                        Services.GetPrimitives(Client, range, corradeConfiguration.Range,
-                            corradeConfiguration.ServicesTimeout,
-                            corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType)),
-                        o =>
-                        {
-                            if (!o.ParentID.Equals(root.LocalID))
-                                return;
-                            Primitive child = new Primitive(o);
-                            child.Position = root.Position + child.Position*root.Rotation;
-                            child.Rotation = root.Rotation*child.Rotation;
-                            lock (LockObject)
+                    Services.GetPrimitives(Client, range, corradeConfiguration.Range,
+                        corradeConfiguration.ServicesTimeout,
+                        corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => o.ParentID.Equals(root.LocalID))
+                        .ForAll(
+                            o =>
                             {
-                                exportPrimitivesSet.Add(child);
-                            }
-                        });
+                                var child = new Primitive(o);
+                                child.Position = root.Position + child.Position*root.Rotation;
+                                child.Rotation = root.Rotation*child.Rotation;
+                                lock (LockObject)
+                                {
+                                    exportPrimitivesSet.Add(child);
+                                }
+                            });
 
                     // add all the textures to export
-                    HashSet<UUID> exportTexturesSet = new HashSet<UUID>();
-                    Parallel.ForEach(exportPrimitivesSet, o =>
+                    var exportTexturesSet = new HashSet<UUID>();
+                    exportPrimitivesSet.AsParallel().ForAll(o =>
                     {
                         if (!o.Textures.DefaultTexture.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
                             !exportTexturesSet.Contains(o.Textures.DefaultTexture.TextureID))
@@ -134,18 +136,15 @@ namespace Corrade
                                 exportTexturesSet.Add(new UUID(o.Textures.DefaultTexture.TextureID));
                             }
                         }
-                        Parallel.ForEach(o.Textures.FaceTextures, p =>
-                        {
-                            if (p != null &&
-                                !p.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
-                                !exportTexturesSet.Contains(p.TextureID))
-                            {
-                                lock (LockObject)
-                                {
-                                    exportTexturesSet.Add(new UUID(p.TextureID));
-                                }
-                            }
-                        });
+                        o.Textures.FaceTextures.AsParallel()
+                            .Where(p => p != null && !p.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
+                                        !exportTexturesSet.Contains(p.TextureID)).ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                exportTexturesSet.Add(new UUID(p.TextureID));
+                                            }
+                                        });
                         if (o.Sculpt != null && !o.Sculpt.SculptTexture.Equals(UUID.Zero) &&
                             !exportTexturesSet.Contains(o.Sculpt.SculptTexture))
                         {
@@ -157,7 +156,7 @@ namespace Corrade
                     });
 
                     // Get the destination format to convert the downloaded textures to.
-                    string format =
+                    var format =
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORMAT)),
                             corradeCommandParameters.Message));
@@ -177,8 +176,8 @@ namespace Corrade
                     }
 
                     // download all the textures.
-                    Dictionary<string, byte[]> exportTextureSetFiles = new Dictionary<string, byte[]>();
-                    Parallel.ForEach(exportTexturesSet, o =>
+                    var exportTextureSetFiles = new Dictionary<string, byte[]>();
+                    exportTexturesSet.AsParallel().ForAll(o =>
                     {
                         byte[] assetData = null;
                         bool cacheHasAsset;
@@ -191,7 +190,7 @@ namespace Corrade
                             case true:
                                 lock (Locks.ClientInstanceAssetsLock)
                                 {
-                                    ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                                    var RequestAssetEvent = new ManualResetEvent(false);
                                     Client.Assets.RequestImage(o, ImageType.Normal,
                                         delegate(TextureRequestState state, AssetTexture asset)
                                         {
@@ -226,13 +225,13 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                 }
-                                using (MemoryStream imageStream = new MemoryStream())
+                                using (var imageStream = new MemoryStream())
                                 {
                                     try
                                     {
-                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                        using (var bitmapImage = managedImage.ExportBitmap())
                                         {
-                                            EncoderParameters encoderParameters =
+                                            var encoderParameters =
                                                 new EncoderParameters(1);
                                             encoderParameters.Param[0] =
                                                 new EncoderParameter(Encoder.Quality, 100L);
@@ -272,28 +271,28 @@ namespace Corrade
                         }
                     });
 
-                    HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
+                    var invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
 
-                    using (MemoryStream zipMemoryStream = new MemoryStream())
+                    using (var zipMemoryStream = new MemoryStream())
                     {
                         using (
-                            ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
+                            var zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
                             )
                         {
-                            ZipArchive zipOutputStreamClosure = zipOutputStream;
+                            var zipOutputStreamClosure = zipOutputStream;
                             // add all the textures to the zip file
-                            Parallel.ForEach(exportTextureSetFiles, o =>
+                            exportTextureSetFiles.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
                                 {
-                                    ZipArchiveEntry textureEntry =
+                                    var textureEntry =
                                         zipOutputStreamClosure.CreateEntry(
                                             new string(
                                                 o.Key.Where(p => !invalidPathCharacters.Contains(p)).ToArray()));
-                                    using (Stream textureEntryDataStream = textureEntry.Open())
+                                    using (var textureEntryDataStream = textureEntry.Open())
                                     {
                                         using (
-                                            BinaryWriter textureEntryDataStreamWriter =
+                                            var textureEntryDataStreamWriter =
                                                 new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                         {
                                             textureEntryDataStreamWriter.Write(o.Value);
@@ -304,16 +303,16 @@ namespace Corrade
                             });
 
                             // add the primitives XML data to the zip file
-                            ZipArchiveEntry primitiveEntry =
+                            var primitiveEntry =
                                 zipOutputStreamClosure.CreateEntry(
                                     new string(
                                         (primitive.Properties.Name + ".xml").Where(
                                             p => !invalidPathCharacters.Contains(p))
                                             .ToArray()));
-                            using (Stream primitiveEntryDataStream = primitiveEntry.Open())
+                            using (var primitiveEntryDataStream = primitiveEntry.Open())
                             {
                                 using (
-                                    StreamWriter primitiveEntryDataStreamWriter =
+                                    var primitiveEntryDataStreamWriter =
                                         new StreamWriter(primitiveEntryDataStream, Encoding.UTF8))
                                 {
                                     primitiveEntryDataStreamWriter.Write(
@@ -328,7 +327,7 @@ namespace Corrade
                         zipMemoryStream.Seek(0, SeekOrigin.Begin);
 
                         // If no path was specificed, then send the data.
-                        string path =
+                        var path =
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                                 corradeCommandParameters.Message));
@@ -346,9 +345,9 @@ namespace Corrade
                         }
                         // Otherwise, save it to the specified file.
                         using (
-                            FileStream fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                            var fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
                         {
-                            using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                            using (var streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
                             {
                                 zipMemoryStream.WriteTo(streamWriter.BaseStream);
                                 zipMemoryStream.Flush();

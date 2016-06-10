@@ -26,8 +26,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    bool succeeded = true;
-                    ManualResetEvent AlertMessageEvent = new ManualResetEvent(false);
+                    var succeeded = true;
+                    var AlertMessageEvent = new ManualResetEvent(false);
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
                     {
                         switch (args.Message)

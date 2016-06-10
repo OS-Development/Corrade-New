@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -111,7 +111,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
                             }
-                            ManualResetEvent AssetUploadEvent = new ManualResetEvent(false);
+                            var AssetUploadEvent = new ManualResetEvent(false);
                             EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
                             {
                                 if (args.Upload.Transferred.Equals(args.Upload.Size))

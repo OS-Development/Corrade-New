@@ -46,7 +46,7 @@ namespace Corrade
                         }
                     }
                 }
-                UUID zero = UUID.Zero;
+                var zero = UUID.Zero;
                 lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.Chat(zero.ToString(), channel, ChatType.Normal);

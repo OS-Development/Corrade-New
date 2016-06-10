@@ -36,7 +36,7 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));

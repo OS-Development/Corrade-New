@@ -30,7 +30,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -47,7 +47,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -58,7 +58,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    Action action = Reflection.GetEnumValueFromName<Action>(
+                    var action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
@@ -76,7 +76,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
-                            string body =
+                            var body =
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
@@ -85,7 +85,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE);
                             }
-                            OpenMetaverse.GroupNotice notice = new OpenMetaverse.GroupNotice
+                            var notice = new OpenMetaverse.GroupNotice
                             {
                                 Message = body,
                                 Subject =
@@ -95,7 +95,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                 OwnerID = Client.Self.AgentID
                             };
-                            string item = wasInput(
+                            var item = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(item))
@@ -127,7 +127,7 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
                                 }
                                 // Set requested permissions if any on the item.
-                                string permissions = wasInput(
+                                var permissions = wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                         corradeCommandParameters.Message));
@@ -148,8 +148,8 @@ namespace Corrade
                             }
                             break;
                         case Action.LIST:
-                            ManualResetEvent GroupNoticesReplyEvent = new ManualResetEvent(false);
-                            List<GroupNoticesListEntry> groupNotices = new List<GroupNoticesListEntry>();
+                            var GroupNoticesReplyEvent = new ManualResetEvent(false);
+                            var groupNotices = new List<GroupNoticesListEntry>();
                             EventHandler<GroupNoticesListReplyEventArgs> GroupNoticesListEventHandler =
                                 (sender, args) =>
                                 {
@@ -167,9 +167,9 @@ namespace Corrade
                                 }
                                 Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
                             }
-                            List<string> csv = new List<string>();
-                            object LockObject = new object();
-                            Parallel.ForEach(groupNotices, o =>
+                            var csv = new List<string>();
+                            var LockObject = new object();
+                            groupNotices.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
                                 {
@@ -217,8 +217,8 @@ namespace Corrade
                                 out groupNotice))
                             {
                                 case true:
-                                    ManualResetEvent InstantMessageEvent = new ManualResetEvent(false);
-                                    OpenMetaverse.InstantMessage instantMessage = new OpenMetaverse.InstantMessage();
+                                    var InstantMessageEvent = new ManualResetEvent(false);
+                                    var instantMessage = new OpenMetaverse.InstantMessage();
                                     EventHandler<InstantMessageEventArgs> InstantMessageEventHandler =
                                         (sender, args) =>
                                         {

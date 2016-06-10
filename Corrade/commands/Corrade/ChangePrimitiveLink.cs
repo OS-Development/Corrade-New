@@ -40,7 +40,7 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    Action action = Reflection.GetEnumValueFromName<Action>(
+                    var action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
@@ -53,7 +53,7 @@ namespace Corrade
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                     }
-                    List<string> items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
+                    var items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
                         .ToArray().AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)));
@@ -68,53 +68,54 @@ namespace Corrade
                             throw new ScriptException(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
                         }
                     }
-                    Primitive[] searchPrimitives = new Primitive[items.Count];
-                    bool succeeded = true;
+                    var searchPrimitives = new Primitive[items.Count];
+                    var succeeded = true;
                     Parallel.ForEach(Enumerable.Range(0, items.Count), (o, state) =>
                     {
                         Primitive primitive = null;
                         UUID itemUUID;
-                        if (UUID.TryParse(items[o], out itemUUID))
+                        switch (UUID.TryParse(items[o], out itemUUID))
                         {
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    itemUUID,
-                                    range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                            {
-                                succeeded = false;
-                                state.Break();
-                            }
-                        }
-                        else
-                        {
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    items[o],
-                                    range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                            {
-                                succeeded = false;
-                                state.Break();
-                            }
+                            case true:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        itemUUID,
+                                        range,
+                                        corradeConfiguration.Range,
+                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    succeeded = false;
+                                    state.Break();
+                                }
+                                break;
+                            default:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        items[o],
+                                        range,
+                                        corradeConfiguration.Range,
+                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    succeeded = false;
+                                    state.Break();
+                                }
+                                break;
                         }
                         searchPrimitives[o] = primitive;
                     });
                     if (!succeeded) throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
-                    List<Primitive> primitives = searchPrimitives.ToList();
-                    Primitive rootPrimitive = primitives.First();
+                    var primitives = searchPrimitives.ToList();
+                    var rootPrimitive = primitives.First();
                     if (!primitives.AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
                     {
                         throw new ScriptException(ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
                     }
-                    object LockObject = new object();
-                    ManualResetEvent PrimChangeLinkEvent = new ManualResetEvent(false);
+                    var LockObject = new object();
+                    var PrimChangeLinkEvent = new ManualResetEvent(false);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
                     {
                         lock (LockObject)

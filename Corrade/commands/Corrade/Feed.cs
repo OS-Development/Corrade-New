@@ -28,17 +28,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string url = wasInput(
+                    var url = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.URL)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(url))
                         throw new ScriptException(ScriptError.INVALID_URL_PROVIDED);
-                    string name = wasInput(
+                    var name = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
-                    Action action =
+                    var action =
                         Reflection.GetEnumValueFromName<Action>(
                             wasInput(
                                 KeyValue.Get(
@@ -61,7 +61,7 @@ namespace Corrade
                             // Check whether the feed is valid before adding.
                             try
                             {
-                                using (XmlReader reader = XmlReader.Create(url))
+                                using (var reader = XmlReader.Create(url))
                                 {
                                     SyndicationFeed.Load(reader);
                                 }
@@ -102,10 +102,10 @@ namespace Corrade
                             }
                             break;
                         case Action.LIST:
-                            List<string> csv = new List<string>();
+                            var csv = new List<string>();
                             lock (GroupFeedsLock)
                             {
-                                object LockObject = new object();
+                                var LockObject = new object();
                                 GroupFeeds.AsParallel().ForAll(o =>
                                 {
                                     string feedName;

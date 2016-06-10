@@ -13,7 +13,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -39,7 +38,7 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -64,7 +63,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    FieldInfo accessField = typeof (AccessList).GetFields(
+                    var accessField = typeof (AccessList).GetFields(
                         BindingFlags.Public | BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
@@ -78,7 +77,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
                     }
-                    AccessList accessType = (AccessList) accessField.GetValue(null);
+                    var accessType = (AccessList) accessField.GetValue(null);
                     if (!simulator.IsEstateManager)
                     {
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
@@ -134,7 +133,7 @@ namespace Corrade
                             }
                         }
                     }
-                    ManualResetEvent ParcelAccessListEvent = new ManualResetEvent(false);
+                    var ParcelAccessListEvent = new ManualResetEvent(false);
                     List<ParcelManager.ParcelAccessEntry> accessList = null;
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
@@ -152,11 +151,11 @@ namespace Corrade
                         }
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                     }
-                    List<string> csv = new List<string>();
-                    object LockObject = new object();
-                    Parallel.ForEach(accessList, o =>
+                    var csv = new List<string>();
+                    var LockObject = new object();
+                    accessList.AsParallel().ForAll(o =>
                     {
-                        string agent = string.Empty;
+                        var agent = string.Empty;
                         if (
                             !Resolvers.AgentUUIDToName(Client, o.AgentID, corradeConfiguration.ServicesTimeout,
                                 ref agent))

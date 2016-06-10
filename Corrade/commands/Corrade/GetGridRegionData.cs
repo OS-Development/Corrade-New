@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -37,8 +37,8 @@ namespace Corrade
                             region = Client.Network.CurrentSim.Name;
                         }
                     }
-                    ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
-                    GridRegion gridRegion = new GridRegion();
+                    var GridRegionEvent = new ManualResetEvent(false);
+                    var gridRegion = new GridRegion();
                     EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                     {
                         if (!string.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
@@ -62,7 +62,7 @@ namespace Corrade
                         case false:
                             throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    List<string> data = GetStructuredData(gridRegion,
+                    var data = GetStructuredData(gridRegion,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

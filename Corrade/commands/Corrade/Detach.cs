@@ -30,7 +30,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string attachments =
+                    var attachments =
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
@@ -40,7 +40,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
                     }
 
-                    string type = wasInput(
+                    var type = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message));
@@ -48,10 +48,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_TYPE_PROVIDED);
                     }
-                    Type detachType = Reflection.GetEnumValueFromName<Type>(type.ToLowerInvariant());
+                    var detachType = Reflection.GetEnumValueFromName<Type>(type.ToLowerInvariant());
 
                     // build a look-up table for the attachment points
-                    Dictionary<string, AttachmentPoint> attachmentPoints =
+                    var attachmentPoints =
                         new Dictionary<string, AttachmentPoint>(typeof (AttachmentPoint).GetFields(BindingFlags.Public |
                                                                                                    BindingFlags.Static)
                             .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint) o.GetValue(null)));
@@ -73,7 +73,7 @@ namespace Corrade
                             }
                             break;
                     }
-                    HashSet<KeyValuePair<Primitive, AttachmentPoint>> attached =
+                    var attached =
                         new HashSet<KeyValuePair<Primitive, AttachmentPoint>>(Inventory.GetAttachments(Client,
                             corradeConfiguration.DataTimeout));
                     CSV.ToEnumerable(
@@ -86,7 +86,7 @@ namespace Corrade
                                     AttachmentPoint attachmentPoint;
                                     if (attachmentPoints.TryGetValue(o, out attachmentPoint))
                                     {
-                                        KeyValuePair<Primitive, AttachmentPoint> attachment =
+                                        var attachment =
                                             attached.AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
                                         if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                         {
@@ -125,7 +125,7 @@ namespace Corrade
 
                             if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                             {
-                                string slot = attached
+                                var slot = attached
                                     .AsParallel()
                                     .Where(
                                         p =>

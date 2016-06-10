@@ -23,14 +23,14 @@ namespace Corrade
                 {
                     return;
                 }
-                KeyValuePair<Primitive, AttachmentPoint> attachment =
+                var attachment =
                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                    .ToArray()
+                        .ToArray()
                         .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                 switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                 {
                     case true:
-                        InventoryBase inventoryBase =
+                        var inventoryBase =
                             Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                                 attachment.Key.Properties.ItemID
                                 )
@@ -40,8 +40,8 @@ namespace Corrade
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                         if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
-                            InventoryItem inventoryItem = inventoryBase as InventoryItem;
-                            string slot = Inventory.GetAttachments(
+                            var inventoryItem = inventoryBase as InventoryItem;
+                            var slot = Inventory.GetAttachments(
                                 Client,
                                 corradeConfiguration.DataTimeout)
                                 .ToArray()

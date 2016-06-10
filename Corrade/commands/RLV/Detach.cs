@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -25,7 +24,7 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryNode RLVFolder =
+                var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
                         RLV_CONSTANTS.SHARED_FOLDER_NAME)
                         .ToArray()
@@ -38,7 +37,7 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        RLVAttachment RLVattachment =
+                        var RLVattachment =
                             RLVAttachments.AsParallel().FirstOrDefault(
                                 o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVattachment.Equals(default(RLVAttachment)))
@@ -60,7 +59,7 @@ namespace Corrade
                                     .Where(o => o != null)
                                     .Select(o => o as InventoryItem).ForAll(o =>
                                     {
-                                        string slot = Inventory.GetAttachments(
+                                        var slot = Inventory.GetAttachments(
                                             Client,
                                             corradeConfiguration.DataTimeout)
                                             .ToArray()
@@ -96,16 +95,15 @@ namespace Corrade
                                 break;
                             default: // detach by folder(s) name
                                 if (string.IsNullOrEmpty(rule.Option)) break;
-                                List<InventoryBase> attachmentInventoryBases =
+                                var attachmentInventoryBases =
                                     new List<InventoryBase>(rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                                         .AsParallel().Select(
                                             p =>
-                                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
-                                                    new Regex(Regex.Escape(p),
-                                                        RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                                    ).AsParallel().FirstOrDefault(o => o is InventoryFolder))
+                                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder, p)
+                                                    .AsParallel()
+                                                    .FirstOrDefault(o => o is InventoryFolder))
                                         .Where(o => o != null));
-                                List<InventoryBase> wearableAttachments = new List<InventoryBase>();
+                                var wearableAttachments = new List<InventoryBase>();
                                 lock (Locks.ClientInstanceInventoryLock)
                                 {
                                     wearableAttachments.AddRange(attachmentInventoryBases
@@ -117,7 +115,7 @@ namespace Corrade
                                 }
                                 wearableAttachments.AsParallel().ForAll(o =>
                                 {
-                                    InventoryItem inventoryItem = o as InventoryItem;
+                                    var inventoryItem = o as InventoryItem;
                                     if (inventoryItem is InventoryWearable)
                                     {
                                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -147,7 +145,7 @@ namespace Corrade
                                     }
                                     if (o is InventoryAttachment || o is InventoryObject)
                                     {
-                                        string slot = Inventory.GetAttachments(
+                                        var slot = Inventory.GetAttachments(
                                             Client,
                                             corradeConfiguration.DataTimeout)
                                             .ToArray()
@@ -158,7 +156,7 @@ namespace Corrade
                                                         inventoryItem.UUID))
                                             .Select(p => p.Value.ToString())
                                             .FirstOrDefault() ??
-                                                      AttachmentPoint.Default.ToString();
+                                                   AttachmentPoint.Default.ToString();
                                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.OutfitChanged,
@@ -201,9 +199,9 @@ namespace Corrade
                                     UUID itemUUID;
                                     if (UUID.TryParse(o.Value.ToString(), out itemUUID))
                                     {
-                                        InventoryItem inventoryItem =
+                                        var inventoryItem =
                                             Client.Inventory.Store.Items[itemUUID].Data as InventoryItem;
-                                        string slot = Inventory.GetAttachments(
+                                        var slot = Inventory.GetAttachments(
                                             Client,
                                             corradeConfiguration.DataTimeout)
                                             .ToArray()

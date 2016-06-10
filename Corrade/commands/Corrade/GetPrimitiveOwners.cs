@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -46,7 +46,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     Vector3 position;
-                    HashSet<Parcel> parcels = new HashSet<Parcel>();
+                    var parcels = new HashSet<Parcel>();
                     switch (Vector3.TryParse(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
@@ -65,7 +65,7 @@ namespace Corrade
                             break;
                         default:
                             // Get all sim parcels
-                            ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                            var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                 (sender, args) => SimParcelsDownloadedEvent.Set();
                             lock (Locks.ClientInstanceParcelsLock)
@@ -88,7 +88,7 @@ namespace Corrade
                             simulator.Parcels.ForEach(o => parcels.Add(o));
                             break;
                     }
-                    bool succeeded = true;
+                    var succeeded = true;
                     Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
                         (o, state) =>
                         {
@@ -97,14 +97,14 @@ namespace Corrade
                                 succeeded = false;
                                 state.Break();
                             }
-                            bool permissions = false;
+                            var permissions = false;
                             Parallel.ForEach(
                                 new HashSet<GroupPowers>
                                 {
                                     GroupPowers.ReturnGroupSet,
                                     GroupPowers.ReturnGroupOwned,
                                     GroupPowers.ReturnNonGroup
-                                }, p =>
+                                }, (p, s) =>
                                 {
                                     if (Services.HasGroupPowers(Client, Client.Self.AgentID,
                                         corradeCommandParameters.Group.UUID, p,
@@ -112,6 +112,7 @@ namespace Corrade
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                     {
                                         permissions = true;
+                                        s.Break();
                                     }
                                 });
                             if (!permissions)
@@ -121,11 +122,11 @@ namespace Corrade
                             }
                         });
                     if (!succeeded) throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    Dictionary<UUID, int> primitives = new Dictionary<UUID, int>();
-                    object LockObject = new object();
-                    foreach (Parcel parcel in parcels)
+                    var primitives = new Dictionary<UUID, int>();
+                    var LockObject = new object();
+                    foreach (var parcel in parcels)
                     {
-                        ManualResetEvent ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
+                        var ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
                         List<ParcelManager.ParcelPrimOwners> parcelPrimOwners = null;
                         EventHandler<ParcelObjectOwnersReplyEventArgs> ParcelObjectOwnersEventHandler =
                             (sender, args) =>
@@ -145,7 +146,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_LAND_USERS);
                             }
                             Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                            Parallel.ForEach(parcelPrimOwners, o =>
+                            parcelPrimOwners.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
                                 {
@@ -162,10 +163,10 @@ namespace Corrade
                             });
                         }
                     }
-                    List<string> csv = new List<string>();
-                    Parallel.ForEach(primitives, o =>
+                    var csv = new List<string>();
+                    primitives.AsParallel().ForAll(o =>
                     {
-                        string owner = string.Empty;
+                        var owner = string.Empty;
                         if (!Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout, ref owner))
                             return;
                         lock (LockObject)

@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
@@ -44,11 +43,11 @@ namespace Corrade
                             Client.Network.CurrentSim.TerrainHeightRange11 // High NE
                         };
                     }
-                    float[] setHeights = new float[8];
-                    List<string> data = CSV.ToEnumerable(
+                    var setHeights = new float[8];
+                    var data = CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
-                    Parallel.ForEach(Enumerable.Range(0, 8),
+                    Enumerable.Range(0, 8).ToArray().AsParallel().ForAll(
                         o =>
                         {
                             float outFloat;

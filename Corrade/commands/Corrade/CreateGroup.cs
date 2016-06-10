@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -53,7 +53,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    Group targetGroup = new Group
+                    var targetGroup = new Group
                     {
                         Name = target
                     };
@@ -61,8 +61,8 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref targetGroup);
-                    bool succeeded = false;
-                    ManualResetEvent GroupCreatedReplyEvent = new ManualResetEvent(false);
+                    var succeeded = false;
+                    var GroupCreatedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>
                     {
                         succeeded = args.Success;

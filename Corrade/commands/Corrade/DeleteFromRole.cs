@@ -26,7 +26,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -66,7 +66,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    string role =
+                    var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     UUID roleUUID;
@@ -81,7 +81,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE);
                     }
-                    Group targetGroup = new Group();
+                    var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,

@@ -31,15 +31,15 @@ namespace Corrade
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.SET:
-                            List<Configuration.Filter> inputFilters = new List<Configuration.Filter>();
-                            string input =
+                            var inputFilters = new List<Configuration.Filter>();
+                            var input =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INPUT)),
                                         corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(input))
                             {
-                                foreach (KeyValuePair<string, string> i in CSV.ToKeyValue(input))
+                                foreach (var i in CSV.ToKeyValue(input))
                                 {
                                     inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
                                     inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));
@@ -49,14 +49,14 @@ namespace Corrade
                                     corradeConfiguration.InputFilters = inputFilters;
                                 }
                             }
-                            List<Configuration.Filter> outputFilters = new List<Configuration.Filter>();
-                            string output =
+                            var outputFilters = new List<Configuration.Filter>();
+                            var output =
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.OUTPUT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(output))
                             {
-                                foreach (KeyValuePair<string, string> i in CSV.ToKeyValue(output))
+                                foreach (var i in CSV.ToKeyValue(output))
                                 {
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));

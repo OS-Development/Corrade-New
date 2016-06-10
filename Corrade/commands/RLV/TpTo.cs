@@ -17,7 +17,7 @@ namespace Corrade
         {
             public static Action<string, RLVRule, UUID> tpto = (message, rule, senderUUID) =>
             {
-                string[] coordinates = rule.Option.Split('/');
+                var coordinates = rule.Option.Split('/');
                 if (!coordinates.Length.Equals(3))
                 {
                     return;
@@ -38,7 +38,7 @@ namespace Corrade
                     return;
                 }
                 float localX, localY;
-                ulong handle = Helpers.GlobalPosToRegionHandle(globalX, globalY, out localX, out localY);
+                var handle = Helpers.GlobalPosToRegionHandle(globalX, globalY, out localX, out localY);
                 lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));

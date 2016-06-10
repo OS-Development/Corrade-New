@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -45,7 +45,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -56,9 +56,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    List<string> csv = new List<string>();
-                    Dictionary<UUID, GroupTitle> groupTitles = new Dictionary<UUID, GroupTitle>();
-                    ManualResetEvent GroupTitlesReplyEvent = new ManualResetEvent(false);
+                    var csv = new List<string>();
+                    var groupTitles = new Dictionary<UUID, GroupTitle>();
+                    var GroupTitlesReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                     {
                         groupTitles = args.Titles;
@@ -75,10 +75,10 @@ namespace Corrade
                         }
                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                     }
-                    object LockObject = new object();
-                    Parallel.ForEach(groupTitles, o =>
+                    var LockObject = new object();
+                    groupTitles.AsParallel().ForAll(o =>
                     {
-                        string roleName = string.Empty;
+                        var roleName = string.Empty;
                         if (Resolvers.RoleUUIDToName(Client, o.Value.RoleID, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref roleName))

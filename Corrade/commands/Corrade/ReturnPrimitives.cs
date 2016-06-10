@@ -49,7 +49,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -67,7 +67,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    string type =
+                    var type =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message));
                     switch (
@@ -79,7 +79,7 @@ namespace Corrade
                     {
                         case Entity.PARCEL:
                             Vector3 position;
-                            HashSet<Parcel> parcels = new HashSet<Parcel>();
+                            var parcels = new HashSet<Parcel>();
                             switch (Vector3.TryParse(
                                 wasInput(
                                     KeyValue.Get(
@@ -89,7 +89,7 @@ namespace Corrade
                             {
                                 case false:
                                     // Get all sim parcels
-                                    ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                                    var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                         (sender, args) => SimParcelsDownloadedEvent.Set();
                                     lock (Locks.ClientInstanceParcelsLock)
@@ -122,7 +122,7 @@ namespace Corrade
                                     parcels.Add(parcel);
                                     break;
                             }
-                            FieldInfo objectReturnTypeField = typeof (ObjectReturnType).GetFields(
+                            var objectReturnTypeField = typeof (ObjectReturnType).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
@@ -130,14 +130,14 @@ namespace Corrade
                                         o.Name.Equals(type
                                             .ToLowerInvariant(),
                                             StringComparison.Ordinal));
-                            ObjectReturnType returnType = objectReturnTypeField != null
+                            var returnType = objectReturnTypeField != null
                                 ? (ObjectReturnType)
                                     objectReturnTypeField
                                         .GetValue(null)
                                 : ObjectReturnType.Other;
                             if (!simulator.IsEstateManager)
                             {
-                                bool gotPermission = true;
+                                var gotPermission = true;
                                 Parallel.ForEach(parcels.ToArray()
                                     .AsParallel()
                                     .Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), (o, s) =>
@@ -148,7 +148,7 @@ namespace Corrade
                                             gotPermission = false;
                                             s.Break();
                                         }
-                                        GroupPowers power = new GroupPowers();
+                                        var power = new GroupPowers();
                                         switch (returnType)
                                         {
                                             case ObjectReturnType.Other:
@@ -178,7 +178,7 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceParcelsLock)
                             {
-                                Parallel.ForEach(parcels,
+                                parcels.AsParallel().ForAll(
                                     o =>
                                         Client.Parcels.ReturnObjects(simulator, o.LocalID,
                                             returnType
@@ -201,7 +201,7 @@ namespace Corrade
                             {
                                 allEstates = false;
                             }
-                            FieldInfo estateReturnFlagsField = typeof (EstateTools.EstateReturnFlags).GetFields(
+                            var estateReturnFlagsField = typeof (EstateTools.EstateReturnFlags).GetFields(
                                 BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>

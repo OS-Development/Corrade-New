@@ -47,7 +47,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    UUID session = UUID.Zero;
+                    var session = UUID.Zero;
                     lock (Locks.ClientInstanceFriendsLock)
                     {
                         Client.Friends.FriendRequests.ForEach(o =>

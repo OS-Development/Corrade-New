@@ -51,7 +51,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_OFFER_NOT_FOUND);
                     }
-                    string folder = wasInput(
+                    var folder = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
                             corradeCommandParameters.Message));

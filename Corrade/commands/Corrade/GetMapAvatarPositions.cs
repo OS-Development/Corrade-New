@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -45,7 +45,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    HashSet<MapItem> mapItems = new HashSet<MapItem>();
+                    var mapItems = new HashSet<MapItem>();
                     lock (Locks.ClientInstanceGridLock)
                     {
                         mapItems.UnionWith(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
@@ -55,7 +55,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_MAP_ITEMS_FOUND);
                     }
-                    List<string> data =
+                    var data =
                         mapItems.AsParallel()
                             .Where(o => o as MapAgentLocation != null)
                             .Select(o => new[]

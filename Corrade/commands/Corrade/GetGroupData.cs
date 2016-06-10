@@ -27,7 +27,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -44,12 +44,12 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    Group dataGroup = new Group();
+                    var dataGroup = new Group();
                     if (!Services.RequestGroup(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref dataGroup))
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
-                    List<string> data = GetStructuredData(dataGroup,
+                    var data = GetStructuredData(dataGroup,
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())

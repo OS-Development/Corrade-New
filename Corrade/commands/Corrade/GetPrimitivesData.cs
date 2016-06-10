@@ -12,7 +12,6 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -39,8 +38,8 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    HashSet<Primitive> updatePrimitives = new HashSet<Primitive>();
-                    object LockObject = new object();
+                    var updatePrimitives = new HashSet<Primitive>();
+                    var LockObject = new object();
                     switch (Reflection.GetEnumValueFromName<Entity>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
@@ -106,7 +105,7 @@ namespace Corrade
                             break;
                         case Entity.REGION:
                             // Get all sim parcels
-                            ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                            var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                 (sender, args) => SimParcelsDownloadedEvent.Set();
                             lock (Locks.ClientInstanceParcelsLock)
@@ -150,7 +149,7 @@ namespace Corrade
                                     });
                             break;
                         case Entity.AVATAR:
-                            UUID agentUUID = UUID.Zero;
+                            var agentUUID = UUID.Zero;
                             if (
                                 !UUID.TryParse(
                                     wasInput(
@@ -174,7 +173,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                            var avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
                                 corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
@@ -182,18 +181,18 @@ namespace Corrade
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                             if (avatar == null)
                                 throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
-                            HashSet<Primitive> objectsPrimitives =
+                            var objectsPrimitives =
                                 new HashSet<Primitive>(Services.GetPrimitives(Client, range, corradeConfiguration.Range,
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType)));
-                            Parallel.ForEach(objectsPrimitives,
+                            objectsPrimitives.AsParallel().ForAll(
                                 o =>
                                 {
                                     switch (!o.ParentID.Equals(avatar.LocalID))
                                     {
                                         case true:
-                                            Primitive primitiveParent =
+                                            var primitiveParent =
                                                 objectsPrimitives.AsParallel()
                                                     .FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
                                             if (primitiveParent != null &&
@@ -222,10 +221,10 @@ namespace Corrade
                     Services.UpdatePrimitives(Client, ref updatePrimitives, range, corradeConfiguration.Range,
                         corradeConfiguration.DataTimeout);
 
-                    List<string> data = new List<string>();
-                    Parallel.ForEach(updatePrimitives, o =>
+                    var data = new List<string>();
+                    updatePrimitives.AsParallel().ForAll(o =>
                     {
-                        List<string> primitiveData = GetStructuredData(o,
+                        var primitiveData = GetStructuredData(o,
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message))).ToList();

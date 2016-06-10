@@ -48,7 +48,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_BUTTON_INDEX_SPECIFIED);
                     }
-                    string label =
+                    var label =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BUTTON)),
                                 corradeCommandParameters.Message));
@@ -68,7 +68,7 @@ namespace Corrade
                     }
                     lock (ScriptDialogLock)
                     {
-                        ScriptDialog scriptDialog =
+                        var scriptDialog =
                             ScriptDialogs.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Item.Equals(itemUUID) && o.Channel.Equals(channel) &&

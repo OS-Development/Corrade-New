@@ -52,7 +52,7 @@ namespace Corrade
                         lookAt = Client.Self.LookAt;
                     }
                     // We override the default teleport since region names are unique and case insensitive.
-                    string region =
+                    var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
@@ -74,8 +74,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    ManualResetEvent TeleportEvent = new ManualResetEvent(false);
-                    bool succeeded = false;
+                    var TeleportEvent = new ManualResetEvent(false);
+                    var succeeded = false;
                     EventHandler<TeleportEventArgs> TeleportEventHandler = (sender, args) =>
                     {
                         switch (args.Status)

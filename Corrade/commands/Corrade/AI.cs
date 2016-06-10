@@ -31,7 +31,7 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.PROCESS:
-                            string request =
+                            var request =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
@@ -50,7 +50,7 @@ namespace Corrade
                             lock (SIMLBotLock)
                             {
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                                string SIMLPackage = Path.Combine(
+                                var SIMLPackage = Path.Combine(
                                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                                     SIML_BOT_CONSTANTS.PACKAGE_FILE);
                                 if (File.Exists(SIMLPackage))

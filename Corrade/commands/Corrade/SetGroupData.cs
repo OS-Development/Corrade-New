@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -45,7 +45,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -56,13 +56,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    string data = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                    var data = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(data))
                     {
                         throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
                     }
-                    Group targetGroup = new Group();
+                    var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
@@ -70,7 +70,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
-                    bool gotPermissions = true;
+                    var gotPermissions = true;
                     Parallel.ForEach(CSV.ToKeyValue(data).Select(o => o.Key), (o, s) =>
                     {
                         switch (o)

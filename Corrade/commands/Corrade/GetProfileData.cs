@@ -48,14 +48,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    Time.DecayingAlarm ProfileDataReceivedAlarm =
+                    var ProfileDataReceivedAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
-                    Avatar.Interests interests = new Avatar.Interests();
-                    List<AvatarGroup> groups = new List<AvatarGroup>();
+                    var properties = new Avatar.AvatarProperties();
+                    var interests = new Avatar.Interests();
+                    var groups = new List<AvatarGroup>();
                     AvatarPicksReplyEventArgs picks = null;
                     AvatarClassifiedReplyEventArgs classifieds = null;
-                    object LockObject = new object();
+                    var LockObject = new object();
                     EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                     {
                         ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
@@ -114,10 +114,10 @@ namespace Corrade
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                     }
-                    string fields =
+                    var fields =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
-                    List<string> csv = new List<string>();
+                    var csv = new List<string>();
                     csv.AddRange(GetStructuredData(properties, fields));
                     csv.AddRange(GetStructuredData(interests, fields));
                     csv.AddRange(GetStructuredData(groups, fields));

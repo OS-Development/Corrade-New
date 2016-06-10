@@ -27,7 +27,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -50,7 +50,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    string role =
+                    var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     UUID roleUUID;
@@ -65,7 +65,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE);
                     }
-                    Group targetGroup = new Group();
+                    var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,
@@ -78,7 +78,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.CANNOT_REMOVE_OWNER_ROLE);
                     }
                     // remove members from role
-                    ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
                         args.RolesMembers

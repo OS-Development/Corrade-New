@@ -11,7 +11,6 @@ using System.Text;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -26,10 +25,10 @@ namespace Corrade
                 {
                     return;
                 }
-                HashSet<Primitive> attachments = new HashSet<Primitive>(
+                var attachments = new HashSet<Primitive>(
                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                         .Select(o => o.Key));
-                StringBuilder response = new StringBuilder();
+                var response = new StringBuilder();
                 if (!attachments.Any())
                 {
                     lock (Locks.ClientInstanceSelfLock)
@@ -38,13 +37,13 @@ namespace Corrade
                     }
                     return;
                 }
-                HashSet<AttachmentPoint> attachmentPoints =
+                var attachmentPoints =
                     new HashSet<AttachmentPoint>(attachments.AsParallel()
                         .Select(o => o.PrimData.AttachmentPoint));
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        RLVAttachment RLVattachment = RLVAttachments.AsParallel().FirstOrDefault(
+                        var RLVattachment = RLVAttachments.AsParallel().FirstOrDefault(
                             o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVattachment.Equals(default(RLVAttachment)))
                         {
@@ -59,15 +58,18 @@ namespace Corrade
                         }
                         break;
                     default:
-                        string[] data = new string[RLVAttachments.Count];
-                        Parallel.ForEach(Enumerable.Range(0, RLVAttachments.Count), o =>
+                        var data = new string[RLVAttachments.Count];
+                        Enumerable.Range(0, RLVAttachments.Count).ToArray().AsParallel().ForAll(o =>
                         {
-                            if (!attachmentPoints.Contains(RLVAttachments[o].AttachmentPoint))
+                            switch (!attachmentPoints.Contains(RLVAttachments[o].AttachmentPoint))
                             {
-                                data[o] = RLV_CONSTANTS.FALSE_MARKER;
-                                return;
+                                case true:
+                                    data[o] = RLV_CONSTANTS.FALSE_MARKER;
+                                    return;
+                                default:
+                                    data[o] = RLV_CONSTANTS.TRUE_MARKER;
+                                    break;
                             }
-                            data[o] = RLV_CONSTANTS.TRUE_MARKER;
                         });
                         response.Append(string.Join("", data.ToArray()));
                         break;

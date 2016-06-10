@@ -13,7 +13,6 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -40,8 +39,8 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    HashSet<Avatar> avatars = new HashSet<Avatar>();
-                    object LockObject = new object();
+                    var avatars = new HashSet<Avatar>();
+                    var LockObject = new object();
                     switch (Reflection.GetEnumValueFromName<Entity>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
@@ -109,7 +108,7 @@ namespace Corrade
                             break;
                         case Entity.REGION:
                             // Get all sim parcels
-                            ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                            var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                 (sender, args) => SimParcelsDownloadedEvent.Set();
                             lock (Locks.ClientInstanceParcelsLock)
@@ -129,7 +128,7 @@ namespace Corrade
                                 }
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
-                            HashSet<Parcel> regionParcels =
+                            var regionParcels =
                                 new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
                             Services.GetAvatars(Client,
                                 regionParcels.AsParallel().Select(o => new[]
@@ -184,7 +183,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            Avatar avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
+                            var avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
                                 corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
@@ -203,11 +202,11 @@ namespace Corrade
                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType));
 
-                    List<string> data = new List<string>();
+                    var data = new List<string>();
 
-                    Parallel.ForEach(avatars, o =>
+                    avatars.AsParallel().ForAll(o =>
                     {
-                        List<string> avatarData = GetStructuredData(o,
+                        var avatarData = GetStructuredData(o,
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),

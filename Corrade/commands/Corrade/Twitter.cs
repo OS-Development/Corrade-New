@@ -35,7 +35,7 @@ namespace Corrade
                     * Additionally the access tokens will have to be generated in order to be
                     * used with this command.
                     */
-                    string consumerKey = wasInput(
+                    var consumerKey = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
                             corradeCommandParameters.Message));
@@ -44,7 +44,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CONSUMER_KEY_PROVIDED);
                     }
 
-                    string consumerSecret = wasInput(
+                    var consumerSecret = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SECRET)),
                             corradeCommandParameters.Message));
@@ -53,7 +53,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CONSUMER_SECRET_PROVIDED);
                     }
 
-                    string accessToken = wasInput(
+                    var accessToken = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TOKEN)),
                             corradeCommandParameters.Message));
@@ -62,7 +62,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ACCESS_TOKEN_PROVIDED);
                     }
 
-                    string accessTokenSecret = wasInput(
+                    var accessTokenSecret = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACCESS)),
                             corradeCommandParameters.Message));
@@ -71,7 +71,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_ACCESS_TOKEN_SECRET_PROVIDED);
                     }
 
-                    TwitterService service = new TwitterService(consumerKey, consumerSecret);
+                    var service = new TwitterService(consumerKey, consumerSecret);
                     service.AuthenticateWith(accessToken, accessTokenSecret);
 
                     switch (Reflection.GetEnumValueFromName<Action>(
@@ -82,7 +82,7 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.TWEET:
-                            string message = wasInput(
+                            var message = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message));

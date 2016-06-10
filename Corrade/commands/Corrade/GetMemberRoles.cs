@@ -28,7 +28,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
-                    string target = wasInput(
+                    var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
@@ -45,7 +45,7 @@ namespace Corrade
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
                     }
-                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -83,10 +83,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_IN_GROUP);
                     }
-                    HashSet<string> csv = new HashSet<string>();
+                    var csv = new HashSet<string>();
                     // get roles for a member
-                    HashSet<KeyValuePair<UUID, UUID>> groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
-                    ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
+                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
                         groupRolesMembers.UnionWith(args.RolesMembers);
@@ -104,10 +104,10 @@ namespace Corrade
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                     }
                     // now resolve the roles
-                    object LockObject = new object();
+                    var LockObject = new object();
                     groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)).ForAll(o =>
                     {
-                        string roleName = string.Empty;
+                        var roleName = string.Empty;
                         switch (Resolvers.RoleUUIDToName(Client, o.Key, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref roleName))

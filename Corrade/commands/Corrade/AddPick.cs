@@ -41,17 +41,17 @@ namespace Corrade
                     {
                         position = Client.Self.GlobalPosition;
                     }
-                    string item =
+                    var item =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
-                    UUID textureUUID = UUID.Zero;
+                    var textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
                     {
                         // if the item is an UUID, trust the sender otherwise search the inventory
                         if (!UUID.TryParse(item, out textureUUID))
                         {
-                            InventoryBase inventoryBaseItem =
+                            var inventoryBaseItem =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (!(inventoryBaseItem is InventoryTexture))
@@ -61,20 +61,20 @@ namespace Corrade
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
                     }
-                    ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
-                    UUID pickUUID = UUID.Zero;
-                    string name =
+                    var AvatarPicksReplyEvent = new ManualResetEvent(false);
+                    var pickUUID = UUID.Zero;
+                    var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.EMPTY_PICK_NAME);
                     }
-                    int pickCount = 0;
+                    var pickCount = 0;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
                         pickCount = args.Picks.Count;
-                        KeyValuePair<UUID, string> pick =
+                        var pick =
                             args.Picks.AsParallel()
                                 .FirstOrDefault(o => string.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
@@ -92,7 +92,7 @@ namespace Corrade
                         }
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                     }
-                    string description =
+                    var description =
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),

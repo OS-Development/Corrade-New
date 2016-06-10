@@ -29,8 +29,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    HashSet<AssetType> assetTypes = new HashSet<AssetType>();
-                    object LockObject = new object();
+                    var assetTypes = new HashSet<AssetType>();
+                    var LockObject = new object();
                     CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message)))
@@ -46,7 +46,7 @@ namespace Corrade
                                         assetTypes.Add((AssetType) q.GetValue(null));
                                     }
                                 }));
-                    string pattern =
+                    var pattern =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATTERN)),
                                 corradeCommandParameters.Message));
@@ -63,7 +63,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
-                    List<string> csv = new List<string>();
+                    var csv = new List<string>();
                     Inventory.FindInventoryPath<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                         search, new LinkedList<string>()).ToArray().AsParallel().Select(o => o.Value).ForAll(o =>
                         {

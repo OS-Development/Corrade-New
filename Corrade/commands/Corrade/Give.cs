@@ -28,7 +28,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string item = wasInput(
+                    var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
@@ -60,7 +60,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
                     }
                     // Set requested permissions if any on the item.
-                    string permissions = wasInput(
+                    var permissions = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                             corradeCommandParameters.Message));
@@ -124,7 +124,7 @@ namespace Corrade
                                 range = corradeConfiguration.Range;
                             }
                             Primitive primitive = null;
-                            string target = wasInput(KeyValue.Get(
+                            var target = wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                 corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(target))

@@ -27,14 +27,14 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    string file =
+                    var file =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FILE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(file))
                     {
                         throw new ScriptException(ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
                     }
-                    ProcessStartInfo p = new ProcessStartInfo(file,
+                    var p = new ProcessStartInfo(file,
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PARAMETER)),
                             corradeCommandParameters.Message)))
@@ -44,8 +44,8 @@ namespace Corrade
                         WindowStyle = ProcessWindowStyle.Normal,
                         UseShellExecute = false
                     };
-                    StringBuilder stdout = new StringBuilder();
-                    StringBuilder stderr = new StringBuilder();
+                    var stdout = new StringBuilder();
+                    var stderr = new StringBuilder();
                     ManualResetEvent[] StdEvent =
                     {
                         new ManualResetEvent(false),
