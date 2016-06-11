@@ -65,7 +65,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
                     var csv = new List<string>();
-                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search)
+                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search,
+                        corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .ForAll(

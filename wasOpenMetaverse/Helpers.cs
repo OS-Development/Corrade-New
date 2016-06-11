@@ -99,5 +99,35 @@ namespace wasOpenMetaverse
             return position.X >= parcel.AABBMin.X && position.X <= parcel.AABBMax.X &&
                    position.Y >= parcel.AABBMin.Y && position.Y <= parcel.AABBMax.Y;
         }
+
+        /// <summary>
+        ///     Returns a global position from a simulator and a local position.
+        /// </summary>
+        /// <param name="simulator">a simulator</param>
+        /// <param name="position">a region-local position</param>
+        /// <returns>a global position</returns>
+        /// <remarks>From Radegast</remarks>
+        public static Vector3d GlobalPosition(Simulator simulator, Vector3 position)
+        {
+            uint globalX, globalY;
+            Utils.LongToUInts(simulator.Handle, out globalX, out globalY);
+
+            return new Vector3d(
+                globalX + (double)position.X,
+                globalY + (double)position.Y,
+                position.Z);
+        }
+
+        /// <summary>
+        ///     Returns a global position of a primitive and a local position.
+        /// </summary>
+        /// <param name="simulator">a simulator</param>
+        /// <param name="primitive">a primitive</param>
+        /// <returns>a global position</returns>
+        /// <remarks>From Radegast</remarks>
+        public static Vector3d GlobalPosition(Simulator simulator, Primitive primitive)
+        {
+            return GlobalPosition(simulator, primitive.Position);
+        }
     }
 }

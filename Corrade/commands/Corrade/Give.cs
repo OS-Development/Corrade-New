@@ -41,12 +41,14 @@ namespace Corrade
                     {
                         case true:
                             inventoryItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID,
+                                    corradeConfiguration.ServicesTimeout
                                     ).FirstOrDefault() as InventoryItem;
                             break;
                         default:
                             inventoryItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
+                                    corradeConfiguration.ServicesTimeout)
                                     .FirstOrDefault() as InventoryItem;
                             break;
                     }
@@ -138,10 +140,8 @@ namespace Corrade
                                     !Services.FindPrimitive(Client,
                                         targetUUID,
                                         range,
-                                        corradeConfiguration.Range,
-                                        ref primitive, corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
@@ -152,10 +152,8 @@ namespace Corrade
                                     !Services.FindPrimitive(Client,
                                         target,
                                         range,
-                                        corradeConfiguration.Range,
-                                        ref primitive, corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                                 }

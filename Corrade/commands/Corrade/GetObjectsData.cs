@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////
+﻿///////////////////////////////////////////////////////////////////////////
 //  Copyright (C) Wizardry and Steamworks 2013 - License: GNU GPLv3      //
 //  Please see: http://www.gnu.org/licenses/gpl.html for legal details,  //
 //  rights of fair usage, the disclaimer and warranty conditions.        //
@@ -19,7 +19,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitivesdata =
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getobjectsdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -47,14 +47,14 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Entity.RANGE:
-                            updatePrimitives = Services.GetPrimitives(Client, range);
+                            updatePrimitives = Services.GetObjects(Client, range);
                             break;
                         case Entity.WORLD:
                             var avatars =
                                 new HashSet<uint>(Services.GetAvatars(Client, range).Select(o => o.LocalID));
                             updatePrimitives =
                                 new HashSet<Primitive>(
-                                    Services.GetPrimitives(Client, range)
+                                    Services.GetObjects(Client, range)
                                         .AsParallel()
                                         .Where(o => o.ParentID.Equals(0) && !avatars.Contains(o.ParentID)));
                             break;
@@ -77,7 +77,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                             }
-                            updatePrimitives = Services.GetPrimitives(Client, new[]
+                            updatePrimitives = Services.GetObjects(Client, new[]
                             {
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -109,7 +109,7 @@ namespace Corrade
                                 }
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
-                            updatePrimitives = Services.GetPrimitives(Client,
+                            updatePrimitives = Services.GetObjects(Client,
                                 Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
@@ -151,7 +151,7 @@ namespace Corrade
                             if (avatar == null)
                                 throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
                             var objectsPrimitives =
-                                new HashSet<Primitive>(Services.GetPrimitives(Client, range));
+                                new HashSet<Primitive>(Services.GetObjects(Client, range));
                             objectsPrimitives.AsParallel().ForAll(
                                 o =>
                                 {

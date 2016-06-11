@@ -105,7 +105,7 @@ namespace Corrade
                                 {
                                     case true:
                                         var inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
-                                            Client.Inventory.Store.RootNode, item)
+                                            Client.Inventory.Store.RootNode, item, corradeConfiguration.ServicesTimeout)
                                             .FirstOrDefault() as InventoryItem;
                                         if (inventoryItem == null)
                                         {

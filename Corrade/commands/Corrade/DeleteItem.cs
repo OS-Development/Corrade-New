@@ -44,7 +44,7 @@ namespace Corrade
                             items.UnionWith(Inventory
                                 .FindInventory<InventoryBase>(Client,
                                     Client.Inventory.Store.RootNode,
-                                    itemUUID)
+                                    itemUUID, corradeConfiguration.ServicesTimeout)
                                 .ToArray()
                                 .AsParallel()
                                 .OfType<InventoryItem>());
@@ -52,7 +52,8 @@ namespace Corrade
                         default:
                             items.UnionWith(
                                 Inventory
-                                    .FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                                    .FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
+                                        corradeConfiguration.ServicesTimeout)
                                     .ToArray()
                                     .AsParallel()
                                     .OfType<InventoryItem>());

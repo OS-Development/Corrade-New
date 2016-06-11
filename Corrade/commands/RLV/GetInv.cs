@@ -26,7 +26,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -72,7 +72,7 @@ namespace Corrade
                 }
                 var csv =
                     new HashSet<string>(Inventory.FindInventory<InventoryBase>(Client, optionFolderNode,
-                        CORRADE_CONSTANTS.OneOrMoRegex)
+                        CORRADE_CONSTANTS.OneOrMoRegex, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .Where(o => o is InventoryFolder && !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))

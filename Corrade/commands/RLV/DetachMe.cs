@@ -32,7 +32,7 @@ namespace Corrade
                     case true:
                         var inventoryBase =
                             Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                attachment.Key.Properties.ItemID
+                                attachment.Key.Properties.ItemID, corradeConfiguration.ServicesTimeout
                                 )
                                 .AsParallel().FirstOrDefault(
                                     p =>

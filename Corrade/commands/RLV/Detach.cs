@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -26,7 +27,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -51,7 +52,7 @@ namespace Corrade
                                         p =>
                                             Inventory.FindInventory<InventoryBase>(Client,
                                                 Client.Inventory.Store.RootNode,
-                                                p.Key.Properties.Name)
+                                                p.Key.Properties.Name, corradeConfiguration.ServicesTimeout)
                                                 .ToArray()
                                                 .AsParallel().Where(
                                                     o =>
@@ -99,9 +100,11 @@ namespace Corrade
                                     new List<InventoryBase>(rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                                         .AsParallel().Select(
                                             p =>
-                                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder, p)
-                                                    .AsParallel()
-                                                    .FirstOrDefault(o => o is InventoryFolder))
+                                                Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
+                                                    new Regex(Regex.Escape(p),
+                                                        RegexOptions.Compiled | RegexOptions.IgnoreCase),
+                                                    corradeConfiguration.ServicesTimeout
+                                                    ).AsParallel().FirstOrDefault(o => o is InventoryFolder))
                                         .Where(o => o != null));
                                 var wearableAttachments = new List<InventoryBase>();
                                 lock (Locks.ClientInstanceInventoryLock)

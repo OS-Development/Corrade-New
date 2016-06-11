@@ -64,7 +64,8 @@ namespace Corrade
                     if (!UUID.TryParse(item, out itemUUID))
                     {
                         inventoryItem =
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item)
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
+                                corradeConfiguration.ServicesTimeout)
                                 .FirstOrDefault() as InventoryItem;
                         if (inventoryItem == null)
                         {

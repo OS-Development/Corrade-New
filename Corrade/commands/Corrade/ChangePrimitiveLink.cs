@@ -68,53 +68,51 @@ namespace Corrade
                             throw new ScriptException(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
                         }
                     }
+
+                    var LockObject = new object();
+                    var updatePrimitives = Services.GetPrimitives(Client, range);
+
+                    // allow partial results
+                    Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
+
                     var searchPrimitives = new Primitive[items.Count];
                     var succeeded = true;
                     Parallel.ForEach(Enumerable.Range(0, items.Count), (o, state) =>
                     {
-                        Primitive primitive = null;
+                        Primitive primitive;
                         UUID itemUUID;
                         switch (UUID.TryParse(items[o], out itemUUID))
                         {
                             case true:
-                                if (
-                                    !Services.FindPrimitive(Client,
-                                        itemUUID,
-                                        range,
-                                        corradeConfiguration.Range,
-                                        ref primitive, corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
-                                    succeeded = false;
-                                    state.Break();
-                                }
+                                primitive = updatePrimitives.AsParallel().FirstOrDefault(p => p.ID.Equals(itemUUID));
                                 break;
                             default:
-                                if (
-                                    !Services.FindPrimitive(Client,
-                                        items[o],
-                                        range,
-                                        corradeConfiguration.Range,
-                                        ref primitive, corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
-                                    succeeded = false;
-                                    state.Break();
-                                }
+                                primitive =
+                                    updatePrimitives.AsParallel()
+                                        .Where(p => p.Properties != null)
+                                        .FirstOrDefault(p => p.Properties.Name.Equals(items[o]));
                                 break;
                         }
-                        searchPrimitives[o] = primitive;
+                        switch (primitive != null)
+                        {
+                            case true:
+                                searchPrimitives[o] = primitive;
+                                break;
+                            default:
+                                succeeded = false;
+                                state.Break();
+                                break;
+                        }
                     });
+
                     if (!succeeded) throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+
                     var primitives = searchPrimitives.ToList();
                     var rootPrimitive = primitives.First();
                     if (!primitives.AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
                     {
                         throw new ScriptException(ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
                     }
-                    var LockObject = new object();
                     var PrimChangeLinkEvent = new ManualResetEvent(false);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
                     {
@@ -125,9 +123,6 @@ namespace Corrade
                                 PrimChangeLinkEvent.Set();
                                 return;
                             }
-                        }
-                        lock (LockObject)
-                        {
                             if (primitives.Any(o => o.LocalID.Equals(args.Prim.LocalID)))
                             {
                                 primitives.RemoveAll(o => o.LocalID.Equals(args.Prim.LocalID));

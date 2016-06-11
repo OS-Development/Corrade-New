@@ -93,7 +93,8 @@ namespace Corrade
                                             inventoryItem =
                                                 Inventory.FindInventory<InventoryBase>(Client,
                                                     Client.Inventory.Store.RootNode,
-                                                    attachment.Key.Properties.ItemID
+                                                    attachment.Key.Properties.ItemID,
+                                                    corradeConfiguration.ServicesTimeout
                                                     )
                                                     .AsParallel().FirstOrDefault(
                                                         p =>
@@ -106,7 +107,7 @@ namespace Corrade
                                 case Type.NAME:
                                     inventoryItem =
                                         Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            o).FirstOrDefault() as InventoryItem;
+                                            o, corradeConfiguration.ServicesTimeout).FirstOrDefault() as InventoryItem;
                                     break;
                                 case Type.UUID:
                                     UUID itemUUID;
@@ -115,7 +116,7 @@ namespace Corrade
                                         inventoryItem =
                                             Inventory.FindInventory<InventoryBase>(Client,
                                                 Client.Inventory.Store.RootNode,
-                                                itemUUID
+                                                itemUUID, corradeConfiguration.ServicesTimeout
                                                 ).FirstOrDefault() as InventoryItem;
                                     }
                                     break;

@@ -50,37 +50,28 @@ namespace Corrade
                     {
                         case true:
                             if (
-                                !Services.FindPrimitive(Client,
+                                !Services.FindObject(Client,
                                     itemUUID,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                         default:
                             if (
-                                !Services.FindPrimitive(Client,
+                                !Services.FindObject(Client,
                                     item,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                     }
-                    // if the primitive is not an object (the root) or the primitive
-                    // is not an object as an avatar attachment then bail out
-                    if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
-                    {
-                        throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
-                    }
+
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
                     {

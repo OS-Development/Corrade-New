@@ -48,10 +48,7 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Entity.RANGE:
-                            Services.GetAvatars(Client, range, corradeConfiguration.Range,
-                                corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                            Services.GetAvatars(Client, range)
                                 .ToArray()
                                 .AsParallel()
                                 .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range).ForAll(
@@ -93,9 +90,7 @@ namespace Corrade
                                     new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                 Vector3.Distance(Client.Self.SimPosition,
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                            }.Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                            }.Max())
                                 .ToArray()
                                 .AsParallel()
                                 .Where(o => Helpers.IsVectorInParcel(o.Position, parcel)).ForAll(o =>
@@ -139,9 +134,7 @@ namespace Corrade
                                         new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
                                     Vector3.Distance(Client.Self.SimPosition,
                                         new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                }.Max()).Max(), corradeConfiguration.Range, corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                                }.Max()).Max())
                                 .ToArray()
                                 .AsParallel()
                                 .Where(
@@ -183,10 +176,7 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
-                            var avatar = Services.GetAvatars(Client, range, corradeConfiguration.Range,
-                                corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                            var avatar = Services.GetAvatars(Client, range)
                                 .AsParallel()
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                             if (avatar == null)
@@ -198,8 +188,8 @@ namespace Corrade
                     }
 
                     // allow partial results
-                    Services.UpdateAvatars(Client, ref avatars, range, corradeConfiguration.Range,
-                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                    Services.UpdateAvatars(Client, ref avatars, corradeConfiguration.ServicesTimeout,
+                        corradeConfiguration.DataTimeout,
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType));
 
                     var data = new List<string>();

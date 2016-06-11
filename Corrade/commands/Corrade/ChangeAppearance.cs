@@ -44,12 +44,13 @@ namespace Corrade
                         case true:
                             inventoryFolder =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    folderUUID
+                                    folderUUID, corradeConfiguration.ServicesTimeout
                                     ).FirstOrDefault() as InventoryFolder;
                             break;
                         default:
                             inventoryFolder =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder)
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, folder,
+                                    corradeConfiguration.ServicesTimeout)
                                     .FirstOrDefault() as InventoryFolder;
                             break;
                     }

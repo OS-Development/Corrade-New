@@ -54,10 +54,8 @@ namespace Corrade
                                 !Services.FindPrimitive(Client,
                                     itemUUID,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
                                 throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                             }
@@ -67,10 +65,8 @@ namespace Corrade
                                 !Services.FindPrimitive(Client,
                                     item,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
                                 throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                             }
@@ -109,7 +105,7 @@ namespace Corrade
                             inventoryBaseItem =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
                                     !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity
-                                    ).FirstOrDefault();
+                                    , corradeConfiguration.ServicesTimeout).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

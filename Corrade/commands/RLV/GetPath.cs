@@ -27,7 +27,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
@@ -58,7 +58,8 @@ namespace Corrade
                             {
                                 case true:
                                     inventoryBase = Inventory.FindInventory<InventoryBase>(Client,
-                                        RLVFolder, attachment.Key.Properties.ItemID
+                                        RLVFolder, attachment.Key.Properties.ItemID,
+                                        corradeConfiguration.ServicesTimeout
                                         )
                                         .AsParallel().FirstOrDefault(
                                             p =>
@@ -105,7 +106,8 @@ namespace Corrade
                         {
                             case true:
                                 inventoryBase = Inventory.FindInventory<InventoryBase>(Client,
-                                    Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID
+                                    Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID,
+                                    corradeConfiguration.ServicesTimeout
                                     )
                                     .AsParallel().FirstOrDefault(
                                         p =>

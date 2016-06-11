@@ -44,6 +44,7 @@ using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 using Settings = OpenMetaverse.Settings;
 using ThreadState = System.Threading.ThreadState;
+using System.Net.Cache;
 
 #endregion
 
@@ -256,7 +257,7 @@ namespace Corrade
             [Status(04994)] [Reflection.DescriptionAttribute("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
             [Status(61067)] [Reflection.DescriptionAttribute("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
             [Status(08411)] [Reflection.DescriptionAttribute("could not start process")] COULD_NOT_START_PROCESS,
-            [Status(22737)] [Reflection.DescriptionAttribute("item is not an object")] ITEM_IS_NOT_AN_OBJECT,
+            [Status(22737)] [Reflection.DescriptionAttribute("object not found")] OBJECT_NOT_FOUND,
             [Status(19143)] [Reflection.DescriptionAttribute("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
             [Status(37841)] [Reflection.DescriptionAttribute("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
             [Status(54854)] [Reflection.DescriptionAttribute("avatar not in range")] AVATAR_NOT_IN_RANGE,
@@ -379,7 +380,6 @@ namespace Corrade
         private static readonly GridClient Client = new GridClient();
         private static InventoryFolder CurrentOutfitFolder;
         private static readonly SynBot SynBot = new SynBot();
-        private static readonly BotUser SynBotUser = new BotUser(SynBot, CORRADE_CONSTANTS.CORRADE);
         private static RankedLanguageIdentifier rankedLanguageIdentifier;
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
@@ -1405,7 +1405,7 @@ namespace Corrade
                             .Select(XDocument.Load))
                         {
                             elementList.Add(simlDocument);
-                            SynBot.AddSiml(simlDocument, SynBotUser);
+                            SynBot.AddSiml(simlDocument);
                         }
                         foreach (var simlDocument in Directory.GetFiles(Path.Combine(
                             Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
@@ -1413,7 +1413,7 @@ namespace Corrade
                             .Select(XDocument.Load))
                         {
                             elementList.Add(simlDocument);
-                            SynBot.AddSiml(simlDocument, SynBotUser);
+                            SynBot.AddSiml(simlDocument);
                         }
                         File.WriteAllText(Path.Combine(
                             Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
@@ -2353,7 +2353,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceInventoryLock)
                     {
                         item = Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                            setting).FirstOrDefault() as InventoryItem;
+                            setting, corradeConfiguration.ServicesTimeout).FirstOrDefault() as InventoryItem;
                     }
                     if (item == null)
                     {
@@ -4103,7 +4103,7 @@ namespace Corrade
                             var groups =
                                 CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
                             return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
-                        }))()
+                        }))(), corradeConfiguration.ServicesTimeout
                         ).FirstOrDefault();
             }
 
@@ -4136,7 +4136,7 @@ namespace Corrade
                             // Locate the folder and move.
                             inventoryBaseFolder =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    e.FolderID
+                                    e.FolderID, corradeConfiguration.ServicesTimeout
                                     ).FirstOrDefault();
                             if (inventoryBaseFolder != null)
                             {
@@ -5326,6 +5326,7 @@ namespace Corrade
                 request.AllowAutoRedirect = true;
                 request.Method = WebRequestMethods.Http.Post;
                 request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.CacheIfAvailable);
                 // set the content type based on chosen output filers
                 switch (corradeConfiguration.OutputFilters.LastOrDefault())
                 {
@@ -6313,7 +6314,7 @@ namespace Corrade
         private struct SIML_BOT_CONSTANTS
         {
             public const string ROOT_DIRECTORY = @"SIML";
-            public const string SIML_DIRECTORY = @"SIML";
+            public const string SIML_DIRECTORY = @"Corrade";
             public const string SIML_SETTINGS_DIRECTORY = @"Settings";
             public const string PACKAGE_FILE = @"Corrade.simlpk";
             public const string EVOLVE_DIRECTORY = @"Evolve";
@@ -7426,7 +7427,8 @@ namespace Corrade
             [Reflection.NameAttribute("syntax")] SYNTAX,
             [Reflection.NameAttribute("permission")] PERMISSION,
             [Reflection.NameAttribute("description")] DESCRIPTION,
-            [Reflection.NameAttribute("message")] MESSAGE
+            [Reflection.NameAttribute("message")] MESSAGE,
+            [Reflection.NameAttribute("world")] WORLD
         }
 
         /// <summary>
@@ -7778,6 +7780,22 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=getobjectsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive[,Primitive...]>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getobjectsdata")]
+            [Reflection.NameAttribute("getobjectsdata")]
+            GETOBJECTSDATA,
+
+            [CommandInputSyntax(
+                "<command=getobjectdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive[,Primitive...]>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getobjectdata")]
+            [Reflection.NameAttribute("getobjectdata")]
+            GETOBJECTDATA,
 
             [CommandInputSyntax(
                 "<command=getgroupmembersdata>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<data=<GroupMember[,GroupMember...]>>&[callback=<STRING>]"

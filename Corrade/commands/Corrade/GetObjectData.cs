@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////
+﻿///////////////////////////////////////////////////////////////////////////
 //  Copyright (C) Wizardry and Steamworks 2013 - License: GNU GPLv3      //
 //  Please see: http://www.gnu.org/licenses/gpl.html for legal details,  //
 //  rights of fair usage, the disclaimer and warranty conditions.        //
@@ -18,7 +18,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setobjectposition =
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getobjectdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -71,29 +71,13 @@ namespace Corrade
                             }
                             break;
                     }
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
+                    var data = GetStructuredData(primitive,
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                            corradeCommandParameters.Message))).ToList();
+                    if (data.Any())
                     {
-                        simulator = Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                    }
-                    if (simulator == null)
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
-                    Vector3 position;
-                    if (
-                        !Vector3.TryParse(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
-                                    corradeCommandParameters.Message)),
-                            out position))
-                    {
-                        throw new ScriptException(ScriptError.INVALID_POSITION);
-                    }
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.SetPosition(simulator,
-                            primitive.LocalID, position);
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

@@ -61,42 +61,26 @@ namespace Corrade
                     {
                         case true:
                             if (
-                                !Services.FindPrimitive(Client,
+                                !Services.FindObject(Client,
                                     itemUUID,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                         default:
                             if (
-                                !Services.FindPrimitive(Client,
+                                !Services.FindObject(Client,
                                     item,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
-                    }
-                    // if the primitive is not an object (the root) or the primitive
-                    // is not an object as an avatar attachment then do not export it.
-                    if (!primitive.ParentID.Equals(0) &&
-                        !Services.GetAvatars(Client, range, corradeConfiguration.Range,
-                            corradeConfiguration.ServicesTimeout,
-                            corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
-                            .ToArray()
-                            .AsParallel()
-                            .Any(o => o.LocalID.Equals(primitive.ParentID)))
-                    {
-                        throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
 
                     var exportPrimitivesSet = new HashSet<Primitive>();
@@ -106,9 +90,7 @@ namespace Corrade
                     var LockObject = new object();
 
                     // find all the children that have the object as parent.
-                    Services.GetPrimitives(Client, range, corradeConfiguration.Range,
-                        corradeConfiguration.ServicesTimeout,
-                        corradeConfiguration.DataTimeout, new Time.DecayingAlarm(corradeConfiguration.DataDecayType))
+                    Services.GetPrimitives(Client, range)
                         .ToArray()
                         .AsParallel()
                         .Where(o => o.ParentID.Equals(root.LocalID))
@@ -232,9 +214,10 @@ namespace Corrade
                                         using (var bitmapImage = managedImage.ExportBitmap())
                                         {
                                             var encoderParameters =
-                                                new EncoderParameters(1);
-                                            encoderParameters.Param[0] =
-                                                new EncoderParameter(Encoder.Quality, 100L);
+                                                new EncoderParameters(1)
+                                                {
+                                                    Param = {[0] = new EncoderParameter(Encoder.Quality, 100L)}
+                                                };
                                             bitmapImage.Save(imageStream,
                                                 ImageCodecInfo.GetImageDecoders()
                                                     .AsParallel()

@@ -65,7 +65,7 @@ namespace wasOpenMetaverse
         public static void Attach(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item,
             AttachmentPoint point, bool replace, uint millisecondsTimeout)
         {
-            InventoryItem realItem = ResolveItemLink(Client, item);
+            var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             lock (Locks.ClientInstanceAppearanceLock)
             {
@@ -78,7 +78,7 @@ namespace wasOpenMetaverse
         public static void Detach(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item,
             uint millisecondsTimeout)
         {
-            InventoryItem realItem = ResolveItemLink(Client, item);
+            var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             RemoveLink(Client, realItem, CurrentOutfitFolder);
             lock (Locks.ClientInstanceAppearanceLock)
@@ -91,7 +91,7 @@ namespace wasOpenMetaverse
         public static void Wear(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item, bool replace,
             uint millisecondsTimeout)
         {
-            InventoryItem realItem = ResolveItemLink(Client, item);
+            var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return;
             lock (Locks.ClientInstanceAppearanceLock)
             {
@@ -104,7 +104,7 @@ namespace wasOpenMetaverse
         public static void UnWear(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item,
             uint millisecondsTimeout)
         {
-            InventoryItem realItem = ResolveItemLink(Client, item);
+            var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return;
             lock (Locks.ClientInstanceAppearanceLock)
             {
@@ -122,9 +122,9 @@ namespace wasOpenMetaverse
         /// <returns>true if the item is a body part</returns>
         public static bool IsBodyPart(GridClient Client, InventoryItem item)
         {
-            InventoryItem realItem = ResolveItemLink(Client, item);
+            var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return false;
-            WearableType t = ((InventoryWearable) realItem).WearableType;
+            var t = ((InventoryWearable) realItem).WearableType;
             return t.Equals(WearableType.Shape) ||
                    t.Equals(WearableType.Skin) ||
                    t.Equals(WearableType.Eyes) ||
@@ -141,7 +141,7 @@ namespace wasOpenMetaverse
         {
             if (outfitFolder == null) return;
 
-            List<InventoryItem> contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
+            var contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
             if (!contents.AsParallel().Any(o => o.AssetUUID.Equals(item.UUID)))
             {
                 lock (Locks.ClientInstanceInventoryLock)
@@ -170,7 +170,7 @@ namespace wasOpenMetaverse
         {
             if (outfitFolder == null) return;
 
-            List<InventoryItem> contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
+            var contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
             lock (Locks.ClientInstanceInventoryLock)
             {
                 Client.Inventory.Remove(
@@ -195,10 +195,11 @@ namespace wasOpenMetaverse
         public static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(GridClient Client,
             uint dataTimeout)
         {
-            HashSet<Primitive> selectedPrimitives =
-                new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.Copy()
-                    .Values
-                    .AsParallel()
+            var selectedPrimitives =
+                new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
+                    .Select(o => o.ObjectsPrimitives)
+                    .Select(o => o.Copy().Values)
+                    .SelectMany(o => o)
                     .Where(o => o.ParentID.Equals(Client.Self.LocalID)));
             if (!selectedPrimitives.Any() || !Services.UpdatePrimitives(Client, ref selectedPrimitives, dataTimeout))
                 return Enumerable.Empty<KeyValuePair<Primitive, AttachmentPoint>>();
@@ -243,33 +244,62 @@ namespace wasOpenMetaverse
         /// <param name="Client">the grid client to use</param>
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, string criteria)
+        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, string criteria,
+            uint millisecondsTimeout)
         {
-            if (string.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
+            var rootFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
+            if (rootFolder == null)
+                yield break;
+            var inventoryFolders = new HashSet<InventoryFolder>();
+            foreach (var item in Client.Inventory.Store.GetContents(rootFolder))
             {
-                if (typeof (T) == typeof (InventoryNode))
+                if (string.Equals(criteria, item.Name, StringComparison.Ordinal))
                 {
-                    yield return (T) (object) root;
+                    if (typeof (T) == typeof (InventoryNode))
+                    {
+                        yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
+                    }
+                    if (typeof (T) == typeof (InventoryBase))
+                    {
+                        yield return (T) (object) item;
+                    }
                 }
-                if (typeof (T) == typeof (InventoryBase))
+                if (item is InventoryFolder)
                 {
-                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
+                    inventoryFolders.Add(item as InventoryFolder);
                 }
             }
-            foreach (
-                T item in
-                    root.Nodes.Values.AsParallel().SelectMany(node => directFindInventory<T>(Client, node, criteria)))
+            foreach (var folder in inventoryFolders)
             {
-                yield return item;
+                var folderNode = Client.Inventory.Store.GetNodeFor(folder.UUID);
+                if (folderNode == null)
+                    continue;
+                if (folderNode.NeedsUpdate)
+                {
+                    var FolderUpdatedEvent = new ManualResetEvent(false);
+                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) => FolderUpdatedEvent.Set();
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    FolderUpdatedEvent.Reset();
+                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                }
+                foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
+                {
+                    yield return o;
+                }
             }
         }
 
-        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, string criteria)
+        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, string criteria,
+            uint millisecondsTimeout)
         {
             lock (Locks.ClientInstanceInventoryLock)
             {
-                return directFindInventory<T>(Client, root, criteria);
+                return directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
             }
         }
 
@@ -287,35 +317,62 @@ namespace wasOpenMetaverse
         /// <param name="Client">the grid client to use</param>
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, UUID criteria)
+        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, UUID criteria,
+            uint millisecondsTimeout)
         {
-            if (criteria.Equals(root.Data.UUID) ||
-                (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
-                 (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
+            var rootFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
+            if (rootFolder == null)
+                yield break;
+            var inventoryFolders = new HashSet<InventoryFolder>();
+            foreach (var item in Client.Inventory.Store.GetContents(rootFolder))
             {
-                if (typeof (T) == typeof (InventoryNode))
+                if (criteria.Equals(item.UUID))
                 {
-                    yield return (T) (object) root;
+                    if (typeof (T) == typeof (InventoryNode))
+                    {
+                        yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
+                    }
+                    if (typeof (T) == typeof (InventoryBase))
+                    {
+                        yield return (T) (object) item;
+                    }
                 }
-                if (typeof (T) == typeof (InventoryBase))
+                if (item is InventoryFolder)
                 {
-                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
+                    inventoryFolders.Add(item as InventoryFolder);
                 }
             }
-            foreach (
-                T item in
-                    root.Nodes.Values.AsParallel().SelectMany(node => directFindInventory<T>(Client, node, criteria)))
+            foreach (var folder in inventoryFolders)
             {
-                yield return item;
+                var folderNode = Client.Inventory.Store.GetNodeFor(folder.UUID);
+                if (folderNode == null)
+                    continue;
+                if (folderNode.NeedsUpdate)
+                {
+                    var FolderUpdatedEvent = new ManualResetEvent(false);
+                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) => FolderUpdatedEvent.Set();
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    FolderUpdatedEvent.Reset();
+                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                }
+                foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
+                {
+                    yield return o;
+                }
             }
         }
 
-        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, UUID criteria)
+        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, UUID criteria,
+            uint millisecondsTimeout)
         {
             lock (Locks.ClientInstanceInventoryLock)
             {
-                return directFindInventory<T>(Client, root, criteria);
+                return directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
             }
         }
 
@@ -333,33 +390,62 @@ namespace wasOpenMetaverse
         /// <param name="Client">the grid client to use</param>
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, Regex criteria)
+        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, Regex criteria,
+            uint millisecondsTimeout)
         {
-            if (criteria.IsMatch(root.Data.Name))
+            var rootFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
+            if (rootFolder == null)
+                yield break;
+            var inventoryFolders = new HashSet<InventoryFolder>();
+            foreach (var item in Client.Inventory.Store.GetContents(rootFolder))
             {
-                if (typeof (T) == typeof (InventoryNode))
+                if (criteria.IsMatch(item.Name))
                 {
-                    yield return (T) (object) root;
+                    if (typeof (T) == typeof (InventoryNode))
+                    {
+                        yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
+                    }
+                    if (typeof (T) == typeof (InventoryBase))
+                    {
+                        yield return (T) (object) item;
+                    }
                 }
-                if (typeof (T) == typeof (InventoryBase))
+                if (item is InventoryFolder)
                 {
-                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
+                    inventoryFolders.Add(item as InventoryFolder);
                 }
             }
-            foreach (
-                T item in
-                    root.Nodes.Values.AsParallel().SelectMany(node => directFindInventory<T>(Client, node, criteria)))
+            foreach (var folder in inventoryFolders)
             {
-                yield return item;
+                var folderNode = Client.Inventory.Store.GetNodeFor(folder.UUID);
+                if (folderNode == null)
+                    continue;
+                if (folderNode.NeedsUpdate)
+                {
+                    var FolderUpdatedEvent = new ManualResetEvent(false);
+                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) => FolderUpdatedEvent.Set();
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    FolderUpdatedEvent.Reset();
+                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                }
+                foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
+                {
+                    yield return o;
+                }
             }
         }
 
-        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, Regex criteria)
+        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, Regex criteria,
+            uint millisecondsTimeout)
         {
             lock (Locks.ClientInstanceInventoryLock)
             {
-                return directFindInventory<T>(Client, root, criteria);
+                return directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
             }
         }
 
@@ -396,7 +482,7 @@ namespace wasOpenMetaverse
                 }
             }
             foreach (
-                KeyValuePair<T, LinkedList<string>> o in
+                var o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => directFindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
                             prefix.Concat(new[] {root.Data.Name})))))
@@ -449,7 +535,7 @@ namespace wasOpenMetaverse
                 }
             }
             foreach (
-                KeyValuePair<T, LinkedList<string>> o in
+                var o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => directFindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
                             prefix.Concat(new[] {root.Data.Name})))))
@@ -500,7 +586,7 @@ namespace wasOpenMetaverse
                 }
             }
             foreach (
-                KeyValuePair<T, LinkedList<string>> o in
+                var o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => directFindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
                             prefix.Concat(new[] {root.Data.Name})))))
@@ -530,11 +616,11 @@ namespace wasOpenMetaverse
         public static void UpdateInventoryRecursive(GridClient Client, InventoryFolder o, uint millisecondsTimeout)
         {
             // Create the queue of folders.
-            BlockingQueue<InventoryFolder> inventoryFolders = new BlockingQueue<InventoryFolder>();
+            var inventoryFolders = new BlockingQueue<InventoryFolder>();
             // Enqueue the first folder (root).
             inventoryFolders.Enqueue(o);
 
-            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            var FolderUpdatedEvent = new ManualResetEvent(false);
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
             {
                 // Enqueue all the new folders.
@@ -545,19 +631,20 @@ namespace wasOpenMetaverse
                 FolderUpdatedEvent.Set();
             };
 
-            lock (Locks.ClientInstanceInventoryLock)
+            do
             {
-                do
+                var folder = inventoryFolders.Dequeue();
+                if (folder == null) continue;
+                lock (Locks.ClientInstanceInventoryLock)
                 {
-                    InventoryFolder folder = inventoryFolders.Dequeue();
-                    if (folder == null) continue;
                     Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    FolderUpdatedEvent.Reset();
                     Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
                         InventorySortOrder.ByDate);
                     FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                } while (!inventoryFolders.Count.Equals(0));
-            }
+                }
+            } while (!inventoryFolders.Count.Equals(0));
         }
 
 
@@ -575,7 +662,7 @@ namespace wasOpenMetaverse
         {
             Func<PermissionMask, string> segment = o =>
             {
-                StringBuilder seg = new StringBuilder();
+                var seg = new StringBuilder();
 
                 switch (!((uint) o & (uint) PermissionMask.Copy).Equals(0))
                 {
@@ -640,7 +727,7 @@ namespace wasOpenMetaverse
                 return seg.ToString();
             };
 
-            StringBuilder x = new StringBuilder();
+            var x = new StringBuilder();
             x.Append(segment(permissions.BaseMask));
             x.Append(segment(permissions.EveryoneMask));
             x.Append(segment(permissions.GroupMask));
@@ -729,15 +816,15 @@ namespace wasOpenMetaverse
             string wasPermissions, uint millisecondsTimeout)
         {
             // Update the object.
-            Permissions permissions = wasStringToPermissions(wasPermissions);
+            var permissions = wasStringToPermissions(wasPermissions);
             inventoryItem.Permissions = permissions;
             lock (Locks.ClientInstanceInventoryLock)
             {
                 Client.Inventory.RequestUpdateItem(inventoryItem);
             }
             // Now check that the permissions were set.
-            bool succeeded = false;
-            ManualResetEvent ItemReceivedEvent = new ManualResetEvent(false);
+            var succeeded = false;
+            var ItemReceivedEvent = new ManualResetEvent(false);
             EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
                 (sender, args) =>
                 {

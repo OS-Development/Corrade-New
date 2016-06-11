@@ -114,13 +114,15 @@ namespace Corrade
                                             {
                                                 case true:
                                                     inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
-                                                        Client.Inventory.Store.RootNode, itemUUID
+                                                        Client.Inventory.Store.RootNode, itemUUID,
+                                                        corradeConfiguration.ServicesTimeout
                                                         ).FirstOrDefault() as InventoryItem;
                                                     break;
                                                 default:
                                                     inventoryItem =
                                                         Inventory.FindInventory<InventoryBase>(Client,
-                                                            Client.Inventory.Store.RootNode, o.Value)
+                                                            Client.Inventory.Store.RootNode, o.Value,
+                                                            corradeConfiguration.ServicesTimeout)
                                                             .FirstOrDefault() as InventoryItem;
                                                     break;
                                             }

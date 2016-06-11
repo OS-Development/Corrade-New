@@ -54,8 +54,8 @@ namespace Corrade
                         if (!UUID.TryParse(item, out textureUUID))
                         {
                             var inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item
-                                    ).FirstOrDefault();
+                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
+                                    corradeConfiguration.ServicesTimeout).FirstOrDefault();
                             if (!(inventoryBaseItem is InventoryTexture))
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);

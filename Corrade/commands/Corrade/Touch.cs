@@ -52,10 +52,8 @@ namespace Corrade
                                 !Services.FindPrimitive(Client,
                                     itemUUID,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
                                 throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                             }
@@ -65,10 +63,8 @@ namespace Corrade
                                 !Services.FindPrimitive(Client,
                                     item,
                                     range,
-                                    corradeConfiguration.Range,
-                                    ref primitive, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    ref primitive,
+                                    corradeConfiguration.DataTimeout))
                             {
                                 throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                             }

@@ -43,7 +43,7 @@ namespace Corrade
                             lock (SIMLBotLock)
                             {
                                 result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                                    SynBot.Chat(new ChatRequest(request, SynBotUser)).BotMessage);
+                                    SynBot.Chat(request).BotMessage);
                             }
                             break;
                         case Action.REBUILD:

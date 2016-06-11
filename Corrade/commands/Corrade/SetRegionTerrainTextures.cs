@@ -60,7 +60,8 @@ namespace Corrade
                                         default:
                                             var inventoryBaseItem =
                                                 Inventory.FindInventory<InventoryBase>(Client,
-                                                    Client.Inventory.Store.RootNode, data[o]
+                                                    Client.Inventory.Store.RootNode, data[o],
+                                                    corradeConfiguration.ServicesTimeout
                                                     ).FirstOrDefault();
                                             switch (inventoryBaseItem is InventoryTexture)
                                             {

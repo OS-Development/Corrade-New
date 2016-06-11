@@ -9,7 +9,6 @@ using System.Linq;
 using System.Threading;
 using OpenMetaverse;
 using wasOpenMetaverse;
-using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
@@ -29,9 +28,8 @@ namespace Corrade
                 Primitive primitive = null;
                 if (
                     !Services.FindPrimitive(Client, sitTarget,
-                        Constants.LSL.SENSOR_RANGE, corradeConfiguration.Range,
-                        ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        Constants.LSL.SENSOR_RANGE,
+                        ref primitive, corradeConfiguration.DataTimeout))
                 {
                     return;
                 }
