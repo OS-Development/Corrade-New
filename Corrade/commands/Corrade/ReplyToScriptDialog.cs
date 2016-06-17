@@ -82,9 +82,21 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
                         }
                     }
-                    lock (Locks.ClientInstanceSelfLock)
+                    switch (Reflection.GetEnumValueFromName<Action>(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                corradeCommandParameters.Message))
+                            .ToLowerInvariant()))
                     {
-                        Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
+                        case Action.IGNORE:
+                            break;
+                        default:
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
+                            }
+                            break;
                     }
                 };
         }

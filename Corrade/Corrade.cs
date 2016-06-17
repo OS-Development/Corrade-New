@@ -17,6 +17,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Management;
 using System.Net;
+using System.Net.Cache;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -44,7 +45,6 @@ using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 using Settings = OpenMetaverse.Settings;
 using ThreadState = System.Threading.ThreadState;
-using System.Net.Cache;
 
 #endregion
 
@@ -351,7 +351,13 @@ namespace Corrade
             [Status(13399)] [Reflection.DescriptionAttribute("no access token provided")] NO_ACCESS_TOKEN_PROVIDED,
             [Status(55091)] [Reflection.DescriptionAttribute("no access token secret provided")] NO_ACCESS_TOKEN_SECRET_PROVIDED,
             [Status(55051)] [Reflection.DescriptionAttribute("message too long")] MESSAGE_TOO_LONG,
-            [Status(18672)] [Reflection.DescriptionAttribute("could not post tweet")] COULD_NOT_POST_TWEET
+            [Status(18672)] [Reflection.DescriptionAttribute("could not post tweet")] COULD_NOT_POST_TWEET,
+            [Status(25119)] [Reflection.DescriptionAttribute("unable to retrieve transactions")] UNABLE_TO_RETRIEVE_TRANSACTIONS,
+            [Status(54668)] [Reflection.DescriptionAttribute("unable to authenticate")] UNABLE_TO_AUTHENTICATE,
+            [Status(40491)] [Reflection.DescriptionAttribute("no transactions found")] NO_TRANSACTIONS_FOUND,
+            [Status(41007)] [Reflection.DescriptionAttribute("no secret provided")] NO_SECRET_PROVIDED,
+            [Status(21833)] [Reflection.DescriptionAttribute("invalid date")] INVALID_DATE,
+            [Status(24951)] [Reflection.DescriptionAttribute("feature only available in SecondLife")] FEATURE_ONLY_AVAILABLE_IN_SECONDLIFE
         }
 
         /// <summary>
@@ -5306,7 +5312,7 @@ namespace Corrade
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Sends a post request to an URL with set key-value pairs.
+        ///     Sends a POST request to an URL with set key-value pairs.
         /// </summary>
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
@@ -5351,7 +5357,117 @@ namespace Corrade
                     {
                         using (var responseStream = response.GetResponseStream())
                         {
-                            await responseStream.CopyToAsync(responseMemoryStream);
+                            if (responseStream != null)
+                                await responseStream.CopyToAsync(responseMemoryStream);
+                        }
+                    }
+                    return responseMemoryStream.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
+                    ex.Message);
+            }
+
+            return null;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Sends a POST request to an URL with set key-value pairs.
+        /// </summary>
+        /// <param name="URL">the url to send the message to</param>
+        /// <param name="message">key-value pairs to send</param>
+        /// <param name="cookies">a cookie container</param>
+        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
+        private static async Task<byte[]> wasPOST(string URL, Dictionary<string, string> message,
+            CookieContainer cookies,
+            uint millisecondsTimeout)
+        {
+            try
+            {
+                var request = (HttpWebRequest) WebRequest.Create(URL);
+                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
+                request.Proxy = WebRequest.DefaultWebProxy;
+                request.ProtocolVersion = HttpVersion.Version11;
+                request.Pipelined = true;
+                request.KeepAlive = true;
+                request.Timeout = (int) millisecondsTimeout;
+                request.AllowAutoRedirect = true;
+                request.Method = WebRequestMethods.Http.Post;
+                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.CacheIfAvailable);
+                request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                request.CookieContainer = cookies;
+                var data = Encoding.UTF8.GetBytes(KeyValue.Encode(message));
+                request.ContentLength = data.Length;
+                // send request
+                using (var requestStream = await request.GetRequestStreamAsync())
+                {
+                    await requestStream.WriteAsync(data, 0, data.Length);
+                }
+                // read response
+                using (var responseMemoryStream = new MemoryStream())
+                {
+                    using (var response = await request.GetResponseAsync())
+                    {
+                        using (var responseStream = response.GetResponseStream())
+                        {
+                            if (responseStream != null)
+                                await responseStream.CopyToAsync(responseMemoryStream);
+                        }
+                    }
+                    return responseMemoryStream.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
+                    ex.Message);
+            }
+
+            return null;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Sends a GET request to an URL with set key-value pairs.
+        /// </summary>
+        /// <param name="URL">the url to send the message to</param>
+        /// <param name="message">key-value pairs to send</param>
+        /// <param name="cookies">a cookie container</param>
+        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
+        private static async Task<byte[]> wasGET(string URL, Dictionary<string, string> message, CookieContainer cookies,
+            uint millisecondsTimeout)
+        {
+            try
+            {
+                var request = (HttpWebRequest) WebRequest.Create(URL + "?" + KeyValue.Encode(message));
+                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
+                request.Proxy = WebRequest.DefaultWebProxy;
+                request.ProtocolVersion = HttpVersion.Version11;
+                request.Pipelined = true;
+                request.KeepAlive = true;
+                request.Timeout = (int) millisecondsTimeout;
+                request.AllowAutoRedirect = true;
+                request.Method = WebRequestMethods.Http.Get;
+                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.CacheIfAvailable);
+                request.CookieContainer = cookies;
+                // read response
+                using (var responseMemoryStream = new MemoryStream())
+                {
+                    using (var response = await request.GetResponseAsync())
+                    {
+                        using (var responseStream = response.GetResponseStream())
+                        {
+                            if (responseStream != null)
+                                await responseStream.CopyToAsync(responseMemoryStream);
                         }
                     }
                     return responseMemoryStream.ToArray();
@@ -6391,7 +6507,8 @@ namespace Corrade
             [Reflection.NameAttribute("unwear")] UNWEAR,
             [Reflection.NameAttribute("post")] POST,
             [Reflection.NameAttribute("tweet")] TWEET,
-            [Reflection.NameAttribute("detect")] DETECT
+            [Reflection.NameAttribute("detect")] DETECT,
+            [Reflection.NameAttribute("ignore")] IGNORE
         }
 
         /// <summary>
@@ -7633,6 +7750,54 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     Second Life website transactions.
+        /// </summary>
+        [XmlRoot("transactions")]
+        public class Transactions
+        {
+            [XmlElement("transaction")]
+            public List<Transaction> list { get; set; }
+        }
+
+        /// <summary>
+        ///     Second Life website transaction.
+        /// </summary>
+        [XmlRoot("transaction")]
+        public class Transaction
+        {
+            [XmlElement("id")]
+            public UUID ID { get; set; }
+
+            [XmlElement("type")]
+            public string Type { get; set; }
+
+            [XmlElement("description")]
+            public string Description { get; set; }
+
+            [XmlElement("region")]
+            public string Region { get; set; }
+
+            [XmlElement("deposit")]
+            public uint Deposit { get; set; }
+
+            [XmlIgnore]
+            public DateTime Time { get; set; }
+
+            [XmlElement("time")]
+            public string Timestamp
+            {
+                get { return Time.ToString(Constants.LSL.DATE_TIME_STAMP); }
+                set { Time = DateTime.Parse(value); }
+            }
+
+            [XmlElement("resident")]
+            public string Resident { get; set; }
+
+            [XmlElement("end_balance")]
+            public uint EndBalance { get; set; }
+        }
+
+        /// <summary>
         ///     A Corrade notification.
         /// </summary>
         [Serializable]
@@ -7782,20 +7947,16 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=getaccounttransactionsdata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[data=<Transaction[,Transaction...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getaccounttransactionsdata")] [Reflection.NameAttribute("getaccounttransactionsdata")] GETACCOUNTTRANSACTIONSDATA,
+
+            [CommandInputSyntax(
                 "<command=getobjectsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive[,Primitive...]>]&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
-            [CorradeCommand("getobjectsdata")]
-            [Reflection.NameAttribute("getobjectsdata")]
-            GETOBJECTSDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getobjectsdata")] [Reflection.NameAttribute("getobjectsdata")] GETOBJECTSDATA,
 
             [CommandInputSyntax(
                 "<command=getobjectdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive[,Primitive...]>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
-            [CorradeCommand("getobjectdata")]
-            [Reflection.NameAttribute("getobjectdata")]
-            GETOBJECTDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getobjectdata")] [Reflection.NameAttribute("getobjectdata")] GETOBJECTDATA,
 
             [CommandInputSyntax(
                 "<command=getgroupmembersdata>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<data=<GroupMember[,GroupMember...]>>&[callback=<STRING>]"
