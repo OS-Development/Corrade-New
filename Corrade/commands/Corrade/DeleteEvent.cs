@@ -6,11 +6,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Xml.Serialization;
 using CorradeConfiguration;
 using HtmlAgilityPack;
 using wasSharp;
@@ -21,7 +19,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getaccounttransactionsdata =
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteevent =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -54,23 +52,12 @@ namespace Corrade
                     if (string.IsNullOrEmpty(secret))
                         throw new ScriptException(ScriptError.NO_SECRET_PROVIDED);
 
-                    DateTime from;
-                    if (!DateTime.TryParse(wasInput(
+                    uint id;
+                    if (!uint.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
-                            corradeCommandParameters.Message)), out from))
-                    {
-                        throw new ScriptException(ScriptError.INVALID_DATE);
-                    }
-
-                    DateTime to;
-                    if (!DateTime.TryParse(wasInput(
-                        KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
-                            corradeCommandParameters.Message)), out to))
-                    {
-                        throw new ScriptException(ScriptError.INVALID_DATE);
-                    }
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ID)),
+                            corradeCommandParameters.Message)), out id))
+                        throw new ScriptException(ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
 
                     var cookieContainer = new CookieContainer();
 
@@ -116,39 +103,42 @@ namespace Corrade
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = wasGET("https://secondlife.com/my/account/download_transactions.php",
-                        new Dictionary<string, string>
-                        {
-                            {"date_start", from.ToString("yyyy-MM-dd ")},
-                            {"date_end", to.ToString("yyyy-MM-dd ")},
-                            {"type", "xml"},
-                            {"include_zero", "yes"}
-                        }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                    // Events
+                    postData = wasGET("https://secondlife.com/my/community/events/tos.php",
+                        new Dictionary<string, string>(),
+                        cookieContainer, corradeConfiguration.ServicesTimeout);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.NO_TRANSACTIONS_FOUND);
+                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
-                    Transactions transactions;
-                    var serializer = new XmlSerializer(typeof (Transactions));
-                    try
-                    {
-                        using (TextReader reader = new StringReader(Encoding.UTF8.GetString(postData.Result)))
+                    doc = new HtmlDocument();
+                    HtmlNode.ElementsFlags.Remove("form");
+                    doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
+                    var ToSNodes = doc.DocumentNode.SelectNodes("//form[@action='tos.php']/input[@type='hidden']");
+                    if (ToSNodes == null || !ToSNodes.Any())
+                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+
+                    var eventToS =
+                        ToSNodes
+                            .ToDictionary(input => input.Attributes["name"].Value,
+                                input => input.Attributes["value"].Value);
+                    eventToS.Add("action", "I Agree");
+
+                    postData = wasPOST("https://secondlife.com/my/community/events/tos.php", eventToS, cookieContainer,
+                        corradeConfiguration.ServicesTimeout);
+
+                    if (postData.Result == null)
+                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+
+                    postData = wasGET("https://secondlife.com/my/community/events/delete.php",
+                        new Dictionary<string, string>
                         {
-                            transactions = (Transactions) serializer.Deserialize(reader);
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_TRANSACTIONS);
-                    }
-                    var data = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                        corradeCommandParameters.Message));
-                    var csv = new List<string>(transactions.list.SelectMany(o => GetStructuredData(o, data)));
-                    if (csv.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.FromEnumerable(csv));
-                    }
+                            {"id", id.ToString()}
+                        }, cookieContainer,
+                        corradeConfiguration.ServicesTimeout);
+
+                    if (postData.Result == null)
+                        throw new ScriptException(ScriptError.UNABLE_TO_DELETE_EVENT);
                 };
         }
     }

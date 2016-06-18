@@ -149,6 +149,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="commands\Corrade\AddEvent.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\DeleteEvent.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetAccountTransactionsData.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -342,6 +348,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetEstateList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetEventFormData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetFriendData.cs">
@@ -573,6 +582,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Moderate.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\ModifyEvent.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Mute.cs">

@@ -86,6 +86,7 @@ namespace Corrade
         ///     Removals: 12181 - no database key specified
         ///     Removals: 44994 - no database value specified
         ///     Removals: 19142 - unknown database action
+        ///     Removals: 24951 - feature only available in secondlife
         /// </remarks>
         public enum ScriptError : uint
         {
@@ -357,7 +358,18 @@ namespace Corrade
             [Status(40491)] [Reflection.DescriptionAttribute("no transactions found")] NO_TRANSACTIONS_FOUND,
             [Status(41007)] [Reflection.DescriptionAttribute("no secret provided")] NO_SECRET_PROVIDED,
             [Status(21833)] [Reflection.DescriptionAttribute("invalid date")] INVALID_DATE,
-            [Status(24951)] [Reflection.DescriptionAttribute("feature only available in SecondLife")] FEATURE_ONLY_AVAILABLE_IN_SECONDLIFE
+            [Status(33381)] [Reflection.DescriptionAttribute("unable to reach events page")] UNABLE_TO_REACH_EVENTS_PAGE,
+            [Status(54450)] [Reflection.DescriptionAttribute("unable to agree to ToS")] UNABLE_TO_AGREE_TO_TOS,
+            [Status(01691)] [Reflection.DescriptionAttribute("unable to post event")] UNABLE_TO_POST_EVENT,
+            [Status(44059)] [Reflection.DescriptionAttribute("unable to get event identifier")] UNABLE_TO_GET_EVENT_IDENTIFIER,
+            [Status(63915)] [Reflection.DescriptionAttribute("no time provided")] NO_TIME_PROVIDED,
+            [Status(57196)] [Reflection.DescriptionAttribute("no duration provided")] NO_DURATION_PROVIDED,
+            [Status(63597)] [Reflection.DescriptionAttribute("no date provided")] NO_DATE_PROVIDED,
+            [Status(25003)] [Reflection.DescriptionAttribute("no category provided")] NO_CATEGORY_PROVIDED,
+            [Status(21718)] [Reflection.DescriptionAttribute("no location provided")] NO_LOCATION_PROVIDED,
+            [Status(23926)] [Reflection.DescriptionAttribute("unable to delete event")] UNABLE_TO_DELETE_EVENT,
+            [Status(08339)] [Reflection.DescriptionAttribute("no event identifier provided")] NO_EVENT_IDENTIFIER_PROVIDED,
+            [Status(33994)] [Reflection.DescriptionAttribute("unable to retrieve form parameters")] UNABLE_TO_RETRIEVE_FORM_PARAMETERS
         }
 
         /// <summary>
@@ -1960,32 +1972,35 @@ namespace Corrade
                     // These are index collections so pre-prend an index.
                     yield return "Index";
                     yield return iList.IndexOf(item).ToString();
-                    foreach (var fi in wasGetFields(item, item.GetType().Name))
+                    switch (item.GetType().IsPrimitive || item.GetType() == typeof (string))
                     {
-                        if (fi.Key != null)
-                        {
-                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                        case true: // Don't bother with primitive types.
+                            yield return item.ToString();
+                            break;
+                        default:
+                            foreach (var fi in wasGetFields(item, item.GetType().Name))
                             {
-                                yield return fi.Key.Name;
-                                yield return fieldString;
+                                if (fi.Key != null)
+                                {
+                                    foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                                    {
+                                        yield return fi.Key.Name;
+                                        yield return fieldString;
+                                    }
+                                }
                             }
-                        }
-                    }
-                    foreach (var pi in wasGetProperties(item, item.GetType().Name))
-                    {
-                        if (pi.Key != null)
-                        {
-                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (var pi in wasGetProperties(item, item.GetType().Name))
                             {
-                                yield return pi.Key.Name;
-                                yield return propertyString;
+                                if (pi.Key != null)
+                                {
+                                    foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                                    {
+                                        yield return pi.Key.Name;
+                                        yield return propertyString;
+                                    }
+                                }
                             }
-                        }
-                    }
-                    // Don't bother with primitive types.
-                    if (item.GetType().IsPrimitive)
-                    {
-                        yield return item.ToString();
+                            break;
                     }
                 }
                 yield break;
@@ -1997,54 +2012,71 @@ namespace Corrade
                 foreach (DictionaryEntry entry in dictionary)
                 {
                     // First the keys.
-                    foreach (var fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
+                    switch (entry.Key.GetType().IsPrimitive || entry.Key.GetType() == typeof (string))
                     {
-                        if (fi.Key != null)
-                        {
-                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                        case true: // Don't bother with primitive types.
+                            yield return entry.Key.ToString();
+                            break;
+                        default:
+                            foreach (var fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
                             {
-                                yield return fi.Key.Name;
-                                yield return fieldString;
+                                if (fi.Key != null)
+                                {
+                                    foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                                    {
+                                        yield return fi.Key.Name;
+                                        yield return fieldString;
+                                    }
+                                }
                             }
-                        }
-                    }
-                    foreach (
-                        var pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
-                    {
-                        if (pi.Key != null)
-                        {
-                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (
+                                var pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
                             {
-                                yield return pi.Key.Name;
-                                yield return propertyString;
+                                if (pi.Key != null)
+                                {
+                                    foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                                    {
+                                        yield return pi.Key.Name;
+                                        yield return propertyString;
+                                    }
+                                }
                             }
-                        }
+                            break;
                     }
+
                     // Then the values.
-                    foreach (var fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
-                        )
+                    switch (entry.Value.GetType().IsPrimitive || entry.Value.GetType() == typeof (string))
                     {
-                        if (fi.Key != null)
-                        {
-                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                        case true: // Don't bother with primitive types.
+                            yield return entry.Value.ToString();
+                            break;
+                        default:
+                            foreach (var fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
+                                )
                             {
-                                yield return fi.Key.Name;
-                                yield return fieldString;
+                                if (fi.Key != null)
+                                {
+                                    foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                                    {
+                                        yield return fi.Key.Name;
+                                        yield return fieldString;
+                                    }
+                                }
                             }
-                        }
-                    }
-                    foreach (
-                        var pi in
-                            wasGetProperties(entry.Value, entry.Value.GetType().Name))
-                    {
-                        if (pi.Key != null)
-                        {
-                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (
+                                var pi in
+                                    wasGetProperties(entry.Value, entry.Value.GetType().Name))
                             {
-                                yield return pi.Key.Name;
-                                yield return propertyString;
+                                if (pi.Key != null)
+                                {
+                                    foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                                    {
+                                        yield return pi.Key.Name;
+                                        yield return propertyString;
+                                    }
+                                }
                             }
-                        }
+                            break;
                     }
                 }
                 yield break;
@@ -2060,54 +2092,71 @@ namespace Corrade
                 foreach (DictionaryEntry entry in iDictionary)
                 {
                     // First the keys.
-                    foreach (var fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
+                    switch (entry.Key.GetType().IsPrimitive || entry.Key.GetType() == typeof (string))
                     {
-                        if (fi.Key != null)
-                        {
-                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                        case true: // Don't bother with primitive types.
+                            yield return entry.Key.ToString();
+                            break;
+                        default:
+                            foreach (var fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
                             {
-                                yield return fi.Key.Name;
-                                yield return fieldString;
+                                if (fi.Key != null)
+                                {
+                                    foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                                    {
+                                        yield return fi.Key.Name;
+                                        yield return fieldString;
+                                    }
+                                }
                             }
-                        }
-                    }
-                    foreach (
-                        var pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
-                    {
-                        if (pi.Key != null)
-                        {
-                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (
+                                var pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
                             {
-                                yield return pi.Key.Name;
-                                yield return propertyString;
+                                if (pi.Key != null)
+                                {
+                                    foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                                    {
+                                        yield return pi.Key.Name;
+                                        yield return propertyString;
+                                    }
+                                }
                             }
-                        }
+                            break;
                     }
+
                     // Then the values.
-                    foreach (var fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
-                        )
+                    switch (entry.Value.GetType().IsPrimitive || entry.Value.GetType() == typeof (string))
                     {
-                        if (fi.Key != null)
-                        {
-                            foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                        case true: // Don't bother with primitive types.
+                            yield return entry.Value.ToString();
+                            break;
+                        default:
+                            foreach (var fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
+                                )
                             {
-                                yield return fi.Key.Name;
-                                yield return fieldString;
+                                if (fi.Key != null)
+                                {
+                                    foreach (var fieldString in wasGetInfo(fi.Key, fi.Value))
+                                    {
+                                        yield return fi.Key.Name;
+                                        yield return fieldString;
+                                    }
+                                }
                             }
-                        }
-                    }
-                    foreach (
-                        var pi in
-                            wasGetProperties(entry.Value, entry.Value.GetType().Name))
-                    {
-                        if (pi.Key != null)
-                        {
-                            foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                            foreach (
+                                var pi in
+                                    wasGetProperties(entry.Value, entry.Value.GetType().Name))
                             {
-                                yield return pi.Key.Name;
-                                yield return propertyString;
+                                if (pi.Key != null)
+                                {
+                                    foreach (var propertyString in wasGetInfo(pi.Key, pi.Value))
+                                    {
+                                        yield return pi.Key.Name;
+                                        yield return propertyString;
+                                    }
+                                }
                             }
-                        }
+                            break;
                     }
                 }
                 yield break;
@@ -2116,6 +2165,7 @@ namespace Corrade
             if (data is DateTime)
             {
                 yield return ((DateTime) data).ToString(Constants.LSL.DATE_TIME_STAMP);
+                yield break;
             }
 
             // Use the Corrade permission system instead.
@@ -5252,7 +5302,7 @@ namespace Corrade
                         o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 var data = new List<string> {name};
-                var info = wasGetInfo(fi.Key, fi.Value).Union(wasGetInfo(pi.Key, pi.Value)).ToList();
+                var info = wasGetInfo(fi.Key, fi.Value).Concat(wasGetInfo(pi.Key, pi.Value)).ToList();
                 switch (info.Count.Equals(0))
                 {
                     case true:
@@ -7798,6 +7848,25 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     Form data for Second Life events.
+        /// </summary>
+        public class EventFormData
+        {
+            public Dictionary<string, uint> Category;
+            public Dictionary<string, uint> Duration;
+            public Dictionary<string, string> Location;
+            public Dictionary<string, string> Time;
+
+            public EventFormData()
+            {
+                Location = new Dictionary<string, string>();
+                Duration = new Dictionary<string, uint>();
+                Time = new Dictionary<string, string>();
+                Category = new Dictionary<string, uint>();
+            }
+        }
+
+        /// <summary>
         ///     A Corrade notification.
         /// </summary>
         [Serializable]
@@ -7945,6 +8014,25 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=modifyevent>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<id=<INTEGER>>&[name=<STRING>]&[description=<STRING>]&[date=<DateTime>]&[time=<DateTime>]&[duration=<INTEGER>]&[location=<STRING>]&[category=<INTEGER>]&[amount=<INTEGER>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("modifyevent")] [Reflection.NameAttribute("modifyevent")] MODIFYEVENT,
+
+            [CommandInputSyntax(
+                "<command=deleteevent>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[amount=<INTEGER>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("deleteevent")] [Reflection.NameAttribute("deleteevent")] DELETEEVENT,
+
+            [CommandInputSyntax(
+                "<command=addevent>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<name=<STRING>>&<description=<STRING>>&<date=<DateTime>>&<time=<DateTime>>&<duration=<INTEGER>>&<location=<STRING>>&<category=<INTEGER>>&[amount=<INTEGER>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("addevent")] [Reflection.NameAttribute("addevent")] ADDEVENT,
+
+            [Reflection.NameAttribute("location")] LOCATION,
+            [Reflection.NameAttribute("category")] CATEGORY,
+
+            [CommandInputSyntax(
+                "<command=geteventformdata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[data=<EventFormData[,EventFormData...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("geteventformdata")] [Reflection.NameAttribute("geteventformdata")] GETEVENTFORMDATA,
 
             [CommandInputSyntax(
                 "<command=getaccounttransactionsdata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[data=<Transaction[,Transaction...]>]&[callback=<STRING>]"
