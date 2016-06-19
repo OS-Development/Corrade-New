@@ -32,25 +32,25 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CorradeConfiguratorForm));
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Tabs = new System.Windows.Forms.TabControl();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.groupBox77 = new System.Windows.Forms.GroupBox();
+            this.ClientTabPage = new System.Windows.Forms.TabPage();
+            this.ClientIdentificationTagBox = new System.Windows.Forms.GroupBox();
             this.pictureBox12 = new System.Windows.Forms.PictureBox();
             this.ClientIdentificationTag = new System.Windows.Forms.TextBox();
-            this.groupBox10 = new System.Windows.Forms.GroupBox();
+            this.AbnormalExitCodeBox = new System.Windows.Forms.GroupBox();
             this.pictureBox10 = new System.Windows.Forms.PictureBox();
             this.AbnomalExitCode = new System.Windows.Forms.NumericUpDown();
-            this.groupBox9 = new System.Windows.Forms.GroupBox();
+            this.ExpectedExitCodeBox = new System.Windows.Forms.GroupBox();
             this.pictureBox11 = new System.Windows.Forms.PictureBox();
             this.ExpectedExitCode = new System.Windows.Forms.NumericUpDown();
-            this.groupBox8 = new System.Windows.Forms.GroupBox();
+            this.GroupCreateFeeBox = new System.Windows.Forms.GroupBox();
             this.pictureBox9 = new System.Windows.Forms.PictureBox();
             this.GroupCreateFee = new System.Windows.Forms.TextBox();
-            this.groupBox7 = new System.Windows.Forms.GroupBox();
+            this.AutoActivateGroupBox = new System.Windows.Forms.GroupBox();
             this.pictureBox91 = new System.Windows.Forms.PictureBox();
             this.AutoActivateGroupDelay = new System.Windows.Forms.TextBox();
             this.pictureBox7 = new System.Windows.Forms.PictureBox();
             this.AutoActivateGroup = new System.Windows.Forms.CheckBox();
-            this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.TOSBox = new System.Windows.Forms.GroupBox();
             this.pictureBox8 = new System.Windows.Forms.PictureBox();
             this.TOS = new System.Windows.Forms.CheckBox();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
@@ -68,7 +68,7 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.Firstname = new System.Windows.Forms.TextBox();
-            this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.LogsTabPage = new System.Windows.Forms.TabPage();
             this.groupBox14 = new System.Windows.Forms.GroupBox();
             this.pictureBox16 = new System.Windows.Forms.PictureBox();
             this.RegionLogFileEnabled = new System.Windows.Forms.CheckBox();
@@ -85,7 +85,7 @@
             this.pictureBox13 = new System.Windows.Forms.PictureBox();
             this.ClientLogFile = new System.Windows.Forms.TextBox();
             this.ClientLogFileEnabled = new System.Windows.Forms.CheckBox();
-            this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.FiltersTabPage = new System.Windows.Forms.TabPage();
             this.groupBox16 = new System.Windows.Forms.GroupBox();
             this.pictureBox18 = new System.Windows.Forms.PictureBox();
             this.DeleteSelectedOutputFilter = new System.Windows.Forms.Button();
@@ -108,7 +108,7 @@
             this.groupBox17 = new System.Windows.Forms.GroupBox();
             this.InputDecode = new System.Windows.Forms.ComboBox();
             this.AddInputDecoder = new System.Windows.Forms.Button();
-            this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.CryptographyTabPage = new System.Windows.Forms.TabPage();
             this.groupBox83 = new System.Windows.Forms.GroupBox();
             this.pictureBox90 = new System.Windows.Forms.PictureBox();
             this.button10 = new System.Windows.Forms.Button();
@@ -136,19 +136,19 @@
             this.button3 = new System.Windows.Forms.Button();
             this.ENIGMARotor = new System.Windows.Forms.ComboBox();
             this.ENIGMARotorSequence = new System.Windows.Forms.ListBox();
-            this.tabPage5 = new System.Windows.Forms.TabPage();
+            this.SIMLTabPage = new System.Windows.Forms.TabPage();
             this.groupBox38 = new System.Windows.Forms.GroupBox();
             this.pictureBox21 = new System.Windows.Forms.PictureBox();
             this.SIMLEnabled = new System.Windows.Forms.CheckBox();
-            this.tabPage6 = new System.Windows.Forms.TabPage();
+            this.RLVTabPage = new System.Windows.Forms.TabPage();
             this.groupBox39 = new System.Windows.Forms.GroupBox();
             this.pictureBox22 = new System.Windows.Forms.PictureBox();
             this.RLVEnabled = new System.Windows.Forms.CheckBox();
-            this.tabPage7 = new System.Windows.Forms.TabPage();
+            this.HTTPTabPage = new System.Windows.Forms.TabPage();
             this.groupBox43 = new System.Windows.Forms.GroupBox();
             this.pictureBox24 = new System.Windows.Forms.PictureBox();
             this.HTTPServerKeepAliveEnabled = new System.Windows.Forms.CheckBox();
-            this.groupBox42 = new System.Windows.Forms.GroupBox();
+            this.CompressionBox = new System.Windows.Forms.GroupBox();
             this.pictureBox25 = new System.Windows.Forms.PictureBox();
             this.HTTPServerCompression = new System.Windows.Forms.ComboBox();
             this.groupBox41 = new System.Windows.Forms.GroupBox();
@@ -157,7 +157,7 @@
             this.groupBox40 = new System.Windows.Forms.GroupBox();
             this.pictureBox23 = new System.Windows.Forms.PictureBox();
             this.HTTPServerEnabled = new System.Windows.Forms.CheckBox();
-            this.groupBox66 = new System.Windows.Forms.GroupBox();
+            this.HTTPServerLimitsBox = new System.Windows.Forms.GroupBox();
             this.pictureBox66 = new System.Windows.Forms.PictureBox();
             this.pictureBox65 = new System.Windows.Forms.PictureBox();
             this.pictureBox64 = new System.Windows.Forms.PictureBox();
@@ -176,7 +176,7 @@
             this.LimitsHTTPServerBody = new System.Windows.Forms.TextBox();
             this.label13 = new System.Windows.Forms.Label();
             this.LimitsHTTPServerDrain = new System.Windows.Forms.TextBox();
-            this.tabPage13 = new System.Windows.Forms.TabPage();
+            this.TCPTabPage = new System.Windows.Forms.TabPage();
             this.groupBox78 = new System.Windows.Forms.GroupBox();
             this.pictureBox84 = new System.Windows.Forms.PictureBox();
             this.groupBox81 = new System.Windows.Forms.GroupBox();
@@ -188,7 +188,7 @@
             this.groupBox79 = new System.Windows.Forms.GroupBox();
             this.pictureBox85 = new System.Windows.Forms.PictureBox();
             this.TCPNotificationsServerAddress = new System.Windows.Forms.TextBox();
-            this.tabPage8 = new System.Windows.Forms.TabPage();
+            this.NetworkTabPage = new System.Windows.Forms.TabPage();
             this.groupBox48 = new System.Windows.Forms.GroupBox();
             this.pictureBox30 = new System.Windows.Forms.PictureBox();
             this.NetworkExpect100ContinueEnabled = new System.Windows.Forms.CheckBox();
@@ -204,7 +204,7 @@
             this.groupBox44 = new System.Windows.Forms.GroupBox();
             this.pictureBox27 = new System.Windows.Forms.PictureBox();
             this.NetworkBindAddress = new System.Windows.Forms.TextBox();
-            this.tabPage9 = new System.Windows.Forms.TabPage();
+            this.ThrottlesTabPage = new System.Windows.Forms.TabPage();
             this.groupBox56 = new System.Windows.Forms.GroupBox();
             this.pictureBox39 = new System.Windows.Forms.PictureBox();
             this.ThrottleCloudThrottle = new System.Windows.Forms.TextBox();
@@ -229,7 +229,7 @@
             this.groupBox49 = new System.Windows.Forms.GroupBox();
             this.pictureBox32 = new System.Windows.Forms.PictureBox();
             this.ThrottlesTotalThrottle = new System.Windows.Forms.TextBox();
-            this.tabPage10 = new System.Windows.Forms.TabPage();
+            this.LimitsTabPage = new System.Windows.Forms.TabPage();
             this.groupBox86 = new System.Windows.Forms.GroupBox();
             this.pictureBox93 = new System.Windows.Forms.PictureBox();
             this.label32 = new System.Windows.Forms.Label();
@@ -328,7 +328,7 @@
             this.groupBox57 = new System.Windows.Forms.GroupBox();
             this.pictureBox40 = new System.Windows.Forms.PictureBox();
             this.LimitsRange = new System.Windows.Forms.TextBox();
-            this.tabPage11 = new System.Windows.Forms.TabPage();
+            this.MastersTabPage = new System.Windows.Forms.TabPage();
             this.pictureBox72 = new System.Windows.Forms.PictureBox();
             this.groupBox72 = new System.Windows.Forms.GroupBox();
             this.button8 = new System.Windows.Forms.Button();
@@ -340,8 +340,8 @@
             this.pictureBox70 = new System.Windows.Forms.PictureBox();
             this.MasterFirstName = new System.Windows.Forms.TextBox();
             this.Masters = new System.Windows.Forms.ListBox();
-            this.tabPage12 = new System.Windows.Forms.TabPage();
-            this.groupBox75 = new System.Windows.Forms.GroupBox();
+            this.GroupsTabPage = new System.Windows.Forms.TabPage();
+            this.ScheduledCommandsBox = new System.Windows.Forms.GroupBox();
             this.pictureBox77 = new System.Windows.Forms.PictureBox();
             this.GroupSchedules = new System.Windows.Forms.TextBox();
             this.AddGroup = new System.Windows.Forms.Button();
@@ -350,7 +350,7 @@
             this.pictureBox79 = new System.Windows.Forms.PictureBox();
             this.GroupChatLogFile = new System.Windows.Forms.TextBox();
             this.GroupChatLogEnabled = new System.Windows.Forms.CheckBox();
-            this.groupBox28 = new System.Windows.Forms.GroupBox();
+            this.DatabaseBox = new System.Windows.Forms.GroupBox();
             this.pictureBox78 = new System.Windows.Forms.PictureBox();
             this.GroupDatabaseFile = new System.Windows.Forms.TextBox();
             this.groupBox27 = new System.Windows.Forms.GroupBox();
@@ -359,7 +359,7 @@
             this.groupBox26 = new System.Windows.Forms.GroupBox();
             this.pictureBox80 = new System.Windows.Forms.PictureBox();
             this.GroupPermissions = new System.Windows.Forms.CheckedListBox();
-            this.groupBox25 = new System.Windows.Forms.GroupBox();
+            this.WorkersBox = new System.Windows.Forms.GroupBox();
             this.pictureBox76 = new System.Windows.Forms.PictureBox();
             this.GroupWorkers = new System.Windows.Forms.TextBox();
             this.groupBox24 = new System.Windows.Forms.GroupBox();
@@ -383,24 +383,30 @@
             this.LoadLegacyConfigurationDialog = new System.Windows.Forms.OpenFileDialog();
             this.SaveConfigurationDialog = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.button11 = new System.Windows.Forms.Button();
             this.Version = new System.Windows.Forms.Label();
+            this.ExperienceLevel = new System.Windows.Forms.ComboBox();
+            this.MasterPasswordOverride = new System.Windows.Forms.TextBox();
+            this.MasterPasswordBox = new System.Windows.Forms.GroupBox();
+            this.pictureBox92 = new System.Windows.Forms.PictureBox();
+            this.MasterPasswordOverrideEnabled = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
-            this.tabPage1.SuspendLayout();
-            this.groupBox77.SuspendLayout();
+            this.ClientTabPage.SuspendLayout();
+            this.ClientIdentificationTagBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).BeginInit();
-            this.groupBox10.SuspendLayout();
+            this.AbnormalExitCodeBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.AbnomalExitCode)).BeginInit();
-            this.groupBox9.SuspendLayout();
+            this.ExpectedExitCodeBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox11)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ExpectedExitCode)).BeginInit();
-            this.groupBox8.SuspendLayout();
+            this.GroupCreateFeeBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox9)).BeginInit();
-            this.groupBox7.SuspendLayout();
+            this.AutoActivateGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox91)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox7)).BeginInit();
-            this.groupBox6.SuspendLayout();
+            this.TOSBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox8)).BeginInit();
             this.groupBox5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox6)).BeginInit();
@@ -412,7 +418,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
-            this.tabPage2.SuspendLayout();
+            this.LogsTabPage.SuspendLayout();
             this.groupBox14.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox16)).BeginInit();
             this.groupBox13.SuspendLayout();
@@ -421,7 +427,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox14)).BeginInit();
             this.groupBox11.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox13)).BeginInit();
-            this.tabPage3.SuspendLayout();
+            this.FiltersTabPage.SuspendLayout();
             this.groupBox16.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox18)).BeginInit();
             this.groupBox31.SuspendLayout();
@@ -432,7 +438,7 @@
             this.groupBox30.SuspendLayout();
             this.groupBox18.SuspendLayout();
             this.groupBox17.SuspendLayout();
-            this.tabPage4.SuspendLayout();
+            this.CryptographyTabPage.SuspendLayout();
             this.groupBox83.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox90)).BeginInit();
             this.groupBox85.SuspendLayout();
@@ -447,29 +453,29 @@
             this.groupBox36.SuspendLayout();
             this.groupBox35.SuspendLayout();
             this.groupBox34.SuspendLayout();
-            this.tabPage5.SuspendLayout();
+            this.SIMLTabPage.SuspendLayout();
             this.groupBox38.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox21)).BeginInit();
-            this.tabPage6.SuspendLayout();
+            this.RLVTabPage.SuspendLayout();
             this.groupBox39.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).BeginInit();
-            this.tabPage7.SuspendLayout();
+            this.HTTPTabPage.SuspendLayout();
             this.groupBox43.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox24)).BeginInit();
-            this.groupBox42.SuspendLayout();
+            this.CompressionBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox25)).BeginInit();
             this.groupBox41.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox26)).BeginInit();
             this.groupBox40.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox23)).BeginInit();
-            this.groupBox66.SuspendLayout();
+            this.HTTPServerLimitsBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox61)).BeginInit();
-            this.tabPage13.SuspendLayout();
+            this.TCPTabPage.SuspendLayout();
             this.groupBox78.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox84)).BeginInit();
             this.groupBox81.SuspendLayout();
@@ -478,7 +484,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox86)).BeginInit();
             this.groupBox79.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox85)).BeginInit();
-            this.tabPage8.SuspendLayout();
+            this.NetworkTabPage.SuspendLayout();
             this.groupBox48.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox30)).BeginInit();
             this.groupBox47.SuspendLayout();
@@ -489,7 +495,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox28)).BeginInit();
             this.groupBox44.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox27)).BeginInit();
-            this.tabPage9.SuspendLayout();
+            this.ThrottlesTabPage.SuspendLayout();
             this.groupBox56.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox39)).BeginInit();
             this.groupBox54.SuspendLayout();
@@ -506,7 +512,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox34)).BeginInit();
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
-            this.tabPage10.SuspendLayout();
+            this.LimitsTabPage.SuspendLayout();
             this.groupBox86.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
             this.groupBox82.SuspendLayout();
@@ -551,25 +557,25 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).BeginInit();
             this.groupBox57.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).BeginInit();
-            this.tabPage11.SuspendLayout();
+            this.MastersTabPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox72)).BeginInit();
             this.groupBox72.SuspendLayout();
             this.groupBox74.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox71)).BeginInit();
             this.groupBox73.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox70)).BeginInit();
-            this.tabPage12.SuspendLayout();
-            this.groupBox75.SuspendLayout();
+            this.GroupsTabPage.SuspendLayout();
+            this.ScheduledCommandsBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox77)).BeginInit();
             this.groupBox29.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox79)).BeginInit();
-            this.groupBox28.SuspendLayout();
+            this.DatabaseBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox78)).BeginInit();
             this.groupBox27.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox81)).BeginInit();
             this.groupBox26.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox80)).BeginInit();
-            this.groupBox25.SuspendLayout();
+            this.WorkersBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox76)).BeginInit();
             this.groupBox24.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox75)).BeginInit();
@@ -579,6 +585,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).BeginInit();
             this.groupBox21.SuspendLayout();
             this.Status.SuspendLayout();
+            this.MasterPasswordBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox92)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -593,57 +601,58 @@
             // 
             // Tabs
             // 
-            this.Tabs.Controls.Add(this.tabPage1);
-            this.Tabs.Controls.Add(this.tabPage2);
-            this.Tabs.Controls.Add(this.tabPage3);
-            this.Tabs.Controls.Add(this.tabPage4);
-            this.Tabs.Controls.Add(this.tabPage5);
-            this.Tabs.Controls.Add(this.tabPage6);
-            this.Tabs.Controls.Add(this.tabPage7);
-            this.Tabs.Controls.Add(this.tabPage13);
-            this.Tabs.Controls.Add(this.tabPage8);
-            this.Tabs.Controls.Add(this.tabPage9);
-            this.Tabs.Controls.Add(this.tabPage10);
-            this.Tabs.Controls.Add(this.tabPage11);
-            this.Tabs.Controls.Add(this.tabPage12);
+            this.Tabs.Controls.Add(this.ClientTabPage);
+            this.Tabs.Controls.Add(this.LogsTabPage);
+            this.Tabs.Controls.Add(this.FiltersTabPage);
+            this.Tabs.Controls.Add(this.CryptographyTabPage);
+            this.Tabs.Controls.Add(this.SIMLTabPage);
+            this.Tabs.Controls.Add(this.RLVTabPage);
+            this.Tabs.Controls.Add(this.HTTPTabPage);
+            this.Tabs.Controls.Add(this.TCPTabPage);
+            this.Tabs.Controls.Add(this.NetworkTabPage);
+            this.Tabs.Controls.Add(this.ThrottlesTabPage);
+            this.Tabs.Controls.Add(this.LimitsTabPage);
+            this.Tabs.Controls.Add(this.MastersTabPage);
+            this.Tabs.Controls.Add(this.GroupsTabPage);
             this.Tabs.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Tabs.Location = new System.Drawing.Point(12, 195);
+            this.Tabs.Location = new System.Drawing.Point(12, 192);
             this.Tabs.Name = "Tabs";
             this.Tabs.SelectedIndex = 0;
             this.Tabs.Size = new System.Drawing.Size(680, 392);
             this.Tabs.TabIndex = 1;
+            this.Tabs.Click += new System.EventHandler(this.ShowToolTip);
             // 
-            // tabPage1
+            // ClientTabPage
             // 
-            this.tabPage1.Controls.Add(this.groupBox77);
-            this.tabPage1.Controls.Add(this.groupBox10);
-            this.tabPage1.Controls.Add(this.groupBox9);
-            this.tabPage1.Controls.Add(this.groupBox8);
-            this.tabPage1.Controls.Add(this.groupBox7);
-            this.tabPage1.Controls.Add(this.groupBox6);
-            this.tabPage1.Controls.Add(this.groupBox5);
-            this.tabPage1.Controls.Add(this.groupBox4);
-            this.tabPage1.Controls.Add(this.groupBox3);
-            this.tabPage1.Controls.Add(this.groupBox2);
-            this.tabPage1.Controls.Add(this.groupBox1);
-            this.tabPage1.Location = new System.Drawing.Point(4, 25);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(672, 363);
-            this.tabPage1.TabIndex = 0;
-            this.tabPage1.Text = "Client";
-            this.tabPage1.UseVisualStyleBackColor = true;
+            this.ClientTabPage.Controls.Add(this.ClientIdentificationTagBox);
+            this.ClientTabPage.Controls.Add(this.AbnormalExitCodeBox);
+            this.ClientTabPage.Controls.Add(this.ExpectedExitCodeBox);
+            this.ClientTabPage.Controls.Add(this.GroupCreateFeeBox);
+            this.ClientTabPage.Controls.Add(this.AutoActivateGroupBox);
+            this.ClientTabPage.Controls.Add(this.TOSBox);
+            this.ClientTabPage.Controls.Add(this.groupBox5);
+            this.ClientTabPage.Controls.Add(this.groupBox4);
+            this.ClientTabPage.Controls.Add(this.groupBox3);
+            this.ClientTabPage.Controls.Add(this.groupBox2);
+            this.ClientTabPage.Controls.Add(this.groupBox1);
+            this.ClientTabPage.Location = new System.Drawing.Point(4, 25);
+            this.ClientTabPage.Name = "ClientTabPage";
+            this.ClientTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.ClientTabPage.Size = new System.Drawing.Size(672, 363);
+            this.ClientTabPage.TabIndex = 0;
+            this.ClientTabPage.Text = "Client";
+            this.ClientTabPage.UseVisualStyleBackColor = true;
             // 
-            // groupBox77
+            // ClientIdentificationTagBox
             // 
-            this.groupBox77.Controls.Add(this.pictureBox12);
-            this.groupBox77.Controls.Add(this.ClientIdentificationTag);
-            this.groupBox77.Location = new System.Drawing.Point(35, 241);
-            this.groupBox77.Name = "groupBox77";
-            this.groupBox77.Size = new System.Drawing.Size(296, 55);
-            this.groupBox77.TabIndex = 10;
-            this.groupBox77.TabStop = false;
-            this.groupBox77.Text = "Client Identification Tag";
+            this.ClientIdentificationTagBox.Controls.Add(this.pictureBox12);
+            this.ClientIdentificationTagBox.Controls.Add(this.ClientIdentificationTag);
+            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(36, 240);
+            this.ClientIdentificationTagBox.Name = "ClientIdentificationTagBox";
+            this.ClientIdentificationTagBox.Size = new System.Drawing.Size(296, 55);
+            this.ClientIdentificationTagBox.TabIndex = 10;
+            this.ClientIdentificationTagBox.TabStop = false;
+            this.ClientIdentificationTagBox.Text = "Client Identification Tag";
             // 
             // pictureBox12
             // 
@@ -657,6 +666,7 @@
             this.toolTip1.SetToolTip(this.pictureBox12, "This can be set to a texture UUID on the connecting\r\ngrid that Corrade will use f" +
         "or identification. By default \r\nthis is set to a texture UUID on the Second Life" +
         " grid \r\nthat portreys the Corrade logo.");
+            this.pictureBox12.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ClientIdentificationTag
             // 
@@ -667,16 +677,16 @@
             this.ClientIdentificationTag.TabIndex = 0;
             this.ClientIdentificationTag.Text = "0705230f-cbd0-99bd-040b-28eb348b5255";
             // 
-            // groupBox10
+            // AbnormalExitCodeBox
             // 
-            this.groupBox10.Controls.Add(this.pictureBox10);
-            this.groupBox10.Controls.Add(this.AbnomalExitCode);
-            this.groupBox10.Location = new System.Drawing.Point(488, 157);
-            this.groupBox10.Name = "groupBox10";
-            this.groupBox10.Size = new System.Drawing.Size(145, 58);
-            this.groupBox10.TabIndex = 9;
-            this.groupBox10.TabStop = false;
-            this.groupBox10.Text = "Abnormal Exit Code";
+            this.AbnormalExitCodeBox.Controls.Add(this.pictureBox10);
+            this.AbnormalExitCodeBox.Controls.Add(this.AbnomalExitCode);
+            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(488, 219);
+            this.AbnormalExitCodeBox.Name = "AbnormalExitCodeBox";
+            this.AbnormalExitCodeBox.Size = new System.Drawing.Size(145, 58);
+            this.AbnormalExitCodeBox.TabIndex = 9;
+            this.AbnormalExitCodeBox.TabStop = false;
+            this.AbnormalExitCodeBox.Text = "Abnormal Exit Code";
             // 
             // pictureBox10
             // 
@@ -689,6 +699,7 @@
             this.pictureBox10.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox10, "The error code to return on unexpected termination.\r\nThis is set by default to a " +
         "value that is enough to\r\ntrigger a services restart in Windows.");
+            this.pictureBox10.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // AbnomalExitCode
             // 
@@ -703,16 +714,16 @@
             this.AbnomalExitCode.Size = new System.Drawing.Size(106, 20);
             this.AbnomalExitCode.TabIndex = 0;
             // 
-            // groupBox9
+            // ExpectedExitCodeBox
             // 
-            this.groupBox9.Controls.Add(this.pictureBox11);
-            this.groupBox9.Controls.Add(this.ExpectedExitCode);
-            this.groupBox9.Location = new System.Drawing.Point(488, 220);
-            this.groupBox9.Name = "groupBox9";
-            this.groupBox9.Size = new System.Drawing.Size(145, 58);
-            this.groupBox9.TabIndex = 8;
-            this.groupBox9.TabStop = false;
-            this.groupBox9.Text = "Expected Exit Code";
+            this.ExpectedExitCodeBox.Controls.Add(this.pictureBox11);
+            this.ExpectedExitCodeBox.Controls.Add(this.ExpectedExitCode);
+            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(488, 155);
+            this.ExpectedExitCodeBox.Name = "ExpectedExitCodeBox";
+            this.ExpectedExitCodeBox.Size = new System.Drawing.Size(145, 58);
+            this.ExpectedExitCodeBox.TabIndex = 8;
+            this.ExpectedExitCodeBox.TabStop = false;
+            this.ExpectedExitCodeBox.Text = "Expected Exit Code";
             // 
             // pictureBox11
             // 
@@ -724,6 +735,7 @@
             this.pictureBox11.TabIndex = 11;
             this.pictureBox11.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox11, "The error code to return on normal termination.");
+            this.pictureBox11.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ExpectedExitCode
             // 
@@ -738,16 +750,16 @@
             this.ExpectedExitCode.Size = new System.Drawing.Size(107, 20);
             this.ExpectedExitCode.TabIndex = 9;
             // 
-            // groupBox8
+            // GroupCreateFeeBox
             // 
-            this.groupBox8.Controls.Add(this.pictureBox9);
-            this.groupBox8.Controls.Add(this.GroupCreateFee);
-            this.groupBox8.Location = new System.Drawing.Point(167, 155);
-            this.groupBox8.Name = "groupBox8";
-            this.groupBox8.Size = new System.Drawing.Size(126, 57);
-            this.groupBox8.TabIndex = 7;
-            this.groupBox8.TabStop = false;
-            this.groupBox8.Text = "Group Create Fee";
+            this.GroupCreateFeeBox.Controls.Add(this.pictureBox9);
+            this.GroupCreateFeeBox.Controls.Add(this.GroupCreateFee);
+            this.GroupCreateFeeBox.Location = new System.Drawing.Point(300, 155);
+            this.GroupCreateFeeBox.Name = "GroupCreateFeeBox";
+            this.GroupCreateFeeBox.Size = new System.Drawing.Size(126, 57);
+            this.GroupCreateFeeBox.TabIndex = 7;
+            this.GroupCreateFeeBox.TabStop = false;
+            this.GroupCreateFeeBox.Text = "Group Create Fee";
             // 
             // pictureBox9
             // 
@@ -759,6 +771,7 @@
             this.pictureBox9.TabIndex = 11;
             this.pictureBox9.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox9, "This is the fee for creating a group on the grid that \r\nCorrade operates on.");
+            this.pictureBox9.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupCreateFee
             // 
@@ -768,18 +781,18 @@
             this.GroupCreateFee.Size = new System.Drawing.Size(86, 20);
             this.GroupCreateFee.TabIndex = 0;
             // 
-            // groupBox7
+            // AutoActivateGroupBox
             // 
-            this.groupBox7.Controls.Add(this.pictureBox91);
-            this.groupBox7.Controls.Add(this.AutoActivateGroupDelay);
-            this.groupBox7.Controls.Add(this.pictureBox7);
-            this.groupBox7.Controls.Add(this.AutoActivateGroup);
-            this.groupBox7.Location = new System.Drawing.Point(35, 155);
-            this.groupBox7.Name = "groupBox7";
-            this.groupBox7.Size = new System.Drawing.Size(126, 80);
-            this.groupBox7.TabIndex = 6;
-            this.groupBox7.TabStop = false;
-            this.groupBox7.Text = "Auto-Activate Group";
+            this.AutoActivateGroupBox.Controls.Add(this.pictureBox91);
+            this.AutoActivateGroupBox.Controls.Add(this.AutoActivateGroupDelay);
+            this.AutoActivateGroupBox.Controls.Add(this.pictureBox7);
+            this.AutoActivateGroupBox.Controls.Add(this.AutoActivateGroup);
+            this.AutoActivateGroupBox.Location = new System.Drawing.Point(167, 154);
+            this.AutoActivateGroupBox.Name = "AutoActivateGroupBox";
+            this.AutoActivateGroupBox.Size = new System.Drawing.Size(126, 80);
+            this.AutoActivateGroupBox.TabIndex = 6;
+            this.AutoActivateGroupBox.TabStop = false;
+            this.AutoActivateGroupBox.Text = "Auto-Activate Group";
             // 
             // pictureBox91
             // 
@@ -791,6 +804,7 @@
             this.pictureBox91.TabIndex = 12;
             this.pictureBox91.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox91, "The group activation delay.");
+            this.pictureBox91.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // AutoActivateGroupDelay
             // 
@@ -810,6 +824,7 @@
             this.pictureBox7.TabIndex = 11;
             this.pictureBox7.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox7, "Automatically attempt to set the group tag to the \r\nland group after teleport.");
+            this.pictureBox7.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // AutoActivateGroup
             // 
@@ -822,16 +837,16 @@
             this.AutoActivateGroup.Text = "Enabled";
             this.AutoActivateGroup.UseVisualStyleBackColor = true;
             // 
-            // groupBox6
+            // TOSBox
             // 
-            this.groupBox6.Controls.Add(this.pictureBox8);
-            this.groupBox6.Controls.Add(this.TOS);
-            this.groupBox6.Location = new System.Drawing.Point(299, 157);
-            this.groupBox6.Name = "groupBox6";
-            this.groupBox6.Size = new System.Drawing.Size(126, 58);
-            this.groupBox6.TabIndex = 5;
-            this.groupBox6.TabStop = false;
-            this.groupBox6.Text = "Terms of Service";
+            this.TOSBox.Controls.Add(this.pictureBox8);
+            this.TOSBox.Controls.Add(this.TOS);
+            this.TOSBox.Location = new System.Drawing.Point(35, 155);
+            this.TOSBox.Name = "TOSBox";
+            this.TOSBox.Size = new System.Drawing.Size(126, 58);
+            this.TOSBox.TabIndex = 5;
+            this.TOSBox.TabStop = false;
+            this.TOSBox.Text = "Terms of Service";
             // 
             // pictureBox8
             // 
@@ -842,7 +857,8 @@
             this.pictureBox8.Size = new System.Drawing.Size(20, 20);
             this.pictureBox8.TabIndex = 11;
             this.pictureBox8.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox8, "If you accept the TOS of the grid to log-in to, please \r\nset this to true.");
+            this.toolTip1.SetToolTip(this.pictureBox8, "If you accept the Terms of Service (TOS) of the grid ");
+            this.pictureBox8.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // TOS
             // 
@@ -875,8 +891,9 @@
             this.pictureBox6.Size = new System.Drawing.Size(20, 20);
             this.pictureBox6.TabIndex = 2;
             this.pictureBox6.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox6, "This is the start location of Corrade. Valid values are: \r\n  - home, \r\n  - last \r" +
-        "\nor a string encoded URI, such as: \r\n\r\nuri:hooper&amp;128&amp;152&amp;17");
+            this.toolTip1.SetToolTip(this.pictureBox6, "This is the start location of Corrade. Valid values are: \r\n  - home, \r\n  - last\r\n" +
+        "\r\nor a string such as: \r\n\r\nPuguet Sound/128/152/17\r\n");
+            this.pictureBox6.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // StartLocation
             // 
@@ -908,6 +925,7 @@
             this.pictureBox5.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox5, "The grid login URI. By default, this is set to the Second \r\nLife login URI. You m" +
         "ay need to change this for a \r\ndifferent grid.");
+            this.pictureBox5.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // LoginURL
             // 
@@ -939,6 +957,7 @@
             this.pictureBox4.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox4, "The plaintext password of the avatar connecting to \r\nthe grid (has to be shorter " +
         "than 16 characters).");
+            this.pictureBox4.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // Password
             // 
@@ -973,6 +992,7 @@
             this.pictureBox3.TabIndex = 11;
             this.pictureBox3.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox3, "The last name of the avatar connecting to the grid.");
+            this.pictureBox3.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // Lastname
             // 
@@ -1004,6 +1024,7 @@
             this.pictureBox2.TabIndex = 1;
             this.pictureBox2.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox2, "The first name of the avatar connecting to the grid.");
+            this.pictureBox2.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // Firstname
             // 
@@ -1014,19 +1035,19 @@
             this.Firstname.Size = new System.Drawing.Size(157, 20);
             this.Firstname.TabIndex = 0;
             // 
-            // tabPage2
+            // LogsTabPage
             // 
-            this.tabPage2.Controls.Add(this.groupBox14);
-            this.tabPage2.Controls.Add(this.groupBox13);
-            this.tabPage2.Controls.Add(this.groupBox12);
-            this.tabPage2.Controls.Add(this.groupBox11);
-            this.tabPage2.Location = new System.Drawing.Point(4, 25);
-            this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(672, 363);
-            this.tabPage2.TabIndex = 1;
-            this.tabPage2.Text = "Logs";
-            this.tabPage2.UseVisualStyleBackColor = true;
+            this.LogsTabPage.Controls.Add(this.groupBox14);
+            this.LogsTabPage.Controls.Add(this.groupBox13);
+            this.LogsTabPage.Controls.Add(this.groupBox12);
+            this.LogsTabPage.Controls.Add(this.groupBox11);
+            this.LogsTabPage.Location = new System.Drawing.Point(4, 25);
+            this.LogsTabPage.Name = "LogsTabPage";
+            this.LogsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.LogsTabPage.Size = new System.Drawing.Size(672, 363);
+            this.LogsTabPage.TabIndex = 1;
+            this.LogsTabPage.Text = "Logs";
+            this.LogsTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox14
             // 
@@ -1051,6 +1072,7 @@
             this.pictureBox16.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox16, "The logs will be placed under this directory and named \r\nafter the simulator name" +
         ".");
+            this.pictureBox16.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // RegionLogFileEnabled
             // 
@@ -1095,6 +1117,7 @@
             this.pictureBox15.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox15, "The logs will be placed under this directory and named \r\nafter the simulator name" +
         ".");
+            this.pictureBox15.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // LocalLogFileEnabled
             // 
@@ -1139,6 +1162,7 @@
             this.pictureBox14.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox14, "The logs will be placed under this directory and \r\nnamed after the name of the av" +
         "atars sending the \r\nmessage to Corrade.");
+            this.pictureBox14.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // InstantMessageLogFileEnabled
             // 
@@ -1184,6 +1208,7 @@
             this.toolTip1.SetToolTip(this.pictureBox13, "This is the path to the logfile to write to when running \r\nCorrade as a daemon wi" +
         "thout a proper console. The \r\ndefault behaviour of Corrade is to attempt to log " +
         "to \r\nconsole and this log-file.");
+            this.pictureBox13.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ClientLogFile
             // 
@@ -1205,16 +1230,16 @@
             this.toolTip1.SetToolTip(this.ClientLogFileEnabled, "Whether to enable the Corrade log file.");
             this.ClientLogFileEnabled.UseVisualStyleBackColor = true;
             // 
-            // tabPage3
+            // FiltersTabPage
             // 
-            this.tabPage3.Controls.Add(this.groupBox16);
-            this.tabPage3.Controls.Add(this.groupBox15);
-            this.tabPage3.Location = new System.Drawing.Point(4, 25);
-            this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(672, 363);
-            this.tabPage3.TabIndex = 2;
-            this.tabPage3.Text = "Filters";
-            this.tabPage3.UseVisualStyleBackColor = true;
+            this.FiltersTabPage.Controls.Add(this.groupBox16);
+            this.FiltersTabPage.Controls.Add(this.groupBox15);
+            this.FiltersTabPage.Location = new System.Drawing.Point(4, 25);
+            this.FiltersTabPage.Name = "FiltersTabPage";
+            this.FiltersTabPage.Size = new System.Drawing.Size(672, 363);
+            this.FiltersTabPage.TabIndex = 2;
+            this.FiltersTabPage.Text = "Filters";
+            this.FiltersTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox16
             // 
@@ -1241,6 +1266,7 @@
             this.pictureBox18.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox18, "The output filters will be run in sequence, in-order \r\nfrom top to bottom, once a" +
         " message leaves Corrade.");
+            this.pictureBox18.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // DeleteSelectedOutputFilter
             // 
@@ -1296,6 +1322,7 @@
             // 
             // OutputEncrypt
             // 
+            this.OutputEncrypt.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.OutputEncrypt.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.OutputEncrypt.FormattingEnabled = true;
             this.OutputEncrypt.Items.AddRange(new object[] {
@@ -1307,7 +1334,6 @@
             this.OutputEncrypt.Name = "OutputEncrypt";
             this.OutputEncrypt.Size = new System.Drawing.Size(118, 21);
             this.OutputEncrypt.TabIndex = 0;
-            this.OutputEncrypt.Text = "ENIGMA";
             // 
             // groupBox19
             // 
@@ -1333,6 +1359,7 @@
             // 
             // OutputEncode
             // 
+            this.OutputEncode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.OutputEncode.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.OutputEncode.FormattingEnabled = true;
             this.OutputEncode.Items.AddRange(new object[] {
@@ -1343,7 +1370,6 @@
             this.OutputEncode.Name = "OutputEncode";
             this.OutputEncode.Size = new System.Drawing.Size(118, 21);
             this.OutputEncode.TabIndex = 0;
-            this.OutputEncode.Text = "RFC1738";
             // 
             // groupBox15
             // 
@@ -1369,6 +1395,7 @@
             this.pictureBox17.TabIndex = 4;
             this.pictureBox17.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox17, resources.GetString("pictureBox17.ToolTip"));
+            this.pictureBox17.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // DeleteSelectedInputFilter
             // 
@@ -1424,6 +1451,7 @@
             // 
             // InputDecryption
             // 
+            this.InputDecryption.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.InputDecryption.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.InputDecryption.FormattingEnabled = true;
             this.InputDecryption.Items.AddRange(new object[] {
@@ -1435,7 +1463,6 @@
             this.InputDecryption.Name = "InputDecryption";
             this.InputDecryption.Size = new System.Drawing.Size(118, 21);
             this.InputDecryption.TabIndex = 0;
-            this.InputDecryption.Text = "ENIGMA";
             // 
             // groupBox17
             // 
@@ -1450,6 +1477,7 @@
             // 
             // InputDecode
             // 
+            this.InputDecode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.InputDecode.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.InputDecode.FormattingEnabled = true;
             this.InputDecode.Items.AddRange(new object[] {
@@ -1460,7 +1488,6 @@
             this.InputDecode.Name = "InputDecode";
             this.InputDecode.Size = new System.Drawing.Size(118, 21);
             this.InputDecode.TabIndex = 0;
-            this.InputDecode.Text = "RFC1738";
             // 
             // AddInputDecoder
             // 
@@ -1473,17 +1500,17 @@
             this.AddInputDecoder.UseVisualStyleBackColor = true;
             this.AddInputDecoder.Click += new System.EventHandler(this.AddInputDecoderRequested);
             // 
-            // tabPage4
+            // CryptographyTabPage
             // 
-            this.tabPage4.Controls.Add(this.groupBox83);
-            this.tabPage4.Controls.Add(this.groupBox33);
-            this.tabPage4.Controls.Add(this.groupBox32);
-            this.tabPage4.Location = new System.Drawing.Point(4, 25);
-            this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Size = new System.Drawing.Size(672, 363);
-            this.tabPage4.TabIndex = 3;
-            this.tabPage4.Text = "Cyptography";
-            this.tabPage4.UseVisualStyleBackColor = true;
+            this.CryptographyTabPage.Controls.Add(this.groupBox83);
+            this.CryptographyTabPage.Controls.Add(this.groupBox33);
+            this.CryptographyTabPage.Controls.Add(this.groupBox32);
+            this.CryptographyTabPage.Location = new System.Drawing.Point(4, 25);
+            this.CryptographyTabPage.Name = "CryptographyTabPage";
+            this.CryptographyTabPage.Size = new System.Drawing.Size(672, 363);
+            this.CryptographyTabPage.TabIndex = 3;
+            this.CryptographyTabPage.Text = "Cryptography";
+            this.CryptographyTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox83
             // 
@@ -1509,6 +1536,7 @@
             this.pictureBox90.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox90, "The \"Generate\" button will generate a random key and\r\ninitialisation vector for y" +
         "ou out of a pool of readable\r\nlatin characters characters.");
+            this.pictureBox90.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // button10
             // 
@@ -1542,6 +1570,7 @@
             this.pictureBox89.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox89, "The initialisation vector to use which would be 16B\r\nlong, which is 128b which re" +
         "presents the equivalent of\r\n16 characters.");
+            this.pictureBox89.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // AESIV
             // 
@@ -1574,6 +1603,7 @@
             this.pictureBox88.TabIndex = 3;
             this.pictureBox88.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox88, resources.GetString("pictureBox88.ToolTip"));
+            this.pictureBox88.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // AESKey
             // 
@@ -1617,6 +1647,7 @@
             this.pictureBox20.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox20, "The VIGENERE secret is shared between a script and\r\nCorrade. This setting represe" +
         "nts the key which can be\r\nof any length.");
+            this.pictureBox20.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // VIGENERESecret
             // 
@@ -1650,6 +1681,7 @@
             this.pictureBox19.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox19, "In case the ENIGMA filter has been specified in the \r\nFilters section, then these" +
         " settings configure an ENGIMA\r\nmachine with rotos, plugs and the reflector.");
+            this.pictureBox19.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // groupBox36
             // 
@@ -1688,6 +1720,7 @@
             // 
             // ENIGMARing
             // 
+            this.ENIGMARing.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ENIGMARing.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ENIGMARing.FormattingEnabled = true;
             this.ENIGMARing.Items.AddRange(new object[] {
@@ -1721,7 +1754,6 @@
             this.ENIGMARing.Name = "ENIGMARing";
             this.ENIGMARing.Size = new System.Drawing.Size(121, 21);
             this.ENIGMARing.TabIndex = 1;
-            this.ENIGMARing.Text = "a";
             // 
             // ENIGMAPlugSequence
             // 
@@ -1745,6 +1777,7 @@
             // 
             // ENIGMAReflector
             // 
+            this.ENIGMAReflector.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ENIGMAReflector.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ENIGMAReflector.FormattingEnabled = true;
             this.ENIGMAReflector.Items.AddRange(new object[] {
@@ -1756,7 +1789,6 @@
             this.ENIGMAReflector.Name = "ENIGMAReflector";
             this.ENIGMAReflector.Size = new System.Drawing.Size(121, 21);
             this.ENIGMAReflector.TabIndex = 0;
-            this.ENIGMAReflector.Text = "B";
             this.toolTip1.SetToolTip(this.ENIGMAReflector, "The reflector to use.");
             // 
             // groupBox34
@@ -1796,6 +1828,7 @@
             // 
             // ENIGMARotor
             // 
+            this.ENIGMARotor.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ENIGMARotor.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ENIGMARotor.FormattingEnabled = true;
             this.ENIGMARotor.Items.AddRange(new object[] {
@@ -1813,7 +1846,6 @@
             this.ENIGMARotor.Name = "ENIGMARotor";
             this.ENIGMARotor.Size = new System.Drawing.Size(121, 21);
             this.ENIGMARotor.TabIndex = 1;
-            this.ENIGMARotor.Text = "1";
             // 
             // ENIGMARotorSequence
             // 
@@ -1825,15 +1857,15 @@
             this.ENIGMARotorSequence.TabIndex = 0;
             this.toolTip1.SetToolTip(this.ENIGMARotorSequence, "The rotors to use in-order.");
             // 
-            // tabPage5
+            // SIMLTabPage
             // 
-            this.tabPage5.Controls.Add(this.groupBox38);
-            this.tabPage5.Location = new System.Drawing.Point(4, 25);
-            this.tabPage5.Name = "tabPage5";
-            this.tabPage5.Size = new System.Drawing.Size(672, 363);
-            this.tabPage5.TabIndex = 4;
-            this.tabPage5.Text = "SIML";
-            this.tabPage5.UseVisualStyleBackColor = true;
+            this.SIMLTabPage.Controls.Add(this.groupBox38);
+            this.SIMLTabPage.Location = new System.Drawing.Point(4, 25);
+            this.SIMLTabPage.Name = "SIMLTabPage";
+            this.SIMLTabPage.Size = new System.Drawing.Size(672, 363);
+            this.SIMLTabPage.TabIndex = 4;
+            this.SIMLTabPage.Text = "SIML";
+            this.SIMLTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox38
             // 
@@ -1856,6 +1888,7 @@
             this.pictureBox21.TabIndex = 2;
             this.pictureBox21.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox21, resources.GetString("pictureBox21.ToolTip"));
+            this.pictureBox21.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // SIMLEnabled
             // 
@@ -1868,15 +1901,15 @@
             this.toolTip1.SetToolTip(this.SIMLEnabled, "Whether to enable the AIML component.");
             this.SIMLEnabled.UseVisualStyleBackColor = true;
             // 
-            // tabPage6
+            // RLVTabPage
             // 
-            this.tabPage6.Controls.Add(this.groupBox39);
-            this.tabPage6.Location = new System.Drawing.Point(4, 25);
-            this.tabPage6.Name = "tabPage6";
-            this.tabPage6.Size = new System.Drawing.Size(672, 363);
-            this.tabPage6.TabIndex = 5;
-            this.tabPage6.Text = "RLV";
-            this.tabPage6.UseVisualStyleBackColor = true;
+            this.RLVTabPage.Controls.Add(this.groupBox39);
+            this.RLVTabPage.Location = new System.Drawing.Point(4, 25);
+            this.RLVTabPage.Name = "RLVTabPage";
+            this.RLVTabPage.Size = new System.Drawing.Size(672, 363);
+            this.RLVTabPage.TabIndex = 5;
+            this.RLVTabPage.Text = "RLV";
+            this.RLVTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox39
             // 
@@ -1900,6 +1933,7 @@
             this.pictureBox22.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox22, "The RLV component makes Corrade process RLV\r\ncommands such as those used in Secon" +
         "d Life by a\r\nBSDM collar.");
+            this.pictureBox22.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // RLVEnabled
             // 
@@ -1912,19 +1946,19 @@
             this.toolTip1.SetToolTip(this.RLVEnabled, "Whether to enable RLV by default when connecting to the grid. ");
             this.RLVEnabled.UseVisualStyleBackColor = true;
             // 
-            // tabPage7
+            // HTTPTabPage
             // 
-            this.tabPage7.Controls.Add(this.groupBox43);
-            this.tabPage7.Controls.Add(this.groupBox42);
-            this.tabPage7.Controls.Add(this.groupBox41);
-            this.tabPage7.Controls.Add(this.groupBox40);
-            this.tabPage7.Controls.Add(this.groupBox66);
-            this.tabPage7.Location = new System.Drawing.Point(4, 25);
-            this.tabPage7.Name = "tabPage7";
-            this.tabPage7.Size = new System.Drawing.Size(672, 363);
-            this.tabPage7.TabIndex = 6;
-            this.tabPage7.Text = "HTTP";
-            this.tabPage7.UseVisualStyleBackColor = true;
+            this.HTTPTabPage.Controls.Add(this.groupBox43);
+            this.HTTPTabPage.Controls.Add(this.CompressionBox);
+            this.HTTPTabPage.Controls.Add(this.groupBox41);
+            this.HTTPTabPage.Controls.Add(this.groupBox40);
+            this.HTTPTabPage.Controls.Add(this.HTTPServerLimitsBox);
+            this.HTTPTabPage.Location = new System.Drawing.Point(4, 25);
+            this.HTTPTabPage.Name = "HTTPTabPage";
+            this.HTTPTabPage.Size = new System.Drawing.Size(672, 363);
+            this.HTTPTabPage.TabIndex = 6;
+            this.HTTPTabPage.Text = "HTTP";
+            this.HTTPTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox43
             // 
@@ -1947,6 +1981,7 @@
             this.pictureBox24.TabIndex = 4;
             this.pictureBox24.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox24, "Whether to attempt and keep connections to \r\nCorrade\'s HTTP server alive.");
+            this.pictureBox24.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // HTTPServerKeepAliveEnabled
             // 
@@ -1958,16 +1993,16 @@
             this.HTTPServerKeepAliveEnabled.Text = "Enabled";
             this.HTTPServerKeepAliveEnabled.UseVisualStyleBackColor = true;
             // 
-            // groupBox42
+            // CompressionBox
             // 
-            this.groupBox42.Controls.Add(this.pictureBox25);
-            this.groupBox42.Controls.Add(this.HTTPServerCompression);
-            this.groupBox42.Location = new System.Drawing.Point(258, 128);
-            this.groupBox42.Name = "groupBox42";
-            this.groupBox42.Size = new System.Drawing.Size(150, 67);
-            this.groupBox42.TabIndex = 2;
-            this.groupBox42.TabStop = false;
-            this.groupBox42.Text = "Compression";
+            this.CompressionBox.Controls.Add(this.pictureBox25);
+            this.CompressionBox.Controls.Add(this.HTTPServerCompression);
+            this.CompressionBox.Location = new System.Drawing.Point(258, 128);
+            this.CompressionBox.Name = "CompressionBox";
+            this.CompressionBox.Size = new System.Drawing.Size(150, 67);
+            this.CompressionBox.TabIndex = 2;
+            this.CompressionBox.TabStop = false;
+            this.CompressionBox.Text = "Compression";
             // 
             // pictureBox25
             // 
@@ -1979,9 +2014,11 @@
             this.pictureBox25.TabIndex = 4;
             this.pictureBox25.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox25, "Which compression algorithm should be used by \r\nCorrade when returning data.");
+            this.pictureBox25.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // HTTPServerCompression
             // 
+            this.HTTPServerCompression.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.HTTPServerCompression.FormattingEnabled = true;
             this.HTTPServerCompression.Items.AddRange(new object[] {
             "none",
@@ -1991,7 +2028,6 @@
             this.HTTPServerCompression.Name = "HTTPServerCompression";
             this.HTTPServerCompression.Size = new System.Drawing.Size(106, 24);
             this.HTTPServerCompression.TabIndex = 0;
-            this.HTTPServerCompression.Text = "none";
             // 
             // groupBox41
             // 
@@ -2015,6 +2051,7 @@
             this.pictureBox26.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox26, "This holds the prefix to make Corrade\'s internal HTTP \r\nserver listen on. Under W" +
         "indows, this prefix has to be\r\nallowed through the security settings.\r\n");
+            this.pictureBox26.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // HTTPServerPrefix
             // 
@@ -2046,6 +2083,7 @@
             this.pictureBox23.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox23, "Whether to enable the HTTP server in order to let \r\nCorrade process commands dire" +
         "ctly by sending web \r\nrequests to the prefix address.");
+            this.pictureBox23.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // HTTPServerEnabled
             // 
@@ -2057,32 +2095,32 @@
             this.HTTPServerEnabled.Text = "Enabled";
             this.HTTPServerEnabled.UseVisualStyleBackColor = true;
             // 
-            // groupBox66
+            // HTTPServerLimitsBox
             // 
-            this.groupBox66.Controls.Add(this.pictureBox66);
-            this.groupBox66.Controls.Add(this.pictureBox65);
-            this.groupBox66.Controls.Add(this.pictureBox64);
-            this.groupBox66.Controls.Add(this.pictureBox63);
-            this.groupBox66.Controls.Add(this.pictureBox62);
-            this.groupBox66.Controls.Add(this.pictureBox61);
-            this.groupBox66.Controls.Add(this.label18);
-            this.groupBox66.Controls.Add(this.LimitsHTTPServerTimeout);
-            this.groupBox66.Controls.Add(this.label17);
-            this.groupBox66.Controls.Add(this.LimitsHTTPServerQueue);
-            this.groupBox66.Controls.Add(this.label16);
-            this.groupBox66.Controls.Add(this.LimitsHTTPServerIdle);
-            this.groupBox66.Controls.Add(this.label15);
-            this.groupBox66.Controls.Add(this.LimitsHTTPServerHeader);
-            this.groupBox66.Controls.Add(this.label14);
-            this.groupBox66.Controls.Add(this.LimitsHTTPServerBody);
-            this.groupBox66.Controls.Add(this.label13);
-            this.groupBox66.Controls.Add(this.LimitsHTTPServerDrain);
-            this.groupBox66.Location = new System.Drawing.Point(54, 223);
-            this.groupBox66.Name = "groupBox66";
-            this.groupBox66.Size = new System.Drawing.Size(553, 83);
-            this.groupBox66.TabIndex = 9;
-            this.groupBox66.TabStop = false;
-            this.groupBox66.Text = "HTTP Server Limits";
+            this.HTTPServerLimitsBox.Controls.Add(this.pictureBox66);
+            this.HTTPServerLimitsBox.Controls.Add(this.pictureBox65);
+            this.HTTPServerLimitsBox.Controls.Add(this.pictureBox64);
+            this.HTTPServerLimitsBox.Controls.Add(this.pictureBox63);
+            this.HTTPServerLimitsBox.Controls.Add(this.pictureBox62);
+            this.HTTPServerLimitsBox.Controls.Add(this.pictureBox61);
+            this.HTTPServerLimitsBox.Controls.Add(this.label18);
+            this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerTimeout);
+            this.HTTPServerLimitsBox.Controls.Add(this.label17);
+            this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerQueue);
+            this.HTTPServerLimitsBox.Controls.Add(this.label16);
+            this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerIdle);
+            this.HTTPServerLimitsBox.Controls.Add(this.label15);
+            this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerHeader);
+            this.HTTPServerLimitsBox.Controls.Add(this.label14);
+            this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerBody);
+            this.HTTPServerLimitsBox.Controls.Add(this.label13);
+            this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerDrain);
+            this.HTTPServerLimitsBox.Location = new System.Drawing.Point(54, 223);
+            this.HTTPServerLimitsBox.Name = "HTTPServerLimitsBox";
+            this.HTTPServerLimitsBox.Size = new System.Drawing.Size(553, 83);
+            this.HTTPServerLimitsBox.TabIndex = 9;
+            this.HTTPServerLimitsBox.TabStop = false;
+            this.HTTPServerLimitsBox.Text = "HTTP Server Limits";
             // 
             // pictureBox66
             // 
@@ -2094,6 +2132,7 @@
             this.pictureBox66.TabIndex = 21;
             this.pictureBox66.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox66, "The amount of time allowed for data to be posted to \r\nCorrade\'s internal server.");
+            this.pictureBox66.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox65
             // 
@@ -2106,6 +2145,7 @@
             this.pictureBox65.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox65, "The amount of time allowed for a request to live in \r\nthe queue before it is proc" +
         "essed.");
+            this.pictureBox65.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox64
             // 
@@ -2117,6 +2157,7 @@
             this.pictureBox64.TabIndex = 19;
             this.pictureBox64.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox64, "The amount of time allowed for an idle connection.");
+            this.pictureBox64.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox63
             // 
@@ -2128,6 +2169,7 @@
             this.pictureBox63.TabIndex = 18;
             this.pictureBox63.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox63, "The amount of time allowed for the request header to \r\nbe processed.");
+            this.pictureBox63.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox62
             // 
@@ -2139,6 +2181,7 @@
             this.pictureBox62.TabIndex = 17;
             this.pictureBox62.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox62, "The amount of time allowed for the entity body to \r\narrive.");
+            this.pictureBox62.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox61
             // 
@@ -2150,6 +2193,7 @@
             this.pictureBox61.TabIndex = 16;
             this.pictureBox61.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox61, "The amount of time allowed for the server to drain \r\nthe entity body.");
+            this.pictureBox61.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label18
             // 
@@ -2253,15 +2297,15 @@
             this.LimitsHTTPServerDrain.Size = new System.Drawing.Size(89, 20);
             this.LimitsHTTPServerDrain.TabIndex = 0;
             // 
-            // tabPage13
+            // TCPTabPage
             // 
-            this.tabPage13.Controls.Add(this.groupBox78);
-            this.tabPage13.Location = new System.Drawing.Point(4, 25);
-            this.tabPage13.Name = "tabPage13";
-            this.tabPage13.Size = new System.Drawing.Size(672, 363);
-            this.tabPage13.TabIndex = 12;
-            this.tabPage13.Text = "TCP";
-            this.tabPage13.UseVisualStyleBackColor = true;
+            this.TCPTabPage.Controls.Add(this.groupBox78);
+            this.TCPTabPage.Location = new System.Drawing.Point(4, 25);
+            this.TCPTabPage.Name = "TCPTabPage";
+            this.TCPTabPage.Size = new System.Drawing.Size(672, 363);
+            this.TCPTabPage.TabIndex = 12;
+            this.TCPTabPage.Text = "TCP";
+            this.TCPTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox78
             // 
@@ -2286,6 +2330,7 @@
             this.pictureBox84.TabIndex = 6;
             this.pictureBox84.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox84, resources.GetString("pictureBox84.ToolTip"));
+            this.pictureBox84.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // groupBox81
             // 
@@ -2310,6 +2355,7 @@
             this.toolTip1.SetToolTip(this.pictureBox87, "Whether to enable the TCP server. In case the TCP server\r\nis disabled through thi" +
         "s option, Corrade will not even\r\nstart the TCP server, thereby sparing memory an" +
         "d quite\r\nsome processing power.");
+            this.pictureBox87.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // TCPNotificationsServerEnabled
             // 
@@ -2343,6 +2389,7 @@
             this.pictureBox86.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox86, "This represents the port on which Corrade will be\r\nlistening for TCP connections " +
         "requesting to retrieve\r\nnotifications through TCP.");
+            this.pictureBox86.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // TCPNotificationsServerPort
             // 
@@ -2373,6 +2420,7 @@
             this.pictureBox85.TabIndex = 7;
             this.pictureBox85.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox85, resources.GetString("pictureBox85.ToolTip"));
+            this.pictureBox85.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // TCPNotificationsServerAddress
             // 
@@ -2382,19 +2430,19 @@
             this.TCPNotificationsServerAddress.Size = new System.Drawing.Size(207, 20);
             this.TCPNotificationsServerAddress.TabIndex = 0;
             // 
-            // tabPage8
+            // NetworkTabPage
             // 
-            this.tabPage8.Controls.Add(this.groupBox48);
-            this.tabPage8.Controls.Add(this.groupBox47);
-            this.tabPage8.Controls.Add(this.groupBox46);
-            this.tabPage8.Controls.Add(this.groupBox45);
-            this.tabPage8.Controls.Add(this.groupBox44);
-            this.tabPage8.Location = new System.Drawing.Point(4, 25);
-            this.tabPage8.Name = "tabPage8";
-            this.tabPage8.Size = new System.Drawing.Size(672, 363);
-            this.tabPage8.TabIndex = 7;
-            this.tabPage8.Text = "Network";
-            this.tabPage8.UseVisualStyleBackColor = true;
+            this.NetworkTabPage.Controls.Add(this.groupBox48);
+            this.NetworkTabPage.Controls.Add(this.groupBox47);
+            this.NetworkTabPage.Controls.Add(this.groupBox46);
+            this.NetworkTabPage.Controls.Add(this.groupBox45);
+            this.NetworkTabPage.Controls.Add(this.groupBox44);
+            this.NetworkTabPage.Location = new System.Drawing.Point(4, 25);
+            this.NetworkTabPage.Name = "NetworkTabPage";
+            this.NetworkTabPage.Size = new System.Drawing.Size(672, 363);
+            this.NetworkTabPage.TabIndex = 7;
+            this.NetworkTabPage.Text = "Network";
+            this.NetworkTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox48
             // 
@@ -2417,6 +2465,7 @@
             this.pictureBox30.TabIndex = 5;
             this.pictureBox30.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox30, "Whether to use Expect-100-Continue for callbacks \r\nand notifications.");
+            this.pictureBox30.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // NetworkExpect100ContinueEnabled
             // 
@@ -2449,6 +2498,7 @@
             this.pictureBox31.TabIndex = 5;
             this.pictureBox31.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox31, resources.GetString("pictureBox31.ToolTip"));
+            this.pictureBox31.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // NetworkNaggleEnabled
             // 
@@ -2481,6 +2531,7 @@
             this.pictureBox29.TabIndex = 5;
             this.pictureBox29.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox29, resources.GetString("pictureBox29.ToolTip"));
+            this.pictureBox29.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // NetworkID0
             // 
@@ -2510,6 +2561,7 @@
             this.pictureBox28.TabIndex = 5;
             this.pictureBox28.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox28, resources.GetString("pictureBox28.ToolTip"));
+            this.pictureBox28.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // NetworkMACAddress
             // 
@@ -2540,6 +2592,7 @@
             this.pictureBox27.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox27, "The IP address that Corrade binds to. This address can\r\nbe a non-public address a" +
         "nd by default the value is \r\ntaken from the default adaptor / upstream gateway.");
+            this.pictureBox27.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // NetworkBindAddress
             // 
@@ -2548,22 +2601,22 @@
             this.NetworkBindAddress.Size = new System.Drawing.Size(261, 22);
             this.NetworkBindAddress.TabIndex = 0;
             // 
-            // tabPage9
+            // ThrottlesTabPage
             // 
-            this.tabPage9.Controls.Add(this.groupBox56);
-            this.tabPage9.Controls.Add(this.groupBox54);
-            this.tabPage9.Controls.Add(this.groupBox55);
-            this.tabPage9.Controls.Add(this.groupBox53);
-            this.tabPage9.Controls.Add(this.groupBox52);
-            this.tabPage9.Controls.Add(this.groupBox51);
-            this.tabPage9.Controls.Add(this.groupBox50);
-            this.tabPage9.Controls.Add(this.groupBox49);
-            this.tabPage9.Location = new System.Drawing.Point(4, 25);
-            this.tabPage9.Name = "tabPage9";
-            this.tabPage9.Size = new System.Drawing.Size(672, 363);
-            this.tabPage9.TabIndex = 8;
-            this.tabPage9.Text = "Throttles";
-            this.tabPage9.UseVisualStyleBackColor = true;
+            this.ThrottlesTabPage.Controls.Add(this.groupBox56);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox54);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox55);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox53);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox52);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox51);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox50);
+            this.ThrottlesTabPage.Controls.Add(this.groupBox49);
+            this.ThrottlesTabPage.Location = new System.Drawing.Point(4, 25);
+            this.ThrottlesTabPage.Name = "ThrottlesTabPage";
+            this.ThrottlesTabPage.Size = new System.Drawing.Size(672, 363);
+            this.ThrottlesTabPage.TabIndex = 8;
+            this.ThrottlesTabPage.Text = "Throttles";
+            this.ThrottlesTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox56
             // 
@@ -2586,6 +2639,7 @@
             this.pictureBox39.TabIndex = 9;
             this.pictureBox39.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox39, "Maximum bits per second for the layered cloud data.");
+            this.pictureBox39.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottleCloudThrottle
             // 
@@ -2615,6 +2669,7 @@
             this.pictureBox33.TabIndex = 5;
             this.pictureBox33.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox33, "Maximum bits per second for resending \r\nunacknowledged packets.");
+            this.pictureBox33.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottlesResendThrottle
             // 
@@ -2644,6 +2699,7 @@
             this.pictureBox38.TabIndex = 9;
             this.pictureBox38.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox38, "Maximum bits per second for downloading assets.");
+            this.pictureBox38.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottleAssetThrottle
             // 
@@ -2673,6 +2729,7 @@
             this.pictureBox37.TabIndex = 9;
             this.pictureBox37.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox37, "Maximum bits per second for the layered wind.");
+            this.pictureBox37.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottleWindThrottle
             // 
@@ -2703,6 +2760,7 @@
             this.pictureBox36.TabIndex = 8;
             this.pictureBox36.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox36, "Maixmum bits per second for texture data.");
+            this.pictureBox36.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottleTextureThrottle
             // 
@@ -2732,6 +2790,7 @@
             this.pictureBox35.TabIndex = 8;
             this.pictureBox35.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox35, "Maixmum bits per second for object data.");
+            this.pictureBox35.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottleTaskThrottle
             // 
@@ -2761,6 +2820,7 @@
             this.pictureBox34.TabIndex = 8;
             this.pictureBox34.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox34, "Maximum bits per second for the layered terrain.");
+            this.pictureBox34.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottleLandThrottle
             // 
@@ -2790,6 +2850,7 @@
             this.pictureBox32.TabIndex = 5;
             this.pictureBox32.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox32, "Maximum bits per second for the entire connection.");
+            this.pictureBox32.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // ThrottlesTotalThrottle
             // 
@@ -2798,31 +2859,31 @@
             this.ThrottlesTotalThrottle.Size = new System.Drawing.Size(162, 22);
             this.ThrottlesTotalThrottle.TabIndex = 0;
             // 
-            // tabPage10
+            // LimitsTabPage
             // 
-            this.tabPage10.Controls.Add(this.groupBox86);
-            this.tabPage10.Controls.Add(this.groupBox82);
-            this.tabPage10.Controls.Add(this.groupBox76);
-            this.tabPage10.Controls.Add(this.groupBox71);
-            this.tabPage10.Controls.Add(this.groupBox70);
-            this.tabPage10.Controls.Add(this.groupBox69);
-            this.tabPage10.Controls.Add(this.groupBox68);
-            this.tabPage10.Controls.Add(this.groupBox67);
-            this.tabPage10.Controls.Add(this.groupBox65);
-            this.tabPage10.Controls.Add(this.groupBox64);
-            this.tabPage10.Controls.Add(this.groupBox63);
-            this.tabPage10.Controls.Add(this.groupBox62);
-            this.tabPage10.Controls.Add(this.groupBox61);
-            this.tabPage10.Controls.Add(this.groupBox60);
-            this.tabPage10.Controls.Add(this.groupBox59);
-            this.tabPage10.Controls.Add(this.groupBox58);
-            this.tabPage10.Controls.Add(this.groupBox57);
-            this.tabPage10.Location = new System.Drawing.Point(4, 25);
-            this.tabPage10.Name = "tabPage10";
-            this.tabPage10.Size = new System.Drawing.Size(672, 363);
-            this.tabPage10.TabIndex = 9;
-            this.tabPage10.Text = "Limits";
-            this.tabPage10.UseVisualStyleBackColor = true;
+            this.LimitsTabPage.Controls.Add(this.groupBox86);
+            this.LimitsTabPage.Controls.Add(this.groupBox82);
+            this.LimitsTabPage.Controls.Add(this.groupBox76);
+            this.LimitsTabPage.Controls.Add(this.groupBox71);
+            this.LimitsTabPage.Controls.Add(this.groupBox70);
+            this.LimitsTabPage.Controls.Add(this.groupBox69);
+            this.LimitsTabPage.Controls.Add(this.groupBox68);
+            this.LimitsTabPage.Controls.Add(this.groupBox67);
+            this.LimitsTabPage.Controls.Add(this.groupBox65);
+            this.LimitsTabPage.Controls.Add(this.groupBox64);
+            this.LimitsTabPage.Controls.Add(this.groupBox63);
+            this.LimitsTabPage.Controls.Add(this.groupBox62);
+            this.LimitsTabPage.Controls.Add(this.groupBox61);
+            this.LimitsTabPage.Controls.Add(this.groupBox60);
+            this.LimitsTabPage.Controls.Add(this.groupBox59);
+            this.LimitsTabPage.Controls.Add(this.groupBox58);
+            this.LimitsTabPage.Controls.Add(this.groupBox57);
+            this.LimitsTabPage.Location = new System.Drawing.Point(4, 25);
+            this.LimitsTabPage.Name = "LimitsTabPage";
+            this.LimitsTabPage.Size = new System.Drawing.Size(672, 363);
+            this.LimitsTabPage.TabIndex = 9;
+            this.LimitsTabPage.Text = "Limits";
+            this.LimitsTabPage.UseVisualStyleBackColor = true;
             // 
             // groupBox86
             // 
@@ -2847,6 +2908,7 @@
             this.pictureBox93.TabIndex = 17;
             this.pictureBox93.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox93, "The time to wait in seconds between checking\r\nfor new RSS feed updates.");
+            this.pictureBox93.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label32
             // 
@@ -2899,6 +2961,7 @@
             this.pictureBox82.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox82, "The length of the queue. Additional notifications will \r\nbe ignored until a slot " +
         "is freed.");
+            this.pictureBox82.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox83
             // 
@@ -2911,6 +2974,7 @@
             this.pictureBox83.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox83, "The time to wait in milliseconds between dequeuing a new\r\nnotification from the q" +
         "ueue and processing it.");
+            this.pictureBox83.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label30
             // 
@@ -2968,6 +3032,7 @@
             this.pictureBox51.TabIndex = 9;
             this.pictureBox51.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox51, resources.GetString("pictureBox51.ToolTip"));
+            this.pictureBox51.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label29
             // 
@@ -3011,6 +3076,7 @@
             this.pictureBox45.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox45, "The time to keep the connections open such that they \r\ncan be reused before closi" +
         "ng them down.");
+            this.pictureBox45.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox44
             // 
@@ -3023,6 +3089,7 @@
             this.pictureBox44.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox44, "The number of concurrent service-point connections. \r\nIncrease this if your callb" +
         "acks and notifications time out.");
+            this.pictureBox44.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label27
             // 
@@ -3080,6 +3147,7 @@
             this.pictureBox43.TabIndex = 9;
             this.pictureBox43.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox43, "The amount of time allowed for Corrade to gracefully \r\ndisconnect from the grid.");
+            this.pictureBox43.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label25
             // 
@@ -3120,6 +3188,7 @@
             this.pictureBox42.TabIndex = 9;
             this.pictureBox42.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox42, resources.GetString("pictureBox42.ToolTip"));
+            this.pictureBox42.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // LimitsMembershipSweep
             // 
@@ -3163,6 +3232,7 @@
             this.pictureBox60.TabIndex = 16;
             this.pictureBox60.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox60, "The grace period allowed for data bursts from the \r\ngrid to Corrade.");
+            this.pictureBox60.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox59
             // 
@@ -3175,6 +3245,7 @@
             this.pictureBox59.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox59, "Corrade uses a decay for the data timeout in order to \r\nspeed-up the process of r" +
         "eceiving packets.");
+            this.pictureBox59.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label23
             // 
@@ -3203,6 +3274,7 @@
             // 
             // LimitsDataDecay
             // 
+            this.LimitsDataDecay.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.LimitsDataDecay.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.LimitsDataDecay.FormattingEnabled = true;
             this.LimitsDataDecay.Items.AddRange(new object[] {
@@ -3215,7 +3287,6 @@
             this.LimitsDataDecay.Name = "LimitsDataDecay";
             this.LimitsDataDecay.Size = new System.Drawing.Size(108, 21);
             this.LimitsDataDecay.TabIndex = 1;
-            this.LimitsDataDecay.Text = "none";
             // 
             // groupBox67
             // 
@@ -3245,6 +3316,7 @@
             this.pictureBox69.TabIndex = 12;
             this.pictureBox69.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox69, "The amount of time after which to attempt to activate\r\nthe current land group.");
+            this.pictureBox69.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox68
             // 
@@ -3256,6 +3328,7 @@
             this.pictureBox68.TabIndex = 11;
             this.pictureBox68.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox68, "The amount of time to wait before attempting to \r\nrebake.");
+            this.pictureBox68.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox67
             // 
@@ -3268,6 +3341,7 @@
             this.pictureBox67.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox67, "The amount of time allowed for querrying grid \r\nservices (agent, group lookups, e" +
         "tc...).");
+            this.pictureBox67.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label21
             // 
@@ -3352,6 +3426,7 @@
             this.pictureBox58.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox58, "The total number of threads that Corrade is allowed \r\nto spawn for processing not" +
         "ifications.");
+            this.pictureBox58.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox57
             // 
@@ -3364,6 +3439,7 @@
             this.pictureBox57.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox57, "The length of the queue. Additional notifications will \r\nbe ignored until a slot " +
         "is freed.");
+            this.pictureBox57.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox56
             // 
@@ -3375,6 +3451,7 @@
             this.pictureBox56.TabIndex = 11;
             this.pictureBox56.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox56, "The interval between processing notification queue \r\nelements.");
+            this.pictureBox56.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox55
             // 
@@ -3386,6 +3463,7 @@
             this.pictureBox55.TabIndex = 10;
             this.pictureBox55.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox55, "The amount of time allowed for a notification to be \r\nposted to an URL.");
+            this.pictureBox55.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label28
             // 
@@ -3484,6 +3562,7 @@
             this.pictureBox54.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox54, "The length of the queue. Additional callbacks will be\r\nignored until a slot is fr" +
         "eed.");
+            this.pictureBox54.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox53
             // 
@@ -3495,6 +3574,7 @@
             this.pictureBox53.TabIndex = 11;
             this.pictureBox53.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox53, "The interval between processing callback queue \r\nelements.");
+            this.pictureBox53.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox52
             // 
@@ -3506,6 +3586,7 @@
             this.pictureBox52.TabIndex = 10;
             this.pictureBox52.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox52, "The amount of time allowed for a callback to be \r\nposted to an URL.");
+            this.pictureBox52.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label9
             // 
@@ -3581,6 +3662,7 @@
             this.pictureBox50.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox50, "The total number of concurrent instant messages that \r\nCorrade will be allowed to" +
         " process.");
+            this.pictureBox50.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label6
             // 
@@ -3621,6 +3703,7 @@
             this.pictureBox49.TabIndex = 9;
             this.pictureBox49.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox49, "The total number of RLV threads that Corrade will be \r\nallowed to spawn.");
+            this.pictureBox49.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label5
             // 
@@ -3661,6 +3744,7 @@
             this.pictureBox48.TabIndex = 9;
             this.pictureBox48.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox48, "The total number of command threads that Corrade \r\nwill be allowed to spawn.");
+            this.pictureBox48.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label4
             // 
@@ -3702,6 +3786,7 @@
             this.pictureBox47.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox47, "The total number of threads that may be used to log \r\nmessages and feedback  mess" +
         "ages.");
+            this.pictureBox47.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label3
             // 
@@ -3744,6 +3829,7 @@
             this.toolTip1.SetToolTip(this.pictureBox41, "The amount of time in milliseconds after which to a \r\nthread metric gets expunged" +
         " from the scheduler.\r\nCorrade uses an internal genetic-based algorithm for\r\ndela" +
         "ying threads for multiple groups.\r\n");
+            this.pictureBox41.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label2
             // 
@@ -3785,6 +3871,7 @@
             this.pictureBox46.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox46, "The number of POST requests that Corrade will be \r\nallowed to send at once withou" +
         "t letting the other \r\nthreads finish first.");
+            this.pictureBox46.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // label1
             // 
@@ -3824,6 +3911,7 @@
             this.pictureBox40.TabIndex = 9;
             this.pictureBox40.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox40, resources.GetString("pictureBox40.ToolTip"));
+            this.pictureBox40.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // LimitsRange
             // 
@@ -3833,16 +3921,17 @@
             this.LimitsRange.Size = new System.Drawing.Size(116, 20);
             this.LimitsRange.TabIndex = 0;
             // 
-            // tabPage11
+            // MastersTabPage
             // 
-            this.tabPage11.Controls.Add(this.pictureBox72);
-            this.tabPage11.Controls.Add(this.groupBox72);
-            this.tabPage11.Location = new System.Drawing.Point(4, 25);
-            this.tabPage11.Name = "tabPage11";
-            this.tabPage11.Size = new System.Drawing.Size(672, 363);
-            this.tabPage11.TabIndex = 10;
-            this.tabPage11.Text = "Masters";
-            this.tabPage11.UseVisualStyleBackColor = true;
+            this.MastersTabPage.Controls.Add(this.MasterPasswordBox);
+            this.MastersTabPage.Controls.Add(this.pictureBox72);
+            this.MastersTabPage.Controls.Add(this.groupBox72);
+            this.MastersTabPage.Location = new System.Drawing.Point(4, 25);
+            this.MastersTabPage.Name = "MastersTabPage";
+            this.MastersTabPage.Size = new System.Drawing.Size(672, 363);
+            this.MastersTabPage.TabIndex = 10;
+            this.MastersTabPage.Text = "Masters";
+            this.MastersTabPage.UseVisualStyleBackColor = true;
             // 
             // pictureBox72
             // 
@@ -3856,6 +3945,7 @@
             this.toolTip1.SetToolTip(this.pictureBox72, "You can add agents by name here that will be able to \r\nteleport Corrade, send inv" +
         "entory items and execute \r\nadministrative commands without having to use a \r\nscr" +
         "ipt.");
+            this.pictureBox72.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // groupBox72
             // 
@@ -3864,7 +3954,7 @@
             this.groupBox72.Controls.Add(this.groupBox74);
             this.groupBox72.Controls.Add(this.groupBox73);
             this.groupBox72.Controls.Add(this.Masters);
-            this.groupBox72.Location = new System.Drawing.Point(142, 68);
+            this.groupBox72.Location = new System.Drawing.Point(160, 25);
             this.groupBox72.Name = "groupBox72";
             this.groupBox72.Size = new System.Drawing.Size(370, 218);
             this.groupBox72.TabIndex = 0;
@@ -3914,6 +4004,7 @@
             this.pictureBox71.TabIndex = 10;
             this.pictureBox71.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox71, "Master last name.");
+            this.pictureBox71.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // MasterLastName
             // 
@@ -3945,6 +4036,7 @@
             this.pictureBox70.TabIndex = 10;
             this.pictureBox70.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox70, "Master first name.");
+            this.pictureBox70.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // MasterFirstName
             // 
@@ -3965,37 +4057,37 @@
             this.Masters.TabIndex = 0;
             this.Masters.SelectedIndexChanged += new System.EventHandler(this.MasterSelected);
             // 
-            // tabPage12
+            // GroupsTabPage
             // 
-            this.tabPage12.Controls.Add(this.groupBox75);
-            this.tabPage12.Controls.Add(this.AddGroup);
-            this.tabPage12.Controls.Add(this.DeleteGroup);
-            this.tabPage12.Controls.Add(this.groupBox29);
-            this.tabPage12.Controls.Add(this.groupBox28);
-            this.tabPage12.Controls.Add(this.groupBox27);
-            this.tabPage12.Controls.Add(this.groupBox26);
-            this.tabPage12.Controls.Add(this.groupBox25);
-            this.tabPage12.Controls.Add(this.groupBox24);
-            this.tabPage12.Controls.Add(this.groupBox23);
-            this.tabPage12.Controls.Add(this.groupBox22);
-            this.tabPage12.Controls.Add(this.groupBox21);
-            this.tabPage12.Location = new System.Drawing.Point(4, 25);
-            this.tabPage12.Name = "tabPage12";
-            this.tabPage12.Size = new System.Drawing.Size(672, 363);
-            this.tabPage12.TabIndex = 11;
-            this.tabPage12.Text = "Groups";
-            this.tabPage12.UseVisualStyleBackColor = true;
+            this.GroupsTabPage.Controls.Add(this.ScheduledCommandsBox);
+            this.GroupsTabPage.Controls.Add(this.AddGroup);
+            this.GroupsTabPage.Controls.Add(this.DeleteGroup);
+            this.GroupsTabPage.Controls.Add(this.groupBox29);
+            this.GroupsTabPage.Controls.Add(this.DatabaseBox);
+            this.GroupsTabPage.Controls.Add(this.groupBox27);
+            this.GroupsTabPage.Controls.Add(this.groupBox26);
+            this.GroupsTabPage.Controls.Add(this.WorkersBox);
+            this.GroupsTabPage.Controls.Add(this.groupBox24);
+            this.GroupsTabPage.Controls.Add(this.groupBox23);
+            this.GroupsTabPage.Controls.Add(this.groupBox22);
+            this.GroupsTabPage.Controls.Add(this.groupBox21);
+            this.GroupsTabPage.Location = new System.Drawing.Point(4, 25);
+            this.GroupsTabPage.Name = "GroupsTabPage";
+            this.GroupsTabPage.Size = new System.Drawing.Size(672, 363);
+            this.GroupsTabPage.TabIndex = 11;
+            this.GroupsTabPage.Text = "Groups";
+            this.GroupsTabPage.UseVisualStyleBackColor = true;
             // 
-            // groupBox75
+            // ScheduledCommandsBox
             // 
-            this.groupBox75.Controls.Add(this.pictureBox77);
-            this.groupBox75.Controls.Add(this.GroupSchedules);
-            this.groupBox75.Location = new System.Drawing.Point(475, 127);
-            this.groupBox75.Name = "groupBox75";
-            this.groupBox75.Size = new System.Drawing.Size(188, 55);
-            this.groupBox75.TabIndex = 13;
-            this.groupBox75.TabStop = false;
-            this.groupBox75.Text = "Scheduled Commands";
+            this.ScheduledCommandsBox.Controls.Add(this.pictureBox77);
+            this.ScheduledCommandsBox.Controls.Add(this.GroupSchedules);
+            this.ScheduledCommandsBox.Location = new System.Drawing.Point(475, 127);
+            this.ScheduledCommandsBox.Name = "ScheduledCommandsBox";
+            this.ScheduledCommandsBox.Size = new System.Drawing.Size(188, 55);
+            this.ScheduledCommandsBox.TabIndex = 13;
+            this.ScheduledCommandsBox.TabStop = false;
+            this.ScheduledCommandsBox.Text = "Scheduled Commands";
             // 
             // pictureBox77
             // 
@@ -4007,6 +4099,7 @@
             this.pictureBox77.TabIndex = 10;
             this.pictureBox77.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox77, "This limits the number of commands that the group \r\nmay schedule.");
+            this.pictureBox77.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupSchedules
             // 
@@ -4061,6 +4154,7 @@
             this.pictureBox79.TabIndex = 10;
             this.pictureBox79.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox79, "Path to the log file.");
+            this.pictureBox79.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupChatLogFile
             // 
@@ -4083,17 +4177,17 @@
             this.GroupChatLogEnabled.UseVisualStyleBackColor = true;
             this.GroupChatLogEnabled.CheckedChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
-            // groupBox28
+            // DatabaseBox
             // 
-            this.groupBox28.Controls.Add(this.pictureBox78);
-            this.groupBox28.Controls.Add(this.GroupDatabaseFile);
-            this.groupBox28.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox28.Location = new System.Drawing.Point(475, 188);
-            this.groupBox28.Name = "groupBox28";
-            this.groupBox28.Size = new System.Drawing.Size(188, 59);
-            this.groupBox28.TabIndex = 9;
-            this.groupBox28.TabStop = false;
-            this.groupBox28.Text = "Database";
+            this.DatabaseBox.Controls.Add(this.pictureBox78);
+            this.DatabaseBox.Controls.Add(this.GroupDatabaseFile);
+            this.DatabaseBox.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.DatabaseBox.Location = new System.Drawing.Point(475, 188);
+            this.DatabaseBox.Name = "DatabaseBox";
+            this.DatabaseBox.Size = new System.Drawing.Size(188, 59);
+            this.DatabaseBox.TabIndex = 9;
+            this.DatabaseBox.TabStop = false;
+            this.DatabaseBox.Text = "Database";
             // 
             // pictureBox78
             // 
@@ -4105,6 +4199,7 @@
             this.pictureBox78.TabIndex = 10;
             this.pictureBox78.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox78, "This is the path to a per-group database.");
+            this.pictureBox78.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupDatabaseFile
             // 
@@ -4135,6 +4230,7 @@
             this.pictureBox81.TabIndex = 11;
             this.pictureBox81.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox81, resources.GetString("pictureBox81.ToolTip"));
+            this.pictureBox81.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupNotifications
             // 
@@ -4202,6 +4298,7 @@
             this.pictureBox80.TabIndex = 11;
             this.pictureBox80.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox80, resources.GetString("pictureBox80.ToolTip"));
+            this.pictureBox80.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupPermissions
             // 
@@ -4233,17 +4330,17 @@
             this.GroupPermissions.TabIndex = 6;
             this.GroupPermissions.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.PermissionsSelected);
             // 
-            // groupBox25
+            // WorkersBox
             // 
-            this.groupBox25.Controls.Add(this.pictureBox76);
-            this.groupBox25.Controls.Add(this.GroupWorkers);
-            this.groupBox25.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox25.Location = new System.Drawing.Point(503, 63);
-            this.groupBox25.Name = "groupBox25";
-            this.groupBox25.Size = new System.Drawing.Size(160, 57);
-            this.groupBox25.TabIndex = 5;
-            this.groupBox25.TabStop = false;
-            this.groupBox25.Text = "Workers";
+            this.WorkersBox.Controls.Add(this.pictureBox76);
+            this.WorkersBox.Controls.Add(this.GroupWorkers);
+            this.WorkersBox.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.WorkersBox.Location = new System.Drawing.Point(503, 63);
+            this.WorkersBox.Name = "WorkersBox";
+            this.WorkersBox.Size = new System.Drawing.Size(160, 57);
+            this.WorkersBox.TabIndex = 5;
+            this.WorkersBox.TabStop = false;
+            this.WorkersBox.Text = "Workers";
             // 
             // pictureBox76
             // 
@@ -4256,6 +4353,7 @@
             this.pictureBox76.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox76, "This limits the number of commands that can be \r\nlined up for execution for a con" +
         "figured group in order \r\nto fairly share Corrade\'s resources.");
+            this.pictureBox76.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupWorkers
             // 
@@ -4287,6 +4385,7 @@
             this.pictureBox75.TabIndex = 10;
             this.pictureBox75.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox75, "The UUID of the group.");
+            this.pictureBox75.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupUUID
             // 
@@ -4319,6 +4418,7 @@
             this.pictureBox74.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox74, "This must be set to a password in order to identify \r\nscripts to the defined grou" +
         "p.");
+            this.pictureBox74.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupPassword
             // 
@@ -4354,6 +4454,7 @@
             this.pictureBox73.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox73, "The group-name must be set to the exact name of \r\nthe group that Corrade will be " +
         "managing.");
+            this.pictureBox73.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // GroupName
             // 
@@ -4459,6 +4560,18 @@
             this.toolTip1.InitialDelay = 500;
             this.toolTip1.ReshowDelay = 100;
             // 
+            // button11
+            // 
+            this.button11.Font = new System.Drawing.Font("Palatino Linotype", 8.25F);
+            this.button11.Location = new System.Drawing.Point(263, 589);
+            this.button11.Name = "button11";
+            this.button11.Size = new System.Drawing.Size(98, 23);
+            this.button11.TabIndex = 11;
+            this.button11.Text = "Load Defaults";
+            this.toolTip1.SetToolTip(this.button11, "Save Corrade configuration to Corrade.ini");
+            this.button11.UseVisualStyleBackColor = true;
+            this.button11.Click += new System.EventHandler(this.LoadDefaults);
+            // 
             // Version
             // 
             this.Version.AutoSize = true;
@@ -4469,11 +4582,73 @@
             this.Version.TabIndex = 6;
             this.Version.Text = "                ";
             // 
+            // ExperienceLevel
+            // 
+            this.ExperienceLevel.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.ExperienceLevel.Font = new System.Drawing.Font("Consolas", 8.25F);
+            this.ExperienceLevel.FormattingEnabled = true;
+            this.ExperienceLevel.Items.AddRange(new object[] {
+            "Basic",
+            "Intermediary",
+            "Advanced"});
+            this.ExperienceLevel.Location = new System.Drawing.Point(463, 590);
+            this.ExperienceLevel.Name = "ExperienceLevel";
+            this.ExperienceLevel.Size = new System.Drawing.Size(121, 21);
+            this.ExperienceLevel.TabIndex = 12;
+            this.ExperienceLevel.SelectedIndexChanged += new System.EventHandler(this.ExperienceLevelChanged);
+            // 
+            // MasterPasswordOverride
+            // 
+            this.MasterPasswordOverride.Location = new System.Drawing.Point(7, 47);
+            this.MasterPasswordOverride.Name = "MasterPasswordOverride";
+            this.MasterPasswordOverride.PasswordChar = '*';
+            this.MasterPasswordOverride.Size = new System.Drawing.Size(357, 22);
+            this.MasterPasswordOverride.TabIndex = 11;
+            this.MasterPasswordOverride.UseSystemPasswordChar = true;
+            this.MasterPasswordOverride.TextChanged += new System.EventHandler(this.MasterPasswordOverrideChanged);
+            // 
+            // MasterPasswordBox
+            // 
+            this.MasterPasswordBox.Controls.Add(this.MasterPasswordOverrideEnabled);
+            this.MasterPasswordBox.Controls.Add(this.pictureBox92);
+            this.MasterPasswordBox.Controls.Add(this.MasterPasswordOverride);
+            this.MasterPasswordBox.Location = new System.Drawing.Point(160, 249);
+            this.MasterPasswordBox.Name = "MasterPasswordBox";
+            this.MasterPasswordBox.Size = new System.Drawing.Size(370, 81);
+            this.MasterPasswordBox.TabIndex = 12;
+            this.MasterPasswordBox.TabStop = false;
+            this.MasterPasswordBox.Text = "Master Password Override";
+            // 
+            // pictureBox92
+            // 
+            this.pictureBox92.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox92.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox92.Image")));
+            this.pictureBox92.Location = new System.Drawing.Point(338, 18);
+            this.pictureBox92.Name = "pictureBox92";
+            this.pictureBox92.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox92.TabIndex = 13;
+            this.pictureBox92.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox92, resources.GetString("pictureBox92.ToolTip"));
+            // 
+            // MasterPasswordOverrideEnabled
+            // 
+            this.MasterPasswordOverrideEnabled.AutoSize = true;
+            this.MasterPasswordOverrideEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.MasterPasswordOverrideEnabled.Location = new System.Drawing.Point(264, 20);
+            this.MasterPasswordOverrideEnabled.Name = "MasterPasswordOverrideEnabled";
+            this.MasterPasswordOverrideEnabled.Size = new System.Drawing.Size(68, 17);
+            this.MasterPasswordOverrideEnabled.TabIndex = 14;
+            this.MasterPasswordOverrideEnabled.Text = "Enabled";
+            this.MasterPasswordOverrideEnabled.UseVisualStyleBackColor = true;
+            this.MasterPasswordOverrideEnabled.Click += new System.EventHandler(this.EnableMasterPasswordOverrideRequested);
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(704, 641);
+            this.Controls.Add(this.ExperienceLevel);
+            this.Controls.Add(this.button11);
             this.Controls.Add(this.Version);
             this.Controls.Add(this.button9);
             this.Controls.Add(this.Status);
@@ -4488,28 +4663,30 @@
             this.Name = "CorradeConfiguratorForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.Text = "Corrade Configurator";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SaveCheck);
+            this.Load += new System.EventHandler(this.ConfiguratorLoaded);
             this.Shown += new System.EventHandler(this.CorradeConfiguratorShown);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.Tabs.ResumeLayout(false);
-            this.tabPage1.ResumeLayout(false);
-            this.groupBox77.ResumeLayout(false);
-            this.groupBox77.PerformLayout();
+            this.ClientTabPage.ResumeLayout(false);
+            this.ClientIdentificationTagBox.ResumeLayout(false);
+            this.ClientIdentificationTagBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).EndInit();
-            this.groupBox10.ResumeLayout(false);
+            this.AbnormalExitCodeBox.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.AbnomalExitCode)).EndInit();
-            this.groupBox9.ResumeLayout(false);
+            this.ExpectedExitCodeBox.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox11)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.ExpectedExitCode)).EndInit();
-            this.groupBox8.ResumeLayout(false);
-            this.groupBox8.PerformLayout();
+            this.GroupCreateFeeBox.ResumeLayout(false);
+            this.GroupCreateFeeBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox9)).EndInit();
-            this.groupBox7.ResumeLayout(false);
-            this.groupBox7.PerformLayout();
+            this.AutoActivateGroupBox.ResumeLayout(false);
+            this.AutoActivateGroupBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox91)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox7)).EndInit();
-            this.groupBox6.ResumeLayout(false);
-            this.groupBox6.PerformLayout();
+            this.TOSBox.ResumeLayout(false);
+            this.TOSBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox8)).EndInit();
             this.groupBox5.ResumeLayout(false);
             this.groupBox5.PerformLayout();
@@ -4526,7 +4703,7 @@
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
-            this.tabPage2.ResumeLayout(false);
+            this.LogsTabPage.ResumeLayout(false);
             this.groupBox14.ResumeLayout(false);
             this.groupBox14.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox16)).EndInit();
@@ -4539,7 +4716,7 @@
             this.groupBox11.ResumeLayout(false);
             this.groupBox11.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox13)).EndInit();
-            this.tabPage3.ResumeLayout(false);
+            this.FiltersTabPage.ResumeLayout(false);
             this.groupBox16.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox18)).EndInit();
             this.groupBox31.ResumeLayout(false);
@@ -4550,7 +4727,7 @@
             this.groupBox30.ResumeLayout(false);
             this.groupBox18.ResumeLayout(false);
             this.groupBox17.ResumeLayout(false);
-            this.tabPage4.ResumeLayout(false);
+            this.CryptographyTabPage.ResumeLayout(false);
             this.groupBox83.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox90)).EndInit();
             this.groupBox85.ResumeLayout(false);
@@ -4568,19 +4745,19 @@
             this.groupBox36.ResumeLayout(false);
             this.groupBox35.ResumeLayout(false);
             this.groupBox34.ResumeLayout(false);
-            this.tabPage5.ResumeLayout(false);
+            this.SIMLTabPage.ResumeLayout(false);
             this.groupBox38.ResumeLayout(false);
             this.groupBox38.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox21)).EndInit();
-            this.tabPage6.ResumeLayout(false);
+            this.RLVTabPage.ResumeLayout(false);
             this.groupBox39.ResumeLayout(false);
             this.groupBox39.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).EndInit();
-            this.tabPage7.ResumeLayout(false);
+            this.HTTPTabPage.ResumeLayout(false);
             this.groupBox43.ResumeLayout(false);
             this.groupBox43.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox24)).EndInit();
-            this.groupBox42.ResumeLayout(false);
+            this.CompressionBox.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox25)).EndInit();
             this.groupBox41.ResumeLayout(false);
             this.groupBox41.PerformLayout();
@@ -4588,15 +4765,15 @@
             this.groupBox40.ResumeLayout(false);
             this.groupBox40.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox23)).EndInit();
-            this.groupBox66.ResumeLayout(false);
-            this.groupBox66.PerformLayout();
+            this.HTTPServerLimitsBox.ResumeLayout(false);
+            this.HTTPServerLimitsBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox61)).EndInit();
-            this.tabPage13.ResumeLayout(false);
+            this.TCPTabPage.ResumeLayout(false);
             this.groupBox78.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox84)).EndInit();
             this.groupBox81.ResumeLayout(false);
@@ -4608,7 +4785,7 @@
             this.groupBox79.ResumeLayout(false);
             this.groupBox79.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox85)).EndInit();
-            this.tabPage8.ResumeLayout(false);
+            this.NetworkTabPage.ResumeLayout(false);
             this.groupBox48.ResumeLayout(false);
             this.groupBox48.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox30)).EndInit();
@@ -4624,7 +4801,7 @@
             this.groupBox44.ResumeLayout(false);
             this.groupBox44.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox27)).EndInit();
-            this.tabPage9.ResumeLayout(false);
+            this.ThrottlesTabPage.ResumeLayout(false);
             this.groupBox56.ResumeLayout(false);
             this.groupBox56.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox39)).EndInit();
@@ -4649,7 +4826,7 @@
             this.groupBox49.ResumeLayout(false);
             this.groupBox49.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
-            this.tabPage10.ResumeLayout(false);
+            this.LimitsTabPage.ResumeLayout(false);
             this.groupBox86.ResumeLayout(false);
             this.groupBox86.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
@@ -4711,7 +4888,7 @@
             this.groupBox57.ResumeLayout(false);
             this.groupBox57.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).EndInit();
-            this.tabPage11.ResumeLayout(false);
+            this.MastersTabPage.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox72)).EndInit();
             this.groupBox72.ResumeLayout(false);
             this.groupBox74.ResumeLayout(false);
@@ -4720,22 +4897,22 @@
             this.groupBox73.ResumeLayout(false);
             this.groupBox73.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox70)).EndInit();
-            this.tabPage12.ResumeLayout(false);
-            this.groupBox75.ResumeLayout(false);
-            this.groupBox75.PerformLayout();
+            this.GroupsTabPage.ResumeLayout(false);
+            this.ScheduledCommandsBox.ResumeLayout(false);
+            this.ScheduledCommandsBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox77)).EndInit();
             this.groupBox29.ResumeLayout(false);
             this.groupBox29.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox79)).EndInit();
-            this.groupBox28.ResumeLayout(false);
-            this.groupBox28.PerformLayout();
+            this.DatabaseBox.ResumeLayout(false);
+            this.DatabaseBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox78)).EndInit();
             this.groupBox27.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox81)).EndInit();
             this.groupBox26.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox80)).EndInit();
-            this.groupBox25.ResumeLayout(false);
-            this.groupBox25.PerformLayout();
+            this.WorkersBox.ResumeLayout(false);
+            this.WorkersBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox76)).EndInit();
             this.groupBox24.ResumeLayout(false);
             this.groupBox24.PerformLayout();
@@ -4749,6 +4926,9 @@
             this.groupBox21.ResumeLayout(false);
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.MasterPasswordBox.ResumeLayout(false);
+            this.MasterPasswordBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox92)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -4758,10 +4938,10 @@
 
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.TabControl Tabs;
-        private System.Windows.Forms.TabPage tabPage1;
-        private System.Windows.Forms.GroupBox groupBox7;
+        private System.Windows.Forms.TabPage ClientTabPage;
+        private System.Windows.Forms.GroupBox AutoActivateGroupBox;
         private System.Windows.Forms.CheckBox AutoActivateGroup;
-        private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.GroupBox TOSBox;
         private System.Windows.Forms.CheckBox TOS;
         private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.TextBox StartLocation;
@@ -4773,22 +4953,22 @@
         private System.Windows.Forms.TextBox Lastname;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.TextBox Firstname;
-        private System.Windows.Forms.TabPage tabPage2;
-        private System.Windows.Forms.TabPage tabPage3;
-        private System.Windows.Forms.TabPage tabPage4;
-        private System.Windows.Forms.TabPage tabPage5;
-        private System.Windows.Forms.TabPage tabPage6;
-        private System.Windows.Forms.TabPage tabPage7;
-        private System.Windows.Forms.TabPage tabPage8;
-        private System.Windows.Forms.TabPage tabPage9;
-        private System.Windows.Forms.TabPage tabPage10;
-        private System.Windows.Forms.TabPage tabPage11;
-        private System.Windows.Forms.TabPage tabPage12;
-        private System.Windows.Forms.GroupBox groupBox10;
+        private System.Windows.Forms.TabPage LogsTabPage;
+        private System.Windows.Forms.TabPage FiltersTabPage;
+        private System.Windows.Forms.TabPage CryptographyTabPage;
+        private System.Windows.Forms.TabPage SIMLTabPage;
+        private System.Windows.Forms.TabPage RLVTabPage;
+        private System.Windows.Forms.TabPage HTTPTabPage;
+        private System.Windows.Forms.TabPage NetworkTabPage;
+        private System.Windows.Forms.TabPage ThrottlesTabPage;
+        private System.Windows.Forms.TabPage LimitsTabPage;
+        private System.Windows.Forms.TabPage MastersTabPage;
+        private System.Windows.Forms.TabPage GroupsTabPage;
+        private System.Windows.Forms.GroupBox AbnormalExitCodeBox;
         private System.Windows.Forms.NumericUpDown AbnomalExitCode;
-        private System.Windows.Forms.GroupBox groupBox9;
+        private System.Windows.Forms.GroupBox ExpectedExitCodeBox;
         private System.Windows.Forms.NumericUpDown ExpectedExitCode;
-        private System.Windows.Forms.GroupBox groupBox8;
+        private System.Windows.Forms.GroupBox GroupCreateFeeBox;
         private System.Windows.Forms.TextBox GroupCreateFee;
         private System.Windows.Forms.GroupBox groupBox14;
         private System.Windows.Forms.CheckBox RegionLogFileEnabled;
@@ -4820,13 +5000,13 @@
         private System.Windows.Forms.GroupBox groupBox29;
         private System.Windows.Forms.TextBox GroupChatLogFile;
         private System.Windows.Forms.CheckBox GroupChatLogEnabled;
-        private System.Windows.Forms.GroupBox groupBox28;
+        private System.Windows.Forms.GroupBox DatabaseBox;
         private System.Windows.Forms.TextBox GroupDatabaseFile;
         private System.Windows.Forms.GroupBox groupBox27;
         private System.Windows.Forms.CheckedListBox GroupNotifications;
         private System.Windows.Forms.GroupBox groupBox26;
         private System.Windows.Forms.CheckedListBox GroupPermissions;
-        private System.Windows.Forms.GroupBox groupBox25;
+        private System.Windows.Forms.GroupBox WorkersBox;
         private System.Windows.Forms.TextBox GroupWorkers;
         private System.Windows.Forms.GroupBox groupBox24;
         private System.Windows.Forms.TextBox GroupUUID;
@@ -4870,7 +5050,7 @@
         private System.Windows.Forms.CheckBox RLVEnabled;
         private System.Windows.Forms.GroupBox groupBox43;
         private System.Windows.Forms.CheckBox HTTPServerKeepAliveEnabled;
-        private System.Windows.Forms.GroupBox groupBox42;
+        private System.Windows.Forms.GroupBox CompressionBox;
         private System.Windows.Forms.ComboBox HTTPServerCompression;
         private System.Windows.Forms.GroupBox groupBox41;
         private System.Windows.Forms.TextBox HTTPServerPrefix;
@@ -4936,7 +5116,7 @@
         private System.Windows.Forms.TextBox LimitsServicesRebake;
         private System.Windows.Forms.Label label19;
         private System.Windows.Forms.TextBox LimitsServicesTimeout;
-        private System.Windows.Forms.GroupBox groupBox66;
+        private System.Windows.Forms.GroupBox HTTPServerLimitsBox;
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.TextBox LimitsHTTPServerTimeout;
         private System.Windows.Forms.Label label17;
@@ -4987,12 +5167,12 @@
         private System.Windows.Forms.OpenFileDialog LoadLegacyConfigurationDialog;
         private System.Windows.Forms.SaveFileDialog SaveConfigurationDialog;
         private System.Windows.Forms.ToolTip toolTip1;
-        private System.Windows.Forms.GroupBox groupBox75;
+        private System.Windows.Forms.GroupBox ScheduledCommandsBox;
         private System.Windows.Forms.TextBox GroupSchedules;
         private System.Windows.Forms.GroupBox groupBox76;
         private System.Windows.Forms.Label label29;
         private System.Windows.Forms.TextBox LimitsSchedulesResolution;
-        private System.Windows.Forms.GroupBox groupBox77;
+        private System.Windows.Forms.GroupBox ClientIdentificationTagBox;
         private System.Windows.Forms.TextBox ClientIdentificationTag;
         private System.Windows.Forms.PictureBox pictureBox12;
         private System.Windows.Forms.PictureBox pictureBox10;
@@ -5075,7 +5255,7 @@
         private System.Windows.Forms.PictureBox pictureBox81;
         private System.Windows.Forms.PictureBox pictureBox80;
         private System.Windows.Forms.Label Version;
-        private System.Windows.Forms.TabPage tabPage13;
+        private System.Windows.Forms.TabPage TCPTabPage;
         private System.Windows.Forms.GroupBox groupBox78;
         private System.Windows.Forms.GroupBox groupBox80;
         private System.Windows.Forms.TextBox TCPNotificationsServerPort;
@@ -5110,6 +5290,12 @@
         private System.Windows.Forms.Label label32;
         private System.Windows.Forms.Label label33;
         private System.Windows.Forms.TextBox LimitsFeedsUpdate;
+        private System.Windows.Forms.Button button11;
+        private System.Windows.Forms.ComboBox ExperienceLevel;
+        private System.Windows.Forms.GroupBox MasterPasswordBox;
+        private System.Windows.Forms.PictureBox pictureBox92;
+        private System.Windows.Forms.TextBox MasterPasswordOverride;
+        private System.Windows.Forms.CheckBox MasterPasswordOverrideEnabled;
     }
 }
 

@@ -29,6 +29,7 @@ namespace Configurator
         private static readonly object ConfigurationFileLock = new object();
         private static Configuration corradeConfiguration = new Configuration();
         private static CorradeConfiguratorForm mainForm;
+        private static bool isConfigurationSaved = false;
 
         private readonly Action GetUserConfiguration = () =>
         {
@@ -196,6 +197,8 @@ namespace Configurator
                 });
             }
             mainForm.Masters.DisplayMember = "Text";
+            mainForm.MasterPasswordOverrideEnabled.Checked = corradeConfiguration.EnableMasterPasswordOverride;
+            mainForm.MasterPasswordOverride.Text = corradeConfiguration.MasterPasswordOverride;
 
             // groups
             mainForm.Groups.Items.Clear();
@@ -501,6 +504,18 @@ namespace Configurator
                         break;
                 }
             }
+
+            // Hash the master password override using SHA1
+            corradeConfiguration.EnableMasterPasswordOverride = mainForm.MasterPasswordOverrideEnabled.Checked;
+            switch (Regex.IsMatch(mainForm.MasterPasswordOverride.Text, "[a-fA-F0-9]{40}"))
+            {
+                case false:
+                    corradeConfiguration.MasterPasswordOverride =
+                        string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text)
+                            ? mainForm.MasterPasswordOverride.Text
+                            : Utils.SHA1String(mainForm.MasterPasswordOverride.Text);
+                    break;
+            }
         };
 
         public CorradeConfiguratorForm()
@@ -621,6 +636,7 @@ namespace Configurator
                                     corradeConfiguration.Save(file, ref corradeConfiguration);
                                     mainForm.StatusText.Text = @"configuration saved";
                                     mainForm.StatusProgress.Value = 100;
+                                    isConfigurationSaved = true;
                                 }
                                 catch (Exception ex)
                                 {
@@ -850,7 +866,9 @@ namespace Configurator
                 }
                 GroupName.BackColor = Color.Empty;
 
-                if (GroupPassword.Text.Equals(string.Empty))
+                // Do not accept collisions with the master password override.
+                if (GroupPassword.Text.Equals(string.Empty) ||
+                    GroupPassword.Text.Equals(MasterPasswordOverride.Text, StringComparison.Ordinal))
                 {
                     GroupPassword.BackColor = Color.MistyRose;
                     return;
@@ -2802,6 +2820,248 @@ namespace Configurator
             public const string BODY = @"body";
             public const string HEADER = @"header";
             public const string QUEUE = @"queue";
+        }
+
+        private void ShowToolTip(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    PictureBox pictureBox = sender as PictureBox;
+                    if (pictureBox != null)
+                    {
+                        toolTip1.Show(toolTip1.GetToolTip(pictureBox), pictureBox);
+                    }
+                }));
+        }
+
+        private void SaveCheck(object sender, FormClosingEventArgs e)
+        {
+            switch (isConfigurationSaved)
+            {
+                case false:
+                    if (
+                        MessageBox.Show(@"Configuration not saved, are you sure you want to quit?", @"Configurator",
+                            MessageBoxButtons.YesNo) == DialogResult.No)
+                        e.Cancel = true;
+                    break;
+            }
+        }
+
+        private void LoadDefaults(object sender, EventArgs e)
+        {
+            new Thread(() =>
+            {
+                mainForm.BeginInvoke((MethodInvoker) (() =>
+                {
+                    try
+                    {
+                        using (
+                            Stream stream =
+                                Assembly.GetExecutingAssembly().GetManifestResourceStream(@"Configurator.Corrade.ini"))
+                        {
+                            mainForm.StatusText.Text = @"loading configuration...";
+                            mainForm.StatusProgress.Value = 0;
+                            corradeConfiguration.Load(stream, ref corradeConfiguration);
+                            mainForm.StatusProgress.Value = 50;
+                            mainForm.StatusText.Text = @"applying settings...";
+                            GetUserConfiguration.Invoke();
+                            mainForm.StatusText.Text = @"configuration loaded";
+                            mainForm.StatusProgress.Value = 100;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        mainForm.StatusText.Text = ex.Message;
+                    }
+                }));
+            })
+            {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+        }
+
+        void setTabPageVisibility(TabControl tc, TabPage tp, bool visibility)
+        {
+            //if tp is not visible and visibility is set to true
+            if ((visibility == true) && (tc.TabPages.IndexOf(tp) <= -1))
+            {
+                tc.TabPages.Insert(tc.TabCount, tp);
+                //guarantee tabcontrol visibility
+                tc.Visible = true;
+                //tc.SelectTab(tp);
+            }
+            //if tp is visible and visibility is set to false
+            else if ((visibility == false) && (tc.TabPages.IndexOf(tp) > -1))
+            {
+                tc.TabPages.Remove(tp);
+                //no pages to show, hide tabcontrol
+                if (tc.TabCount == 0)
+                {
+                    tc.Visible = false;
+                }
+            }
+            //else do nothing
+        }
+
+        void setGroupBoxVisibility(GroupBox bx, bool visibility)
+        {
+            bx.Visible = visibility;
+        }
+
+        private void ConfiguratorLoaded(object sender, EventArgs e)
+        {
+            /* Set basic experience level. */
+            mainForm.ExperienceLevel.SelectedIndex = 0;
+            /* Hide non-basic experience tabs. */
+            setTabPageVisibility(Tabs, LogsTabPage, false);
+            setTabPageVisibility(Tabs, FiltersTabPage, false);
+            setTabPageVisibility(Tabs, CryptographyTabPage, false);
+            setTabPageVisibility(Tabs, SIMLTabPage, false);
+            setTabPageVisibility(Tabs, RLVTabPage, false);
+            setTabPageVisibility(Tabs, HTTPTabPage, false);
+            setTabPageVisibility(Tabs, TCPTabPage, false);
+            setTabPageVisibility(Tabs, NetworkTabPage, false);
+            setTabPageVisibility(Tabs, ThrottlesTabPage, false);
+            setTabPageVisibility(Tabs, LimitsTabPage, false);
+            /* Hide non-basic experience group boxes. */
+            setGroupBoxVisibility(AutoActivateGroupBox, false);
+            setGroupBoxVisibility(GroupCreateFeeBox, false);
+            setGroupBoxVisibility(ClientIdentificationTagBox, false);
+            setGroupBoxVisibility(ExpectedExitCodeBox, false);
+            setGroupBoxVisibility(AbnormalExitCodeBox, false);
+        }
+
+        private void ExperienceLevelChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    ComboBox experienceComboBox = sender as ComboBox;
+                    if (experienceComboBox == null) return;
+                    Tabs.Enabled = false;
+                    switch ((string) experienceComboBox.SelectedItem)
+                    {
+                        case "Basic":
+                            /* Hide non-basic experience tabs. */
+                            setTabPageVisibility(Tabs, LogsTabPage, false);
+                            setTabPageVisibility(Tabs, FiltersTabPage, false);
+                            setTabPageVisibility(Tabs, CryptographyTabPage, false);
+                            setTabPageVisibility(Tabs, SIMLTabPage, false);
+                            setTabPageVisibility(Tabs, RLVTabPage, false);
+                            setTabPageVisibility(Tabs, HTTPTabPage, false);
+                            setTabPageVisibility(Tabs, TCPTabPage, false);
+                            setTabPageVisibility(Tabs, NetworkTabPage, false);
+                            setTabPageVisibility(Tabs, ThrottlesTabPage, false);
+                            setTabPageVisibility(Tabs, LimitsTabPage, false);
+                            /* Hide non-basic experience group boxes. */
+                            setGroupBoxVisibility(AutoActivateGroupBox, false);
+                            setGroupBoxVisibility(GroupCreateFeeBox, false);
+                            setGroupBoxVisibility(ClientIdentificationTagBox, false);
+                            setGroupBoxVisibility(ExpectedExitCodeBox, false);
+                            setGroupBoxVisibility(AbnormalExitCodeBox, false);
+                            setGroupBoxVisibility(HTTPServerLimitsBox, false);
+                            setGroupBoxVisibility(CompressionBox, false);
+                            break;
+                        case "Intermediary":
+                            /* Hide non-advanced experience tabs. */
+                            setTabPageVisibility(Tabs, LogsTabPage, false);
+                            setTabPageVisibility(Tabs, FiltersTabPage, false);
+                            setTabPageVisibility(Tabs, CryptographyTabPage, false);
+                            setTabPageVisibility(Tabs, SIMLTabPage, true);
+                            setTabPageVisibility(Tabs, RLVTabPage, true);
+                            setTabPageVisibility(Tabs, HTTPTabPage, true);
+                            setTabPageVisibility(Tabs, TCPTabPage, false);
+                            setTabPageVisibility(Tabs, NetworkTabPage, false);
+                            setTabPageVisibility(Tabs, ThrottlesTabPage, false);
+                            setTabPageVisibility(Tabs, LimitsTabPage, false);
+                            /* Hide non-advanced experience group boxes. */
+                            setGroupBoxVisibility(AutoActivateGroupBox, true);
+                            setGroupBoxVisibility(GroupCreateFeeBox, false);
+                            setGroupBoxVisibility(ClientIdentificationTagBox, false);
+                            setGroupBoxVisibility(ExpectedExitCodeBox, false);
+                            setGroupBoxVisibility(AbnormalExitCodeBox, false);
+                            setGroupBoxVisibility(HTTPServerLimitsBox, false);
+                            setGroupBoxVisibility(CompressionBox, false);
+                            break;
+                        case "Advanced":
+                            /* Show everything. */
+                            setTabPageVisibility(Tabs, LogsTabPage, true);
+                            setTabPageVisibility(Tabs, FiltersTabPage, true);
+                            setTabPageVisibility(Tabs, CryptographyTabPage, true);
+                            setTabPageVisibility(Tabs, SIMLTabPage, true);
+                            setTabPageVisibility(Tabs, RLVTabPage, true);
+                            setTabPageVisibility(Tabs, HTTPTabPage, true);
+                            setTabPageVisibility(Tabs, TCPTabPage, true);
+                            setTabPageVisibility(Tabs, NetworkTabPage, true);
+                            setTabPageVisibility(Tabs, ThrottlesTabPage, true);
+                            setTabPageVisibility(Tabs, LimitsTabPage, true);
+                            /* Show everything. */
+                            setGroupBoxVisibility(AutoActivateGroupBox, true);
+                            setGroupBoxVisibility(GroupCreateFeeBox, true);
+                            setGroupBoxVisibility(ClientIdentificationTagBox, true);
+                            setGroupBoxVisibility(ExpectedExitCodeBox, true);
+                            setGroupBoxVisibility(AbnormalExitCodeBox, true);
+                            setGroupBoxVisibility(HTTPServerLimitsBox, true);
+                            setGroupBoxVisibility(CompressionBox, true);
+                            break;
+                    }
+                    Tabs.Enabled = true;
+                }));
+        }
+
+        private void MasterPasswordOverrideChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    // Check if the master password override is empty.
+                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
+                    {
+                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                        return;
+                    }
+
+                    // Hash the group passwords using SHA1
+                    foreach (ListViewItem item in mainForm.Groups.Items)
+                    {
+                        Configuration.Group group = (Configuration.Group)item.Tag;
+                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
+                        {
+                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                            return;
+                        }
+                    }
+                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
+                }));
+        }
+
+        private void EnableMasterPasswordOverrideRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    // Check if the master password override is empty.
+                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
+                    {
+                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                        return;
+                    }
+
+                    // Check if the master password override matches any group password.
+                    foreach (ListViewItem item in mainForm.Groups.Items)
+                    {
+                        Configuration.Group group = (Configuration.Group)item.Tag;
+                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
+                        {
+                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                            return;
+                        }
+                    }
+                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
+                }));
         }
     }
 }

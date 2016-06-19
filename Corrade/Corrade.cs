@@ -2576,12 +2576,21 @@ namespace Corrade
         /// <returns>true if the agent has authenticated</returns>
         private static bool Authenticate(string group, string password)
         {
-            return corradeConfiguration.Groups.AsParallel().Any(
-                o =>
-                    string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                    (string.Equals(o.Password, password, StringComparison.Ordinal) ||
-                     Utils.SHA1String(password)
-                         .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
+            /*
+             * If the master override feature is enabled and the password matches the 
+             * master override password then consider the request to be authenticated.
+             * Otherwise, check that the password matches the password for the group.
+             */
+            return (corradeConfiguration.EnableMasterPasswordOverride &&
+                    !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
+                        string.Equals(corradeConfiguration.MasterPasswordOverride, password, StringComparison.Ordinal) ||
+                        Utils.SHA1String(password).Equals(corradeConfiguration.MasterPasswordOverride))) ||
+                   corradeConfiguration.Groups.AsParallel().Any(
+                       o =>
+                           string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                           (string.Equals(o.Password, password, StringComparison.Ordinal) ||
+                            Utils.SHA1String(password)
+                                .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <summary>
@@ -2592,12 +2601,21 @@ namespace Corrade
         /// <returns>true if the agent has authenticated</returns>
         private static bool Authenticate(UUID group, string password)
         {
-            return corradeConfiguration.Groups.AsParallel().Any(
-                o =>
-                    group.Equals(o.UUID) &&
-                    (string.Equals(o.Password, password, StringComparison.Ordinal) ||
-                     Utils.SHA1String(password)
-                         .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
+            /*
+             * If the master override feature is enabled and the password matches the 
+             * master override password then consider the request to be authenticated.
+             * Otherwise, check that the password matches the password for the group.
+             */
+            return (corradeConfiguration.EnableMasterPasswordOverride &&
+                    !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
+                        string.Equals(corradeConfiguration.MasterPasswordOverride, password, StringComparison.Ordinal) ||
+                        Utils.SHA1String(password).Equals(corradeConfiguration.MasterPasswordOverride))) ||
+                   corradeConfiguration.Groups.AsParallel().Any(
+                       o =>
+                           group.Equals(o.UUID) &&
+                           (string.Equals(o.Password, password, StringComparison.Ordinal) ||
+                            Utils.SHA1String(password)
+                                .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <summary>
@@ -3121,6 +3139,9 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+            // Get the custom location.
+            var startLocation = new
+                wasOpenMetaverse.Helpers.StartLocationParser(corradeConfiguration.StartLocation);
             // Proceed to log-in.
             var login = new LoginParams(
                 Client,
@@ -3133,7 +3154,11 @@ namespace Corrade
             {
                 Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
                 AgreeToTos = corradeConfiguration.TOSAccepted,
-                Start = corradeConfiguration.StartLocation,
+                Start =
+                    startLocation.isCustom
+                        ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
+                            startLocation.Z)
+                        : corradeConfiguration.StartLocation,
                 UserAgent = CORRADE_CONSTANTS.USER_AGENT
             };
             // Set the outgoing IP address if specified in the configuration file.
@@ -5048,9 +5073,8 @@ namespace Corrade
             }
 
             // Log the command.
-            Feedback(string.Format(Utils.EnUsCulture, "{0} ({1}) : {2}", sender,
-                identifier,
-                message));
+            Feedback(string.Format(Utils.EnUsCulture, "{0} : {1} ({2}) : {3}", commandGroup.Name, sender, identifier,
+                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)), message)));
 
             // Initialize workers for the group if they are not set.
             lock (GroupWorkersLock)
@@ -8014,6 +8038,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [Reflection.NameAttribute("force")] FORCE,
 
             [CommandInputSyntax(
                 "<command=modifyevent>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<id=<INTEGER>>&[name=<STRING>]&[description=<STRING>]&[date=<DateTime>]&[time=<DateTime>]&[duration=<INTEGER>]&[location=<STRING>]&[category=<INTEGER>]&[amount=<INTEGER>]&[callback=<STRING>]"

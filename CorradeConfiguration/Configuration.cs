@@ -180,6 +180,8 @@ namespace CorradeConfiguration
         private uint _notificationTimeout = 5000;
         private List<Filter> _outputFilters = new List<Filter>();
         private string _password = string.Empty;
+        private string _masterPasswordOverride = string.Empty;
+        private bool _enableMasterPasswordOverride = false;
         private float _range = 64;
         private uint _rebakeDelay = 1000;
         private string _regionMessageLogDirectory = @"logs/region";
@@ -237,6 +239,42 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _lastName = value;
+                }
+            }
+        }
+
+        public string MasterPasswordOverride
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _masterPasswordOverride;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _masterPasswordOverride = value;
+                }
+            }
+        }
+
+        public bool EnableMasterPasswordOverride
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _enableMasterPasswordOverride;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _enableMasterPasswordOverride = value;
                 }
             }
         }
@@ -1719,6 +1757,13 @@ namespace CorradeConfiguration
                 var loadedConfiguration = (Configuration) serializer.Deserialize(stream);
                 configuration = loadedConfiguration;
             }
+        }
+
+        public void Load(Stream stream, ref Configuration configuration)
+        {
+            var serializer = new XmlSerializer(typeof (Configuration));
+            var loadedConfiguration = (Configuration) serializer.Deserialize(stream);
+            configuration = loadedConfiguration;
         }
 
         /// <summary>

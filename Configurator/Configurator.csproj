@@ -89,6 +89,9 @@
     <EmbeddedResource Include="Configurator.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\Corrade\Corrade.ini">
+      <Link>Corrade.ini</Link>
+    </EmbeddedResource>
     <None Include="Configurator.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -87,7 +87,6 @@ namespace wasOpenMetaverse
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-
         /// <summary>
         ///     Determines whether a vector falls within a parcel.
         /// </summary>
@@ -113,8 +112,8 @@ namespace wasOpenMetaverse
             Utils.LongToUInts(simulator.Handle, out globalX, out globalY);
 
             return new Vector3d(
-                globalX + (double)position.X,
-                globalY + (double)position.Y,
+                globalX + (double) position.X,
+                globalY + (double) position.Y,
                 position.Z);
         }
 
@@ -128,6 +127,100 @@ namespace wasOpenMetaverse
         public static Vector3d GlobalPosition(Simulator simulator, Primitive primitive)
         {
             return GlobalPosition(simulator, primitive.Position);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Determines whether a vector falls within a parcel.
+        /// </summary>
+        /// <param name="position">a 3D vector</param>
+        /// <param name="parcel">a parcel</param>
+        /// <returns>true if the vector falls within the parcel bounds</returns>
+        /// <copyright>Copyright (c) 2009-2014, Radegast Development Team with changes by Wizardry and Steamworks</copyright>
+        public class StartLocationParser
+        {
+            private readonly string location;
+
+            public StartLocationParser(string location)
+            {
+                switch (string.IsNullOrEmpty(location))
+                {
+                    case true:
+                        this.location = "last";
+                        break;
+                    default:
+                        this.location = location.Trim();
+                        break;
+                }
+            }
+
+            public bool isCustom => location.Contains("/");
+
+            public string Sim => GetSim(location);
+
+            public int X => GetX(location);
+
+            public int Y => GetY(location);
+
+            public int Z => GetZ(location);
+
+            private static string GetSim(string location)
+            {
+                if (!location.Contains("/")) return location;
+
+                var locSplit = location.Split('/');
+                return locSplit[0];
+            }
+
+            private static int GetX(string location)
+            {
+                if (!location.Contains("/")) return 128;
+
+                var locSplit = location.Split('/');
+
+                int returnResult;
+                var stringToInt = int.TryParse(locSplit[1], out returnResult);
+
+                return stringToInt ? returnResult : 128;
+            }
+
+            private static int GetY(string location)
+            {
+                if (!location.Contains("/")) return 128;
+
+                var locSplit = location.Split('/');
+
+                if (locSplit.Length > 2)
+                {
+                    int returnResult;
+                    var stringToInt = int.TryParse(locSplit[2], out returnResult);
+
+                    if (stringToInt)
+                        return returnResult;
+                }
+
+                return 128;
+            }
+
+            private static int GetZ(string location)
+            {
+                if (!location.Contains("/")) return 0;
+
+                var locSplit = location.Split('/');
+
+                if (locSplit.Length > 3)
+                {
+                    int returnResult;
+                    var stringToInt = int.TryParse(locSplit[3], out returnResult);
+
+                    if (stringToInt)
+                        return returnResult;
+                }
+
+                return 0;
+            }
         }
     }
 }
