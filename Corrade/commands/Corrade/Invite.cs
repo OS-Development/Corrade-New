@@ -77,7 +77,7 @@ namespace Corrade
                     }
                     // If verify is specified then check that the agent is not already in the group.
                     bool verify;
-                    if (bool.TryParse(wasInput(
+                    if (!bool.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VERIFY)),
                             corradeCommandParameters.Message)), out verify))
