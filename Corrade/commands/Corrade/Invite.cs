@@ -75,16 +75,16 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    // If force is specified then invite the user again even if they are in the group.
-                    bool force;
+                    // If verify is specified then check that the agent is not already in the group.
+                    bool verify;
                     if (bool.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORCE)),
-                            corradeCommandParameters.Message)), out force))
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VERIFY)),
+                            corradeCommandParameters.Message)), out verify))
                     {
-                        force = false;
+                        verify = false;
                     }
-                    if (!force && Services.AgentInGroup(Client, agentUUID, groupUUID,
+                    if (verify && Services.AgentInGroup(Client, agentUUID, groupUUID,
                         corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);

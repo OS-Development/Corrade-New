@@ -100,6 +100,7 @@
     <Reference Include="OpenMetaverse, Version=0.9.2.3173, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverse.Rendering.Meshmerizer">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmerizer.dll</HintPath>
@@ -107,9 +108,11 @@
     <Reference Include="OpenMetaverse.StructuredData, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.StructuredData.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverseTypes">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Syn.Bot">
       <HintPath>..\packages\Syn.Bot.1.2.3\lib\portable-net45+sl5+wp8+win8\Syn.Bot.dll</HintPath>
@@ -1432,6 +1435,26 @@
       <Link>Configurator.exe</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Content Include="..\libopenmetaverse-overrides\OpenMetaverse.dll">
+      <Link>OpenMetaverse.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\libopenmetaverse-overrides\OpenMetaverse.StructuredData.dll">
+      <Link>OpenMetaverse.StructuredData.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\libopenmetaverse-overrides\OpenMetaverse.XML">
+      <Link>OpenMetaverse.XML</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\libopenmetaverse-overrides\OpenMetaverseTypes.dll">
+      <Link>OpenMetaverseTypes.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\libopenmetaverse\bin\log4net.dll">
+      <Link>log4net.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_skeleton.xml">
       <Link>openmetaverse_data\avatar_skeleton.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1694,6 +1717,14 @@
     <EmbeddedResource Include="Corrade.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+    <Content Include="..\libopenmetaverse\bin\XMLRPC.dll">
+      <Link>XMLRPC.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\libopenmetaverse\bin\zlib.net.dll">
+      <Link>zlib.net.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\mono\Mono.Data.Sqlite\sqlite3-x86_64.dll">
       <Link>sqlite3-x86_64.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

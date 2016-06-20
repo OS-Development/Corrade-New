@@ -569,6 +569,12 @@ namespace OpenMetaverse
         public bool ObscureMusic;
         /// <summary>A struct containing media details</summary>
         public ParcelMedia Media;
+        /// <summary> true if avatars in this parcel should be invisible to people outside</summary>
+        public bool SeeAVs;
+        /// <summary> true if avatars outside can hear any sounds avatars inside play</summary>
+        public bool AnyAVSounds;
+        /// <summary> true if group members outside can hear any sounds avatars inside play</summary>
+        public bool GroupAVSounds;
 
         /// <summary>
         /// Displays a parcel object in string format
@@ -640,7 +646,10 @@ namespace OpenMetaverse
                 req.SnapshotID = this.SnapshotID;
                 req.UserLocation = this.UserLocation;
                 req.UserLookAt = this.UserLookAt;
-               
+                req.SeeAVs = this.SeeAVs;
+                req.AnyAVSounds = this.AnyAVSounds;
+                req.GroupAVSounds = this.GroupAVSounds;
+
                 OSDMap body = req.Serialize();
 
                 CapsClient capsPost = new CapsClient(url);
@@ -1762,6 +1771,9 @@ namespace OpenMetaverse
                 parcel.Media.MediaType = msg.MediaType;
                 parcel.ObscureMedia = msg.ObscureMedia;
                 parcel.ObscureMusic = msg.ObscureMusic;
+                parcel.SeeAVs = msg.SeeAVs;
+                parcel.AnyAVSounds = msg.AnyAVSounds;
+                parcel.GroupAVSounds = msg.GroupAVSounds;
 
                 if (Client.Settings.PARCEL_TRACKING)
                 {

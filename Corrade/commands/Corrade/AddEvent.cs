@@ -11,6 +11,7 @@ using System.Net;
 using System.Text;
 using CorradeConfiguration;
 using HtmlAgilityPack;
+using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -58,12 +59,33 @@ namespace Corrade
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                    // Sanitize input.
+                    if (Helpers.IsSecondLife(Client))
+                    {
+                        // Check for description HTML.
+                        var nameInput = new HtmlDocument();
+                        nameInput.LoadHtml(name);
+                        if (!nameInput.DocumentNode.InnerText.Equals(name))
+                            throw new ScriptException(ScriptError.NAME_MAY_NOT_CONTAIN_HTML);
+                    }
 
                     var description = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(description))
                         throw new ScriptException(ScriptError.NO_DESCRIPTION_PROVIDED);
+                    // Sanitize input.
+                    if (Helpers.IsSecondLife(Client))
+                    {
+                        // Check for description length.
+                        if (description.Length > Constants.EVENTS.MAXIMUM_EVENT_DESCRIPTION_LENGTH)
+                            throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_EVENT_DESCRIPTION);
+                        // Check for description HTML.
+                        var descriptionInput = new HtmlDocument();
+                        descriptionInput.LoadHtml(description);
+                        if(!descriptionInput.DocumentNode.InnerText.Equals(description))
+                            throw new ScriptException(ScriptError.DESCRIPTION_MAY_NOT_CONTAIN_HTML);
+                    }
 
                     DateTime date;
                     if (!DateTime.TryParse(wasInput(
@@ -225,6 +247,15 @@ namespace Corrade
 
                     doc = new HtmlDocument();
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
+
+                    // Check for form errors.
+                    var errorNodes = doc.DocumentNode.SelectNodes("//div[@id='display_errors']/ul/li");
+                    if (errorNodes != null && errorNodes.Any())
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(errorNodes.Select(o => o.InnerText.Trim())));
+                        throw new ScriptException(ScriptError.EVENT_POSTING_REJECTED);
+                    }
 
                     var eventDetailsNodes = doc.DocumentNode.SelectNodes("//span[@class='edit_controls']/a");
                     if (eventDetailsNodes == null || !eventDetailsNodes.Any())

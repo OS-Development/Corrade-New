@@ -176,5 +176,10 @@ namespace wasOpenMetaverse
                 public const uint GRACE_SECONDS = 15;
             }
         }
+
+        public struct EVENTS
+        {
+            public const uint MAXIMUM_EVENT_DESCRIPTION_LENGTH = 1024;
+        }
     }
 }
