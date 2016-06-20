@@ -8927,7 +8927,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("eject")] [Reflection.NameAttribute("eject")] EJECT,
 
             [CommandInputSyntax(
-                "<command=invite>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,STRING...]>]&[callback=<STRING>]"
+                "<command=invite>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,STRING...]>]&[verify=<BOOL>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("invite")] [Reflection.NameAttribute("invite")] INVITE,
 
             [CommandInputSyntax(
