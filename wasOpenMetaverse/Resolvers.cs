@@ -34,11 +34,11 @@ namespace wasOpenMetaverse
         {
             if (string.IsNullOrEmpty(GroupName))
                 return false;
-            UUID groupUUID = UUID.Zero;
+            var groupUUID = UUID.Zero;
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 alarm.Alarm(dataTimeout);
-                DirectoryManager.GroupSearchData groupSearchData =
+                var groupSearchData =
                     args.MatchedGroups.AsParallel()
                         .FirstOrDefault(o => o.GroupName.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
                 switch (!groupSearchData.Equals(default(DirectoryManager.GroupSearchData)))
@@ -82,7 +82,7 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceDirectoryLock)
             {
-                Cache.Groups @group = Cache.GetGroup(GroupName);
+                var @group = Cache.GetGroup(GroupName);
 
                 if (!@group.Equals(default(Cache.Groups)))
                 {
@@ -124,11 +124,11 @@ namespace wasOpenMetaverse
         {
             if (string.IsNullOrEmpty(FirstName) || string.IsNullOrEmpty(LastName))
                 return false;
-            UUID agentUUID = UUID.Zero;
+            var agentUUID = UUID.Zero;
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 alarm.Alarm(dataTimeout);
-                DirectoryManager.AgentSearchData agentSearchData =
+                var agentSearchData =
                     args.MatchedPeople.AsParallel().FirstOrDefault(
                         o =>
                             o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
@@ -178,7 +178,7 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceDirectoryLock)
             {
-                Cache.Agents agent = Cache.GetAgent(FirstName, LastName);
+                var agent = Cache.GetAgent(FirstName, LastName);
                 if (!agent.Equals(default(Cache.Agents)))
                 {
                     AgentUUID = agent.UUID;
@@ -211,8 +211,8 @@ namespace wasOpenMetaverse
         private static bool directGroupUUIDToName(GridClient Client, UUID GroupUUID, uint millisecondsTimeout,
             ref string GroupName)
         {
-            string groupName = string.Empty;
-            ManualResetEvent GroupProfileReceivedEvent = new ManualResetEvent(false);
+            var groupName = string.Empty;
+            var GroupProfileReceivedEvent = new ManualResetEvent(false);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
             {
                 if (s.Group.ID.Equals(GroupUUID))
@@ -249,7 +249,7 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceGroupsLock)
             {
-                Cache.Groups @group = Cache.GetGroup(GroupUUID);
+                var @group = Cache.GetGroup(GroupUUID);
 
                 if (!@group.Equals(default(Cache.Groups)))
                 {
@@ -283,8 +283,8 @@ namespace wasOpenMetaverse
         {
             if (AgentUUID.Equals(UUID.Zero))
                 return false;
-            string agentName = string.Empty;
-            ManualResetEvent UUIDNameReplyEvent = new ManualResetEvent(false);
+            var agentName = string.Empty;
+            var UUIDNameReplyEvent = new ManualResetEvent(false);
             EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
             {
                 args.Names.TryGetValue(AgentUUID, out agentName);
@@ -320,7 +320,7 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceAvatarsLock)
             {
-                Cache.Agents agent = Cache.GetAgent(AgentUUID);
+                var agent = Cache.GetAgent(AgentUUID);
                 if (!agent.Equals(default(Cache.Agents)))
                 {
                     AgentName = string.Join(" ", agent.FirstName, agent.LastName);
@@ -331,7 +331,7 @@ namespace wasOpenMetaverse
 
                 if (succeeded)
                 {
-                    List<string> name = new List<string>(Helpers.GetAvatarNames(AgentName));
+                    var name = new List<string>(Helpers.GetAvatarNames(AgentName));
                     Cache.AddAgent(name.First(), name.Last(), AgentUUID);
                 }
             }
@@ -360,8 +360,8 @@ namespace wasOpenMetaverse
                 RoleUUID = UUID.Zero;
                 return true;
             }
-            ManualResetEvent GroupRoleDataReceivedEvent = new ManualResetEvent(false);
-            UUID roleUUID = UUID.Zero;
+            var GroupRoleDataReceivedEvent = new ManualResetEvent(false);
+            var roleUUID = UUID.Zero;
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 roleUUID =
@@ -409,8 +409,8 @@ namespace wasOpenMetaverse
                 roleName = Constants.GROUPS.EVERYONE_ROLE_NAME;
                 return true;
             }
-            ManualResetEvent GroupRoleDataReceivedEvent = new ManualResetEvent(false);
-            GroupRole groupRole = new GroupRole();
+            var GroupRoleDataReceivedEvent = new ManualResetEvent(false);
+            var groupRole = new GroupRole();
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 args.Roles.TryGetValue(RoleUUID, out groupRole);
@@ -451,7 +451,7 @@ namespace wasOpenMetaverse
         {
             if (string.IsNullOrEmpty(name))
                 return false;
-            ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
+            var GridRegionEvent = new ManualResetEvent(false);
             ulong localRegionHandle = 0;
             EventHandler<GridRegionEventArgs> GridRegionEventHandler =
                 (sender, args) =>
@@ -491,7 +491,7 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceGridLock)
             {
-                Cache.Regions region = Cache.GetRegion(name);
+                var region = Cache.GetRegion(name);
                 if (!region.Equals(default(Cache.Regions)))
                 {
                     regionHandle = region.Handle;

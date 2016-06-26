@@ -47,7 +47,7 @@ namespace wasOpenMetaverse
                     case true:
                         lock (Locks.ClientInstanceAssetsLock)
                         {
-                            ManualResetEvent ImageDownloadedEvent = new ManualResetEvent(false);
+                            var ImageDownloadedEvent = new ManualResetEvent(false);
                             Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
                             {
                                 if (!state.Equals(TextureRequestState.Finished)) return;
@@ -81,7 +81,7 @@ namespace wasOpenMetaverse
                 return true;
             }
             FacetedMesh localFacetedMesh = null;
-            ManualResetEvent MeshDownloadedEvent = new ManualResetEvent(false);
+            var MeshDownloadedEvent = new ManualResetEvent(false);
             lock (Locks.ClientInstanceAssetsLock)
             {
                 Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
@@ -118,9 +118,9 @@ namespace wasOpenMetaverse
         public static XmlDocument GenerateCollada(IEnumerable<FacetedMesh> facetedMeshSet,
             Dictionary<UUID, string> textures, string imageFormat)
         {
-            List<MaterialInfo> AllMeterials = new List<MaterialInfo>();
+            var AllMeterials = new List<MaterialInfo>();
 
-            XmlDocument Doc = new XmlDocument();
+            var Doc = new XmlDocument();
             var root = Doc.AppendChild(Doc.CreateElement("COLLADA"));
             root.Attributes.Append(Doc.CreateAttribute("xmlns")).Value = "http://www.collada.org/2005/11/COLLADASchema";
             root.Attributes.Append(Doc.CreateAttribute("version")).Value = "1.4.1";
@@ -148,9 +148,9 @@ namespace wasOpenMetaverse
             scene.Attributes.Append(Doc.CreateAttribute("id")).InnerText = "Scene";
             scene.Attributes.Append(Doc.CreateAttribute("name")).InnerText = "Scene";
 
-            foreach (string name in textures.Values)
+            foreach (var name in textures.Values)
             {
-                string colladaName = name + "_" + imageFormat.ToLower();
+                var colladaName = name + "_" + imageFormat.ToLower();
                 var image = images.AppendChild(Doc.CreateElement("image"));
                 image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
                 image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
@@ -168,8 +168,8 @@ namespace wasOpenMetaverse
                     "array");
                 src_array.Attributes.Append(Doc.CreateAttribute("count")).InnerText = vals.Count.ToString();
 
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < vals.Count; i++)
+                var sb = new StringBuilder();
+                for (var i = 0; i < vals.Count; i++)
                 {
                     sb.Append(vals[i].ToString(Utils.EnUsCulture));
                     if (i != vals.Count - 1)
@@ -186,7 +186,7 @@ namespace wasOpenMetaverse
                 acc.Attributes.Append(Doc.CreateAttribute("count")).InnerText = (vals.Count/param.Length).ToString();
                 acc.Attributes.Append(Doc.CreateAttribute("stride")).InnerText = param.Length.ToString();
 
-                foreach (char c in param)
+                foreach (var c in param)
                 {
                     var pX = acc.AppendChild(Doc.CreateElement("param"));
                     pX.Attributes.Append(Doc.CreateAttribute("name")).InnerText = c.ToString();
@@ -198,7 +198,7 @@ namespace wasOpenMetaverse
 
             Func<Primitive.TextureEntryFace, MaterialInfo> getMaterial = o =>
             {
-                MaterialInfo ret = AllMeterials.FirstOrDefault(mat => mat.Matches(o));
+                var ret = AllMeterials.FirstOrDefault(mat => mat.Matches(o));
 
                 if (ret != null) return ret;
                 ret = new MaterialInfo
@@ -216,7 +216,7 @@ namespace wasOpenMetaverse
             {
                 var ret = new List<MaterialInfo>();
 
-                for (int face_num = 0; face_num < o.Faces.Count; face_num++)
+                for (var face_num = 0; face_num < o.Faces.Count; face_num++)
                 {
                     var te = o.Faces[face_num].TextureFace;
                     if (te.RGBA.A < 0.01f)
@@ -268,19 +268,19 @@ namespace wasOpenMetaverse
                     // Save indices
                     var vcount = polylist.AppendChild(Doc.CreateElement("vcount"));
                     var p = polylist.AppendChild(Doc.CreateElement("p"));
-                    int index_offset = 0;
-                    int num_tris = 0;
-                    StringBuilder pBuilder = new StringBuilder();
-                    StringBuilder vcountBuilder = new StringBuilder();
+                    var index_offset = 0;
+                    var num_tris = 0;
+                    var pBuilder = new StringBuilder();
+                    var vcountBuilder = new StringBuilder();
 
-                    for (int face_num = 0; face_num < obj.Faces.Count; face_num++)
+                    for (var face_num = 0; face_num < obj.Faces.Count; face_num++)
                     {
                         var face = obj.Faces[face_num];
                         if (faces_to_include == null || faces_to_include.Contains(face_num))
                         {
-                            for (int i = 0; i < face.Indices.Count; i++)
+                            for (var i = 0; i < face.Indices.Count; i++)
                             {
-                                int index = index_offset + face.Indices[i];
+                                var index = index_offset + face.Indices[i];
                                 pBuilder.Append(index);
                                 pBuilder.Append(" ");
                                 if (i%3 == 0)
@@ -303,7 +303,7 @@ namespace wasOpenMetaverse
             Func<FacetedMesh, MaterialInfo, List<int>> getFacesWithMaterial = (obj, mat) =>
             {
                 var ret = new List<int>();
-                for (int face_num = 0; face_num < obj.Faces.Count; face_num++)
+                for (var face_num = 0; face_num < obj.Faces.Count; face_num++)
                 {
                     if (mat == getMaterial.Invoke(obj.Faces[face_num].TextureFace))
                     {
@@ -315,25 +315,25 @@ namespace wasOpenMetaverse
 
             Func<Vector3, Quaternion, Vector3, float[]> createSRTMatrix = (scale, q, pos) =>
             {
-                float[] mat = new float[16];
+                var mat = new float[16];
 
                 // Transpose the quaternion (don't ask me why)
                 q.X = q.X*-1f;
                 q.Y = q.Y*-1f;
                 q.Z = q.Z*-1f;
 
-                float x2 = q.X + q.X;
-                float y2 = q.Y + q.Y;
-                float z2 = q.Z + q.Z;
-                float xx = q.X*x2;
-                float xy = q.X*y2;
-                float xz = q.X*z2;
-                float yy = q.Y*y2;
-                float yz = q.Y*z2;
-                float zz = q.Z*z2;
-                float wx = q.W*x2;
-                float wy = q.W*y2;
-                float wz = q.W*z2;
+                var x2 = q.X + q.X;
+                var y2 = q.Y + q.Y;
+                var z2 = q.Z + q.Z;
+                var xx = q.X*x2;
+                var xy = q.X*y2;
+                var xz = q.X*z2;
+                var yy = q.Y*y2;
+                var yz = q.Y*z2;
+                var zz = q.Z*z2;
+                var wx = q.W*x2;
+                var wy = q.W*y2;
+                var wz = q.W*z2;
 
                 mat[0] = (1.0f - (yy + zz))*scale.X;
                 mat[1] = (xy - wz)*scale.X;
@@ -370,11 +370,11 @@ namespace wasOpenMetaverse
                     var profile = effect.AppendChild(Doc.CreateElement("profile_COMMON"));
                     string colladaName = null;
 
-                    KeyValuePair<UUID, string> kvp = textures.FirstOrDefault(p => p.Key.Equals(mat.TextureID));
+                    var kvp = textures.FirstOrDefault(p => p.Key.Equals(mat.TextureID));
 
                     if (!kvp.Equals(default(KeyValuePair<UUID, string>)))
                     {
-                        UUID textID = kvp.Key;
+                        var textID = kvp.Key;
                         colladaName = textures[textID] + "_" + imageFormat.ToLower();
                         var newparam = profile.AppendChild(Doc.CreateElement("newparam"));
                         newparam.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = colladaName + "-surface";
@@ -419,24 +419,24 @@ namespace wasOpenMetaverse
                 return true;
             };
 
-            int prim_nr = 0;
+            var prim_nr = 0;
             foreach (var obj in facetedMeshSet)
             {
-                int total_num_vertices = 0;
-                string name = string.Format("prim{0}", prim_nr++);
-                string geomID = name;
+                var total_num_vertices = 0;
+                var name = string.Format("prim{0}", prim_nr++);
+                var geomID = name;
 
                 var geom = geomLib.AppendChild(Doc.CreateElement("geometry"));
                 geom.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}", geomID, "mesh");
                 var mesh = geom.AppendChild(Doc.CreateElement("mesh"));
 
-                List<float> position_data = new List<float>();
-                List<float> normal_data = new List<float>();
-                List<float> uv_data = new List<float>();
+                var position_data = new List<float>();
+                var normal_data = new List<float>();
+                var uv_data = new List<float>();
 
-                int num_faces = obj.Faces.Count;
+                var num_faces = obj.Faces.Count;
 
-                for (int face_num = 0; face_num < num_faces; face_num++)
+                for (var face_num = 0; face_num < num_faces; face_num++)
                 {
                     var face = obj.Faces[face_num];
                     total_num_vertices += face.Vertices.Count;
@@ -489,10 +489,10 @@ namespace wasOpenMetaverse
                 var matrix = node.AppendChild(Doc.CreateElement("matrix"));
 
                 var srt = createSRTMatrix.Invoke(obj.Prim.Scale, obj.Prim.Rotation, obj.Prim.Position);
-                string matrixVal = string.Empty;
-                for (int i = 0; i < 4; i++)
+                var matrixVal = string.Empty;
+                for (var i = 0; i < 4; i++)
                 {
-                    for (int j = 0; j < 4; j++)
+                    for (var j = 0; j < 4; j++)
                     {
                         matrixVal += srt[j*4 + i].ToString(Utils.EnUsCulture) + " ";
                     }

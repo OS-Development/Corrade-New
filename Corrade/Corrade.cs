@@ -373,7 +373,20 @@ namespace Corrade
             [Status(53494)] [Reflection.DescriptionAttribute("too many characters for event description")] TOO_MANY_CHARACTERS_FOR_EVENT_DESCRIPTION,
             [Status(58751)] [Reflection.DescriptionAttribute("name may not contain HTML")] NAME_MAY_NOT_CONTAIN_HTML,
             [Status(54528)] [Reflection.DescriptionAttribute("description may not contain HTML")] DESCRIPTION_MAY_NOT_CONTAIN_HTML,
-            [Status(21743)] [Reflection.DescriptionAttribute("event posting rejected")] EVENT_POSTING_REJECTED
+            [Status(21743)] [Reflection.DescriptionAttribute("event posting rejected")] EVENT_POSTING_REJECTED,
+            [Status(43671)] [Reflection.DescriptionAttribute("unable to revoke proposal")] UNABLE_TO_REVOKE_PROPOSAL,
+            [Status(50003)] [Reflection.DescriptionAttribute("unable to reject proposal")] UNABLE_TO_REJECT_PROPOSAL,
+            [Status(56345)] [Reflection.DescriptionAttribute("unable to reach partnership page")] UNABLE_TO_REACH_PARTNERSHIP_PAGE,
+            [Status(00303)] [Reflection.DescriptionAttribute("unable to post proposal")] UNABLE_TO_POST_PROPOSAL,
+            [Status(61983)] [Reflection.DescriptionAttribute("unable to accept proposal")] UNABLE_TO_ACCEPT_PROPOSAL,
+            [Status(31126)] [Reflection.DescriptionAttribute("too many characters for proposal message")] TOO_MANY_CHARACTERS_FOR_PROPOSAL_MESSAGE,
+            [Status(34379)] [Reflection.DescriptionAttribute("proposal rejected")] PROPOSAL_REJECTED,
+            [Status(43767)] [Reflection.DescriptionAttribute("proposal already sent")] PROPOSAL_ALREADY_SENT,
+            [Status(22119)] [Reflection.DescriptionAttribute("no proposal to reject")] NO_PROPOSAL_TO_REJECT,
+            [Status(21106)] [Reflection.DescriptionAttribute("message may not contain HTML")] MESSAGE_MAY_NOT_CONTAIN_HTML,
+            [Status(46612)] [Reflection.DescriptionAttribute("no partner found")] NO_PARTNER_FOUND,
+            [Status(41257)] [Reflection.DescriptionAttribute("unable to post divorce")] UNABLE_TO_POST_DIVORCE,
+            [Status(58870)] [Reflection.DescriptionAttribute("unable to divorce")] UNABLE_TO_DIVORCE
         }
 
         /// <summary>
@@ -2237,7 +2250,7 @@ namespace Corrade
                         var allFlags =
                             typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .ToDictionary(o => o.Name, o => (uint) o.GetValue(null));
-                        CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
+                        CSV.ToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
                                 uint parcelFlag;
@@ -2260,7 +2273,7 @@ namespace Corrade
                         var allPowers =
                             typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .ToDictionary(o => o.Name, o => (uint) o.GetValue(null));
-                        CSV.ToEnumerable(setting).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
+                        CSV.ToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                             o =>
                             {
                                 uint groupPower;
@@ -5322,14 +5335,14 @@ namespace Corrade
                     return result.SelectMany(o => o);
             }
             var LockObject = new object();
-            CSV.ToEnumerable(query).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
+            CSV.ToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
             {
                 var fi =
-                    wasGetFields(structure, structure.GetType().Name).ToArray().AsParallel()
+                    wasGetFields(structure, structure.GetType().Name).AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 var pi =
-                    wasGetProperties(structure, structure.GetType().Name).ToArray().AsParallel().FirstOrDefault(
+                    wasGetProperties(structure, structure.GetType().Name).AsParallel().FirstOrDefault(
                         o => string.Equals(name, o.Key.Name, StringComparison.Ordinal));
 
                 var data = new List<string> {name};
@@ -5721,7 +5734,7 @@ namespace Corrade
             }
 
             // Dynamically disable or enable notifications.
-            Reflection.GetEnumValues<Configuration.Notifications>().ToArray().AsParallel().ForAll(o =>
+            Reflection.GetEnumValues<Configuration.Notifications>().AsParallel().ForAll(o =>
             {
                 var enabled = configuration.Groups.AsParallel().Any(
                     p =>
@@ -6589,7 +6602,10 @@ namespace Corrade
             [Reflection.NameAttribute("post")] POST,
             [Reflection.NameAttribute("tweet")] TWEET,
             [Reflection.NameAttribute("detect")] DETECT,
-            [Reflection.NameAttribute("ignore")] IGNORE
+            [Reflection.NameAttribute("ignore")] IGNORE,
+            [Reflection.NameAttribute("revoke")] REVOKE,
+            [Reflection.NameAttribute("reject")] REJECT,
+            [Reflection.NameAttribute("propose")] PROPOSE
         }
 
         /// <summary>
@@ -7261,12 +7277,17 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
+                    finally
+                    {
+                        s = null;
+                    }
                     // Thread has completed.
                     ThreadCompletedEvent.Set();
                     lock (WorkSetLock)
                     {
                         WorkSet.Remove(t);
                     }
+                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -7306,10 +7327,15 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
+                    finally
+                    {
+                        s = null;
+                    }
                     lock (WorkSetLock)
                     {
                         WorkSet.Remove(t);
                     }
+                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -7417,10 +7443,15 @@ namespace Corrade
                             Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
                             ex.StackTrace);
                     }
+                    finally
+                    {
+                        s = null;
+                    }
                     lock (WorkSetLock)
                     {
                         WorkSet.Remove(t);
                     }
+                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -8045,6 +8076,14 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=divorce>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("divorce")] [Reflection.NameAttribute("divorce")] DIVORCE,
+
+            [CommandInputSyntax(
+                "<command=marry>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<action=<propose|revoke|accept|reject>>&action=propose:<message=<STRING>>&action=propose:<name=<STRING>>&action=accept:[message=<STRING>]&action=reject:[message=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("marry")] [Reflection.NameAttribute("marry")] MARRY,
 
             [Reflection.NameAttribute("verify")] VERIFY,
 

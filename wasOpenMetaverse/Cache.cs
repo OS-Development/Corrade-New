@@ -144,7 +144,7 @@ namespace wasOpenMetaverse
 
         public static void AddRegion(string name, ulong handle)
         {
-            Regions region = new Regions
+            var region = new Regions
             {
                 Name = name,
                 Handle = handle
@@ -171,7 +171,7 @@ namespace wasOpenMetaverse
 
         public static void AddMute(MuteFlags flags, UUID uuid, string name, MuteType type)
         {
-            MuteEntry muteEntry = new MuteEntry
+            var muteEntry = new MuteEntry
             {
                 Flags = flags,
                 ID = uuid,
@@ -198,7 +198,7 @@ namespace wasOpenMetaverse
 
         public static void AddAgent(string FirstName, string LastName, UUID agentUUID)
         {
-            Agents agent = new Agents
+            var agent = new Agents
             {
                 FirstName = FirstName,
                 LastName = LastName,
@@ -218,7 +218,7 @@ namespace wasOpenMetaverse
         {
             lock (AgentCacheLock)
             {
-                return _agentCache.ToArray().AsParallel().FirstOrDefault(
+                return _agentCache.AsParallel().FirstOrDefault(
                     o =>
                         o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
                         o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
@@ -229,7 +229,7 @@ namespace wasOpenMetaverse
         {
             lock (AgentCacheLock)
             {
-                return _agentCache.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+                return _agentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
             }
         }
 
@@ -246,7 +246,7 @@ namespace wasOpenMetaverse
 
         public static void AddGroup(string GroupName, UUID GroupUUID)
         {
-            Groups group = new Groups
+            var group = new Groups
             {
                 Name = GroupName,
                 UUID = GroupUUID
@@ -275,7 +275,7 @@ namespace wasOpenMetaverse
         {
             lock (GroupCacheLock)
             {
-                return _groupCache.ToArray().AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
+                return _groupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
             }
         }
 
@@ -286,11 +286,11 @@ namespace wasOpenMetaverse
         /// <param name="o">the object to save</param>
         public static void Save<T>(string FileName, T o)
         {
-            using (FileStream fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
+                using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof (T));
+                    var serializer = new XmlSerializer(typeof (T));
                     serializer.Serialize(writer, o);
                     writer.Flush();
                 }
@@ -307,11 +307,11 @@ namespace wasOpenMetaverse
         {
             if (!File.Exists(FileName)) return o;
 
-            using (FileStream fileStream = File.Open(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var fileStream = File.Open(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof (T));
+                    var serializer = new XmlSerializer(typeof (T));
                     return (T) serializer.Deserialize(streamReader);
                 }
             }

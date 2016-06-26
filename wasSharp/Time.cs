@@ -282,8 +282,8 @@ namespace wasSharp
                                                          (1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a))), 0);
                                     break;
                                 case DECAY_TYPE.WEIGHTED:
-                                    HashSet<double> d = new HashSet<double>(times) {deadline};
-                                    double total = d.Aggregate((a, b) => b + a);
+                                    var d = new HashSet<double>(times) {deadline};
+                                    var total = d.Aggregate((a, b) => b + a);
                                     alarm?.Change(
                                         (int) d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total), 0);
                                     break;

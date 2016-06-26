@@ -52,7 +52,7 @@ namespace Corrade
                         break;
                     default:
                         var data = new string[RLVWearables.Count];
-                        Enumerable.Range(0, RLVWearables.Count).ToArray().AsParallel().ForAll(o =>
+                        Enumerable.Range(0, RLVWearables.Count).AsParallel().ForAll(o =>
                         {
                             if (
                                 !wearables.AsParallel()

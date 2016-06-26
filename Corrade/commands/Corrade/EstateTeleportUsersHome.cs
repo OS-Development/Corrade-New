@@ -44,7 +44,7 @@ namespace Corrade
                         return;
                     }
                     var data = new HashSet<string>();
-                    CSV.ToEnumerable(avatars).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                    CSV.ToEnumerable(avatars).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                     {
                         UUID agentUUID;
                         switch (!UUID.TryParse(o, out agentUUID))

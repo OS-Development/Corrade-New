@@ -584,6 +584,9 @@
     <Compile Include="commands\Corrade\MapFriend.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Marry.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Moderate.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -846,6 +849,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Wear.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\Divorce.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\RLV\Attach.cs">

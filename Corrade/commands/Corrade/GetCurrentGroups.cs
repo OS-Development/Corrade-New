@@ -35,7 +35,7 @@ namespace Corrade
                     }
                     var data = new List<string>();
                     var LockObject = new object();
-                    currentGroups.ToArray().AsParallel().ForAll(o =>
+                    currentGroups.AsParallel().ForAll(o =>
                     {
                         var groupName = string.Empty;
                         if (!Resolvers.GroupUUIDToName(Client, o, corradeConfiguration.ServicesTimeout, ref groupName))

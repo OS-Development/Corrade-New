@@ -27,7 +27,7 @@ namespace wasOpenMetaverse
         /// <returns>true if the balance could be retrieved</returns>
         public static bool UpdateBalance(GridClient Client, uint millisecondsTimeout)
         {
-            ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
+            var MoneyBalanceEvent = new ManualResetEvent(false);
             EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
                 (sender, args) => MoneyBalanceEvent.Set();
             lock (Locks.ClientInstanceSelfLock)
@@ -57,7 +57,7 @@ namespace wasOpenMetaverse
         /// <returns>true if the current groups could be fetched</returns>
         private static bool directGetMutes(GridClient Client, uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
         {
-            ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
+            var MuteListUpdatedEvent = new ManualResetEvent(false);
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
             lock (Locks.ClientInstanceSelfLock)
@@ -120,7 +120,7 @@ namespace wasOpenMetaverse
         private static bool directGetCurrentGroups(GridClient Client, uint millisecondsTimeout,
             ref IEnumerable<UUID> groups)
         {
-            ManualResetEvent CurrentGroupsReceivedEvent = new ManualResetEvent(false);
+            var CurrentGroupsReceivedEvent = new ManualResetEvent(false);
             Dictionary<UUID, Group> currentGroups = null;
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
@@ -191,8 +191,8 @@ namespace wasOpenMetaverse
             uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
-            List<AvatarGroup> avatarGroups = new List<AvatarGroup>();
-            object LockObject = new object();
+            var avatarGroups = new List<AvatarGroup>();
+            var LockObject = new object();
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
                 alarm.Alarm(dataTimeout);
@@ -229,8 +229,8 @@ namespace wasOpenMetaverse
         /// <returns>true if the group chat was joined</returns>
         public static bool JoinGroupChat(GridClient Client, UUID groupUUID, uint millisecondsTimeout)
         {
-            bool succeeded = false;
-            ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
+            var succeeded = false;
+            var GroupChatJoinedEvent = new ManualResetEvent(false);
             EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
                 (sender, args) =>
                 {
@@ -265,8 +265,8 @@ namespace wasOpenMetaverse
         /// <returns>true if the agent is in the group</returns>
         public static bool AgentInGroup(GridClient Client, UUID agentUUID, UUID groupUUID, uint millisecondsTimeout)
         {
-            ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
-            HashSet<UUID> groupMembers = new HashSet<UUID>();
+            var groupMembersReceivedEvent = new ManualResetEvent(false);
+            var groupMembers = new HashSet<UUID>();
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
                 groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
@@ -299,8 +299,8 @@ namespace wasOpenMetaverse
         /// <returns>true if the group was found and false otherwise</returns>
         public static bool RequestGroup(GridClient Client, UUID groupUUID, uint millisecondsTimeout, ref Group group)
         {
-            Group localGroup = new Group();
-            ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
+            var localGroup = new Group();
+            var GroupProfileEvent = new ManualResetEvent(false);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
             {
                 localGroup = args.Group;
@@ -337,7 +337,7 @@ namespace wasOpenMetaverse
             uint millisecondsTimeout,
             ref Parcel parcel)
         {
-            ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
+            var RequestAllSimParcelsEvent = new ManualResetEvent(false);
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             lock (Locks.ClientInstanceParcelsLock)
@@ -359,7 +359,7 @@ namespace wasOpenMetaverse
                 }
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
             }
-            Parcel localParcel = simulator.Parcels.Copy().Values
+            var localParcel = simulator.Parcels.Copy().Values
                 .AsParallel()
                 .Where(
                     o =>
@@ -389,11 +389,11 @@ namespace wasOpenMetaverse
         {
             lock (Locks.ClientInstanceNetworkLock)
             {
-                Dictionary<uint, Primitive> objectsPrimitives = Client.Network.Simulators.AsParallel()
+                var objectsPrimitives = Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsPrimitives)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-                Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+                var objectsAvatars = Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsAvatars)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
@@ -402,7 +402,7 @@ namespace wasOpenMetaverse
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
-                        Primitive parent = p;
+                        var parent = p;
                         Primitive ancestorPrimitive;
                         if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
                         {
@@ -432,16 +432,16 @@ namespace wasOpenMetaverse
         {
             lock (Locks.ClientInstanceNetworkLock)
             {
-                Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+                var objectsAvatars = Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsAvatars)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
+                    .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
-                        Primitive parent = p;
+                        var parent = p;
                         Avatar ancestorAvatar;
                         if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
                         {
@@ -466,16 +466,16 @@ namespace wasOpenMetaverse
         {
             lock (Locks.ClientInstanceNetworkLock)
             {
-                Dictionary<uint, Primitive> objectsPrimitives = Client.Network.Simulators.AsParallel()
+                var objectsPrimitives = Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsPrimitives)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-                Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+                var objectsAvatars = Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsAvatars)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Avatar>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o.ObjectsAvatars.Copy().Values })
+                    .Select(o => new {s = o, a = o.ObjectsAvatars.Copy().Values})
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
@@ -508,14 +508,11 @@ namespace wasOpenMetaverse
         /// <returns>a list of updated primitives</returns>
         public static bool UpdatePrimitives(GridClient Client, ref HashSet<Primitive> primitives, uint dataTimeout)
         {
-            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
+            var ObjectPropertiesEvent = new ManualResetEvent(false);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
-                (sender, args) =>
-                {
-                    ObjectPropertiesEvent.Set();
-                };
-            HashSet<Primitive> localPrimitives = primitives;
-            HashSet<ulong> regionHandles = new HashSet<ulong>(localPrimitives.Select(o => o.RegionHandle));
+                (sender, args) => { ObjectPropertiesEvent.Set(); };
+            var localPrimitives = primitives;
+            var regionHandles = new HashSet<ulong>(localPrimitives.Select(o => o.RegionHandle));
             Parallel.ForEach(regionHandles, o =>
             {
                 lock (Locks.ClientInstanceObjectsLock)
@@ -530,7 +527,7 @@ namespace wasOpenMetaverse
                                 .Select(p => p.LocalID)
                                 .ToArray(), true);
                     }
-                    ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
+                    ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 }
             });
@@ -551,14 +548,11 @@ namespace wasOpenMetaverse
         /// <returns>a list of updated primitives</returns>
         public static bool UpdatePrimitive(GridClient Client, ref Primitive primitive, uint dataTimeout)
         {
-            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
+            var ObjectPropertiesEvent = new ManualResetEvent(false);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
-                (sender, args) =>
-                {
-                    ObjectPropertiesEvent.Set();
-                };
-            Primitive localPrimitive = primitive;
-            ulong regionHandle = localPrimitive.RegionHandle;
+                (sender, args) => { ObjectPropertiesEvent.Set(); };
+            var localPrimitive = primitive;
+            var regionHandle = localPrimitive.RegionHandle;
             lock (Locks.ClientInstanceObjectsLock)
             {
                 Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
@@ -588,13 +582,13 @@ namespace wasOpenMetaverse
         public static bool UpdateAvatars(GridClient Client, ref HashSet<Avatar> avatars, uint millisecondsTimeout,
             uint dataTimeout, Time.DecayingAlarm alarm)
         {
-            HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
-            Dictionary<UUID, Time.DecayingAlarm> avatarAlarms =
+            var scansAvatars = new HashSet<Avatar>(avatars);
+            var avatarAlarms =
                 new Dictionary<UUID, Time.DecayingAlarm>(scansAvatars.AsParallel()
                     .ToDictionary(o => o.ID, p => alarm.Clone()));
-            Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
+            var avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
                 .ToDictionary(o => o.ID, p => p));
-            object LockObject = new object();
+            var LockObject = new object();
             EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
             {
                 lock (LockObject)
@@ -690,33 +684,33 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            Dictionary<uint, Primitive> objectsPrimitives = Client.Network.Simulators.AsParallel()
-                    .Select(o => o.ObjectsPrimitives)
-                    .Select(o => o.Copy().Values)
-                    .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+            var objectsPrimitives = Client.Network.Simulators.AsParallel()
+                .Select(o => o.ObjectsPrimitives)
+                .Select(o => o.Copy().Values)
+                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
                 .Select(o => o.ObjectsAvatars)
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            Primitive localPrimitive = Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
-                    .SelectMany(o => o.a.AsParallel().Where(p =>
+            var localPrimitive = Client.Network.Simulators.AsParallel()
+                .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                .SelectMany(o => o.a.AsParallel().Where(p =>
+                {
+                    // find the parent of the primitive
+                    var parent = p;
+                    Primitive ancestorPrimitive;
+                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
                     {
-                        // find the parent of the primitive
-                        Primitive parent = p;
-                        Primitive ancestorPrimitive;
-                        if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
-                        {
-                            parent = ancestorPrimitive;
-                        }
-                        Avatar ancestorAvatar;
-                        if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
-                        {
-                            parent = ancestorAvatar;
-                        }
-                        return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
-                            Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
-                    })).FirstOrDefault(o => o.ID.Equals(item));
+                        parent = ancestorPrimitive;
+                    }
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
+                    {
+                        parent = ancestorAvatar;
+                    }
+                    return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
+                })).FirstOrDefault(o => o.ID.Equals(item));
             if (localPrimitive == null || !UpdatePrimitive(Client, ref localPrimitive, dataTimeout))
                 return false;
             primitive = localPrimitive;
@@ -739,25 +733,25 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
                 .Select(o => o.ObjectsAvatars)
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            Primitive localPrimitive = Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
-                    .SelectMany(o => o.a.AsParallel().Where(p =>
+            var localPrimitive = Client.Network.Simulators.AsParallel()
+                .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                .SelectMany(o => o.a.AsParallel().Where(p =>
+                {
+                    // find the parent of the primitive
+                    var parent = p;
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(p.ParentID, out ancestorAvatar))
                     {
-                        // find the parent of the primitive
-                        Primitive parent = p;
-                        Avatar ancestorAvatar;
-                        if (objectsAvatars.TryGetValue(p.ParentID, out ancestorAvatar))
-                        {
-                            parent = ancestorAvatar;
-                        }
-                        return (p.ParentID.Equals(0) || objectsAvatars.ContainsKey(p.ParentID)) &&
-                               Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
-                                   Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
-                    })).FirstOrDefault(o => o.ID.Equals(item));
+                        parent = ancestorAvatar;
+                    }
+                    return (p.ParentID.Equals(0) || objectsAvatars.ContainsKey(p.ParentID)) &&
+                           Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
+                               Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
+                })).FirstOrDefault(o => o.ID.Equals(item));
             if (localPrimitive == null || !UpdatePrimitive(Client, ref localPrimitive, dataTimeout))
                 return false;
             primitive = localPrimitive;
@@ -780,21 +774,21 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            Dictionary<uint, Primitive> objectsPrimitives = Client.Network.Simulators.AsParallel()
+            var objectsPrimitives = Client.Network.Simulators.AsParallel()
                 .Select(o => o.ObjectsPrimitives)
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
                 .Select(o => o.ObjectsAvatars)
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            HashSet<Primitive> primitives =
+            var primitives =
                 new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
+                    .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
-                        Primitive parent = p;
+                        var parent = p;
                         Primitive ancestorPrimitive;
                         if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
                         {
@@ -810,7 +804,7 @@ namespace wasOpenMetaverse
                     })));
             if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
-            Primitive localPrimitive =
+            var localPrimitive =
                 primitives.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
             if (localPrimitive == null)
                 return false;
@@ -834,16 +828,16 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            Dictionary<uint, Avatar> objectsAvatars = Client.Network.Simulators.AsParallel()
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
                 .Select(o => o.ObjectsAvatars)
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            HashSet<Primitive> primitives = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
+            var primitives = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                 .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
                 .SelectMany(o => o.a.AsParallel().Where(p =>
                 {
                     // find the parent of the primitive
-                    Primitive parent = p;
+                    var parent = p;
                     Avatar ancestorAvatar;
                     if (objectsAvatars.TryGetValue(p.ParentID, out ancestorAvatar))
                     {
@@ -855,7 +849,7 @@ namespace wasOpenMetaverse
                 })));
             if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
-            Primitive localPrimitive =
+            var localPrimitive =
                 primitives.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
             if (localPrimitive == null)
                 return false;

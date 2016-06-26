@@ -59,7 +59,7 @@ namespace Corrade
                         break;
                     default:
                         var data = new string[RLVAttachments.Count];
-                        Enumerable.Range(0, RLVAttachments.Count).ToArray().AsParallel().ForAll(o =>
+                        Enumerable.Range(0, RLVAttachments.Count).AsParallel().ForAll(o =>
                         {
                             switch (!attachmentPoints.Contains(RLVAttachments[o].AttachmentPoint))
                             {

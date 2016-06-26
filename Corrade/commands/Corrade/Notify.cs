@@ -152,7 +152,7 @@ namespace Corrade
                             }
                             var succeeded = true;
                             Parallel.ForEach(CSV.ToEnumerable(
-                                notificationTypes).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                                notificationTypes).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                                 (o, state) =>
                                 {
                                     var notificationValue =

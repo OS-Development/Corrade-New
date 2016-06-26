@@ -107,7 +107,7 @@ namespace Corrade
                     Enumerable.Range(x1, sx)
                         .ToArray()
                         .AsParallel()
-                        .ForAll(x => Enumerable.Range(y1, sy).ToArray().AsParallel().ForAll(y =>
+                        .ForAll(x => Enumerable.Range(y1, sy).AsParallel().ForAll(y =>
                         {
                             float height;
                             csv[sx*x + y] = simulator.TerrainHeightAtPoint(x, y, out height)

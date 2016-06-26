@@ -99,7 +99,7 @@ namespace Corrade
                                         .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeClassifieds.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -171,7 +171,7 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeEvents.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -246,7 +246,7 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeGroups.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -320,7 +320,7 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeLands.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -389,7 +389,7 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeAgents.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {
@@ -453,7 +453,7 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safePlaces.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).ToArray().AsParallel().ForAll(p =>
+                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
                                 {
                                     lock (LockObject)
                                     {

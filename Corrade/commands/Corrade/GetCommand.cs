@@ -76,7 +76,7 @@ namespace Corrade
                         case Entity.PERMISSION:
                             var data = new HashSet<string>();
                             var LockObject = new object();
-                            Reflection.GetEnumNames<Configuration.Permissions>().ToArray().AsParallel().ForAll(o =>
+                            Reflection.GetEnumNames<Configuration.Permissions>().AsParallel().ForAll(o =>
                             {
                                 var permission =
                                     Reflection.GetEnumValueFromName<Configuration.Permissions>(o);

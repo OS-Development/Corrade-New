@@ -45,7 +45,7 @@ namespace Corrade
                     var data = CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
-                    Enumerable.Range(0, 4).ToArray().AsParallel().ForAll(
+                    Enumerable.Range(0, 4).AsParallel().ForAll(
                         o =>
                         {
                             switch (data.ElementAtOrDefault(o) != null)

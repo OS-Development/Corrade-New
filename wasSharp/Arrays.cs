@@ -40,7 +40,7 @@ namespace wasSharp
         {
             if (stop.Equals(-1))
                 stop = data.Length - 1;
-            T[] result = new T[stop - start + 1];
+            var result = new T[stop - start + 1];
             Array.Copy(data, start, result, 0, stop - start + 1);
             return result;
         }
@@ -60,7 +60,7 @@ namespace wasSharp
         {
             if (stop.Equals(-1))
                 stop = data.Length - 1;
-            T[] result = new T[data.Length - (stop - start) - 1];
+            var result = new T[data.Length - (stop - start) - 1];
             Array.Copy(data, 0, result, 0, start);
             Array.Copy(data, stop + 1, result, start, data.Length - stop - 1);
             return result;
@@ -77,14 +77,14 @@ namespace wasSharp
         /// <returns>a flat array with all arrays concatenated</returns>
         public static T[] ConcatenateArrays<T>(params T[][] arrays)
         {
-            int resultLength = 0;
-            foreach (T[] o in arrays)
+            var resultLength = 0;
+            foreach (var o in arrays)
             {
                 resultLength += o.Length;
             }
-            T[] result = new T[resultLength];
-            int offset = 0;
-            for (int x = 0; x < arrays.Length; x++)
+            var result = new T[resultLength];
+            var offset = 0;
+            for (var x = 0; x < arrays.Length; x++)
             {
                 arrays[x].CopyTo(result, offset);
                 offset += arrays[x].Length;
@@ -105,7 +105,7 @@ namespace wasSharp
         public static T[] ReversePermuteArrayElements<T>(T[] input, int times)
         {
             if (times.Equals(0)) return input;
-            T[] slice = new T[input.Length];
+            var slice = new T[input.Length];
             Array.Copy(input, 1, slice, 0, input.Length - 1);
             Array.Copy(input, 0, slice, input.Length - 1, 1);
             return ReversePermuteArrayElements(slice, --times);
@@ -124,7 +124,7 @@ namespace wasSharp
         public static T[] ForwardPermuteArrayElements<T>(T[] input, int times)
         {
             if (times.Equals(0)) return input;
-            T[] slice = new T[input.Length];
+            var slice = new T[input.Length];
             Array.Copy(input, input.Length - 1, slice, 0, 1);
             Array.Copy(input, 0, slice, 1, input.Length - 1);
             return ForwardPermuteArrayElements(slice, --times);

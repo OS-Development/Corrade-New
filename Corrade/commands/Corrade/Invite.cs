@@ -95,7 +95,7 @@ namespace Corrade
                     Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message)))
-                        .ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)), (o, s) =>
+                        .AsParallel().Where(o => !string.IsNullOrEmpty(o)), (o, s) =>
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(o, out roleUUID) &&

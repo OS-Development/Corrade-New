@@ -37,7 +37,7 @@ namespace Corrade
                     CSV.ToKeyValue(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MUTES)),
-                            corradeCommandParameters.Message))).ToArray().AsParallel().ForAll(o =>
+                            corradeCommandParameters.Message))).AsParallel().ForAll(o =>
                             {
                                 var mutes = Enumerable.Empty<MuteEntry>();
                                 UUID targetUUID;
@@ -155,7 +155,7 @@ namespace Corrade
 
                                         // find the mute either by name or by target
                                         var mute =
-                                            mutes.ToArray().AsParallel()
+                                            mutes.AsParallel()
                                                 .FirstOrDefault(
                                                     p =>
                                                         p.Name.Equals(o.Key) ||

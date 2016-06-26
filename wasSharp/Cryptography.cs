@@ -27,7 +27,7 @@ namespace wasSharp
         /// <returns>either a decrypted or encrypted string</returns>
         public static string ENIGMA(string message, char[] rotors, char[] plugs, char reflector)
         {
-            Dictionary<char, char[]> def_rotors = new Dictionary<char, char[]>
+            var def_rotors = new Dictionary<char, char[]>
             {
                 {
                     '1', new[]
@@ -141,7 +141,7 @@ namespace wasSharp
                 }
             };
 
-            Dictionary<char, char[]> def_reflectors = new Dictionary<char, char[]>
+            var def_reflectors = new Dictionary<char, char[]>
             {
                 {
                     'B', new[]
@@ -182,18 +182,18 @@ namespace wasSharp
             };
 
             // Setup rotors from plugs.
-            foreach (char rotor in rotors)
+            foreach (var rotor in rotors)
             {
-                char plug = plugs[Array.IndexOf(rotors, rotor)];
-                int i = Array.IndexOf(def_rotors[rotor], plug);
+                var plug = plugs[Array.IndexOf(rotors, rotor)];
+                var i = Array.IndexOf(def_rotors[rotor], plug);
                 if (i.Equals(0)) continue;
                 def_rotors[rotor] = Arrays.ConcatenateArrays(new[] {plug},
                     Arrays.GetSubArray(Arrays.DeleteSubArray(def_rotors[rotor], i, i), i, -1),
                     Arrays.GetSubArray(Arrays.DeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
             }
 
-            StringBuilder result = new StringBuilder();
-            foreach (char c in message)
+            var result = new StringBuilder();
+            foreach (var c in message)
             {
                 if (!char.IsLetter(c))
                 {
@@ -202,11 +202,11 @@ namespace wasSharp
                 }
 
                 // Normalize to lower.
-                char l = char.ToLower(c);
+                var l = char.ToLower(c);
 
                 Action<char[]> rotate = o =>
                 {
-                    int i = o.Length - 1;
+                    var i = o.Length - 1;
                     do
                     {
                         def_rotors[o[0]] = Arrays.ForwardPermuteArrayElements(def_rotors[o[0]], 1);
@@ -224,7 +224,7 @@ namespace wasSharp
                 rotate.Invoke(rotors);
 
                 // Reflect
-                int x = Array.IndexOf(def_reflectors[reflector], l);
+                var x = Array.IndexOf(def_reflectors[reflector], l);
                 l = (x + 1)%2 == 0 ? def_reflectors[reflector][x - 1] : def_reflectors[reflector][x + 1];
 
                 // Reverse the order of the rotors.
@@ -254,18 +254,18 @@ namespace wasSharp
         /// <returns>the expanded key</returns>
         public static string VIGENEREExpandKey(string input, string enc_key)
         {
-            string exp_key = string.Empty;
+            var exp_key = string.Empty;
             int i = 0, j = 0;
             do
             {
-                char p = input[i];
+                var p = input[i];
                 if (!char.IsLetter(p))
                 {
                     exp_key += p;
                     ++i;
                     continue;
                 }
-                int m = j%enc_key.Length;
+                var m = j%enc_key.Length;
                 exp_key += enc_key[m];
                 ++j;
                 ++i;
@@ -291,18 +291,18 @@ namespace wasSharp
             };
 
             enc_key = VIGENEREExpandKey(input, enc_key);
-            string result = string.Empty;
-            int i = 0;
+            var result = string.Empty;
+            var i = 0;
             do
             {
-                char p = input[i];
+                var p = input[i];
                 if (!char.IsLetter(p))
                 {
                     result += p;
                     ++i;
                     continue;
                 }
-                char q =
+                var q =
                     Arrays.ReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
                         Array.IndexOf(a, char.ToLowerInvariant(p))];
                 if (char.IsUpper(p))
@@ -333,18 +333,18 @@ namespace wasSharp
             };
 
             enc_key = VIGENEREExpandKey(input, enc_key);
-            string result = string.Empty;
-            int i = 0;
+            var result = string.Empty;
+            var i = 0;
             do
             {
-                char p = input[i];
+                var p = input[i];
                 if (!char.IsLetter(p))
                 {
                     result += p;
                     ++i;
                     continue;
                 }
-                char q =
+                var q =
                     a[
                         Array.IndexOf(Arrays.ReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
                             char.ToLowerInvariant(p))];
@@ -374,13 +374,13 @@ namespace wasSharp
                 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
             };
 
-            char[] input = data.ToCharArray();
+            var input = data.ToCharArray();
 
             Parallel.ForEach(Enumerable.Range(0, data.Length), i =>
             {
-                char e = input[i];
+                var e = input[i];
                 if (!char.IsLetter(e)) return;
-                int x = 25 - Array.BinarySearch(a, char.ToLowerInvariant(e));
+                var x = 25 - Array.BinarySearch(a, char.ToLowerInvariant(e));
                 if (!char.IsUpper(e))
                 {
                     input[i] = a[x];

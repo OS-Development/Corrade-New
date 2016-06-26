@@ -55,7 +55,7 @@ namespace Corrade
                     }
                     var items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
-                        .ToArray().AsParallel()
+                        .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)));
                     if (!items.Any() || (action.Equals(Action.LINK) && items.Count < 2))
                     {

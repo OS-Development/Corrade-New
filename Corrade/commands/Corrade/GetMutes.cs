@@ -30,7 +30,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                     }
-                    var data = mutes.ToArray().AsParallel().Select(o => new[]
+                    var data = mutes.AsParallel().Select(o => new[]
                     {
                         o.Name,
                         o.ID.ToString(),

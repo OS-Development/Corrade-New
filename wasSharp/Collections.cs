@@ -36,8 +36,7 @@ namespace wasSharp
 
             public SerializableDictionary()
             {
-                
-            } 
+            }
 
             /// <summary>
             ///     Deep-clones the serializable dictionary.
@@ -48,9 +47,9 @@ namespace wasSharp
                 SerializableDictionary<TKey, TValue> clone;
                 try
                 {
-                    using (MemoryStream writer = new MemoryStream())
+                    using (var writer = new MemoryStream())
                     {
-                        XmlSerializer serializer =
+                        var serializer =
                             new XmlSerializer(
                                 typeof (SerializableDictionary<TKey, TValue>));
                         serializer.Serialize(writer, this);
@@ -76,10 +75,10 @@ namespace wasSharp
 
             public void ReadXml(XmlReader reader)
             {
-                XmlSerializer keySerializer = new XmlSerializer(typeof (TKey));
-                XmlSerializer valueSerializer = new XmlSerializer(typeof (TValue));
+                var keySerializer = new XmlSerializer(typeof (TKey));
+                var valueSerializer = new XmlSerializer(typeof (TValue));
 
-                bool wasEmpty = reader.IsEmptyElement;
+                var wasEmpty = reader.IsEmptyElement;
                 reader.Read();
 
                 if (wasEmpty)
@@ -90,11 +89,11 @@ namespace wasSharp
                     reader.ReadStartElement("Item");
 
                     reader.ReadStartElement("Key");
-                    TKey key = (TKey) keySerializer.Deserialize(reader);
+                    var key = (TKey) keySerializer.Deserialize(reader);
                     reader.ReadEndElement();
 
                     reader.ReadStartElement("Value");
-                    TValue value = (TValue) valueSerializer.Deserialize(reader);
+                    var value = (TValue) valueSerializer.Deserialize(reader);
                     reader.ReadEndElement();
 
                     Add(key, value);
@@ -107,10 +106,10 @@ namespace wasSharp
 
             public void WriteXml(XmlWriter writer)
             {
-                XmlSerializer keySerializer = new XmlSerializer(typeof (TKey));
-                XmlSerializer valueSerializer = new XmlSerializer(typeof (TValue));
+                var keySerializer = new XmlSerializer(typeof (TKey));
+                var valueSerializer = new XmlSerializer(typeof (TValue));
 
-                foreach (TKey key in Keys)
+                foreach (var key in Keys)
                 {
                     writer.WriteStartElement("Item");
 
@@ -119,7 +118,7 @@ namespace wasSharp
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("Value");
-                    TValue value = this[key];
+                    var value = this[key];
                     valueSerializer.Serialize(writer, value);
                     writer.WriteEndElement();
 

@@ -21,7 +21,7 @@ namespace Corrade
                 {
                     var data = new HashSet<string>();
                     var LockObject = new object();
-                    Reflection.GetEnumNames<ScriptKeys>().ToArray().AsParallel().ForAll(o =>
+                    Reflection.GetEnumNames<ScriptKeys>().AsParallel().ForAll(o =>
                     {
                         var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(o);
                         if (scriptKey.Equals(default(ScriptKeys)))

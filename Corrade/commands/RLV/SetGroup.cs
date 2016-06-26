@@ -32,7 +32,7 @@ namespace Corrade
                         ref currentGroups))
                     return;
                 var currentGroup =
-                    currentGroups.ToArray().AsParallel().FirstOrDefault(o => o.Equals(groupUUID));
+                    currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID));
                 if (!currentGroup.Equals(UUID.Zero))
                 {
                     lock (Locks.ClientInstanceGroupsLock)

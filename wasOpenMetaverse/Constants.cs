@@ -181,5 +181,10 @@ namespace wasOpenMetaverse
         {
             public const uint MAXIMUM_EVENT_DESCRIPTION_LENGTH = 1024;
         }
+
+        public struct PARTNERSHIP
+        {
+            public const uint MAXIMUM_PROPOSAL_MESSAGE_LENGTH = 254;
+        }
     }
 }

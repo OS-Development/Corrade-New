@@ -35,9 +35,9 @@ namespace wasSharp
         /// <returns>an XML unescaped string</returns>
         public static string UnescapeXML(string s)
         {
-            Queue<char> t = new Queue<char>();
-            StringBuilder m = new StringBuilder();
-            foreach (char c in s)
+            var t = new Queue<char>();
+            var m = new StringBuilder();
+            foreach (var c in s)
             {
                 switch (c)
                 {
@@ -53,7 +53,7 @@ namespace wasSharp
                         if (!t.Count.Equals(0))
                         {
                             t.Enqueue(c);
-                            string special = string.Join("", t.ToArray());
+                            var special = string.Join("", t.ToArray());
                             switch (special)
                             {
                                 case "&apos;":
@@ -110,7 +110,7 @@ namespace wasSharp
         {
             if (string.IsNullOrEmpty(s)) return s;
 
-            string[] result = new string[s.Length];
+            var result = new string[s.Length];
             Parallel.ForEach(Enumerable.Range(0, s.Length), o =>
             {
                 switch (s[o])

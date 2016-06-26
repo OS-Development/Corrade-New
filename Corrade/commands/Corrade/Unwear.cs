@@ -36,7 +36,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.EMPTY_WEARABLES);
                     }
                     CSV.ToEnumerable(
-                        wearables).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                        wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             InventoryItem inventoryItem;
                             UUID itemUUID;

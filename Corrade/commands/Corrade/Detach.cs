@@ -77,7 +77,7 @@ namespace Corrade
                         new HashSet<KeyValuePair<Primitive, AttachmentPoint>>(Inventory.GetAttachments(Client,
                             corradeConfiguration.DataTimeout));
                     CSV.ToEnumerable(
-                        attachments).ToArray().AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                        attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
                             InventoryItem inventoryItem = null;
                             switch (detachType)

@@ -69,7 +69,7 @@ namespace Corrade
                         break;
                     default:
                         Inventory.GetWearables(Client, CurrentOutfitFolder)
-                            .ToArray().AsParallel()
+                            .AsParallel()
                             .Where(o => !Inventory.IsBodyPart(Client, o as InventoryWearable))
                             .ForAll(
                                 o =>

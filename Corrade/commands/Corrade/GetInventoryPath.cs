@@ -65,7 +65,7 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     Inventory.FindInventoryPath<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                        search, new LinkedList<string>()).ToArray().AsParallel().Select(o => o.Value).ForAll(o =>
+                        search, new LinkedList<string>()).AsParallel().Select(o => o.Value).ForAll(o =>
                         {
                             lock (LockObject)
                             {

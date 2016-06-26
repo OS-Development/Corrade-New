@@ -83,7 +83,7 @@ namespace wasSharp
         /// <returns>the description or the empty string</returns>
         public static string GetNameFromEnumValue(Enum value)
         {
-            NameAttribute attribute = value.GetType()
+            var attribute = value.GetType()
                 .GetRuntimeField(value.ToString())
                 .GetCustomAttributes(typeof (NameAttribute), false)
                 .SingleOrDefault() as NameAttribute;
@@ -100,7 +100,7 @@ namespace wasSharp
         /// <returns>the description or the empty string</returns>
         public static string GetDescriptionFromEnumValue(Enum value)
         {
-            DescriptionAttribute attribute = value.GetType()
+            var attribute = value.GetType()
                 .GetRuntimeField(value.ToString())
                 .GetCustomAttributes(typeof (DescriptionAttribute), false)
                 .SingleOrDefault() as DescriptionAttribute;
