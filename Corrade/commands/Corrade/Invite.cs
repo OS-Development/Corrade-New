@@ -75,19 +75,49 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    // If verify is specified then check that the agent is not already in the group.
+                    // If verify is true then:
+                    //   - check that the agent is not already in the group.
+                    //   - check that the agent has not been banned.
                     bool verify;
-                    if (!bool.TryParse(wasInput(
+                    if (bool.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VERIFY)),
-                            corradeCommandParameters.Message)), out verify))
+                            corradeCommandParameters.Message)), out verify) && verify)
                     {
-                        verify = false;
-                    }
-                    if (verify && Services.AgentInGroup(Client, agentUUID, groupUUID,
-                        corradeConfiguration.ServicesTimeout))
-                    {
-                        throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
+                        // check that the agent is not already in the group
+                        if (Services.AgentInGroup(Client, agentUUID, groupUUID,
+                            corradeConfiguration.ServicesTimeout))
+                        {
+                            throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
+                        }
+
+                        // check that the agent has not been banned.
+                        var BannedAgentsEvent = new ManualResetEvent(false);
+                        Dictionary<UUID, DateTime> bannedAgents = null;
+                        var succeeded = false;
+                        EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
+                        {
+                            succeeded = args.Success;
+                            bannedAgents = args.BannedAgents;
+                            BannedAgentsEvent.Set();
+                        };
+                        lock (Locks.ClientInstanceGroupsLock)
+                        {
+                            Client.Groups.BannedAgents += BannedAgentsEventHandler;
+                            Client.Groups.RequestBannedAgents(groupUUID);
+                            if (!BannedAgentsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                                throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);
+                            }
+                            Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                        }
+                        if (!succeeded || bannedAgents == null)
+                        {
+                            throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
+                        }
+                        if (bannedAgents.ContainsKey(agentUUID))
+                            throw new ScriptException(ScriptError.AGENT_HAS_BEEN_BANNED);
                     }
                     var roleUUIDs = new HashSet<UUID>();
                     var LockObject = new object();
