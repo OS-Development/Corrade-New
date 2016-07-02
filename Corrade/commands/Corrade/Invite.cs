@@ -75,9 +75,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    // If verify is true then:
-                    //   - check that the agent is not already in the group.
-                    //   - check that the agent has not been banned.
+                    // If verify is true then check that the agent is not already in the group.
                     bool verify;
                     if (bool.TryParse(wasInput(
                         KeyValue.Get(
@@ -90,35 +88,40 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                         }
-
-                        // check that the agent has not been banned.
-                        var BannedAgentsEvent = new ManualResetEvent(false);
-                        Dictionary<UUID, DateTime> bannedAgents = null;
-                        var succeeded = false;
-                        EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
-                        {
-                            succeeded = args.Success;
-                            bannedAgents = args.BannedAgents;
-                            BannedAgentsEvent.Set();
-                        };
-                        lock (Locks.ClientInstanceGroupsLock)
-                        {
-                            Client.Groups.BannedAgents += BannedAgentsEventHandler;
-                            Client.Groups.RequestBannedAgents(groupUUID);
-                            if (!BannedAgentsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Groups.BannedAgents -= BannedAgentsEventHandler;
-                                throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);
-                            }
-                            Client.Groups.BannedAgents -= BannedAgentsEventHandler;
-                        }
-                        if (!succeeded || bannedAgents == null)
-                        {
-                            throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
-                        }
-                        if (bannedAgents.ContainsKey(agentUUID))
-                            throw new ScriptException(ScriptError.AGENT_HAS_BEEN_BANNED);
                     }
+
+                    // check that the agent has not been banned.
+                    var BannedAgentsEvent = new ManualResetEvent(false);
+                    Dictionary<UUID, DateTime> bannedAgents = null;
+                    var succeeded = false;
+                    EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
+                    {
+                        succeeded = args.Success;
+                        bannedAgents = args.BannedAgents;
+                        BannedAgentsEvent.Set();
+                    };
+                    lock (Locks.ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.BannedAgents += BannedAgentsEventHandler;
+                        Client.Groups.RequestBannedAgents(groupUUID);
+                        if (!BannedAgentsEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        {
+                            Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                            throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);
+                        }
+                        Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                    }
+                    if (!succeeded || bannedAgents == null)
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
+                    }
+                    if (bannedAgents.ContainsKey(agentUUID) &&
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.GroupBanAccess,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+
                     var roleUUIDs = new HashSet<UUID>();
                     var LockObject = new object();
                     var rolesFound = true;
