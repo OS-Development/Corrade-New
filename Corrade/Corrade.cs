@@ -3274,7 +3274,7 @@ namespace Corrade
             Client.Network.Disconnected += HandleDisconnected;
             Client.Network.SimDisconnected += HandleSimulatorDisconnected;
             Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            Client.Self.TeleportProgress += HandleTeleportProgress;
+            //Client.Self.TeleportProgress += HandleTeleportProgress;
             Client.Self.ChatFromSimulator += HandleChatFromSimulator;
             Client.Groups.GroupJoinedReply += HandleGroupJoined;
             Client.Groups.GroupLeaveReply += HandleGroupLeave;
@@ -3368,7 +3368,7 @@ namespace Corrade
             Client.Self.MoneyBalance -= HandleMoneyBalance;
             Client.Self.AlertMessage -= HandleAlertMessage;
             Client.Self.ScriptQuestion -= HandleScriptQuestion;
-            Client.Self.TeleportProgress -= HandleTeleportProgress;
+            //Client.Self.TeleportProgress -= HandleTeleportProgress;
             Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
             Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
             Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
@@ -4341,7 +4341,10 @@ namespace Corrade
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
             // if any simulators are still connected, we are not disconnected
-            if (Client.Network.Simulators.Any()) return;
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                if (Client.Network.Simulators.Any()) return;
+            }
             Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
             ConnectionSemaphores['s'].Set();
         }
@@ -5601,13 +5604,6 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.RegionCrossed, e),
                 corradeConfiguration.MaximumNotificationThreads);
-
-            // Set the camera on the avatar.
-            Client.Self.Movement.Camera.LookAt(
-                Client.Self.SimPosition,
-                Client.Self.SimPosition
-                );
-            SaveMovementState.Invoke();
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
