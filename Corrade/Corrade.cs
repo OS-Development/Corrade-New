@@ -8079,6 +8079,14 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=setestatecovenant>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("setestatecovenant")]
+            [Reflection.NameAttribute("setestatecovenant")]
+            SETESTATECOVENANT,
+
+            [CommandInputSyntax(
                 "<command=divorce>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("divorce")] [Reflection.NameAttribute("divorce")] DIVORCE,
 
