@@ -387,7 +387,8 @@ namespace Corrade
             [Status(46612)] [Reflection.DescriptionAttribute("no partner found")] NO_PARTNER_FOUND,
             [Status(41257)] [Reflection.DescriptionAttribute("unable to post divorce")] UNABLE_TO_POST_DIVORCE,
             [Status(58870)] [Reflection.DescriptionAttribute("unable to divorce")] UNABLE_TO_DIVORCE,
-            [Status(31267)] [Reflection.DescriptionAttribute("agent has been banned")] AGENT_HAS_BEEN_BANNED
+            [Status(31267)] [Reflection.DescriptionAttribute("agent has been banned")] AGENT_HAS_BEEN_BANNED,
+            [Status(16927)] [Reflection.DescriptionAttribute("no estate powers for command")] NO_ESTATE_POWERS_FOR_COMMAND
         }
 
         /// <summary>

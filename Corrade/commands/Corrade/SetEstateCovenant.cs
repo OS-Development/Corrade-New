@@ -31,7 +31,7 @@ namespace Corrade
 
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_POWERS_FOR_COMMAND);
+                        throw new ScriptException(ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
                     }
 
                     var item = wasInput(
