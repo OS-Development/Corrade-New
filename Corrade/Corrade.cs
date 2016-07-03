@@ -3274,7 +3274,7 @@ namespace Corrade
             Client.Network.Disconnected += HandleDisconnected;
             Client.Network.SimDisconnected += HandleSimulatorDisconnected;
             Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            //Client.Self.TeleportProgress += HandleTeleportProgress;
+            Client.Self.TeleportProgress += HandleTeleportProgress;
             Client.Self.ChatFromSimulator += HandleChatFromSimulator;
             Client.Groups.GroupJoinedReply += HandleGroupJoined;
             Client.Groups.GroupLeaveReply += HandleGroupLeave;
@@ -3368,7 +3368,7 @@ namespace Corrade
             Client.Self.MoneyBalance -= HandleMoneyBalance;
             Client.Self.AlertMessage -= HandleAlertMessage;
             Client.Self.ScriptQuestion -= HandleScriptQuestion;
-            //Client.Self.TeleportProgress -= HandleTeleportProgress;
+            Client.Self.TeleportProgress -= HandleTeleportProgress;
             Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
             Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
             Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
@@ -4466,11 +4466,6 @@ namespace Corrade
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     })
                     {IsBackground = true}.Start();
-                    // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
                     break;
                 case TeleportStatus.Failed:
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
