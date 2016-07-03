@@ -4460,12 +4460,14 @@ namespace Corrade
                 case TeleportStatus.Finished:
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
                     // Set current group to land group.
-                    new Thread(() =>
+                    if (corradeConfiguration.AutoActivateGroup)
                     {
-                        if (!corradeConfiguration.AutoActivateGroup) return;
-                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
-                    })
-                    {IsBackground = true}.Start();
+                        new Thread(() =>
+                        {
+                            ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
+                        })
+                        {IsBackground = true}.Start();
+                    }
                     break;
                 case TeleportStatus.Failed:
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
