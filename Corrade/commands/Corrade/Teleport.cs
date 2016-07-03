@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -74,20 +73,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    var TeleportEvent = new ManualResetEvent(false);
-                    var succeeded = false;
-                    EventHandler<TeleportEventArgs> TeleportEventHandler = (sender, args) =>
-                    {
-                        switch (args.Status)
-                        {
-                            case TeleportStatus.Cancelled:
-                            case TeleportStatus.Failed:
-                            case TeleportStatus.Finished:
-                                succeeded = args.Status.Equals(TeleportStatus.Finished);
-                                TeleportEvent.Set();
-                                break;
-                        }
-                    };
                     if (Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
                     {
                         throw new ScriptException(ScriptError.TELEPORT_THROTTLED);
@@ -116,27 +101,12 @@ namespace Corrade
                             }
                             break;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
+                    if (!Client.Self.Teleport(regionHandle, position, lookAt))
                     {
-                        Client.Self.TeleportProgress += TeleportEventHandler;
-                        Client.Self.Teleport(regionHandle, position, lookAt);
-                        if (!TeleportEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Self.TeleportProgress -= TeleportEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_DURING_TELEPORT);
-                        }
-                        Client.Self.TeleportProgress -= TeleportEventHandler;
-                    }
-                    if (!succeeded)
-                    {
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            Client.Self.TeleportMessage);
                         throw new ScriptException(ScriptError.TELEPORT_FAILED);
                     }
-                    // If the teleport succeeded, cache the region handle.
-                    Cache.RegionCache.Add(new Cache.Regions
-                    {
-                        Name = Client.Network.CurrentSim.Name,
-                        Handle = Client.Network.CurrentSim.Handle
-                    });
                     bool fly;
                     // perform the post-action
                     switch (bool.TryParse(wasInput(
