@@ -7214,7 +7214,8 @@ namespace Corrade
             /// <summary>
             ///     Semaphore for sequential execution of threads.
             /// </summary>
-            private static readonly ManualResetEvent ThreadCompletedEvent = new ManualResetEvent(true);
+            private static readonly ManualResetEvent SequentialThreadCompletedEvent = new ManualResetEvent(true);
+            private static Thread SequentialThread;
 
             /// <summary>
             ///     Holds a map of groups to execution time in milliseconds.
@@ -7254,13 +7255,38 @@ namespace Corrade
                         return;
                     }
                 }
-                Thread t = null;
                 var threadType = corradeThreadType;
-                t = new Thread(() =>
+                SequentialThread = new Thread(() =>
                 {
-                    // Wait for previous sequential thread to complete.
-                    ThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false);
-                    ThreadCompletedEvent.Reset();
+                    // Wait for previous sequential thread to complete and if unsuccessful then terminate the thread.
+                    if (!SequentialThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false))
+                    {
+                        if (SequentialThread != null)
+                        {
+                            try
+                            {
+                                if (
+                                    SequentialThread.ThreadState.Equals(ThreadState.Running) ||
+                                    SequentialThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
+                                {
+                                    if (!SequentialThread.Join(1000))
+                                    {
+                                        SequentialThread.Abort();
+                                        SequentialThread.Join();
+                                    }
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                /* We are going down and we do not care. */
+                            }
+                            finally
+                            {
+                                SequentialThread = null;
+                            }
+                        }
+                    }
+                    SequentialThreadCompletedEvent.Reset();
                     // protect inner thread
                     try
                     {
@@ -7277,19 +7303,19 @@ namespace Corrade
                         s = null;
                     }
                     // Thread has completed.
-                    ThreadCompletedEvent.Set();
+                    SequentialThreadCompletedEvent.Set();
                     lock (WorkSetLock)
                     {
-                        WorkSet.Remove(t);
+                        WorkSet.Remove(SequentialThread);
                     }
-                    t = null;
+                    SequentialThread = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
                 {
-                    WorkSet.Add(t);
+                    WorkSet.Add(SequentialThread);
                 }
-                t.Start();
+                SequentialThread.Start();
             }
 
             /// <summary>
@@ -8071,6 +8097,14 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=getavatargroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getavatargroupsdata")]
+            [Reflection.NameAttribute("getavatargroupsdata")]
+            GETAVATARGROUPSDATA,
 
             [CommandInputSyntax(
                 "<command=setestatecovenant>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[callback=<STRING>]"
