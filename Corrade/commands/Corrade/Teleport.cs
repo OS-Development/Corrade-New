@@ -101,11 +101,14 @@ namespace Corrade
                             }
                             break;
                     }
-                    if (!Client.Self.Teleport(regionHandle, position, lookAt))
+                    lock (Locks.ClientInstanceSelfLock)
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                            Client.Self.TeleportMessage);
-                        throw new ScriptException(ScriptError.TELEPORT_FAILED);
+                        if (!Client.Self.Teleport(regionHandle, position, lookAt))
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                Client.Self.TeleportMessage);
+                            throw new ScriptException(ScriptError.TELEPORT_FAILED);
+                        }
                     }
                     bool fly;
                     // perform the post-action
