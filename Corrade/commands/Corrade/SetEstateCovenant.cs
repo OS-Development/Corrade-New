@@ -29,6 +29,11 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
+                    if (!Client.Network.CurrentSim.IsEstateManager)
+                    {
+                        throw new ScriptException(ScriptError.NO_POWERS_FOR_COMMAND);
+                    }
+
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
