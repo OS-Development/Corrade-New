@@ -7261,37 +7261,37 @@ namespace Corrade
                     }
                 }
                 var threadType = corradeThreadType;
-                SequentialThread = new Thread(() =>
+                // Wait for previous sequential thread to complete and if unsuccessful then terminate the thread.
+                if (!SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, false))
                 {
-                    // Wait for previous sequential thread to complete and if unsuccessful then terminate the thread.
-                    if (!SequentialThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false))
+                    if (SequentialThread != null)
                     {
-                        if (SequentialThread != null)
+                        try
                         {
-                            try
+                            if (
+                                SequentialThread.ThreadState.Equals(ThreadState.Running) ||
+                                SequentialThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
                             {
-                                if (
-                                    SequentialThread.ThreadState.Equals(ThreadState.Running) ||
-                                    SequentialThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
+                                if (!SequentialThread.Join(1000))
                                 {
-                                    if (!SequentialThread.Join(1000))
-                                    {
-                                        SequentialThread.Abort();
-                                        SequentialThread.Join();
-                                    }
+                                    SequentialThread.Abort();
+                                    SequentialThread.Join();
                                 }
                             }
-                            catch (Exception)
-                            {
-                                /* We are going down and we do not care. */
-                            }
-                            finally
-                            {
-                                SequentialThread = null;
-                            }
+                        }
+                        catch (Exception)
+                        {
+                            /* We are going down and we do not care. */
+                        }
+                        finally
+                        {
+                            SequentialThread = null;
                         }
                     }
-                    SequentialThreadCompletedEvent.Reset();
+                }
+                SequentialThreadCompletedEvent.Reset();
+                SequentialThread = new Thread(() =>
+                {
                     // protect inner thread
                     try
                     {
