@@ -161,6 +161,9 @@
     <Compile Include="commands\Corrade\GetAvatarGroupsData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\ReadFile.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\SetEstateCovenant.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -858,6 +861,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Divorce.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\WriteFile.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\RLV\Attach.cs">

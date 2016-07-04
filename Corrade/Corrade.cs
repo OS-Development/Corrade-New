@@ -388,7 +388,9 @@ namespace Corrade
             [Status(41257)] [Reflection.DescriptionAttribute("unable to post divorce")] UNABLE_TO_POST_DIVORCE,
             [Status(58870)] [Reflection.DescriptionAttribute("unable to divorce")] UNABLE_TO_DIVORCE,
             [Status(31267)] [Reflection.DescriptionAttribute("agent has been banned")] AGENT_HAS_BEEN_BANNED,
-            [Status(16927)] [Reflection.DescriptionAttribute("no estate powers for command")] NO_ESTATE_POWERS_FOR_COMMAND
+            [Status(16927)] [Reflection.DescriptionAttribute("no estate powers for command")] NO_ESTATE_POWERS_FOR_COMMAND,
+            [Status(21160)] [Reflection.DescriptionAttribute("unable to write file")] UNABLE_TO_WRITE_FILE,
+            [Status(38278)] [Reflection.DescriptionAttribute("unable to read file")] UNABLE_TO_READ_FILE
         }
 
         /// <summary>
@@ -4365,6 +4367,7 @@ namespace Corrade
                         // Update the inventory.
                         try
                         {
+                            // Update the inventory.
                             Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
                                 corradeConfiguration.ServicesTimeout);
                             // Get COF.
@@ -4384,7 +4387,7 @@ namespace Corrade
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
-                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    {IsBackground = true}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
@@ -6600,7 +6603,9 @@ namespace Corrade
             [Reflection.NameAttribute("ignore")] IGNORE,
             [Reflection.NameAttribute("revoke")] REVOKE,
             [Reflection.NameAttribute("reject")] REJECT,
-            [Reflection.NameAttribute("propose")] PROPOSE
+            [Reflection.NameAttribute("propose")] PROPOSE,
+            [Reflection.NameAttribute("append")] APPEND,
+            [Reflection.NameAttribute("create")] CREATE
         }
 
         /// <summary>
@@ -8097,6 +8102,22 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=readfile>&<group=<UUID|STRING>>&<password=<STRING>>>&<path=<STRING>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
+            [CorradeCommand("readfile")]
+            [Reflection.NameAttribute("readfile")]
+            READFILE,
+
+            [CommandInputSyntax(
+                "<command=writefile>&<group=<UUID|STRING>>&<password=<STRING>>>&<path=<STRING>>&<action=<append|create>>&<data=<STRING>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
+            [CorradeCommand("writefile")]
+            [Reflection.NameAttribute("writefile")]
+            WRITEFILE,
 
             [CommandInputSyntax(
                 "<command=getavatargroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"

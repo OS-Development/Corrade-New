@@ -615,6 +615,20 @@ namespace wasOpenMetaverse
         /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
         public static void UpdateInventoryRecursive(GridClient Client, InventoryFolder o, uint millisecondsTimeout)
         {
+            // Check if CAPS is connected or wait a while.
+            if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
+            {
+                // Wait for CAPs.
+                ManualResetEvent EventQueueRunningEvent = new ManualResetEvent(false);
+                EventHandler<EventQueueRunningEventArgs> EventQueueRunningEventHandler = (p, q) =>
+                {
+                    EventQueueRunningEvent.Set();
+                };
+                Client.Network.EventQueueRunning += EventQueueRunningEventHandler;
+                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
+                Client.Network.EventQueueRunning -= EventQueueRunningEventHandler;
+            }
+
             // Create the queue of folders.
             var inventoryFolders = new BlockingQueue<InventoryFolder>();
             // Enqueue the first folder (root).
@@ -633,18 +647,22 @@ namespace wasOpenMetaverse
 
             do
             {
+                // Dequeue folder.
                 var folder = inventoryFolders.Dequeue();
-                if (folder == null) continue;
+                // Check if the node exists and if it does not need and update then continue.
+                var node = Client.Inventory.Store.GetNodeFor(folder.UUID);
+                if (node != null && !node.NeedsUpdate)
+                    continue;
                 lock (Locks.ClientInstanceInventoryLock)
                 {
                     Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                     FolderUpdatedEvent.Reset();
                     Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
                         InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                    FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                 }
-            } while (!inventoryFolders.Count.Equals(0));
+            } while (inventoryFolders.Any());
         }
 
 
