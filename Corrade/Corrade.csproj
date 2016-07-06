@@ -63,9 +63,6 @@
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CorradeConfiguration">
-      <HintPath>..\CorradeConfiguration\bin\Release\CorradeConfiguration.dll</HintPath>
-    </Reference>
     <Reference Include="Facebook, Version=6.0.10.0, Culture=neutral, PublicKeyToken=58cb4f2111d1e6de, processorArchitecture=MSIL">
       <HintPath>..\packages\Facebook.7.0.6\lib\net45\Facebook.dll</HintPath>
       <Private>True</Private>
@@ -132,6 +129,7 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess">
       <Private>False</Private>
@@ -143,12 +141,6 @@
     <Reference Include="TweetSharp, Version=2.0.0.0, Culture=neutral, PublicKeyToken=c148cfba29ed1a4d, processorArchitecture=MSIL">
       <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\TweetSharp.dll</HintPath>
       <Private>True</Private>
-    </Reference>
-    <Reference Include="wasOpenMetaverse">
-      <HintPath>..\wasOpenMetaverse\bin\Release\wasOpenMetaverse.dll</HintPath>
-    </Reference>
-    <Reference Include="wasSharp">
-      <HintPath>..\wasSharp\bin\Release\wasSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -1767,6 +1759,20 @@
     <Folder Include="SIML\Corrade\Templates\" />
     <Folder Include="SIML\Evolve\" />
     <Folder Include="state\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CorradeConfiguration\CorradeConfiguration.csproj">
+      <Project>{9af3a0cc-6e94-45fb-ab70-1ba04f49e340}</Project>
+      <Name>CorradeConfiguration</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasOpenMetaverse\wasOpenMetaverse.csproj">
+      <Project>{b9537c43-94dc-4bd4-b6fb-b7ca77c11824}</Project>
+      <Name>wasOpenMetaverse</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasSharp\wasSharp.csproj">
+      <Project>{a971e1c9-776c-4cd2-88ac-71197c7b955e}</Project>
+      <Name>wasSharp</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

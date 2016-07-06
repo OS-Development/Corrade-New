@@ -104,7 +104,7 @@ namespace Corrade
                     {
                         Client.Groups.BannedAgents += BannedAgentsEventHandler;
                         Client.Groups.RequestBannedAgents(groupUUID);
-                        if (!BannedAgentsEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!BannedAgentsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.BannedAgents -= BannedAgentsEventHandler;
                             throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);

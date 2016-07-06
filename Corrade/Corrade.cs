@@ -17,7 +17,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Management;
 using System.Net;
-using System.Net.Cache;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -28,7 +28,6 @@ using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
@@ -506,6 +505,12 @@ namespace Corrade
         private static readonly object OutputFiltersLock = new object();
         private static readonly HashSet<GroupSchedule> GroupSchedules = new HashSet<GroupSchedule>();
         private static readonly object GroupSchedulesLock = new object();
+
+        private static readonly Dictionary<UUID, CookieContainer> GroupCookieContainers =
+            new Dictionary<UUID, CookieContainer>();
+
+        private static readonly object GroupCookiesLock = new object();
+        private static string CorradePOSTMediaType;
 
         private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
             corradeCommands = typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
@@ -3180,7 +3185,7 @@ namespace Corrade
                         ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
                             startLocation.Z)
                         : corradeConfiguration.StartLocation,
-                UserAgent = CORRADE_CONSTANTS.USER_AGENT
+                UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString()
             };
             // Set the outgoing IP address if specified in the configuration file.
             if (!string.IsNullOrEmpty(corradeConfiguration.BindIPAddress))
@@ -3227,9 +3232,24 @@ namespace Corrade
                         var callbackQueueElement = new CallbackQueueElement();
                         if (CallbackQueue.Dequeue((int) corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
                         {
-                            CorradeThreadPool[CorradeThreadType.POST].Spawn(
-                                async () => await wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
-                                    corradeConfiguration.CallbackTimeout), corradeConfiguration.MaximumPOSTThreads);
+                            CorradeThreadPool[CorradeThreadType.POST].Spawn(async () =>
+                            {
+                                CookieContainer cookieContainer;
+                                lock (GroupCookiesLock)
+                                {
+                                    GroupCookieContainers.TryGetValue(callbackQueueElement.GroupUUID,
+                                        out cookieContainer);
+                                }
+                                if (cookieContainer != null)
+                                {
+                                    await
+                                        Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, callbackQueueElement.URL,
+                                            callbackQueueElement.message,
+                                            CorradePOSTMediaType,
+                                            cookieContainer,
+                                            corradeConfiguration.CallbackTimeout);
+                                }
+                            }, corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
                     catch (Exception ex)
@@ -3254,8 +3274,23 @@ namespace Corrade
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
                                 async () =>
-                                    await wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
-                                        corradeConfiguration.NotificationTimeout),
+                                {
+                                    CookieContainer cookieContainer;
+                                    lock (GroupCookiesLock)
+                                    {
+                                        GroupCookieContainers.TryGetValue(notificationQueueElement.GroupUUID,
+                                            out cookieContainer);
+                                    }
+                                    if (cookieContainer != null)
+                                    {
+                                        await
+                                            Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, notificationQueueElement.URL,
+                                                notificationQueueElement.message,
+                                                CorradePOSTMediaType,
+                                                cookieContainer,
+                                                corradeConfiguration.NotificationTimeout);
+                                    }
+                                },
                                 corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
@@ -3898,6 +3933,7 @@ namespace Corrade
                                 case true:
                                     NotificationQueue.Enqueue(new NotificationQueueElement
                                     {
+                                        GroupUUID = z.GroupUUID,
                                         URL = p,
                                         message = KeyValue.Escape(notificationData, wasOutput)
                                     });
@@ -4465,10 +4501,11 @@ namespace Corrade
                     // Set current group to land group.
                     if (corradeConfiguration.AutoActivateGroup)
                     {
-                        new Thread(() =>
-                        {
-                            ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
-                        })
+                        new Thread(
+                            () =>
+                            {
+                                ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
+                            })
                         {IsBackground = true}.Start();
                     }
                     break;
@@ -5163,6 +5200,7 @@ namespace Corrade
             if (string.IsNullOrEmpty(url)) return result;
             CallbackQueue.Enqueue(new CallbackQueueElement
             {
+                GroupUUID = commandGroup.UUID,
                 URL = url,
                 message = KeyValue.Escape(result, wasOutput)
             });
@@ -5407,180 +5445,6 @@ namespace Corrade
             }
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sends a POST request to an URL with set key-value pairs.
-        /// </summary>
-        /// <param name="URL">the url to send the message to</param>
-        /// <param name="message">key-value pairs to send</param>
-        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        private static async Task<byte[]> wasPOST(string URL, Dictionary<string, string> message,
-            uint millisecondsTimeout)
-        {
-            try
-            {
-                var request = (HttpWebRequest) WebRequest.Create(URL);
-                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
-                request.Proxy = WebRequest.DefaultWebProxy;
-                request.ProtocolVersion = HttpVersion.Version11;
-                request.Pipelined = true;
-                request.KeepAlive = true;
-                request.Timeout = (int) millisecondsTimeout;
-                request.AllowAutoRedirect = true;
-                request.Method = WebRequestMethods.Http.Post;
-                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-                request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.CacheIfAvailable);
-                // set the content type based on chosen output filers
-                switch (corradeConfiguration.OutputFilters.LastOrDefault())
-                {
-                    case Configuration.Filter.RFC1738:
-                        request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
-                        break;
-                    default:
-                        request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
-                        break;
-                }
-                var data = Encoding.UTF8.GetBytes(KeyValue.Encode(message));
-                request.ContentLength = data.Length;
-                // send request
-                using (var requestStream = await request.GetRequestStreamAsync())
-                {
-                    await requestStream.WriteAsync(data, 0, data.Length);
-                }
-                // read response
-                using (var responseMemoryStream = new MemoryStream())
-                {
-                    using (var response = await request.GetResponseAsync())
-                    {
-                        using (var responseStream = response.GetResponseStream())
-                        {
-                            if (responseStream != null)
-                                await responseStream.CopyToAsync(responseMemoryStream);
-                        }
-                    }
-                    return responseMemoryStream.ToArray();
-                }
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
-                    ex.Message);
-            }
-
-            return null;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sends a POST request to an URL with set key-value pairs.
-        /// </summary>
-        /// <param name="URL">the url to send the message to</param>
-        /// <param name="message">key-value pairs to send</param>
-        /// <param name="cookies">a cookie container</param>
-        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        private static async Task<byte[]> wasPOST(string URL, Dictionary<string, string> message,
-            CookieContainer cookies,
-            uint millisecondsTimeout)
-        {
-            try
-            {
-                var request = (HttpWebRequest) WebRequest.Create(URL);
-                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
-                request.Proxy = WebRequest.DefaultWebProxy;
-                request.ProtocolVersion = HttpVersion.Version11;
-                request.Pipelined = true;
-                request.KeepAlive = true;
-                request.Timeout = (int) millisecondsTimeout;
-                request.AllowAutoRedirect = true;
-                request.Method = WebRequestMethods.Http.Post;
-                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-                request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.CacheIfAvailable);
-                request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
-                request.CookieContainer = cookies;
-                var data = Encoding.UTF8.GetBytes(KeyValue.Encode(message));
-                request.ContentLength = data.Length;
-                // send request
-                using (var requestStream = await request.GetRequestStreamAsync())
-                {
-                    await requestStream.WriteAsync(data, 0, data.Length);
-                }
-                // read response
-                using (var responseMemoryStream = new MemoryStream())
-                {
-                    using (var response = await request.GetResponseAsync())
-                    {
-                        using (var responseStream = response.GetResponseStream())
-                        {
-                            if (responseStream != null)
-                                await responseStream.CopyToAsync(responseMemoryStream);
-                        }
-                    }
-                    return responseMemoryStream.ToArray();
-                }
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
-                    ex.Message);
-            }
-
-            return null;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sends a GET request to an URL with set key-value pairs.
-        /// </summary>
-        /// <param name="URL">the url to send the message to</param>
-        /// <param name="message">key-value pairs to send</param>
-        /// <param name="cookies">a cookie container</param>
-        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        private static async Task<byte[]> wasGET(string URL, Dictionary<string, string> message, CookieContainer cookies,
-            uint millisecondsTimeout)
-        {
-            try
-            {
-                var request = (HttpWebRequest) WebRequest.Create(URL + "?" + KeyValue.Encode(message));
-                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
-                request.Proxy = WebRequest.DefaultWebProxy;
-                request.ProtocolVersion = HttpVersion.Version11;
-                request.Pipelined = true;
-                request.KeepAlive = true;
-                request.Timeout = (int) millisecondsTimeout;
-                request.AllowAutoRedirect = true;
-                request.Method = WebRequestMethods.Http.Get;
-                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-                request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.CacheIfAvailable);
-                request.CookieContainer = cookies;
-                // read response
-                using (var responseMemoryStream = new MemoryStream())
-                {
-                    using (var response = await request.GetResponseAsync())
-                    {
-                        using (var responseStream = response.GetResponseStream())
-                        {
-                            if (responseStream != null)
-                                await responseStream.CopyToAsync(responseMemoryStream);
-                        }
-                    }
-                    return responseMemoryStream.ToArray();
-                }
-            }
-            catch (Exception ex)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
-                    ex.Message);
-            }
-
-            return null;
-        }
-
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -5622,6 +5486,29 @@ namespace Corrade
 
         public static void UpdateDynamicConfiguration(Configuration configuration)
         {
+            // Set the content type based on chosen output filers
+            switch (corradeConfiguration.OutputFilters.LastOrDefault())
+            {
+                case Configuration.Filter.RFC1738:
+                    CorradePOSTMediaType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                    break;
+                default:
+                    CorradePOSTMediaType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
+                    break;
+            }
+
+            // Set-up per-group cookie containers.
+            configuration.Groups.AsParallel().ForAll(o =>
+            {
+                lock (GroupCookiesLock)
+                {
+                    if (!GroupCookieContainers.ContainsKey(o.UUID))
+                    {
+                        GroupCookieContainers.Add(o.UUID, new CookieContainer());
+                    }
+                }
+            });
+
             // Enable the group scheduling thread if permissions were granted to groups.
             switch (configuration.Groups.AsParallel()
                 .Any(
@@ -6728,8 +6615,8 @@ namespace Corrade
             /// <summary>
             ///     Corrade user agent.
             /// </summary>
-            public static readonly string USER_AGENT =
-                $"{CORRADE}/{CORRADE_VERSION} ({WIZARDRY_AND_STEAMWORKS_WEBSITE})";
+            public static readonly ProductInfoHeaderValue USER_AGENT = new ProductInfoHeaderValue(CORRADE,
+                CORRADE_VERSION);
 
             /// <summary>
             ///     Corrade compile date.
@@ -7108,6 +6995,7 @@ namespace Corrade
         {
             public Dictionary<string, string> message;
             public string URL;
+            public UUID GroupUUID;
         }
 
         /// <summary>
@@ -7220,7 +7108,6 @@ namespace Corrade
             ///     Semaphore for sequential execution of threads.
             /// </summary>
             private static readonly ManualResetEvent SequentialThreadCompletedEvent = new ManualResetEvent(true);
-            private static Thread SequentialThread;
 
             /// <summary>
             ///     Holds a map of groups to execution time in milliseconds.
@@ -7260,38 +7147,13 @@ namespace Corrade
                         return;
                     }
                 }
+                Thread t = null;
                 var threadType = corradeThreadType;
-                // Wait for previous sequential thread to complete and if unsuccessful then terminate the thread.
-                if (!SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, false))
+                t = new Thread(() =>
                 {
-                    if (SequentialThread != null)
-                    {
-                        try
-                        {
-                            if (
-                                SequentialThread.ThreadState.Equals(ThreadState.Running) ||
-                                SequentialThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                            {
-                                if (!SequentialThread.Join(1000))
-                                {
-                                    SequentialThread.Abort();
-                                    SequentialThread.Join();
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            /* We are going down and we do not care. */
-                        }
-                        finally
-                        {
-                            SequentialThread = null;
-                        }
-                    }
-                }
-                SequentialThreadCompletedEvent.Reset();
-                SequentialThread = new Thread(() =>
-                {
+                    // Wait for previous sequential thread to complete.
+                    SequentialThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false);
+                    SequentialThreadCompletedEvent.Reset();
                     // protect inner thread
                     try
                     {
@@ -7311,16 +7173,16 @@ namespace Corrade
                     SequentialThreadCompletedEvent.Set();
                     lock (WorkSetLock)
                     {
-                        WorkSet.Remove(SequentialThread);
+                        WorkSet.Remove(t);
                     }
-                    SequentialThread = null;
+                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
                 {
-                    WorkSet.Add(SequentialThread);
+                    WorkSet.Add(t);
                 }
-                SequentialThread.Start();
+                t.Start();
             }
 
             /// <summary>
@@ -7994,6 +7856,7 @@ namespace Corrade
         {
             public Dictionary<string, string> message;
             public string URL;
+            public UUID GroupUUID;
         }
 
         private struct NotificationTCPQueueElement
@@ -8105,35 +7968,19 @@ namespace Corrade
 
             [CommandInputSyntax(
                 "<command=readfile>&<group=<UUID|STRING>>&<password=<STRING>>>&<path=<STRING>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
-            [CorradeCommand("readfile")]
-            [Reflection.NameAttribute("readfile")]
-            READFILE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("readfile")] [Reflection.NameAttribute("readfile")] READFILE,
 
             [CommandInputSyntax(
                 "<command=writefile>&<group=<UUID|STRING>>&<password=<STRING>>>&<path=<STRING>>&<action=<append|create>>&<data=<STRING>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
-            [CorradeCommand("writefile")]
-            [Reflection.NameAttribute("writefile")]
-            WRITEFILE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("writefile")] [Reflection.NameAttribute("writefile")] WRITEFILE,
 
             [CommandInputSyntax(
                 "<command=getavatargroupsdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
-            [CorradeCommand("getavatargroupsdata")]
-            [Reflection.NameAttribute("getavatargroupsdata")]
-            GETAVATARGROUPSDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatargroupsdata")] [Reflection.NameAttribute("getavatargroupsdata")] GETAVATARGROUPSDATA,
 
             [CommandInputSyntax(
                 "<command=setestatecovenant>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
-            [CorradeCommand("setestatecovenant")]
-            [Reflection.NameAttribute("setestatecovenant")]
-            SETESTATECOVENANT,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setestatecovenant")] [Reflection.NameAttribute("setestatecovenant")] SETESTATECOVENANT,
 
             [CommandInputSyntax(
                 "<command=divorce>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[callback=<STRING>]"

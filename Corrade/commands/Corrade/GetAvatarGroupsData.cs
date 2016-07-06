@@ -23,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -48,7 +48,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    object LockObject = new object();
+                    var LockObject = new object();
                     var avatarGroups = new HashSet<AvatarGroup>();
                     var AvatarGroupsReceivedEvent =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
@@ -69,7 +69,7 @@ namespace Corrade
                         Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                         Client.Avatars.RequestAvatarProperties(agentUUID);
                         if (
-                            !AvatarGroupsReceivedEvent.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                            !AvatarGroupsReceivedEvent.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
                                 false))
                         {
                             Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;

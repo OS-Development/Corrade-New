@@ -25,7 +25,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -57,7 +57,8 @@ namespace Corrade
 
                     #region Authenticate
 
-                    var postData = wasPOST("https://id.secondlife.com/openid/loginsubmit",
+                    var postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                        "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>
                         {
                             {"username", $"{firstname} {lastname}"},
@@ -68,7 +69,7 @@ namespace Corrade
                             {"stay_logged_in", "True"},
                             {"show_join", "False"},
                             {"return_to", "https://secondlife.com/auth/oid_return.php"}
-                        }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                        }, CorradePOSTMediaType, cookieContainer, corradeConfiguration.ServicesTimeout);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
@@ -93,7 +94,9 @@ namespace Corrade
                     if (!openID.Any())
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = wasPOST("https://id.secondlife.com/openid/openidserver", openID, cookieContainer,
+                    postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, "https://id.secondlife.com/openid/openidserver",
+                        openID, CorradePOSTMediaType,
+                        cookieContainer,
                         corradeConfiguration.ServicesTimeout);
 
                     if (postData.Result == null)
@@ -144,7 +147,8 @@ namespace Corrade
                             #endregion
 
                             // Check whether a proposal has been sent.
-                            postData = wasGET("https://secondlife.com/my/account/partners.php",
+                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
@@ -181,7 +185,9 @@ namespace Corrade
                             newProposal.Add("form[proposal]", message);
 
                             // Send the form.
-                            postData = wasPOST("https://secondlife.com/my/account/partners.php", newProposal,
+                            postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php", newProposal,
+                                CorradePOSTMediaType,
                                 cookieContainer,
                                 corradeConfiguration.ServicesTimeout);
 
@@ -203,7 +209,8 @@ namespace Corrade
                             break;
                         case Action.REVOKE: // Revoke a sent proposal.
                             // Check whether a proposal has been sent.
-                            postData = wasGET("https://secondlife.com/my/account/partners.php",
+                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
@@ -222,7 +229,8 @@ namespace Corrade
                             if (revokeNode == null)
                                 throw new ScriptException(ScriptError.NO_PROPOSAL_TO_REJECT);
 
-                            postData = wasGET("https://secondlife.com/my/account/partners.php",
+                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"revoke", "true"},
@@ -240,7 +248,8 @@ namespace Corrade
                                 corradeCommandParameters.Message));
 
                             // Check whether a proposal has been sent.
-                            postData = wasGET("https://secondlife.com/my/account/partners.php",
+                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
@@ -279,7 +288,9 @@ namespace Corrade
                             acceptProposal.Add("form[reply]", message);
 
                             // Send the form.
-                            postData = wasPOST("https://secondlife.com/my/account/partners.php", acceptProposal,
+                            postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php", acceptProposal,
+                                CorradePOSTMediaType,
                                 cookieContainer,
                                 corradeConfiguration.ServicesTimeout);
 
@@ -306,7 +317,8 @@ namespace Corrade
                                 corradeCommandParameters.Message));
 
                             // Check whether a proposal has been sent.
-                            postData = wasGET("https://secondlife.com/my/account/partners.php",
+                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
@@ -345,7 +357,9 @@ namespace Corrade
                             rejectProposal.Add("form[reply]", message);
 
                             // Send the form.
-                            postData = wasPOST("https://secondlife.com/my/account/partners.php", rejectProposal,
+                            postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                                "https://secondlife.com/my/account/partners.php", rejectProposal,
+                                CorradePOSTMediaType,
                                 cookieContainer,
                                 corradeConfiguration.ServicesTimeout);
 

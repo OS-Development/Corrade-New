@@ -74,7 +74,8 @@ namespace Corrade
 
                     var cookieContainer = new CookieContainer();
 
-                    var postData = wasPOST("https://id.secondlife.com/openid/loginsubmit",
+                    var postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                        "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>
                         {
                             {"username", $"{firstname} {lastname}"},
@@ -85,7 +86,7 @@ namespace Corrade
                             {"stay_logged_in", "True"},
                             {"show_join", "False"},
                             {"return_to", "https://secondlife.com/auth/oid_return.php"}
-                        }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                        }, CorradePOSTMediaType, cookieContainer, corradeConfiguration.ServicesTimeout);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
@@ -110,13 +111,16 @@ namespace Corrade
                     if (!openID.Any())
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = wasPOST("https://id.secondlife.com/openid/openidserver", openID, cookieContainer,
+                    postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, "https://id.secondlife.com/openid/openidserver",
+                        openID, CorradePOSTMediaType,
+                        cookieContainer,
                         corradeConfiguration.ServicesTimeout);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = wasGET("https://secondlife.com/my/account/download_transactions.php",
+                    postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                        "https://secondlife.com/my/account/download_transactions.php",
                         new Dictionary<string, string>
                         {
                             {"date_start", from.ToString("yyyy-MM-dd ")},
