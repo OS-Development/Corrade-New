@@ -4423,7 +4423,7 @@ namespace Corrade
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
-                    {IsBackground = true}.Start();
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
@@ -5484,8 +5484,11 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
-        public static void UpdateDynamicConfiguration(Configuration configuration)
+        private static void UpdateDynamicConfiguration(Configuration configuration)
         {
+            // Send message that we are updating the configuration.
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UPDATING_CORRADE_CONFIGURATION));
+
             // Set the content type based on chosen output filers
             switch (corradeConfiguration.OutputFilters.LastOrDefault())
             {
@@ -5518,7 +5521,7 @@ namespace Corrade
             {
                 case true:
                     // Don't start if the expiration thread is already started.
-                    if (GroupSchedulesThread != null) return;
+                    if (GroupSchedulesThread != null) break;
                     // Start the group expiration thread.
                     runGroupSchedulesThread = true;
                     var groupSchedules = new HashSet<GroupSchedule>();
@@ -5587,6 +5590,7 @@ namespace Corrade
                     }
                     break;
             }
+
             // Enable SIML in case it was enabled in the configuration file.
             try
             {
@@ -5831,9 +5835,7 @@ namespace Corrade
             {
                 case true:
                     // Don't start if the expiration thread is already started.
-                    if (EffectsExpirationThread != null) return;
-                    // Start sphere and beam effect expiration thread
-                    runEffectsExpirationThread = true;
+                    if (EffectsExpirationThread != null) break;
                     EffectsExpirationThread = new Thread(() =>
                     {
                         do
@@ -5850,13 +5852,16 @@ namespace Corrade
                         } while (runEffectsExpirationThread);
                     })
                     {IsBackground = true};
+                    // Start sphere and beam effect expiration thread
+                    runEffectsExpirationThread = true;
                     EffectsExpirationThread.Start();
                     break;
                 default:
+                    // Stop the effects expiration thread.
                     runEffectsExpirationThread = false;
-                    try
+                    if (EffectsExpirationThread != null)
                     {
-                        if (EffectsExpirationThread != null)
+                        try
                         {
                             if (
                                 EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
@@ -5869,14 +5874,14 @@ namespace Corrade
                                 }
                             }
                         }
-                    }
-                    catch (Exception)
-                    {
-                        /* We are going down and we do not care. */
-                    }
-                    finally
-                    {
-                        EffectsExpirationThread = null;
+                        catch (Exception)
+                        {
+                            /* We are going down and we do not care. */
+                        }
+                        finally
+                        {
+                            EffectsExpirationThread = null;
+                        }
                     }
                     break;
             }
@@ -5908,7 +5913,7 @@ namespace Corrade
             {
                 case true:
                     // Don't start if the TCP notifications server is already started.
-                    if (TCPNotificationsThread != null) return;
+                    if (TCPNotificationsThread != null) break;
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STARTING_TCP_NOTIFICATIONS_SERVER));
                     runTCPNotificationsServer = true;
                     // Start the TCP notifications server.
@@ -6240,7 +6245,7 @@ namespace Corrade
                     {
                         case true:
                             // Don't start if the HTTP server is already started.
-                            if (HTTPListenerThread != null) return;
+                            if (HTTPListenerThread != null) break;
                             Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
                             runHTTPServer = true;
                             HTTPListenerThread = new Thread(() =>
@@ -6369,6 +6374,9 @@ namespace Corrade
 
             // Client Identification Tag.
             Client.Settings.CLIENT_IDENTIFICATION_TAG = corradeConfiguration.ClientIdentificationTag;
+
+            // Send message that the configuration has been updated.
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.CORRADE_CONFIGURATION_UPDATED));
         }
 
         private static void HandleSynBotLearning(object sender, LearningEventArgs e)
@@ -7089,7 +7097,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("error loading feed")] ERROR_LOADING_FEED,
             [Reflection.DescriptionAttribute("error saving SIML bot learning file")] ERROR_SAVING_SIML_BOT_LEARNING_FILE,
             [Reflection.DescriptionAttribute("error saving SIML bot memorizing file")] ERROR_SAVING_SIML_BOT_MEMORIZING_FILE,
-            [Reflection.DescriptionAttribute("error loading language detection")] ERROR_LOADING_LANGUAGE_DETECTION
+            [Reflection.DescriptionAttribute("error loading language detection")] ERROR_LOADING_LANGUAGE_DETECTION,
+            [Reflection.DescriptionAttribute("updating Corrade configuration")] UPDATING_CORRADE_CONFIGURATION,
+            [Reflection.DescriptionAttribute("Corrade configuration updated")] CORRADE_CONFIGURATION_UPDATED
         }
 
         /// <summary>
