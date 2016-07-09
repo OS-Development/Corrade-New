@@ -36,6 +36,10 @@
     <Reference Include="OpenMetaverse.Rendering.Meshmerizer">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmerizer.dll</HintPath>
     </Reference>
+    <Reference Include="OpenMetaverse.StructuredData, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\libopenmetaverse\bin\OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
     <Reference Include="OpenMetaverseTypes">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
@@ -57,6 +61,7 @@
     <Compile Include="Constants.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="Inventory.cs" />
+    <Compile Include="OSD.cs" />
     <Compile Include="Locks.cs" />
     <Compile Include="Mesh.cs" />
     <Compile Include="Resolvers.cs" />

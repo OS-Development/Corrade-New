@@ -11,6 +11,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace wasSharp
 {
@@ -144,11 +145,33 @@ namespace wasSharp
         /// <summary>
         ///     Determines whether a string is safe to use in XML
         /// </summary>
-        /// <param name="s">the string to check</param>
+        /// <param name="data">the string to check</param>
         /// <returns>true in case the string is safe</returns>
         public static bool IsSafeXML(string data)
         {
             return directIsSafeXML(data);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Recursively rename a node by name.
+        /// </summary>
+        /// <param name="root">the root from where to start</param>
+        /// <param name="name">the name to replace</param>
+        /// <param name="rename">the name to replace with</param>
+        public static void RenameNodes(XElement root, string name, string rename)
+        {
+            if (root.Name.LocalName.Equals(name))
+            {
+                root.Name = rename;
+            }
+
+            foreach (var xElement in root.Elements())
+            {
+                RenameNodes(xElement, name, rename);
+            }
         }
     }
 }

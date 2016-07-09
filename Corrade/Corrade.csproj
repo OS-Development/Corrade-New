@@ -153,6 +153,9 @@
     <Compile Include="commands\Corrade\GetAvatarGroupsData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetGridLiveDataFeedData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\ReadFile.cs">
       <SubType>Component</SubType>
     </Compile>

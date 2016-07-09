@@ -389,7 +389,9 @@ namespace Corrade
             [Status(31267)] [Reflection.DescriptionAttribute("agent has been banned")] AGENT_HAS_BEEN_BANNED,
             [Status(16927)] [Reflection.DescriptionAttribute("no estate powers for command")] NO_ESTATE_POWERS_FOR_COMMAND,
             [Status(21160)] [Reflection.DescriptionAttribute("unable to write file")] UNABLE_TO_WRITE_FILE,
-            [Status(38278)] [Reflection.DescriptionAttribute("unable to read file")] UNABLE_TO_READ_FILE
+            [Status(38278)] [Reflection.DescriptionAttribute("unable to read file")] UNABLE_TO_READ_FILE,
+            [Status(19343)] [Reflection.DescriptionAttribute("unable to retrive data")] UNABLE_TO_RETRIEVE_DATA,
+            [Status(18737)] [Reflection.DescriptionAttribute("unable to process data")] UNABLE_TO_PROCESS_DATA
         }
 
         /// <summary>
@@ -7555,7 +7557,9 @@ namespace Corrade
             [Reflection.NameAttribute("permission")] PERMISSION,
             [Reflection.NameAttribute("description")] DESCRIPTION,
             [Reflection.NameAttribute("message")] MESSAGE,
-            [Reflection.NameAttribute("world")] WORLD
+            [Reflection.NameAttribute("world")] WORLD,
+            [Reflection.NameAttribute("statistics")] STATISTICS,
+            [Reflection.NameAttribute("lindex")] LINDEX
         }
 
         /// <summary>
@@ -7975,6 +7979,10 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=getgridlivedatafeeddata>&<group=<UUID|STRING>>&<password=<STRING>>>&<entity=<STRING>>&<data=<STRING[,STRING...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getgridlivedatafeeddata")] [Reflection.NameAttribute("getgridlivedatafeeddata")] GETGRIDLIVEDATAFEEDDATA,
 
             [CommandInputSyntax(
                 "<command=readfile>&<group=<UUID|STRING>>&<password=<STRING>>>&<path=<STRING>>&[callback=<STRING>]"
