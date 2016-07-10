@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using CorradeConfiguration;
+using ImageMagick;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
@@ -211,47 +212,93 @@ namespace Corrade
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(format))
                             {
-                                var formatProperty = typeof (ImageFormat).GetProperties(
-                                    BindingFlags.Public |
-                                    BindingFlags.Static)
-                                    .AsParallel().FirstOrDefault(
-                                        o =>
-                                            string.Equals(o.Name, format, StringComparison.Ordinal));
-                                if (formatProperty == null)
-                                {
-                                    throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
-                                }
                                 ManagedImage managedImage;
-                                if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                /*
+                                 * Use ImageMagick on Windows and the .NET converter otherwise.
+                                 */
+                                switch (Environment.OSVersion.Platform)
                                 {
-                                    throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
-                                }
-                                using (var imageStream = new MemoryStream())
-                                {
-                                    try
-                                    {
-                                        using (var bitmapImage = managedImage.ExportBitmap())
+                                    case PlatformID.Win32NT:
+                                        var magickFormat = Enum.GetValues(typeof (MagickFormat))
+                                            .Cast<MagickFormat>()
+                                            .Select(i => new {i, name = Enum.GetName(typeof (MagickFormat), i)})
+                                            .Where(
+                                                @t =>
+                                                    @t.name != null && @t.name.Equals(format, StringComparison.Ordinal))
+                                            .Select(@t => @t.i).FirstOrDefault();
+                                        if (magickFormat.Equals(MagickFormat.Unknown))
                                         {
-                                            var encoderParameters = new EncoderParameters(1);
-                                            encoderParameters.Param[0] =
-                                                new EncoderParameter(Encoder.Quality, 100L);
-                                            bitmapImage.Save(imageStream,
-                                                ImageCodecInfo.GetImageDecoders()
-                                                    .AsParallel()
-                                                    .FirstOrDefault(
-                                                        o =>
-                                                            o.FormatID.Equals(
-                                                                ((ImageFormat)
-                                                                    formatProperty.GetValue(
-                                                                        new ImageFormat(Guid.Empty))).Guid)),
-                                                encoderParameters);
+                                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
                                         }
-                                    }
-                                    catch (Exception)
-                                    {
-                                        throw new ScriptException(ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
-                                    }
-                                    assetData = imageStream.ToArray();
+                                        if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                        {
+                                            throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
+                                        }
+                                        try
+                                        {
+                                            using (var bitmapImage = managedImage.ExportBitmap())
+                                            {
+                                                using (var imageStream = new MemoryStream())
+                                                {
+                                                    using (var image = new MagickImage(bitmapImage))
+                                                    {
+                                                        image.Format = magickFormat;
+                                                        image.Write(imageStream);
+                                                    }
+                                                    assetData = imageStream.ToArray();
+                                                }
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Feedback(ex.Message + ex.StackTrace);
+                                            throw new ScriptException(ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
+                                        }
+                                        break;
+                                    default:
+                                        var formatProperty = typeof (ImageFormat).GetProperties(
+                                            BindingFlags.Public |
+                                            BindingFlags.Static)
+                                            .AsParallel().FirstOrDefault(
+                                                o =>
+                                                    string.Equals(o.Name, format, StringComparison.Ordinal));
+                                        if (formatProperty == null)
+                                        {
+                                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
+                                        }
+                                        if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                        {
+                                            throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
+                                        }
+                                        using (var imageStream = new MemoryStream())
+                                        {
+                                            try
+                                            {
+                                                using (var bitmapImage = managedImage.ExportBitmap())
+                                                {
+                                                    var encoderParameters = new EncoderParameters(1);
+                                                    encoderParameters.Param[0] =
+                                                        new EncoderParameter(Encoder.Quality, 100L);
+                                                    bitmapImage.Save(imageStream,
+                                                        ImageCodecInfo.GetImageDecoders()
+                                                            .AsParallel()
+                                                            .FirstOrDefault(
+                                                                o =>
+                                                                    o.FormatID.Equals(
+                                                                        ((ImageFormat)
+                                                                            formatProperty.GetValue(
+                                                                                new ImageFormat(Guid.Empty))).Guid)),
+                                                        encoderParameters);
+                                                }
+                                            }
+                                            catch (Exception)
+                                            {
+                                                throw new ScriptException(
+                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
+                                            }
+                                            assetData = imageStream.ToArray();
+                                        }
+                                        break;
                                 }
                             }
                             break;

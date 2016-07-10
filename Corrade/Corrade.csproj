@@ -83,6 +83,9 @@
       <HintPath>..\packages\NTextCat.0.2.1.30\lib\net40\IvanAkcheurov.NClassify.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Magick.NET-Q16-HDRI-AnyCPU">
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.2.100\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+    </Reference>
     <Reference Include="Mono.Data.Sqlite">
       <HintPath>..\mono\Mono.Data.Sqlite\Mono.Data.Sqlite.dll</HintPath>
     </Reference>

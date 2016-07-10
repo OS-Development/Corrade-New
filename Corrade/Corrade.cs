@@ -8544,7 +8544,7 @@ namespace Corrade
                     )] [CorradeCommand("upload")] [Reflection.NameAttribute("upload")] UPLOAD,
 
             [CommandInputSyntax(
-                "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture:[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
+                "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture:[format=<STRING>]&[path=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact | (ulong) Configuration.Permissions.System
                     )] [CorradeCommand("download")] [Reflection.NameAttribute("download")] DOWNLOAD,
 

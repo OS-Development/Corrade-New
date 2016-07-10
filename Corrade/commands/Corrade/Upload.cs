@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using CorradeConfiguration;
+using ImageMagick;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using wasOpenMetaverse;
@@ -105,24 +106,48 @@ namespace Corrade
                             switch (assetType)
                             {
                                 case AssetType.Texture:
+                                    ManagedImage managedImage;
                                     // If the user did not send a JPEG-2000 Codestream, attempt to convert the data
                                     // and then encode to JPEG-2000 Codestream since that is what Second Life expects.
-                                    ManagedImage managedImage;
                                     if (!OpenJPEG.DecodeToImage(data, out managedImage))
                                     {
-                                        try
+                                        /*
+                                         * Use ImageMagick on Windows and the .NET converter otherwise.
+                                         */
+                                        switch (Environment.OSVersion.Platform)
                                         {
-                                            using (var image = (Image) new ImageConverter().ConvertFrom(data))
-                                            {
-                                                using (var bitmap = new Bitmap(image))
+                                            case PlatformID.Win32NT:
+
+                                                try
                                                 {
-                                                    data = OpenJPEG.EncodeFromImage(bitmap, true);
+                                                    using (var magickImage = new MagickImage(data))
+                                                    {
+                                                        data = OpenJPEG.EncodeFromImage(magickImage.ToBitmap(), true);
+                                                    }
                                                 }
-                                            }
-                                        }
-                                        catch (Exception)
-                                        {
-                                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
+                                                catch (Exception)
+                                                {
+                                                    throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
+                                                }
+
+                                                break;
+                                            default:
+                                                try
+                                                {
+                                                    using (var image = (Image) new ImageConverter().ConvertFrom(data))
+                                                    {
+                                                        using (var bitmap = new Bitmap(image))
+                                                        {
+                                                            data = OpenJPEG.EncodeFromImage(bitmap, true);
+                                                        }
+                                                    }
+                                                }
+                                                catch (Exception)
+                                                {
+                                                    throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
+                                                }
+
+                                                break;
                                         }
                                     }
                                     break;
