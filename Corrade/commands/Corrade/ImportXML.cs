@@ -1,0 +1,634 @@
+﻿///////////////////////////////////////////////////////////////////////////
+//  Copyright (C) Wizardry and Steamworks 2016 - License: GNU GPLv3      //
+//  Please see: http://www.gnu.org/licenses/gpl.html for legal details,  //
+//  rights of fair usage, the disclaimer and warranty conditions.        //
+///////////////////////////////////////////////////////////////////////////
+
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using CorradeConfiguration;
+using ImageMagick;
+using OpenMetaverse;
+using OpenMetaverse.Imaging;
+using OpenMetaverse.StructuredData;
+using wasOpenMetaverse;
+using wasSharp;
+using Helpers = wasOpenMetaverse.Helpers;
+using Inventory = wasOpenMetaverse.Inventory;
+using Parallel = System.Threading.Tasks.Parallel;
+
+namespace Corrade
+{
+    public partial class Corrade
+    {
+        public partial class CorradeCommands
+        {
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> importxml =
+                (corradeCommandParameters, result) =>
+                {
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Interact))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+
+                    // Get data.
+                    var data =
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(data))
+                        throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
+
+                    // Get permissions to apply if requested.
+                    var itemPermissions =
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                corradeCommandParameters.Message));
+                    var permissions = new Permissions((uint) PermissionMask.All, (uint) PermissionMask.All,
+                        (uint) PermissionMask.All, (uint) PermissionMask.All, (uint) PermissionMask.All);
+                    if (!string.IsNullOrEmpty(itemPermissions))
+                    {
+                        permissions = Inventory.wasStringToPermissions(itemPermissions);
+                    }
+
+                    // Get the position where to import the object.
+                    Vector3 position;
+                    if (
+                        !Vector3.TryParse(
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    corradeCommandParameters.Message)),
+                            out position))
+                    {
+                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                    }
+                    if (Helpers.IsSecondLife(Client) &&
+                        position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                    {
+                        throw new ScriptException(ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
+                    }
+
+                    // Check build rights.
+                    Parcel parcel = null;
+                    if (
+                        !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
+                            corradeConfiguration.ServicesTimeout,
+                            ref parcel))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                    }
+                    if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
+                    {
+                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        {
+                            if (!parcel.OwnerID.Equals(Client.Self.AgentID))
+                            {
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                                {
+                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                }
+                                if (
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        corradeCommandParameters.Group.UUID,
+                                        GroupPowers.AllowRez,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                }
+                            }
+                        }
+                    }
+
+                    var primitives = new List<Primitive>();
+                    var textures = new Dictionary<UUID, UUID>();
+                    switch (Reflection.GetEnumValueFromName<Type>(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message))
+                            .ToLowerInvariant()))
+                    {
+                        case Type.ZIP:
+                            byte[] byteData;
+                            try
+                            {
+                                byteData = Convert.FromBase64String(data);
+                            }
+                            catch (Exception)
+                            {
+                                throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
+                            }
+
+                            // By default use the cache unless the user explicitly disables it.
+                            bool useCache;
+                            if (!bool.TryParse(
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CACHE)),
+                                        corradeCommandParameters.Message)),
+                                out useCache))
+                            {
+                                useCache = true;
+                            }
+
+                            /*
+                             * Open the data as a ZIP archive in memory and extract the files.
+                             */
+                            using (var zipMemoryStream = new MemoryStream(byteData))
+                            {
+                                using (
+                                    var zipInputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Read, true)
+                                    )
+                                {
+                                    var LockObject = new object();
+                                    var scriptError = ScriptError.NONE;
+                                    Parallel.ForEach(zipInputStream.Entries, (o, s) =>
+                                    {
+                                        var filename = o.Name.ToLowerInvariant();
+                                        var fileBasename = Path.GetFileNameWithoutExtension(filename);
+                                        var fileExtension = Path.GetExtension(filename);
+
+                                        byte[] fileBytes;
+                                        using (var fileMemoryStream = new MemoryStream())
+                                        {
+                                            using (var itemStream = o.Open())
+                                            {
+                                                itemStream.CopyTo(fileMemoryStream);
+                                            }
+                                            fileBytes = fileMemoryStream.ToArray();
+                                        }
+                                        switch (fileExtension)
+                                        {
+                                            case ".xml":
+                                                // get the primitives from the XML data.
+                                                try
+                                                {
+                                                    primitives.AddRange(
+                                                        OpenMetaverse.Helpers.OSDToPrimList(
+                                                            OSDParser.DeserializeLLSDXml(
+                                                                Encoding.UTF8.GetString(fileBytes))));
+                                                }
+                                                catch (Exception)
+                                                {
+                                                    scriptError = ScriptError.COULD_NOT_READ_XML_FILE;
+                                                    s.Break();
+                                                }
+                                                break;
+                                            default:
+                                                UUID replaceTextureUUID;
+                                                if (!UUID.TryParse(fileBasename, out replaceTextureUUID))
+                                                    break; // skip any textures whose names are not named properly
+
+                                                // If this is Second Life, skip any default textures.
+                                                if (Helpers.IsSecondLife(Client) &&
+                                                    new[]
+                                                    {
+                                                        Constants.TEXTURES.TEXTURE_BLANK,
+                                                        Constants.TEXTURES.TEXTURE_DEFAULT,
+                                                        Constants.TEXTURES.TEXTURE_MEDIA,
+                                                        Constants.TEXTURES.TEXTURE_PLYWOOD,
+                                                        Constants.TEXTURES.TEXTURE_TRANSPARENT,
+                                                        Constants.TEXTURES.DEFAULT_SCULPT
+                                                    }.Contains(
+                                                        replaceTextureUUID))
+                                                    break;
+
+                                                // If the user requred to trust the cache, then skip the upload in case the item has
+                                                // been previously cached by Corrade.
+                                                if (useCache)
+                                                {
+                                                    lock (Locks.ClientInstanceAssetsLock)
+                                                    {
+                                                        if (Client.Assets.Cache.HasAsset(replaceTextureUUID))
+                                                            break;
+                                                    }
+                                                }
+
+                                                /*
+                                                * Use ImageMagick on Windows and the .NET converter otherwise.
+                                                */
+                                                byte[] j2cBytes = null;
+                                                switch (Environment.OSVersion.Platform)
+                                                {
+                                                    case PlatformID.Win32NT:
+                                                        try
+                                                        {
+                                                            using (var magickImage = new MagickImage(fileBytes))
+                                                            {
+                                                                j2cBytes =
+                                                                    OpenJPEG.EncodeFromImage(magickImage.ToBitmap(),
+                                                                        true);
+                                                            }
+                                                        }
+                                                        catch (Exception)
+                                                        {
+                                                            scriptError = ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED;
+                                                            s.Break();
+                                                        }
+                                                        break;
+                                                    default:
+                                                        try
+                                                        {
+                                                            using (
+                                                                var image =
+                                                                    (Image) new ImageConverter().ConvertFrom(fileBytes))
+                                                            {
+                                                                using (var bitmap = new Bitmap(image))
+                                                                {
+                                                                    j2cBytes = OpenJPEG.EncodeFromImage(bitmap,
+                                                                        true);
+                                                                }
+                                                            }
+                                                        }
+                                                        catch (Exception)
+                                                        {
+                                                            scriptError = ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED;
+                                                            s.Break();
+                                                        }
+
+                                                        break;
+                                                }
+                                                // Check for economy Corrade permission.
+                                                if (
+                                                    !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                                        (int) Configuration.Permissions.Economy))
+                                                {
+                                                    scriptError = ScriptError.NO_CORRADE_PERMISSIONS;
+                                                    s.Break();
+                                                }
+                                                if (
+                                                    !Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
+                                                {
+                                                    scriptError = ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE;
+                                                    s.Break();
+                                                }
+                                                lock (Locks.ClientInstanceSelfLock)
+                                                {
+                                                    if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
+                                                    {
+                                                        scriptError = ScriptError.INSUFFICIENT_FUNDS;
+                                                        s.Break();
+                                                    }
+                                                }
+                                                // now create and upload the texture
+                                                var CreateItemFromAssetEvent = new ManualResetEvent(false);
+                                                var replaceByTextureUUID = UUID.Zero;
+                                                var succeeded = false;
+                                                lock (Locks.ClientInstanceInventoryLock)
+                                                {
+                                                    Client.Inventory.RequestCreateItemFromAsset(j2cBytes, fileBasename,
+                                                        string.Empty, AssetType.Texture, InventoryType.Texture,
+                                                        Client.Inventory.FindFolderForType(AssetType.Texture),
+                                                        delegate(bool completed, string status, UUID itemID,
+                                                            UUID assetID)
+                                                        {
+                                                            succeeded = completed;
+                                                            replaceByTextureUUID = assetID;
+                                                            CreateItemFromAssetEvent.Set();
+                                                        });
+                                                    if (
+                                                        !CreateItemFromAssetEvent.WaitOne(
+                                                            (int) corradeConfiguration.ServicesTimeout, false))
+                                                    {
+                                                        scriptError = ScriptError.TIMEOUT_UPLOADING_ASSET;
+                                                        s.Break();
+                                                    }
+                                                }
+                                                if (!succeeded)
+                                                {
+                                                    scriptError = ScriptError.ASSET_UPLOAD_FAILED;
+                                                    s.Break();
+                                                }
+                                                // add the item to the cache.
+                                                lock (Locks.ClientInstanceAssetsLock)
+                                                {
+                                                    Client.Assets.Cache.SaveAssetToCache(replaceByTextureUUID,
+                                                        j2cBytes);
+                                                }
+                                                // Finally, add the replacement texture to the dictionary.
+                                                lock (LockObject)
+                                                {
+                                                    textures.Add(replaceTextureUUID, replaceByTextureUUID);
+                                                }
+                                                break;
+                                        }
+                                    });
+                                    if (!scriptError.Equals(default(ScriptError)))
+                                    {
+                                        throw new ScriptException(scriptError);
+                                    }
+                                }
+                            }
+                            break;
+                        case Type.XML:
+                            // get the primitives from the XML data.
+                            try
+                            {
+                                primitives.AddRange(
+                                    OpenMetaverse.Helpers.OSDToPrimList(
+                                        OSDParser.DeserializeLLSDXml(data)));
+                            }
+                            catch (Exception)
+                            {
+                                throw new ScriptException(ScriptError.COULD_NOT_READ_XML_FILE);
+                            }
+                            break;
+                        default:
+                            throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
+                    }
+
+                    // Build an organized structure from the imported primitives
+                    var linkSets = new Dictionary<uint, Linkset>();
+                    foreach (var prim in primitives)
+                    {
+                        if (prim.ParentID.Equals(0))
+                        {
+                            if (linkSets.ContainsKey(prim.LocalID))
+                            {
+                                linkSets[prim.LocalID].RootPrimitive = prim;
+                                continue;
+                            }
+                            linkSets[prim.LocalID] = new Linkset(prim);
+                            continue;
+                        }
+                        if (!linkSets.ContainsKey(prim.ParentID))
+                            linkSets[prim.ParentID] = new Linkset();
+
+                        linkSets[prim.ParentID].ChildPrimitives.Add(prim);
+                    }
+
+                    Primitive currentPrim = null;
+                    var createdPrimitives = new List<Primitive>();
+                    var linkQueue = new List<uint>();
+                    var LinkQueueLock = new object();
+                    uint rootLocalID = 0;
+                    var rezState = ImporterState.Idle;
+                    var primDone = new AutoResetEvent(false);
+
+                    EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
+                    {
+                        var primitive = args.Prim;
+
+                        // Skip updates for objects we did not create.
+                        if ((primitive.Flags & PrimFlags.CreateSelected) == 0)
+                            return;
+
+                        switch (rezState)
+                        {
+                            case ImporterState.RezzingParent:
+                                rootLocalID = primitive.LocalID;
+                                goto case ImporterState.RezzingChildren;
+                            case ImporterState.RezzingChildren:
+                                if (createdPrimitives.Contains(primitive))
+                                    break;
+
+                                // Set all primitive properties.
+                                Client.Objects.SetPosition(args.Simulator, primitive.LocalID, position);
+
+                                if (currentPrim.Light != null && currentPrim.Light.Intensity > 0)
+                                {
+                                    Client.Objects.SetLight(args.Simulator, primitive.LocalID, currentPrim.Light);
+                                }
+
+                                if (currentPrim.Flexible != null)
+                                {
+                                    Client.Objects.SetFlexible(args.Simulator, primitive.LocalID, currentPrim.Flexible);
+                                }
+
+                                if (currentPrim.Sculpt != null && currentPrim.Sculpt.SculptTexture != UUID.Zero)
+                                {
+                                    Client.Objects.SetSculpt(args.Simulator, primitive.LocalID, currentPrim.Sculpt);
+                                }
+
+                                if (currentPrim.Properties != null &&
+                                    !string.IsNullOrEmpty(currentPrim.Properties.Name))
+                                {
+                                    Client.Objects.SetName(args.Simulator, primitive.LocalID,
+                                        currentPrim.Properties.Name);
+                                }
+
+                                if (currentPrim.Properties != null &&
+                                    !string.IsNullOrEmpty(currentPrim.Properties.Description))
+                                {
+                                    Client.Objects.SetDescription(args.Simulator, primitive.LocalID,
+                                        currentPrim.Properties.Description);
+                                }
+
+                                // In case there are uploaded replacement textures, replace them.
+                                // Replace default texture.
+                                if (currentPrim.Textures.DefaultTexture != null)
+                                {
+                                    // For Second Life, replace NULL UUIDs with TEXTURE_BLANK (meaning nothing).
+                                    switch (
+                                        currentPrim.Textures.DefaultTexture.TextureID.Equals(UUID.Zero) &&
+                                        Helpers.IsSecondLife(Client))
+                                    {
+                                        case true:
+                                            currentPrim.Textures.DefaultTexture.TextureID =
+                                                Constants.TEXTURES.TEXTURE_BLANK;
+                                            break;
+                                        default:
+                                            UUID defaultTextureUUID;
+                                            if (textures.TryGetValue(currentPrim.Textures.DefaultTexture.TextureID,
+                                                out defaultTextureUUID))
+                                            {
+                                                currentPrim.Textures.DefaultTexture.TextureID = defaultTextureUUID;
+                                            }
+                                            break;
+                                    }
+                                }
+                                // Set the sculpt texture.
+                                if (currentPrim.Sculpt != null)
+                                {
+                                    UUID sculptTextureUUID;
+                                    if (textures.TryGetValue(currentPrim.Sculpt.SculptTexture,
+                                        out sculptTextureUUID))
+                                    {
+                                        currentPrim.Sculpt.SculptTexture = sculptTextureUUID;
+                                    }
+                                }
+                                // Replace face textures.
+                                if (currentPrim.Textures.FaceTextures != null)
+                                {
+                                    foreach (var faceTexture in currentPrim.Textures.FaceTextures.Where(o => o != null))
+                                    {
+                                        // For Second Life, replace NULL UUIDs with TEXTURE_BLANK (meaning nothing).
+                                        switch (faceTexture.TextureID.Equals(UUID.Zero) && Helpers.IsSecondLife(Client))
+                                        {
+                                            case true:
+                                                faceTexture.TextureID = Constants.TEXTURES.TEXTURE_BLANK;
+                                                break;
+                                            default:
+                                                UUID faceTextureUUID;
+                                                if (textures.TryGetValue(faceTexture.TextureID, out faceTextureUUID))
+                                                {
+                                                    faceTexture.TextureID = faceTextureUUID;
+                                                }
+                                                break;
+                                        }
+                                    }
+                                }
+                                // Finally apply the textures to the primitive.
+                                Client.Objects.SetTextures(args.Simulator, primitive.LocalID, currentPrim.Textures);
+
+                                createdPrimitives.Add(primitive);
+                                primDone.Set();
+                                break;
+                            case ImporterState.Linking:
+                                lock (LinkQueueLock)
+                                {
+                                    var index = linkQueue.IndexOf(primitive.LocalID);
+                                    if (index != -1)
+                                    {
+                                        linkQueue.RemoveAt(index);
+                                        if (!linkQueue.Any())
+                                            primDone.Set();
+                                    }
+                                }
+                                break;
+                        }
+                    };
+
+                    // Start import.
+                    lock (Locks.ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                        // Import linksets only with a valid root primitive.
+                        foreach (
+                            var linkSet in linkSets.Values.AsParallel().Where(o => !o.RootPrimitive.LocalID.Equals(0)))
+                        {
+                            rezState = ImporterState.RezzingParent;
+                            currentPrim = linkSet.RootPrimitive;
+
+                            // Rez the structure at the designated position.
+                            linkSet.RootPrimitive.Position = position;
+
+                            // Rez the root prim with no rotation
+                            var rootRotation = linkSet.RootPrimitive.Rotation;
+                            linkSet.RootPrimitive.Rotation = Quaternion.Identity;
+
+                            Client.Objects.AddPrim(Client.Network.CurrentSim, linkSet.RootPrimitive.PrimData,
+                                corradeCommandParameters.Group.UUID,
+                                linkSet.RootPrimitive.Position, linkSet.RootPrimitive.Scale,
+                                linkSet.RootPrimitive.Rotation);
+
+                            if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                throw new ScriptException(ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
+                            }
+
+                            Client.Objects.SetPosition(Client.Network.CurrentSim,
+                                createdPrimitives[createdPrimitives.Count - 1].LocalID, linkSet.RootPrimitive.Position);
+
+                            rezState = ImporterState.RezzingChildren;
+
+                            // Rez the child prims
+                            foreach (var primitive in linkSet.ChildPrimitives)
+                            {
+                                currentPrim = primitive;
+                                position = primitive.Position + linkSet.RootPrimitive.Position;
+
+                                Client.Objects.AddPrim(Client.Network.CurrentSim, primitive.PrimData,
+                                    corradeCommandParameters.Group.UUID, position,
+                                    primitive.Scale, primitive.Rotation);
+
+                                if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                    throw new ScriptException(ScriptError.FAILED_REZZING_CHILD_PRIMITIVE);
+                                }
+                                Client.Objects.SetPosition(Client.Network.CurrentSim,
+                                    createdPrimitives[createdPrimitives.Count - 1].LocalID, position);
+                            }
+
+                            // Create a list of the local IDs of the newly created prims
+                            // Root prim is first in list.
+                            var primitiveIDs = new List<uint>(createdPrimitives.Count) {rootLocalID};
+
+                            switch (linkSet.ChildPrimitives.Any())
+                            {
+                                case true:
+                                    // Add the rest of the prims to the list of local IDs
+                                    primitiveIDs.AddRange(
+                                        createdPrimitives.AsParallel().Where(prim => prim.LocalID != rootLocalID)
+                                            .Select(prim => prim.LocalID));
+
+                                    linkQueue = new List<uint>(primitiveIDs);
+
+                                    // Link and set the permissions + rotation
+                                    rezState = ImporterState.Linking;
+                                    Client.Objects.LinkPrims(Client.Network.CurrentSim, linkQueue);
+
+                                    if (
+                                        primDone.WaitOne(
+                                            (int) corradeConfiguration.DataTimeout*linkSet.ChildPrimitives.Count,
+                                            false))
+                                        Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
+                                    //else
+                                    //    Console.WriteLine("Warning: Failed to link {0} prims", linkQueue.Count);
+                                    break;
+                                default:
+                                    Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
+                                    break;
+                            }
+
+                            // Set permissions on newly created prims.
+                            //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Base, permissions.BaseMask, true);
+                            //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Owner, permissions.OwnerMask, true);
+                            Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs, PermissionWho.Group,
+                                permissions.GroupMask, true);
+                            Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
+                                PermissionWho.Everyone,
+                                permissions.EveryoneMask, true);
+                            Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
+                                PermissionWho.NextOwner,
+                                permissions.NextOwnerMask, true);
+
+                            rezState = ImporterState.Idle;
+
+                            // Reset everything for the next linkset
+                            createdPrimitives.Clear();
+                        }
+                        // Import done.
+                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                    }
+                };
+
+            private class Linkset
+            {
+                public readonly List<Primitive> ChildPrimitives = new List<Primitive>();
+                public Primitive RootPrimitive;
+
+                public Linkset()
+                {
+                    RootPrimitive = new Primitive();
+                }
+
+                public Linkset(Primitive rootPrimitive)
+                {
+                    RootPrimitive = rootPrimitive;
+                }
+            }
+
+            private enum ImporterState
+            {
+                RezzingParent,
+                RezzingChildren,
+                Linking,
+                Idle
+            }
+        }
+    }
+}

@@ -80,6 +80,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
                     }
                     var succeeded = false;
+                    var assetUUID = UUID.Zero;
+                    var itemUUID = UUID.Zero;
                     switch (assetType)
                     {
                         case AssetType.Texture:
@@ -170,6 +172,8 @@ namespace Corrade
                                     Client.Inventory.FindFolderForType(assetType),
                                     delegate(bool completed, string status, UUID itemID, UUID assetID)
                                     {
+                                        itemUUID = itemID;
+                                        assetUUID = assetID;
                                         succeeded = completed;
                                         CreateItemFromAssetEvent.Set();
                                     });
@@ -214,6 +218,8 @@ namespace Corrade
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
+                                        assetUUID = createdItem.AssetUUID;
+                                        itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         CreateWearableEvent.Set();
                                     });
@@ -242,6 +248,8 @@ namespace Corrade
                                     landmarkUUID, InventoryType.Landmark, PermissionMask.All,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
+                                        assetUUID = createdItem.AssetUUID;
+                                        itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         CreateLandmarkEvent.Set();
                                     });
@@ -267,6 +275,8 @@ namespace Corrade
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
+                                        assetUUID = createdItem.AssetUUID;
+                                        itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         newGesture = createdItem;
                                         CreateGestureEvent.Set();
@@ -284,8 +294,10 @@ namespace Corrade
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
-                                    delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
                                     {
+                                        assetUUID = assetID;
+                                        itemUUID = itemID;
                                         succeeded = completed;
                                         UploadGestureAssetEvent.Set();
                                     });
@@ -311,6 +323,8 @@ namespace Corrade
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
+                                        assetUUID = createdItem.AssetUUID;
+                                        itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         newNotecard = createdItem;
                                         CreateNotecardEvent.Set();
@@ -328,8 +342,10 @@ namespace Corrade
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
-                                    delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
                                     {
+                                        assetUUID = assetID;
+                                        itemUUID = itemID;
                                         succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
@@ -355,6 +371,8 @@ namespace Corrade
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
+                                        assetUUID = createdItem.AssetUUID;
+                                        itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         newScript = createdItem;
                                         CreateScriptEvent.Set();
@@ -371,6 +389,8 @@ namespace Corrade
                                     delegate(bool completed, string status, bool compiled, List<string> messages,
                                         UUID itemID, UUID assetID)
                                     {
+                                        assetUUID = assetID;
+                                        itemUUID = itemID;
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
@@ -387,6 +407,21 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
                     }
+                    // Store the any asset in the cache.
+                    if (!assetUUID.Equals(UUID.Zero))
+                    {
+                        lock (Locks.ClientInstanceAssetsLock)
+                        {
+                            Client.Assets.Cache.SaveAssetToCache(assetUUID, data);
+                        }
+                    }
+                    // Return the item and asset UUID.
+                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        CSV.FromEnumerable(new[]
+                        {
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)), itemUUID.ToString(),
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET)), assetUUID.ToString()
+                        }));
                 };
         }
     }

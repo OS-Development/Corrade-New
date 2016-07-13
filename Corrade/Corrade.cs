@@ -391,7 +391,10 @@ namespace Corrade
             [Status(21160)] [Reflection.DescriptionAttribute("unable to write file")] UNABLE_TO_WRITE_FILE,
             [Status(38278)] [Reflection.DescriptionAttribute("unable to read file")] UNABLE_TO_READ_FILE,
             [Status(19343)] [Reflection.DescriptionAttribute("unable to retrive data")] UNABLE_TO_RETRIEVE_DATA,
-            [Status(18737)] [Reflection.DescriptionAttribute("unable to process data")] UNABLE_TO_PROCESS_DATA
+            [Status(18737)] [Reflection.DescriptionAttribute("unable to process data")] UNABLE_TO_PROCESS_DATA,
+            [Status(33047)] [Reflection.DescriptionAttribute("failed rezzing root primitive")] FAILED_REZZING_ROOT_PRIMITIVE,
+            [Status(25329)] [Reflection.DescriptionAttribute("failed rezzing child primitive")] FAILED_REZZING_CHILD_PRIMITIVE,
+            [Status(29530)] [Reflection.DescriptionAttribute("could not read XML file")] COULD_NOT_READ_XML_FILE
         }
 
         /// <summary>
@@ -7981,6 +7984,11 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=importxml>&<group=<UUID|STRING>>&<password=<STRING>>>&<type=<zip|xml>>&<data=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask(
+                    (ulong) Configuration.Permissions.Interact | (ulong) Configuration.Permissions.Economy)] [CorradeCommand("importxml")] [Reflection.NameAttribute("importxml")] IMPORTXML,
+
+            [CommandInputSyntax(
                 "<command=getgridlivedatafeeddata>&<group=<UUID|STRING>>&<password=<STRING>>>&<entity=<STRING>>&<data=<STRING[,STRING...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getgridlivedatafeeddata")] [Reflection.NameAttribute("getgridlivedatafeeddata")] GETGRIDLIVEDATAFEEDDATA,
 
@@ -9166,7 +9174,9 @@ namespace Corrade
             [Reflection.NameAttribute("output")] OUTPUT,
             [Reflection.NameAttribute("slot")] SLOT,
             [Reflection.NameAttribute("name")] NAME,
-            [Reflection.NameAttribute("UUID")] UUID
+            [Reflection.NameAttribute("UUID")] UUID,
+            [Reflection.NameAttribute("xml")] XML,
+            [Reflection.NameAttribute("zip")] ZIP
         }
 
         /// <summary>
