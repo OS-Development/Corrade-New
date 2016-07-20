@@ -22,10 +22,10 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> inventory =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    System.Type inventoryOfferedType = corradeNotificationParameters.Event.GetType();
+                    var inventoryOfferedType = corradeNotificationParameters.Event.GetType();
                     if (inventoryOfferedType == typeof (InstantMessageEventArgs))
                     {
-                        InstantMessageEventArgs inventoryOfferEventArgs =
+                        var inventoryOfferEventArgs =
                             (InstantMessageEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -36,7 +36,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        List<string> inventoryObjectOfferedName =
+                        var inventoryObjectOfferedName =
                             new List<string>(Helpers.AvatarFullNameRegex.Matches(
                                 inventoryOfferEventArgs.IM.FromAgentName)
                                 .Cast<Match>()
@@ -83,7 +83,7 @@ namespace Corrade
                             case InstantMessageDialog.InventoryOffered:
                                 lock (InventoryOffersLock)
                                 {
-                                    KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
+                                    var
                                         inventoryObjectOfferedEventArgs =
                                             InventoryOffers.AsParallel().FirstOrDefault(p =>
                                                 p.Key.Offer.IMSessionID.Equals(
@@ -108,7 +108,7 @@ namespace Corrade
                                                 break;
                                         }
                                     }
-                                    GroupCollection groups =
+                                    var groups =
                                         CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                             inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
                                     if (groups.Count > 0)
@@ -127,7 +127,7 @@ namespace Corrade
                     }
                     if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
                     {
-                        InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
+                        var inventoryObjectOfferedEventArgs =
                             (InventoryObjectOfferedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -138,7 +138,7 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        List<string> inventoryObjectOfferedName =
+                        var inventoryObjectOfferedName =
                             new List<string>(Helpers.AvatarFullNameRegex.Matches(
                                 inventoryObjectOfferedEventArgs.Offer.FromAgentName)
                                 .Cast<Match>()
@@ -173,7 +173,7 @@ namespace Corrade
                             inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
                             inventoryObjectOfferedEventArgs.AssetType.ToString());
-                        GroupCollection groups =
+                        var groups =
                             CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                 inventoryObjectOfferedEventArgs.Offer.Message).Groups;
                         if (groups.Count > 0)

@@ -6,9 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using NTextCat;
 using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
@@ -22,7 +20,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> local =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    ChatEventArgs localChatEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
+                    var localChatEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
@@ -32,10 +30,10 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = Helpers.GetAvatarNames(localChatEventArgs.FromName);
+                    var name = Helpers.GetAvatarNames(localChatEventArgs.FromName);
                     if (name != null)
                     {
-                        List<string> fullName = new List<string>(name);
+                        var fullName = new List<string>(name);
                         if (fullName.Count.Equals(2))
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
@@ -50,7 +48,7 @@ namespace Corrade
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                             localChatEventArgs.Message);
                         // language detection
-                        Tuple<LanguageInfo, double> detectedLanguage =
+                        var detectedLanguage =
                             rankedLanguageIdentifier.Identify(localChatEventArgs.Message).FirstOrDefault();
                         if (detectedLanguage != null)
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE),

@@ -21,10 +21,10 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> friendship =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    System.Type friendshipNotificationType = corradeNotificationParameters.Event.GetType();
+                    var friendshipNotificationType = corradeNotificationParameters.Event.GetType();
                     if (friendshipNotificationType == typeof (FriendInfoEventArgs))
                     {
-                        FriendInfoEventArgs friendInfoEventArgs =
+                        var friendInfoEventArgs =
                             (FriendInfoEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -35,10 +35,10 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = Helpers.GetAvatarNames(friendInfoEventArgs.Friend.Name);
+                        var name = Helpers.GetAvatarNames(friendInfoEventArgs.Friend.Name);
                         if (name != null)
                         {
-                            List<string> fullName = new List<string>(name);
+                            var fullName = new List<string>(name);
                             if (fullName.Count.Equals(2))
                             {
                                 notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
@@ -70,7 +70,7 @@ namespace Corrade
                     }
                     if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
                     {
-                        FriendshipResponseEventArgs friendshipResponseEventArgs =
+                        var friendshipResponseEventArgs =
                             (FriendshipResponseEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -81,10 +81,10 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = Helpers.GetAvatarNames(friendshipResponseEventArgs.AgentName);
+                        var name = Helpers.GetAvatarNames(friendshipResponseEventArgs.AgentName);
                         if (name != null)
                         {
-                            List<string> fullName = new List<string>(name);
+                            var fullName = new List<string>(name);
                             if (fullName.Count.Equals(2))
                             {
                                 notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
@@ -101,7 +101,7 @@ namespace Corrade
                     }
                     if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
                     {
-                        FriendshipOfferedEventArgs friendshipOfferedEventArgs =
+                        var friendshipOfferedEventArgs =
                             (FriendshipOfferedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -112,10 +112,10 @@ namespace Corrade
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        IEnumerable<string> name = Helpers.GetAvatarNames(friendshipOfferedEventArgs.AgentName);
+                        var name = Helpers.GetAvatarNames(friendshipOfferedEventArgs.AgentName);
                         if (name != null)
                         {
-                            List<string> fullName = new List<string>(name);
+                            var fullName = new List<string>(name);
                             if (fullName.Count.Equals(2))
                             {
                                 notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),

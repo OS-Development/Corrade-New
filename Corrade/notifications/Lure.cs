@@ -20,7 +20,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> lure =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    InstantMessageEventArgs teleportLureEventArgs =
+                    var teleportLureEventArgs =
                         (InstantMessageEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
@@ -31,10 +31,10 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = Helpers.GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
+                    var name = Helpers.GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
                     if (name != null)
                     {
-                        List<string> fullName = new List<string>(name);
+                        var fullName = new List<string>(name);
                         if (fullName.Count.Equals(2))
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),

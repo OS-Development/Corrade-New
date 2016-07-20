@@ -6,9 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using NTextCat;
 using OpenMetaverse;
 using wasSharp;
 using Helpers = wasOpenMetaverse.Helpers;
@@ -22,7 +20,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> region =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    InstantMessageEventArgs notificationRegionMessage =
+                    var notificationRegionMessage =
                         (InstantMessageEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
@@ -33,10 +31,10 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = Helpers.GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
+                    var name = Helpers.GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
                     if (name != null)
                     {
-                        List<string> fullName = new List<string>(name);
+                        var fullName = new List<string>(name);
                         if (fullName.Count.Equals(2))
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),

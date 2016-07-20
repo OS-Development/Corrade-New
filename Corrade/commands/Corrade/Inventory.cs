@@ -134,7 +134,7 @@ namespace Corrade
                                     {
                                         dirItems.AddRange(Client.Inventory.Store.GetContents(
                                             item.UUID).AsParallel().Select(
-                                                o => DirItem.FromInventoryBase(o)));
+                                                DirItem.FromInventoryBase));
                                     }
                                     foreach (var dirItem in dirItems)
                                     {

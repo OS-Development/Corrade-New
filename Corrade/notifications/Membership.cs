@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> membership =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    GroupMembershipEventArgs groupMembershipEventArgs =
+                    var groupMembershipEventArgs =
                         (GroupMembershipEventArgs) corradeNotificationParameters.Event;
                     // Set-up filters.
                     if (!groupMembershipEventArgs.GroupUUID.Equals(corradeNotificationParameters.Notification.GroupUUID))
@@ -33,10 +33,10 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = Helpers.GetAvatarNames(groupMembershipEventArgs.AgentName);
+                    var name = Helpers.GetAvatarNames(groupMembershipEventArgs.AgentName);
                     if (name != null)
                     {
-                        List<string> fullName = new List<string>(name);
+                        var fullName = new List<string>(name);
                         if (fullName.Count.Equals(2))
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),

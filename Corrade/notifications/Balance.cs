@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> balance =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    BalanceEventArgs balanceEventArgs = (BalanceEventArgs) corradeNotificationParameters.Event;
+                    var balanceEventArgs = (BalanceEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())

@@ -6,9 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using NTextCat;
 using OpenMetaverse;
 using wasSharp;
 
@@ -21,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> ownersay =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    ChatEventArgs ownerSayEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
+                    var ownerSayEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())

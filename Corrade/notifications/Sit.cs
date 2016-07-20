@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> sit =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    AvatarSitChangedEventArgs sitChangedEventArgs =
+                    var sitChangedEventArgs =
                         (AvatarSitChangedEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
@@ -38,7 +38,7 @@ namespace Corrade
                         sitChangedEventArgs.Avatar.LastName);
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                         sitChangedEventArgs.Avatar.ID.ToString());
-                    KeyValuePair<uint, Primitive> oldPrimitive = sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
+                    var oldPrimitive = sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
                         .AsParallel()
                         .FirstOrDefault(o => o.Key.Equals(sitChangedEventArgs.OldSeat));
                     if (!oldPrimitive.Equals(default(KeyValuePair<uint, Primitive>)))
@@ -46,7 +46,7 @@ namespace Corrade
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
                             oldPrimitive.Value.ID.ToString());
                     }
-                    KeyValuePair<uint, Primitive> newPrimitive = sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
+                    var newPrimitive = sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
                         .AsParallel()
                         .FirstOrDefault(o => o.Key.Equals(sitChangedEventArgs.SittingOn));
                     if (!newPrimitive.Equals(default(KeyValuePair<uint, Primitive>)))

@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> animation =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    AnimationsChangedEventArgs animationsChangedEventArgs =
+                    var animationsChangedEventArgs =
                         (AnimationsChangedEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&

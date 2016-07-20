@@ -6,9 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using NTextCat;
 using wasSharp;
 
 namespace Corrade
@@ -20,7 +18,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> group =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    GroupMessageEventArgs notificationGroupMessage =
+                    var notificationGroupMessage =
                         (GroupMessageEventArgs) corradeNotificationParameters.Event;
                     // Set-up filters.
                     if (!notificationGroupMessage.GroupUUID.Equals(corradeNotificationParameters.Notification.GroupUUID))
@@ -45,7 +43,7 @@ namespace Corrade
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                         notificationGroupMessage.Message);
                     // language detection
-                    Tuple<LanguageInfo, double> detectedLanguage =
+                    var detectedLanguage =
                         rankedLanguageIdentifier.Identify(notificationGroupMessage.Message).FirstOrDefault();
                     if (detectedLanguage != null)
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE),

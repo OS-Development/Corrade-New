@@ -25,19 +25,45 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    var region =
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
+                    Simulator simulator;
+                    switch (!string.IsNullOrEmpty(region))
+                    {
+                        case true:
+                            lock (Locks.ClientInstanceNetworkLock)
+                            {
+                                simulator =
+                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                        o =>
+                                            o.Name.Equals(
+                                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                                StringComparison.OrdinalIgnoreCase));
+                            }
+                            if (simulator == null)
+                            {
+                                throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                            }
+                            break;
+                        default:
+                            simulator = Client.Network.CurrentSim;
+                            break;
+                    }
                     List<float> data;
                     lock (Locks.ClientInstanceNetworkLock)
                     {
                         data = new List<float>
                         {
-                            Client.Network.CurrentSim.TerrainStartHeight00, // Low SW
-                            Client.Network.CurrentSim.TerrainHeightRange00, // High SW
-                            Client.Network.CurrentSim.TerrainStartHeight01, // Low NW
-                            Client.Network.CurrentSim.TerrainHeightRange01, // High NW
-                            Client.Network.CurrentSim.TerrainStartHeight10, // Low SE
-                            Client.Network.CurrentSim.TerrainHeightRange10, // High SE
-                            Client.Network.CurrentSim.TerrainStartHeight11, // Low NE
-                            Client.Network.CurrentSim.TerrainHeightRange11 // High NE
+                            simulator.TerrainStartHeight00, // Low SW
+                            simulator.TerrainHeightRange00, // High SW
+                            simulator.TerrainStartHeight01, // Low NW
+                            simulator.TerrainHeightRange01, // High NW
+                            simulator.TerrainStartHeight10, // Low SE
+                            simulator.TerrainHeightRange10, // High SE
+                            simulator.TerrainStartHeight11, // Low NE
+                            simulator.TerrainHeightRange11 // High NE
                         };
                     }
                     result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

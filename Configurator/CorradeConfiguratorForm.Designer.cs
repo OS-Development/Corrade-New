@@ -329,6 +329,10 @@
             this.pictureBox40 = new System.Windows.Forms.PictureBox();
             this.LimitsRange = new System.Windows.Forms.TextBox();
             this.MastersTabPage = new System.Windows.Forms.TabPage();
+            this.MasterPasswordBox = new System.Windows.Forms.GroupBox();
+            this.MasterPasswordOverrideEnabled = new System.Windows.Forms.CheckBox();
+            this.pictureBox92 = new System.Windows.Forms.PictureBox();
+            this.MasterPasswordOverride = new System.Windows.Forms.TextBox();
             this.pictureBox72 = new System.Windows.Forms.PictureBox();
             this.groupBox72 = new System.Windows.Forms.GroupBox();
             this.button8 = new System.Windows.Forms.Button();
@@ -386,10 +390,6 @@
             this.button11 = new System.Windows.Forms.Button();
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
-            this.MasterPasswordOverride = new System.Windows.Forms.TextBox();
-            this.MasterPasswordBox = new System.Windows.Forms.GroupBox();
-            this.pictureBox92 = new System.Windows.Forms.PictureBox();
-            this.MasterPasswordOverrideEnabled = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -558,6 +558,8 @@
             this.groupBox57.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).BeginInit();
             this.MastersTabPage.SuspendLayout();
+            this.MasterPasswordBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox92)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox72)).BeginInit();
             this.groupBox72.SuspendLayout();
             this.groupBox74.SuspendLayout();
@@ -585,8 +587,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).BeginInit();
             this.groupBox21.SuspendLayout();
             this.Status.SuspendLayout();
-            this.MasterPasswordBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox92)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -3933,6 +3933,51 @@
             this.MastersTabPage.Text = "Masters";
             this.MastersTabPage.UseVisualStyleBackColor = true;
             // 
+            // MasterPasswordBox
+            // 
+            this.MasterPasswordBox.Controls.Add(this.MasterPasswordOverrideEnabled);
+            this.MasterPasswordBox.Controls.Add(this.pictureBox92);
+            this.MasterPasswordBox.Controls.Add(this.MasterPasswordOverride);
+            this.MasterPasswordBox.Location = new System.Drawing.Point(160, 249);
+            this.MasterPasswordBox.Name = "MasterPasswordBox";
+            this.MasterPasswordBox.Size = new System.Drawing.Size(370, 81);
+            this.MasterPasswordBox.TabIndex = 12;
+            this.MasterPasswordBox.TabStop = false;
+            this.MasterPasswordBox.Text = "Master Password Override";
+            // 
+            // MasterPasswordOverrideEnabled
+            // 
+            this.MasterPasswordOverrideEnabled.AutoSize = true;
+            this.MasterPasswordOverrideEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.MasterPasswordOverrideEnabled.Location = new System.Drawing.Point(264, 20);
+            this.MasterPasswordOverrideEnabled.Name = "MasterPasswordOverrideEnabled";
+            this.MasterPasswordOverrideEnabled.Size = new System.Drawing.Size(68, 17);
+            this.MasterPasswordOverrideEnabled.TabIndex = 14;
+            this.MasterPasswordOverrideEnabled.Text = "Enabled";
+            this.MasterPasswordOverrideEnabled.UseVisualStyleBackColor = true;
+            this.MasterPasswordOverrideEnabled.Click += new System.EventHandler(this.EnableMasterPasswordOverrideRequested);
+            // 
+            // pictureBox92
+            // 
+            this.pictureBox92.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox92.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox92.Image")));
+            this.pictureBox92.Location = new System.Drawing.Point(338, 18);
+            this.pictureBox92.Name = "pictureBox92";
+            this.pictureBox92.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox92.TabIndex = 13;
+            this.pictureBox92.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox92, resources.GetString("pictureBox92.ToolTip"));
+            // 
+            // MasterPasswordOverride
+            // 
+            this.MasterPasswordOverride.Location = new System.Drawing.Point(7, 47);
+            this.MasterPasswordOverride.Name = "MasterPasswordOverride";
+            this.MasterPasswordOverride.PasswordChar = '*';
+            this.MasterPasswordOverride.Size = new System.Drawing.Size(357, 22);
+            this.MasterPasswordOverride.TabIndex = 11;
+            this.MasterPasswordOverride.UseSystemPasswordChar = true;
+            this.MasterPasswordOverride.TextChanged += new System.EventHandler(this.MasterPasswordOverrideChanged);
+            // 
             // pictureBox72
             // 
             this.pictureBox72.Cursor = System.Windows.Forms.Cursors.Help;
@@ -4270,7 +4315,8 @@
             "sit",
             "animation",
             "outfit",
-            "feed"});
+            "feed",
+            "sound"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -4597,51 +4643,6 @@
             this.ExperienceLevel.TabIndex = 12;
             this.ExperienceLevel.SelectedIndexChanged += new System.EventHandler(this.ExperienceLevelChanged);
             // 
-            // MasterPasswordOverride
-            // 
-            this.MasterPasswordOverride.Location = new System.Drawing.Point(7, 47);
-            this.MasterPasswordOverride.Name = "MasterPasswordOverride";
-            this.MasterPasswordOverride.PasswordChar = '*';
-            this.MasterPasswordOverride.Size = new System.Drawing.Size(357, 22);
-            this.MasterPasswordOverride.TabIndex = 11;
-            this.MasterPasswordOverride.UseSystemPasswordChar = true;
-            this.MasterPasswordOverride.TextChanged += new System.EventHandler(this.MasterPasswordOverrideChanged);
-            // 
-            // MasterPasswordBox
-            // 
-            this.MasterPasswordBox.Controls.Add(this.MasterPasswordOverrideEnabled);
-            this.MasterPasswordBox.Controls.Add(this.pictureBox92);
-            this.MasterPasswordBox.Controls.Add(this.MasterPasswordOverride);
-            this.MasterPasswordBox.Location = new System.Drawing.Point(160, 249);
-            this.MasterPasswordBox.Name = "MasterPasswordBox";
-            this.MasterPasswordBox.Size = new System.Drawing.Size(370, 81);
-            this.MasterPasswordBox.TabIndex = 12;
-            this.MasterPasswordBox.TabStop = false;
-            this.MasterPasswordBox.Text = "Master Password Override";
-            // 
-            // pictureBox92
-            // 
-            this.pictureBox92.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox92.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox92.Image")));
-            this.pictureBox92.Location = new System.Drawing.Point(338, 18);
-            this.pictureBox92.Name = "pictureBox92";
-            this.pictureBox92.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox92.TabIndex = 13;
-            this.pictureBox92.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox92, resources.GetString("pictureBox92.ToolTip"));
-            // 
-            // MasterPasswordOverrideEnabled
-            // 
-            this.MasterPasswordOverrideEnabled.AutoSize = true;
-            this.MasterPasswordOverrideEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.MasterPasswordOverrideEnabled.Location = new System.Drawing.Point(264, 20);
-            this.MasterPasswordOverrideEnabled.Name = "MasterPasswordOverrideEnabled";
-            this.MasterPasswordOverrideEnabled.Size = new System.Drawing.Size(68, 17);
-            this.MasterPasswordOverrideEnabled.TabIndex = 14;
-            this.MasterPasswordOverrideEnabled.Text = "Enabled";
-            this.MasterPasswordOverrideEnabled.UseVisualStyleBackColor = true;
-            this.MasterPasswordOverrideEnabled.Click += new System.EventHandler(this.EnableMasterPasswordOverrideRequested);
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -4889,6 +4890,9 @@
             this.groupBox57.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).EndInit();
             this.MastersTabPage.ResumeLayout(false);
+            this.MasterPasswordBox.ResumeLayout(false);
+            this.MasterPasswordBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox92)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox72)).EndInit();
             this.groupBox72.ResumeLayout(false);
             this.groupBox74.ResumeLayout(false);
@@ -4926,9 +4930,6 @@
             this.groupBox21.ResumeLayout(false);
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.MasterPasswordBox.ResumeLayout(false);
-            this.MasterPasswordBox.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox92)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

@@ -25,15 +25,41 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    var region =
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
+                    Simulator simulator;
+                    switch (!string.IsNullOrEmpty(region))
+                    {
+                        case true:
+                            lock (Locks.ClientInstanceNetworkLock)
+                            {
+                                simulator =
+                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                        o =>
+                                            o.Name.Equals(
+                                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                                StringComparison.OrdinalIgnoreCase));
+                            }
+                            if (simulator == null)
+                            {
+                                throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                            }
+                            break;
+                        default:
+                            simulator = Client.Network.CurrentSim;
+                            break;
+                    }
                     List<UUID> data;
                     lock (Locks.ClientInstanceNetworkLock)
                     {
                         data = new List<UUID>
                         {
-                            Client.Network.CurrentSim.TerrainDetail0,
-                            Client.Network.CurrentSim.TerrainDetail1,
-                            Client.Network.CurrentSim.TerrainDetail2,
-                            Client.Network.CurrentSim.TerrainDetail3
+                            simulator.TerrainDetail0,
+                            simulator.TerrainDetail1,
+                            simulator.TerrainDetail2,
+                            simulator.TerrainDetail3
                         };
                     }
                     result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

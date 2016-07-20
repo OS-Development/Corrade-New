@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> url =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) corradeNotificationParameters.Event;
+                    var loadURLEventArgs = (LoadUrlEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())

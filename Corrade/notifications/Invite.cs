@@ -21,7 +21,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> invite =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    InstantMessageEventArgs notificationGroupInviteEventArgs =
+                    var notificationGroupInviteEventArgs =
                         (InstantMessageEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
@@ -32,10 +32,10 @@ namespace Corrade
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    IEnumerable<string> name = Helpers.GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
+                    var name = Helpers.GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
                     if (name != null)
                     {
-                        List<string> fullName = new List<string>(name);
+                        var fullName = new List<string>(name);
                         if (fullName.Count.Equals(2))
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
@@ -43,7 +43,7 @@ namespace Corrade
                             notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                 fullName.Last());
 
-                            UUID agentUUID = UUID.Zero;
+                            var agentUUID = UUID.Zero;
                             if (Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))

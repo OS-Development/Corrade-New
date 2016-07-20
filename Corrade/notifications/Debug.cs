@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> debug =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    ChatEventArgs DebugEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
+                    var DebugEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())

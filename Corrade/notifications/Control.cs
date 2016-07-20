@@ -20,7 +20,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> control =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    ScriptControlEventArgs scriptControlEventArgs =
+                    var scriptControlEventArgs =
                         (ScriptControlEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&

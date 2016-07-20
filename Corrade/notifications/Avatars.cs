@@ -19,10 +19,10 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> avatars =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    System.Type radarAvatarsType = corradeNotificationParameters.Event.GetType();
+                    var radarAvatarsType = corradeNotificationParameters.Event.GetType();
                     if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
                     {
-                        AvatarUpdateEventArgs avatarUpdateEventArgs =
+                        var avatarUpdateEventArgs =
                             (AvatarUpdateEventArgs) corradeNotificationParameters.Event;
                         lock (RadarObjectsLock)
                         {
@@ -56,7 +56,7 @@ namespace Corrade
                     }
                     if (radarAvatarsType == typeof (KillObjectEventArgs))
                     {
-                        KillObjectEventArgs killObjectEventArgs =
+                        var killObjectEventArgs =
                             (KillObjectEventArgs) corradeNotificationParameters.Event;
                         Avatar avatar;
                         lock (RadarObjectsLock)

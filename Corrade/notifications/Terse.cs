@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> terse =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
+                    var terseObjectUpdateEventArgs =
                         (TerseObjectUpdateEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&

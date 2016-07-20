@@ -1044,6 +1044,9 @@
     <Compile Include="notifications\Sit.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Sound.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Terse.cs">
       <SubType>Component</SubType>
     </Compile>

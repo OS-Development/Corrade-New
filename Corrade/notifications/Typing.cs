@@ -18,7 +18,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> typing =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    TypingEventArgs notificationTypingMessageEventArgs =
+                    var notificationTypingMessageEventArgs =
                         (TypingEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&

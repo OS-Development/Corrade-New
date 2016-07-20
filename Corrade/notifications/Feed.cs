@@ -19,7 +19,7 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> feed =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    FeedEventArgs feedEventArgs =
+                    var feedEventArgs =
                         (FeedEventArgs) corradeNotificationParameters.Event;
                     // Set-up filters.
                     if (!feedEventArgs.GroupUUID.Equals(corradeNotificationParameters.Notification.GroupUUID))

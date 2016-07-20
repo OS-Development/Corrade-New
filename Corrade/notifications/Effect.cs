@@ -19,10 +19,10 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> effect =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    System.Type viewerEffectType = corradeNotificationParameters.Event.GetType();
+                    var viewerEffectType = corradeNotificationParameters.Event.GetType();
                     if (viewerEffectType == typeof (ViewerEffectEventArgs))
                     {
-                        ViewerEffectEventArgs notificationViewerEffectEventArgs =
+                        var notificationViewerEffectEventArgs =
                             (ViewerEffectEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -52,7 +52,7 @@ namespace Corrade
                     }
                     if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
                     {
-                        ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
+                        var notificationViewerPointAtEventArgs =
                             (ViewerEffectPointAtEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -80,7 +80,7 @@ namespace Corrade
                     }
                     if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
                     {
-                        ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
+                        var notificationViewerLookAtEventArgs =
                             (ViewerEffectLookAtEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&

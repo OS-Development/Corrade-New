@@ -4014,6 +4014,13 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
+        private static void HandleSoundTrigger(object sender, SoundTriggerEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.Sound, e),
+                corradeConfiguration.MaximumNotificationThreads);
+        }
+
         private static void HandleAnimationsChanged(object sender, AnimationsChangedEventArgs e)
         {
             lock (CurrentAnimationsLock)
@@ -5635,6 +5642,17 @@ namespace Corrade
                         !(p.NotificationMask & (ulong) o).Equals(0));
                 switch (o)
                 {
+                    case Configuration.Notifications.Sound:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Sound.SoundTrigger += HandleSoundTrigger;
+                                break;
+                            default:
+                                Client.Sound.SoundTrigger -= HandleSoundTrigger;
+                                break;
+                        }
+                        break;
                     case Configuration.Notifications.AnimationsChanged:
                         switch (enabled)
                         {
@@ -7162,8 +7180,8 @@ namespace Corrade
                         return;
                     }
                 }
-                Thread t = null;
                 var threadType = corradeThreadType;
+                Thread t = null;
                 t = new Thread(() =>
                 {
                     // Wait for previous sequential thread to complete.
@@ -7180,17 +7198,12 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
-                    finally
-                    {
-                        s = null;
-                    }
                     // Thread has completed.
                     SequentialThreadCompletedEvent.Set();
                     lock (WorkSetLock)
                     {
                         WorkSet.Remove(t);
                     }
-                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -7215,8 +7228,8 @@ namespace Corrade
                         return;
                     }
                 }
-                Thread t = null;
                 var threadType = corradeThreadType;
+                Thread t = null;
                 t = new Thread(() =>
                 {
                     // protect inner thread
@@ -7230,15 +7243,10 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
-                    finally
-                    {
-                        s = null;
-                    }
                     lock (WorkSetLock)
                     {
                         WorkSet.Remove(t);
                     }
-                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -7270,8 +7278,8 @@ namespace Corrade
                         return;
                     }
                 }
-                Thread t = null;
                 var threadType = corradeThreadType;
+                Thread t = null;
                 t = new Thread(() =>
                 {
                     // protect inner thread
@@ -7346,15 +7354,10 @@ namespace Corrade
                             Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
                             ex.StackTrace);
                     }
-                    finally
-                    {
-                        s = null;
-                    }
                     lock (WorkSetLock)
                     {
                         WorkSet.Remove(t);
                     }
-                    t = null;
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -7983,6 +7986,8 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("parent")] PARENT,
+
             [CommandInputSyntax(
                 "<command=importxml>&<group=<UUID|STRING>>&<password=<STRING>>>&<type=<zip|xml>>&<data=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask(
@@ -8164,7 +8169,7 @@ namespace Corrade
             [Reflection.NameAttribute("waterheight")] WATERHEIGHT,
 
             [CommandInputSyntax(
-                "<command=getregionterrainheights>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                "<command=getregionterrainheights>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregionterrainheights")] [Reflection.NameAttribute("getregionterrainheights")] GETREGIONTERRAINHEIGHTS,
 
             [CommandInputSyntax(
@@ -8172,7 +8177,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainheights")] [Reflection.NameAttribute("setregionterrainheights")] SETREGIONTERRAINHEIGHTS,
 
             [CommandInputSyntax(
-                "<command=getregionterraintextures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                "<command=getregionterraintextures>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getregionterraintextures")] [Reflection.NameAttribute("getregionterraintextures")] GETREGIONTERRAINTEXTURES,
 
             [CommandInputSyntax(
@@ -8603,7 +8608,7 @@ namespace Corrade
             [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.None)] [CorradeCommand("version")] [Reflection.NameAttribute("version")] VERSION,
 
             [CommandInputSyntax(
-                "<command=playsound>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[gain=<FLOAT>]&[position=<VECTOR3>]&[callback=<STRING>]"
+                "<command=playsound>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&<item=<UUID|STRING>>&[gain=<FLOAT>]&[position=<VECTOR3>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("playsound")] [Reflection.NameAttribute("playsound")] PLAYSOUND,
             [Reflection.NameAttribute("gain")] GAIN,
 

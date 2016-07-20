@@ -84,7 +84,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "sit")] [Reflection.NameAttribute("sit")] SitChanged = 536870912uL,
             [XmlEnum(Name = "animation")] [Reflection.NameAttribute("animation")] AnimationsChanged = 1073741824uL,
             [XmlEnum(Name = "outfit")] [Reflection.NameAttribute("outfit")] OutfitChanged = 2147483648uL,
-            [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 4294967296uL
+            [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 4294967296uL,
+            [XmlEnum(Name = "sound")] [Reflection.NameAttribute("sound")] Sound = 8589934592uL
         }
 
         /// <summary>

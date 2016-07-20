@@ -19,10 +19,10 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> primitives =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    System.Type radarPrimitivesType = corradeNotificationParameters.Event.GetType();
+                    var radarPrimitivesType = corradeNotificationParameters.Event.GetType();
                     if (radarPrimitivesType == typeof (PrimEventArgs))
                     {
-                        PrimEventArgs primEventArgs =
+                        var primEventArgs =
                             (PrimEventArgs) corradeNotificationParameters.Event;
                         lock (RadarObjectsLock)
                         {
@@ -54,7 +54,7 @@ namespace Corrade
                     }
                     if (radarPrimitivesType == typeof (KillObjectEventArgs))
                     {
-                        KillObjectEventArgs killObjectEventArgs =
+                        var killObjectEventArgs =
                             (KillObjectEventArgs) corradeNotificationParameters.Event;
                         Primitive primitive;
                         lock (RadarObjectsLock)

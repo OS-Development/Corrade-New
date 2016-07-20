@@ -39,6 +39,32 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
+                    var region =
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
+                    Simulator simulator;
+                    switch (!string.IsNullOrEmpty(region))
+                    {
+                        case true:
+                            lock (Locks.ClientInstanceNetworkLock)
+                            {
+                                simulator =
+                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                        o =>
+                                            o.Name.Equals(
+                                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                                StringComparison.OrdinalIgnoreCase));
+                            }
+                            if (simulator == null)
+                            {
+                                throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                            }
+                            break;
+                        default:
+                            simulator = Client.Network.CurrentSim;
+                            break;
+                    }
                     float gain;
                     if (!float.TryParse(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GAIN)),
@@ -54,30 +80,24 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    InventoryItem inventoryItem;
                     UUID itemUUID;
-                    switch (UUID.TryParse(item, out itemUUID))
+                    // If the asset is of an asset type that can only be retrieved locally or the item is a string
+                    // then attempt to resolve the item to an inventory item or else the item cannot be found.
+                    if (!UUID.TryParse(item, out itemUUID))
                     {
-                        case true:
-                            inventoryItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID,
-                                    corradeConfiguration.ServicesTimeout)
-                                    .FirstOrDefault() as InventoryItem;
-                            break;
-                        default:
-                            inventoryItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                    corradeConfiguration.ServicesTimeout)
-                                    .FirstOrDefault() as InventoryItem;
-                            break;
-                    }
-                    if (inventoryItem == null)
-                    {
-                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        var inventoryItem =
+                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
+                                corradeConfiguration.ServicesTimeout)
+                                .FirstOrDefault() as InventoryItem;
+                        if (inventoryItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        itemUUID = inventoryItem.AssetUUID;
                     }
                     lock (Locks.ClientInstanceSoundLock)
                     {
-                        Client.Sound.SendSoundTrigger(inventoryItem.UUID, position, gain);
+                        Client.Sound.SendSoundTrigger(itemUUID, simulator, position, gain);
                     }
                 };
         }

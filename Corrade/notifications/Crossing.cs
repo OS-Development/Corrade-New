@@ -19,10 +19,10 @@ namespace Corrade
             public static Action<CorradeNotificationParameters, Dictionary<string, string>> crossing =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    System.Type regionChangeType = corradeNotificationParameters.Event.GetType();
+                    var regionChangeType = corradeNotificationParameters.Event.GetType();
                     if (regionChangeType == typeof (SimChangedEventArgs))
                     {
-                        SimChangedEventArgs simChangedEventArgs =
+                        var simChangedEventArgs =
                             (SimChangedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -46,7 +46,7 @@ namespace Corrade
                     }
                     if (regionChangeType == typeof (RegionCrossedEventArgs))
                     {
-                        RegionCrossedEventArgs regionCrossedEventArgs =
+                        var regionCrossedEventArgs =
                             (RegionCrossedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
