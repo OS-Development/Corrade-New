@@ -74,7 +74,7 @@ namespace Corrade
 
                     var cookieContainer = new CookieContainer();
 
-                    var postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                    var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                         "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>
                         {
@@ -86,7 +86,7 @@ namespace Corrade
                             {"stay_logged_in", "True"},
                             {"show_join", "False"},
                             {"return_to", "https://secondlife.com/auth/oid_return.php"}
-                        }, CorradePOSTMediaType, cookieContainer, corradeConfiguration.ServicesTimeout);
+                        });
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
@@ -111,15 +111,14 @@ namespace Corrade
                     if (!openID.Any())
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, "https://id.secondlife.com/openid/openidserver",
-                        openID, CorradePOSTMediaType,
-                        cookieContainer,
-                        corradeConfiguration.ServicesTimeout);
+                    postData =
+                        GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                            "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                    postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                         "https://secondlife.com/my/account/download_transactions.php",
                         new Dictionary<string, string>
                         {
@@ -127,7 +126,7 @@ namespace Corrade
                             {"date_end", to.ToString("yyyy-MM-dd ")},
                             {"type", "xml"},
                             {"include_zero", "yes"}
-                        }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                        });
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.NO_TRANSACTIONS_FOUND);

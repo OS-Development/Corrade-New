@@ -61,7 +61,7 @@ namespace Corrade
 
                     var cookieContainer = new CookieContainer();
 
-                    var postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                    var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                         "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>
                         {
@@ -73,7 +73,7 @@ namespace Corrade
                             {"stay_logged_in", "True"},
                             {"show_join", "False"},
                             {"return_to", "https://secondlife.com/auth/oid_return.php"}
-                        }, CorradePOSTMediaType, cookieContainer, corradeConfiguration.ServicesTimeout);
+                        });
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
@@ -98,19 +98,17 @@ namespace Corrade
                     if (!openID.Any())
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, "https://id.secondlife.com/openid/openidserver",
-                        openID, CorradePOSTMediaType,
-                        cookieContainer,
-                        corradeConfiguration.ServicesTimeout);
+                    postData =
+                        GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                            "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     // Events
-                    postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                    postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                         "https://secondlife.com/my/community/events/tos.php",
-                        new Dictionary<string, string>(),
-                        cookieContainer, corradeConfiguration.ServicesTimeout);
+                        new Dictionary<string, string>());
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
@@ -128,21 +126,18 @@ namespace Corrade
                                 input => input.Attributes["value"].Value);
                     eventToS.Add("action", "I Agree");
 
-                    postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
-                        "https://secondlife.com/my/community/events/tos.php", eventToS,
-                        CorradePOSTMediaType, cookieContainer,
-                        corradeConfiguration.ServicesTimeout);
+                    postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                        "https://secondlife.com/my/community/events/tos.php", eventToS);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
-                    postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                    postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                         "https://secondlife.com/my/community/events/delete.php",
                         new Dictionary<string, string>
                         {
                             {"id", id.ToString()}
-                        }, cookieContainer,
-                        corradeConfiguration.ServicesTimeout);
+                        });
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_DELETE_EVENT);

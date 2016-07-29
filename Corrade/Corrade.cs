@@ -511,10 +511,11 @@ namespace Corrade
         private static readonly HashSet<GroupSchedule> GroupSchedules = new HashSet<GroupSchedule>();
         private static readonly object GroupSchedulesLock = new object();
 
-        private static readonly Dictionary<UUID, CookieContainer> GroupCookieContainers =
-            new Dictionary<UUID, CookieContainer>();
+        private static readonly Dictionary<UUID, Web.wasHTTPClient> GroupHTTPClients =
+            new Dictionary<UUID, Web.wasHTTPClient>();
 
-        private static readonly object GroupCookiesLock = new object();
+        private static readonly object GroupHTTPClientsLock = new object();
+
         private static string CorradePOSTMediaType;
 
         private static readonly Dictionary<string, Action<CorradeCommandParameters, Dictionary<string, string>>>
@@ -3239,20 +3240,15 @@ namespace Corrade
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(async () =>
                             {
-                                CookieContainer cookieContainer;
-                                lock (GroupCookiesLock)
+                                Web.wasHTTPClient wasHTTPClient;
+                                lock (GroupHTTPClientsLock)
                                 {
-                                    GroupCookieContainers.TryGetValue(callbackQueueElement.GroupUUID,
-                                        out cookieContainer);
+                                    GroupHTTPClients.TryGetValue(callbackQueueElement.GroupUUID,
+                                        out wasHTTPClient);
                                 }
-                                if (cookieContainer != null)
+                                if (wasHTTPClient != null)
                                 {
-                                    await
-                                        Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, callbackQueueElement.URL,
-                                            callbackQueueElement.message,
-                                            CorradePOSTMediaType,
-                                            cookieContainer,
-                                            corradeConfiguration.CallbackTimeout);
+                                    await wasHTTPClient.POST(callbackQueueElement.URL, callbackQueueElement.message);
                                 }
                             }, corradeConfiguration.MaximumPOSTThreads);
                         }
@@ -3280,20 +3276,17 @@ namespace Corrade
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
                                 async () =>
                                 {
-                                    CookieContainer cookieContainer;
-                                    lock (GroupCookiesLock)
+                                    Web.wasHTTPClient wasHTTPClient;
+                                    lock (GroupHTTPClientsLock)
                                     {
-                                        GroupCookieContainers.TryGetValue(notificationQueueElement.GroupUUID,
-                                            out cookieContainer);
+                                        GroupHTTPClients.TryGetValue(notificationQueueElement.GroupUUID,
+                                            out wasHTTPClient);
                                     }
-                                    if (cookieContainer != null)
+                                    if (wasHTTPClient != null)
                                     {
                                         await
-                                            Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, notificationQueueElement.URL,
-                                                notificationQueueElement.message,
-                                                CorradePOSTMediaType,
-                                                cookieContainer,
-                                                corradeConfiguration.NotificationTimeout);
+                                            wasHTTPClient.POST(notificationQueueElement.URL,
+                                                notificationQueueElement.message);
                                     }
                                 },
                                 corradeConfiguration.MaximumPOSTThreads);
@@ -4472,6 +4465,18 @@ namespace Corrade
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason, e.Message);
                     ConnectionSemaphores['l'].Set();
                     break;
+                case LoginStatus.ConnectingToLogin:
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.CONNECTING_TO_LOGIN_SERVER));
+                    break;
+                case LoginStatus.Redirecting:
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.REDIRECTING));
+                    break;
+                case LoginStatus.ReadingResponse:
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_RESPONSE));
+                    break;
+                case LoginStatus.ConnectingToSim:
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.CONNECTING_TO_SIMULATOR));
+                    break;
             }
         }
 
@@ -5512,14 +5517,16 @@ namespace Corrade
                     break;
             }
 
-            // Set-up per-group cookie containers.
+            // Set-up per-group HTTP clients.
             configuration.Groups.AsParallel().ForAll(o =>
             {
-                lock (GroupCookiesLock)
+                lock (GroupHTTPClientsLock)
                 {
-                    if (!GroupCookieContainers.ContainsKey(o.UUID))
+                    if (!GroupHTTPClients.ContainsKey(o.UUID))
                     {
-                        GroupCookieContainers.Add(o.UUID, new CookieContainer());
+                        GroupHTTPClients.Add(o.UUID,
+                            new Web.wasHTTPClient(CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(),
+                                CorradePOSTMediaType, corradeConfiguration.ServicesTimeout));
                     }
                 }
             });
@@ -7122,7 +7129,11 @@ namespace Corrade
             [Reflection.DescriptionAttribute("error saving SIML bot memorizing file")] ERROR_SAVING_SIML_BOT_MEMORIZING_FILE,
             [Reflection.DescriptionAttribute("error loading language detection")] ERROR_LOADING_LANGUAGE_DETECTION,
             [Reflection.DescriptionAttribute("updating Corrade configuration")] UPDATING_CORRADE_CONFIGURATION,
-            [Reflection.DescriptionAttribute("Corrade configuration updated")] CORRADE_CONFIGURATION_UPDATED
+            [Reflection.DescriptionAttribute("Corrade configuration updated")] CORRADE_CONFIGURATION_UPDATED,
+            [Reflection.DescriptionAttribute("Connecting to login server")] CONNECTING_TO_LOGIN_SERVER,
+            [Reflection.DescriptionAttribute("Redirecting")] REDIRECTING,
+            [Reflection.DescriptionAttribute("Connecting to simulator")] CONNECTING_TO_SIMULATOR,
+            [Reflection.DescriptionAttribute("Reading response")] READING_RESPONSE
         }
 
         /// <summary>

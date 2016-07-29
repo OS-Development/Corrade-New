@@ -39,18 +39,14 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Entity.STATISTICS:
-                            liveData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            liveData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 @"http://secondlife.com/xmlhttp/homepage.php",
-                                new Dictionary<string, string>(),
-                                GroupCookieContainers[corradeCommandParameters.Group.UUID],
-                                corradeConfiguration.ServicesTimeout);
+                                new Dictionary<string, string>());
                             break;
                         case Entity.LINDEX:
-                            liveData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            liveData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 @"http://secondlife.com/xmlhttp/lindex.php",
-                                new Dictionary<string, string>(),
-                                GroupCookieContainers[corradeCommandParameters.Group.UUID],
-                                corradeConfiguration.ServicesTimeout);
+                                new Dictionary<string, string>());
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

@@ -82,109 +82,57 @@ namespace wasSharp
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sends a POST request to an URL with set key-value pairs.
-        /// </summary>
-        /// <param name="userAgent">the user agent to send with the request</param>
-        /// <param name="URL">the url to send the message to</param>
-        /// <param name="message">key-value pairs to send</param>
-        /// <param name="cookies">a cookie container</param>
-        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        /// <param name="mediaType">the media type for the POST request</param>
-        public static async Task<byte[]> wasPOST(ProductInfoHeaderValue userAgent, string URL, Dictionary<string, string> message,
-            string mediaType,
-            CookieContainer cookies,
-            uint millisecondsTimeout)
+        // <summary>A portable HTTP client.</summar>
+        public class wasHTTPClient
         {
-            try
-            {
-                using (
-                    var handler = new HttpClientHandler
-                    {
-                        AllowAutoRedirect = true,
-                        CookieContainer = cookies,
-                        UseCookies = true
-                    })
-                {
-                    if (handler.SupportsProxy)
-                    {
-                        handler.Proxy = WebRequest.DefaultWebProxy;
-                        handler.UseProxy = true;
-                    }
-                    if (handler.SupportsAutomaticDecompression)
-                    {
-                        handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-                    }
-                    using (
-                        var client = new HttpClient(handler, false)
-                        {
-                            Timeout = TimeSpan.FromMilliseconds(millisecondsTimeout)
-                        })
-                    {
-                        client.DefaultRequestHeaders.UserAgent.Add(userAgent);
-                        using (
-                            StringContent content = new StringContent(KeyValue.Encode(message), Encoding.UTF8, mediaType)
-                            )
-                        {
-                            using (var response = await client.PostAsync(URL, content))
-                            {
-                                return response.IsSuccessStatusCode
-                                    ? await response.Content.ReadAsByteArrayAsync()
-                                    : null;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
+            private readonly HttpClient HTTPClient;
+            private readonly string mediaType;
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sends a GET request to an URL with set key-value pairs.
-        /// </summary>
-        /// <param name="userAgent">the user agent to send with the request</param>
-        /// <param name="URL">the url to send the message to</param>
-        /// <param name="message">key-value pairs to send</param>
-        /// <param name="cookies">a cookie container</param>
-        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        public static async Task<byte[]> wasGET(ProductInfoHeaderValue userAgent, string URL, Dictionary<string, string> message,
-            CookieContainer cookies,
-            uint millisecondsTimeout)
-        {
-            try
+            public wasHTTPClient(ProductInfoHeaderValue userAgent, CookieContainer cookieContainer, string mediaType,
+                uint millisecondsTimeout)
             {
-                using (
-                    var handler = new HttpClientHandler
-                    {
-                        AllowAutoRedirect = true,
-                        CookieContainer = cookies,
-                        UseCookies = true
-                    })
+                var HTTPClientHandler = new HttpClientHandler
                 {
-                    if (handler.SupportsProxy)
+                    CookieContainer = cookieContainer,
+                    UseCookies = true
+                };
+                if (HTTPClientHandler.SupportsRedirectConfiguration)
+                {
+                    HTTPClientHandler.AllowAutoRedirect = true;
+                }
+                if (HTTPClientHandler.SupportsProxy)
+                {
+                    HTTPClientHandler.Proxy = WebRequest.DefaultWebProxy;
+                    HTTPClientHandler.UseProxy = true;
+                }
+                if (HTTPClientHandler.SupportsAutomaticDecompression)
+                {
+                    HTTPClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                }
+                HTTPClientHandler.ClientCertificateOptions = ClientCertificateOption.Automatic;
+
+                HTTPClient = new HttpClient(HTTPClientHandler, false);
+                HTTPClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
+                HTTPClient.Timeout = TimeSpan.FromMilliseconds(millisecondsTimeout);
+                this.mediaType = mediaType;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////
+            //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+            ///////////////////////////////////////////////////////////////////////////
+            /// <summary>
+            ///     Sends a POST request to an URL with set key-value pairs.
+            /// </summary>
+            /// <param name="URL">the url to send the message to</param>
+            /// <param name="message">key-value pairs to send</param>
+            public async Task<byte[]> POST(string URL, Dictionary<string, string> message)
+            {
+                try
+                {
+                    using (var content =
+                        new StringContent(KeyValue.Encode(message), Encoding.UTF8, mediaType))
                     {
-                        handler.Proxy = WebRequest.DefaultWebProxy;
-                        handler.UseProxy = true;
-                    }
-                    if (handler.SupportsAutomaticDecompression)
-                    {
-                        handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-                    }
-                    using (
-                        var client = new HttpClient(handler, false)
-                        {
-                            Timeout = TimeSpan.FromMilliseconds(millisecondsTimeout)
-                        })
-                    {
-                        client.DefaultRequestHeaders.UserAgent.Add(userAgent);
-                        using (
-                            var response = await client.GetAsync(URL + "?" + KeyValue.Encode(message)))
+                        using (var response = await HTTPClient.PostAsync(URL, content))
                         {
                             return response.IsSuccessStatusCode
                                 ? await response.Content.ReadAsByteArrayAsync()
@@ -192,10 +140,34 @@ namespace wasSharp
                         }
                     }
                 }
+                catch (Exception)
+                {
+                    return null;
+                }
             }
-            catch (Exception)
+
+            ///////////////////////////////////////////////////////////////////////////
+            //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+            ///////////////////////////////////////////////////////////////////////////
+            /// <summary>
+            ///     Sends a GET request to an URL with set key-value pairs.
+            /// </summary>
+            /// <param name="URL">the url to send the message to</param>
+            /// <param name="message">key-value pairs to send</param>
+            public async Task<byte[]> GET(string URL, Dictionary<string, string> message)
             {
-                return null;
+                try
+                {
+                    using (var response =
+                        await HTTPClient.GetAsync(URL + "?" + KeyValue.Encode(message)))
+                    {
+                        return response.IsSuccessStatusCode ? await response.Content.ReadAsByteArrayAsync() : null;
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
             }
         }
     }

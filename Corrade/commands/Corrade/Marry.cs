@@ -57,7 +57,7 @@ namespace Corrade
 
                     #region Authenticate
 
-                    var postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
+                    var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                         "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>
                         {
@@ -69,7 +69,7 @@ namespace Corrade
                             {"stay_logged_in", "True"},
                             {"show_join", "False"},
                             {"return_to", "https://secondlife.com/auth/oid_return.php"}
-                        }, CorradePOSTMediaType, cookieContainer, corradeConfiguration.ServicesTimeout);
+                        });
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
@@ -94,10 +94,9 @@ namespace Corrade
                     if (!openID.Any())
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT, "https://id.secondlife.com/openid/openidserver",
-                        openID, CorradePOSTMediaType,
-                        cookieContainer,
-                        corradeConfiguration.ServicesTimeout);
+                    postData =
+                        GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                            "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
                         throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
@@ -147,12 +146,12 @@ namespace Corrade
                             #endregion
 
                             // Check whether a proposal has been sent.
-                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
-                                }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                                });
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
@@ -185,11 +184,8 @@ namespace Corrade
                             newProposal.Add("form[proposal]", message);
 
                             // Send the form.
-                            postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
-                                "https://secondlife.com/my/account/partners.php", newProposal,
-                                CorradePOSTMediaType,
-                                cookieContainer,
-                                corradeConfiguration.ServicesTimeout);
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                                "https://secondlife.com/my/account/partners.php", newProposal);
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_POST_PROPOSAL);
@@ -209,12 +205,12 @@ namespace Corrade
                             break;
                         case Action.REVOKE: // Revoke a sent proposal.
                             // Check whether a proposal has been sent.
-                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
-                                }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                                });
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
@@ -229,13 +225,13 @@ namespace Corrade
                             if (revokeNode == null)
                                 throw new ScriptException(ScriptError.NO_PROPOSAL_TO_REJECT);
 
-                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"revoke", "true"},
                                     {"lang", "en-US"}
-                                }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                                });
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_REVOKE_PROPOSAL);
@@ -248,12 +244,12 @@ namespace Corrade
                                 corradeCommandParameters.Message));
 
                             // Check whether a proposal has been sent.
-                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
-                                }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                                });
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
@@ -288,11 +284,8 @@ namespace Corrade
                             acceptProposal.Add("form[reply]", message);
 
                             // Send the form.
-                            postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
-                                "https://secondlife.com/my/account/partners.php", acceptProposal,
-                                CorradePOSTMediaType,
-                                cookieContainer,
-                                corradeConfiguration.ServicesTimeout);
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                                "https://secondlife.com/my/account/partners.php", acceptProposal);
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_ACCEPT_PROPOSAL);
@@ -317,12 +310,12 @@ namespace Corrade
                                 corradeCommandParameters.Message));
 
                             // Check whether a proposal has been sent.
-                            postData = Web.wasGET(CORRADE_CONSTANTS.USER_AGENT,
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
                                 new Dictionary<string, string>
                                 {
                                     {"lang", "en-US"}
-                                }, cookieContainer, corradeConfiguration.ServicesTimeout);
+                                });
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
@@ -357,11 +350,8 @@ namespace Corrade
                             rejectProposal.Add("form[reply]", message);
 
                             // Send the form.
-                            postData = Web.wasPOST(CORRADE_CONSTANTS.USER_AGENT,
-                                "https://secondlife.com/my/account/partners.php", rejectProposal,
-                                CorradePOSTMediaType,
-                                cookieContainer,
-                                corradeConfiguration.ServicesTimeout);
+                            postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
+                                "https://secondlife.com/my/account/partners.php", rejectProposal);
 
                             if (postData.Result == null)
                                 throw new ScriptException(ScriptError.UNABLE_TO_REJECT_PROPOSAL);
