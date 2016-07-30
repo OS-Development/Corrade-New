@@ -86,10 +86,10 @@ namespace wasSharp
         public class wasHTTPClient
         {
             private readonly HttpClient HTTPClient;
-            private readonly string mediaType;
+            private readonly string MediaType;
 
             public wasHTTPClient(ProductInfoHeaderValue userAgent, CookieContainer cookieContainer, string mediaType,
-                uint millisecondsTimeout)
+                uint timeout)
             {
                 var HTTPClientHandler = new HttpClientHandler
                 {
@@ -113,8 +113,8 @@ namespace wasSharp
 
                 HTTPClient = new HttpClient(HTTPClientHandler, false);
                 HTTPClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
-                HTTPClient.Timeout = TimeSpan.FromMilliseconds(millisecondsTimeout);
-                this.mediaType = mediaType;
+                HTTPClient.Timeout = TimeSpan.FromMilliseconds(timeout);
+                MediaType = mediaType;
             }
 
             ///////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ namespace wasSharp
                 try
                 {
                     using (var content =
-                        new StringContent(KeyValue.Encode(message), Encoding.UTF8, mediaType))
+                        new StringContent(KeyValue.Encode(message), Encoding.UTF8, MediaType))
                     {
                         using (var response = await HTTPClient.PostAsync(URL, content))
                         {

@@ -22,6 +22,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
 using System.ServiceModel.Syndication;
 using System.ServiceProcess;
@@ -510,6 +511,11 @@ namespace Corrade
         private static readonly object OutputFiltersLock = new object();
         private static readonly HashSet<GroupSchedule> GroupSchedules = new HashSet<GroupSchedule>();
         private static readonly object GroupSchedulesLock = new object();
+
+        private static readonly Dictionary<UUID, CookieContainer> GroupCookieContainers =
+            new Dictionary<UUID, CookieContainer>();
+
+        private static readonly object GroupCookieContainersLock = new object();
 
         private static readonly Dictionary<UUID, Web.wasHTTPClient> GroupHTTPClients =
             new Dictionary<UUID, Web.wasHTTPClient>();
@@ -1333,6 +1339,75 @@ namespace Corrade
                         Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
                         ex.Message);
                 }
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade group cookies.
+        /// </summary>
+        private static readonly System.Action LoadGroupCookiesState = () =>
+        {
+            var groupCookiesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
+            if (File.Exists(groupCookiesStateFile))
+            {
+                try
+                {
+                    using (
+                        var fileStream = File.Open(groupCookiesStateFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read))
+                    {
+                        var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                        var serializer = new BinaryFormatter();
+                        ((Dictionary<UUID, CookieContainer>)
+                            serializer.Deserialize(fileStream)).AsParallel()
+                            .Where(o => groups.Contains(o.Key))
+                            .ForAll(o =>
+                            {
+                                lock (GroupCookieContainersLock)
+                                {
+                                    if (!GroupCookieContainers.Contains(o))
+                                    {
+                                        GroupCookieContainers.Add(o.Key, o.Value);
+                                        return;
+                                    }
+                                    GroupCookieContainers[o.Key] = o.Value;
+                                }
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_COOKIES_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade group cookies.
+        /// </summary>
+        private static readonly System.Action SaveGroupCookiesState = () =>
+        {
+            try
+            {
+                using (
+                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE), FileMode.Create,
+                        FileAccess.Write, FileShare.None))
+                {
+                    var serializer = new BinaryFormatter();
+                    lock (GroupCookieContainersLock)
+                    {
+                        serializer.Serialize(fileStream, GroupCookieContainers);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_COOKIES_STATE),
+                    e.Message);
             }
         };
 
@@ -3002,6 +3077,8 @@ namespace Corrade
                 }
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
+            // Load group cookies.
+            LoadGroupCookiesState.Invoke();
             if (!corradeConfiguration.Equals(default(Configuration)))
             {
                 UpdateDynamicConfiguration(corradeConfiguration);
@@ -3273,22 +3350,21 @@ namespace Corrade
                         if (NotificationQueue.Dequeue((int) corradeConfiguration.NotificationThrottle,
                             ref notificationQueueElement))
                         {
-                            CorradeThreadPool[CorradeThreadType.POST].Spawn(
-                                async () =>
+                            CorradeThreadPool[CorradeThreadType.POST].Spawn(async () =>
+                            {
+                                Web.wasHTTPClient wasHTTPClient;
+                                lock (GroupHTTPClientsLock)
                                 {
-                                    Web.wasHTTPClient wasHTTPClient;
-                                    lock (GroupHTTPClientsLock)
-                                    {
-                                        GroupHTTPClients.TryGetValue(notificationQueueElement.GroupUUID,
-                                            out wasHTTPClient);
-                                    }
-                                    if (wasHTTPClient != null)
-                                    {
-                                        await
-                                            wasHTTPClient.POST(notificationQueueElement.URL,
-                                                notificationQueueElement.message);
-                                    }
-                                },
+                                    GroupHTTPClients.TryGetValue(notificationQueueElement.GroupUUID,
+                                        out wasHTTPClient);
+                                }
+                                if (wasHTTPClient != null)
+                                {
+                                    await
+                                        wasHTTPClient.POST(notificationQueueElement.URL,
+                                            notificationQueueElement.message);
+                                }
+                            },
                                 corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
@@ -3507,6 +3583,9 @@ namespace Corrade
             {
                 NotificationThread = null;
             }
+
+            // Save group cookies.
+            SaveGroupCookiesState.Invoke();
 
             // Close HTTP server
             if (HttpListener.IsSupported && corradeConfiguration.EnableHTTPServer)
@@ -5520,16 +5599,33 @@ namespace Corrade
             // Set-up per-group HTTP clients.
             configuration.Groups.AsParallel().ForAll(o =>
             {
+                // Create cookie containers for new groups.
+                lock (GroupCookieContainersLock)
+                {
+                    if (!GroupCookieContainers.ContainsKey(o.UUID))
+                    {
+                        GroupCookieContainers.Add(o.UUID, new CookieContainer());
+                    }
+                }
                 lock (GroupHTTPClientsLock)
                 {
                     if (!GroupHTTPClients.ContainsKey(o.UUID))
                     {
-                        GroupHTTPClients.Add(o.UUID,
-                            new Web.wasHTTPClient(CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(),
-                                CorradePOSTMediaType, corradeConfiguration.ServicesTimeout));
+                        GroupHTTPClients.Add(o.UUID, new Web.wasHTTPClient
+                            (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType,
+                                corradeConfiguration.ServicesTimeout));
                     }
                 }
             });
+
+            // Remove HTTP clients from groups that are not configured.
+            lock (GroupHTTPClientsLock)
+            {
+                new List<UUID>(
+                    GroupHTTPClients.Keys.AsParallel().Where(o => !configuration.Groups.Any(p => p.UUID.Equals(o))))
+                    .AsParallel().ForAll(
+                        o => { GroupHTTPClients.Remove(o); });
+            }
 
             // Enable the group scheduling thread if permissions were granted to groups.
             switch (configuration.Groups.AsParallel()
@@ -6613,6 +6709,7 @@ namespace Corrade
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
             public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
             public const string GROUP_SCHEDULES_STATE_FILE = @"GroupSchedules.state";
+            public const string GROUP_COOKIES_STATE_FILE = @"GroupCookies.state";
             public const string MOVEMENT_STATE_FILE = @"Movement.state";
             public const string FEEDS_STATE_FILE = @"Feeds.state";
             public const string LIBS_DIRECTORY = @"libs";
@@ -7133,7 +7230,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("Connecting to login server")] CONNECTING_TO_LOGIN_SERVER,
             [Reflection.DescriptionAttribute("Redirecting")] REDIRECTING,
             [Reflection.DescriptionAttribute("Connecting to simulator")] CONNECTING_TO_SIMULATOR,
-            [Reflection.DescriptionAttribute("Reading response")] READING_RESPONSE
+            [Reflection.DescriptionAttribute("Reading response")] READING_RESPONSE,
+            [Reflection.DescriptionAttribute("unable to load group cookies state")] UNABLE_TO_LOAD_GROUP_COOKIES_STATE,
+            [Reflection.DescriptionAttribute("unable to save group cookies state")] UNABLE_TO_SAVE_GROUP_COOKIES_STATE
         }
 
         /// <summary>
