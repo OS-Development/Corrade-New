@@ -28,16 +28,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var url = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.URL)),
-                            corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(url))
-                        throw new ScriptException(ScriptError.INVALID_URL_PROVIDED);
-                    var name = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
-                            corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(name))
-                        throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     var action =
                         Reflection.GetEnumValueFromName<Action>(
                             wasInput(
@@ -45,11 +35,22 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant());
-                    // Check for valid URLs.
+                    // Check for passed parameters.
+                    var name = string.Empty;
+                    var url = string.Empty;
                     switch (action)
                     {
                         case Action.ADD:
+                            name = wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                    corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(name))
+                                throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                            goto case Action.REMOVE;
                         case Action.REMOVE:
+                            url = wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.URL)),
+                                    corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(url))
                                 throw new ScriptException(ScriptError.INVALID_URL_PROVIDED);
                             break;

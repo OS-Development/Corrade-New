@@ -35,15 +35,14 @@ using System.Xml.Serialization;
 using CorradeConfiguration;
 using NTextCat;
 using OpenMetaverse;
-using Syn.Bot;
-using Syn.Bot.Events;
+using Syn.Bot.Siml;
+using Syn.Bot.Siml.Events;
 using wasOpenMetaverse;
 using wasSharp;
 using Group = OpenMetaverse.Group;
 using Helpers = OpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
-using Settings = OpenMetaverse.Settings;
 using ThreadState = System.Threading.ThreadState;
 
 #endregion
@@ -395,7 +394,8 @@ namespace Corrade
             [Status(18737)] [Reflection.DescriptionAttribute("unable to process data")] UNABLE_TO_PROCESS_DATA,
             [Status(33047)] [Reflection.DescriptionAttribute("failed rezzing root primitive")] FAILED_REZZING_ROOT_PRIMITIVE,
             [Status(25329)] [Reflection.DescriptionAttribute("failed rezzing child primitive")] FAILED_REZZING_CHILD_PRIMITIVE,
-            [Status(29530)] [Reflection.DescriptionAttribute("could not read XML file")] COULD_NOT_READ_XML_FILE
+            [Status(29530)] [Reflection.DescriptionAttribute("could not read XML file")] COULD_NOT_READ_XML_FILE,
+            [Status(40901)] [Reflection.DescriptionAttribute("SIML not enabled")] SIML_NOT_ENABLED
         }
 
         /// <summary>
@@ -423,7 +423,7 @@ namespace Corrade
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
         private static InventoryFolder CurrentOutfitFolder;
-        private static readonly SynBot SynBot = new SynBot();
+        private static readonly SimlBot SynBot = new SimlBot();
         private static RankedLanguageIdentifier rankedLanguageIdentifier;
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
@@ -593,8 +593,7 @@ namespace Corrade
             runGroupFeedThread = true;
             GroupFeedThread = new Thread(CheckGroupFeeds)
             {
-                IsBackground = true,
-                Priority = ThreadPriority.Lowest
+                IsBackground = true
             };
             GroupFeedThread.Start();
         };
@@ -1624,7 +1623,7 @@ namespace Corrade
         /// </summary>
         private static void CheckGroupFeeds()
         {
-            while (runGroupFeedThread)
+            do
             {
                 Thread.Sleep(TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval));
                 lock (GroupFeedsLock)
@@ -1635,7 +1634,8 @@ namespace Corrade
                         {
                             using (var reader = XmlReader.Create(o.Key))
                             {
-                                SyndicationFeed.Load(reader).Items.AsParallel()
+                                var syndicationFeed = SyndicationFeed.Load(reader);
+                                syndicationFeed?.Items.AsParallel()
                                     .Where(
                                         p =>
                                             p != null && p.PublishDate != null && p.Title != null && p.Summary != null &&
@@ -1665,14 +1665,12 @@ namespace Corrade
                         }
                         catch (Exception ex)
                         {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleError.ERROR_LOADING_FEED), o.Key,
+                            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_FEED), o.Key,
                                 ex.Message);
                         }
                     });
                 }
-            }
+            } while (runGroupFeedThread);
         }
 
         /// <summary>
@@ -1680,8 +1678,8 @@ namespace Corrade
         /// </summary>
         private static void GroupMembershipSweep()
         {
+            // The queue of groups to scan.
             var groupUUIDs = new Queue<UUID>();
-            var memberCount = new Queue<int>();
             // The total list of members.
             var groupMembers = new HashSet<UUID>();
             // New members that have joined the group.
@@ -1696,32 +1694,19 @@ namespace Corrade
                 {
                     if (GroupMembers.ContainsKey(args.GroupID))
                     {
-                        var LockObject = new object();
-                        args.Members.Values.AsParallel().ForAll(
-                            o =>
-                            {
-                                if (GroupMembers[args.GroupID].Contains(o.ID)) return;
-                                lock (LockObject)
-                                {
-                                    joinedMembers.Add(o.ID);
-                                }
-                            });
-                        GroupMembers[args.GroupID].AsParallel().ForAll(
-                            o =>
-                            {
-                                if (args.Members.Values.Any(p => p.ID.Equals(o))) return;
-                                lock (LockObject)
-                                {
-                                    partedMembers.Add(o);
-                                }
-                            });
+                        joinedMembers.UnionWith(
+                            args.Members.Values.AsParallel()
+                                .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
+                                .Select(o => o.ID));
+                        partedMembers.UnionWith(GroupMembers[args.GroupID].AsParallel()
+                            .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
                     }
                 }
                 groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
                 GroupMembersReplyEvent.Set();
             };
 
-            while (runGroupMembershipSweepThread)
+            do
             {
                 Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
                 if (!Client.Network.Connected) continue;
@@ -1748,26 +1733,9 @@ namespace Corrade
                 // Bail if no configured groups are also joined.
                 if (!groupUUIDs.Any()) continue;
 
-                // Get the last member count.
-                memberCount.Clear();
-                lock (GroupMembersLock)
-                {
-                    GroupMembers.AsParallel().SelectMany(
-                        members => groupUUIDs,
-                        (members, groupUUID) => new {members, groupUUID})
-                        .Where(o => o.groupUUID.Equals(o.members.Key))
-                        .Select(p => p.members).ForAll(o =>
-                        {
-                            lock (LockObject)
-                            {
-                                memberCount.Enqueue(o.Value.Count);
-                            }
-                        });
-                }
-
                 do
                 {
-                    // Pause a second between group sweeps.
+                    // Pause between group sweeps.
                     Thread.Yield();
                     // Dequeue the first group.
                     var groupUUID = groupUUIDs.Dequeue();
@@ -1799,94 +1767,84 @@ namespace Corrade
                         }
                     }
 
-                    if (memberCount.Any())
+                    var groupMembersChanged = false;
+                    if (joinedMembers.Any())
                     {
-                        if (!memberCount.Dequeue().Equals(groupMembers.Count))
-                        {
-                            var groupMembersChanged = false;
-                            if (joinedMembers.Any())
+                        groupMembersChanged = true;
+                        joinedMembers.AsParallel().ForAll(
+                            o =>
                             {
-                                groupMembersChanged = true;
-                                joinedMembers.AsParallel().ForAll(
-                                    o =>
-                                    {
-                                        var agentName = string.Empty;
-                                        var groupName = string.Empty;
-                                        if (Resolvers.AgentUUIDToName(Client,
-                                            o,
-                                            corradeConfiguration.ServicesTimeout,
-                                            ref agentName) &&
-                                            Resolvers.GroupUUIDToName(Client, groupUUID,
-                                                corradeConfiguration.ServicesTimeout,
-                                                ref groupName))
-                                        {
-                                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                () => SendNotification(
-                                                    Configuration.Notifications.GroupMembership,
-                                                    new GroupMembershipEventArgs
-                                                    {
-                                                        AgentName = agentName,
-                                                        AgentUUID = o,
-                                                        Action = Action.JOINED,
-                                                        GroupName = groupName,
-                                                        GroupUUID = groupUUID
-                                                    }),
-                                                corradeConfiguration.MaximumNotificationThreads);
-                                        }
-                                    });
-
-                                joinedMembers.Clear();
-                            }
-                            if (partedMembers.Any())
-                            {
-                                groupMembersChanged = true;
-                                partedMembers.AsParallel().ForAll(
-                                    o =>
-                                    {
-                                        var agentName = string.Empty;
-                                        var groupName = string.Empty;
-                                        if (Resolvers.AgentUUIDToName(Client,
-                                            o,
-                                            corradeConfiguration.ServicesTimeout,
-                                            ref agentName) &&
-                                            Resolvers.GroupUUIDToName(Client, groupUUID,
-                                                corradeConfiguration.ServicesTimeout,
-                                                ref groupName))
-                                        {
-                                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                () => SendNotification(
-                                                    Configuration.Notifications.GroupMembership,
-                                                    new GroupMembershipEventArgs
-                                                    {
-                                                        AgentName = agentName,
-                                                        AgentUUID = o,
-                                                        Action = Action.PARTED,
-                                                        GroupName = groupName,
-                                                        GroupUUID = groupUUID
-                                                    }),
-                                                corradeConfiguration.MaximumNotificationThreads);
-                                        }
-                                    });
-                                partedMembers.Clear();
-                            }
-                            if (groupMembersChanged)
-                            {
-                                lock (GroupMembersLock)
+                                var agentName = string.Empty;
+                                var groupName = string.Empty;
+                                if (Resolvers.AgentUUIDToName(Client,
+                                    o,
+                                    corradeConfiguration.ServicesTimeout,
+                                    ref agentName) &&
+                                    Resolvers.GroupUUIDToName(Client, groupUUID,
+                                        corradeConfiguration.ServicesTimeout,
+                                        ref groupName))
                                 {
-                                    GroupMembers[groupUUID].Clear();
-                                    groupMembers.AsParallel().ForAll(o =>
-                                    {
-                                        lock (LockObject)
-                                        {
-                                            GroupMembers[groupUUID].Add(o);
-                                        }
-                                    });
+                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        () => SendNotification(
+                                            Configuration.Notifications.GroupMembership,
+                                            new GroupMembershipEventArgs
+                                            {
+                                                AgentName = agentName,
+                                                AgentUUID = o,
+                                                Action = Action.JOINED,
+                                                GroupName = groupName,
+                                                GroupUUID = groupUUID
+                                            }),
+                                        corradeConfiguration.MaximumNotificationThreads);
                                 }
-                            }
-                        }
+                            });
                     }
+                    if (partedMembers.Any())
+                    {
+                        groupMembersChanged = true;
+                        partedMembers.AsParallel().ForAll(
+                            o =>
+                            {
+                                var agentName = string.Empty;
+                                var groupName = string.Empty;
+                                if (Resolvers.AgentUUIDToName(Client,
+                                    o,
+                                    corradeConfiguration.ServicesTimeout,
+                                    ref agentName) &&
+                                    Resolvers.GroupUUIDToName(Client, groupUUID,
+                                        corradeConfiguration.ServicesTimeout,
+                                        ref groupName))
+                                {
+                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        () => SendNotification(
+                                            Configuration.Notifications.GroupMembership,
+                                            new GroupMembershipEventArgs
+                                            {
+                                                AgentName = agentName,
+                                                AgentUUID = o,
+                                                Action = Action.PARTED,
+                                                GroupName = groupName,
+                                                GroupUUID = groupUUID
+                                            }),
+                                        corradeConfiguration.MaximumNotificationThreads);
+                                }
+                            });
+                    }
+
+                    // If no new members joined or old members left then continue.
+                    if (!groupMembersChanged) continue;
+
+                    lock (GroupMembersLock)
+                    {
+                        // Remove parted members.
+                        GroupMembers[groupUUID].ExceptWith(partedMembers);
+                        // Add joined members.
+                        GroupMembers[groupUUID].UnionWith(joinedMembers);
+                    }
+
+                    SaveGroupMembersState.Invoke();
                 } while (groupUUIDs.Any() && runGroupMembershipSweepThread);
-            }
+            } while (runGroupMembershipSweepThread);
         }
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)

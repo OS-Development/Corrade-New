@@ -23,6 +23,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+
+                    if (!corradeConfiguration.EnableSIML)
+                        throw new ScriptException(ScriptError.SIML_NOT_ENABLED);
+
                     switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
@@ -30,19 +34,23 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Action.PROCESS:
-                            var request =
+                            var message =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(request))
+                            if (string.IsNullOrEmpty(message))
                             {
                                 throw new ScriptException(ScriptError.NO_MESSAGE_PROVIDED);
                             }
+                            string reply;
                             lock (SIMLBotLock)
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                                    SynBot.Chat(request).BotMessage);
+                                reply = SynBot.Chat(message).BotMessage;
+                            }
+                            if (!string.IsNullOrEmpty(reply))
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), reply);
                             }
                             break;
                         case Action.REBUILD:
