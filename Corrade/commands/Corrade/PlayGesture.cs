@@ -56,9 +56,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
+                    if (itemUUID.Equals(UUID.Zero))
+                    {
+                        itemUUID = inventoryItem.AssetUUID;
+                    }
                     lock (Locks.ClientInstanceSelfLock)
                     {
-                        Client.Self.PlayGesture(inventoryItem.UUID);
+                        Client.Self.PlayGesture(itemUUID);
                     }
                 };
         }
