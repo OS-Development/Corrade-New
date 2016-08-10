@@ -39,7 +39,7 @@ namespace Corrade
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.START: //starts a new conference
+                        case Action.CREATE: //starts a new conference
                             var conferenceParticipants = new HashSet<UUID>();
                             CSV.ToEnumerable(
                                 wasInput(
