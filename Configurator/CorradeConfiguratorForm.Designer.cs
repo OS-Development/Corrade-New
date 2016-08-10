@@ -69,6 +69,10 @@
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.Firstname = new System.Windows.Forms.TextBox();
             this.LogsTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.pictureBox94 = new System.Windows.Forms.PictureBox();
+            this.ConferenceMessageLogFileEnabled = new System.Windows.Forms.CheckBox();
+            this.ConferenceMessageLogFile = new System.Windows.Forms.TextBox();
             this.groupBox14 = new System.Windows.Forms.GroupBox();
             this.pictureBox16 = new System.Windows.Forms.PictureBox();
             this.RegionLogFileEnabled = new System.Windows.Forms.CheckBox();
@@ -419,6 +423,8 @@
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.LogsTabPage.SuspendLayout();
+            this.groupBox6.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox94)).BeginInit();
             this.groupBox14.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox16)).BeginInit();
             this.groupBox13.SuspendLayout();
@@ -649,7 +655,7 @@
             this.ClientIdentificationTagBox.Controls.Add(this.ClientIdentificationTag);
             this.ClientIdentificationTagBox.Location = new System.Drawing.Point(36, 240);
             this.ClientIdentificationTagBox.Name = "ClientIdentificationTagBox";
-            this.ClientIdentificationTagBox.Size = new System.Drawing.Size(296, 55);
+            this.ClientIdentificationTagBox.Size = new System.Drawing.Size(267, 55);
             this.ClientIdentificationTagBox.TabIndex = 10;
             this.ClientIdentificationTagBox.TabStop = false;
             this.ClientIdentificationTagBox.Text = "Client Identification Tag";
@@ -658,7 +664,7 @@
             // 
             this.pictureBox12.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox12.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox12.Image")));
-            this.pictureBox12.Location = new System.Drawing.Point(270, 21);
+            this.pictureBox12.Location = new System.Drawing.Point(237, 21);
             this.pictureBox12.Name = "pictureBox12";
             this.pictureBox12.Size = new System.Drawing.Size(20, 20);
             this.pictureBox12.TabIndex = 11;
@@ -672,8 +678,9 @@
             // 
             this.ClientIdentificationTag.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ClientIdentificationTag.Location = new System.Drawing.Point(7, 22);
+            this.ClientIdentificationTag.MaxLength = 36;
             this.ClientIdentificationTag.Name = "ClientIdentificationTag";
-            this.ClientIdentificationTag.Size = new System.Drawing.Size(257, 20);
+            this.ClientIdentificationTag.Size = new System.Drawing.Size(224, 20);
             this.ClientIdentificationTag.TabIndex = 0;
             this.ClientIdentificationTag.Text = "0705230f-cbd0-99bd-040b-28eb348b5255";
             // 
@@ -1037,6 +1044,7 @@
             // 
             // LogsTabPage
             // 
+            this.LogsTabPage.Controls.Add(this.groupBox6);
             this.LogsTabPage.Controls.Add(this.groupBox14);
             this.LogsTabPage.Controls.Add(this.groupBox13);
             this.LogsTabPage.Controls.Add(this.groupBox12);
@@ -1049,14 +1057,59 @@
             this.LogsTabPage.Text = "Logs";
             this.LogsTabPage.UseVisualStyleBackColor = true;
             // 
+            // groupBox6
+            // 
+            this.groupBox6.Controls.Add(this.pictureBox94);
+            this.groupBox6.Controls.Add(this.ConferenceMessageLogFileEnabled);
+            this.groupBox6.Controls.Add(this.ConferenceMessageLogFile);
+            this.groupBox6.Location = new System.Drawing.Point(6, 250);
+            this.groupBox6.Name = "groupBox6";
+            this.groupBox6.Size = new System.Drawing.Size(659, 56);
+            this.groupBox6.TabIndex = 4;
+            this.groupBox6.TabStop = false;
+            this.groupBox6.Text = "Conference Message Log Directory";
+            // 
+            // pictureBox94
+            // 
+            this.pictureBox94.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox94.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox94.Image")));
+            this.pictureBox94.Location = new System.Drawing.Point(633, 21);
+            this.pictureBox94.Name = "pictureBox94";
+            this.pictureBox94.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox94.TabIndex = 2;
+            this.pictureBox94.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox94, "The logs will be placed under this directory and \r\nnamed after the name of the av" +
+        "atars sending the \r\nmessage to Corrade.");
+            this.pictureBox94.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // ConferenceMessageLogFileEnabled
+            // 
+            this.ConferenceMessageLogFileEnabled.AutoSize = true;
+            this.ConferenceMessageLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ConferenceMessageLogFileEnabled.Location = new System.Drawing.Point(565, 23);
+            this.ConferenceMessageLogFileEnabled.Name = "ConferenceMessageLogFileEnabled";
+            this.ConferenceMessageLogFileEnabled.Size = new System.Drawing.Size(62, 17);
+            this.ConferenceMessageLogFileEnabled.TabIndex = 1;
+            this.ConferenceMessageLogFileEnabled.Text = "Enable";
+            this.toolTip1.SetToolTip(this.ConferenceMessageLogFileEnabled, "Whether to log instant messages.");
+            this.ConferenceMessageLogFileEnabled.UseVisualStyleBackColor = true;
+            // 
+            // ConferenceMessageLogFile
+            // 
+            this.ConferenceMessageLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ConferenceMessageLogFile.Location = new System.Drawing.Point(7, 20);
+            this.ConferenceMessageLogFile.Name = "ConferenceMessageLogFile";
+            this.ConferenceMessageLogFile.Size = new System.Drawing.Size(552, 20);
+            this.ConferenceMessageLogFile.TabIndex = 0;
+            // 
             // groupBox14
             // 
             this.groupBox14.Controls.Add(this.pictureBox16);
             this.groupBox14.Controls.Add(this.RegionLogFileEnabled);
             this.groupBox14.Controls.Add(this.RegionLogFile);
-            this.groupBox14.Location = new System.Drawing.Point(7, 252);
+            this.groupBox14.Location = new System.Drawing.Point(6, 189);
             this.groupBox14.Name = "groupBox14";
-            this.groupBox14.Size = new System.Drawing.Size(659, 76);
+            this.groupBox14.Size = new System.Drawing.Size(659, 55);
             this.groupBox14.TabIndex = 3;
             this.groupBox14.TabStop = false;
             this.groupBox14.Text = "Region Messages Directory";
@@ -1065,7 +1118,7 @@
             // 
             this.pictureBox16.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox16.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox16.Image")));
-            this.pictureBox16.Location = new System.Drawing.Point(7, 44);
+            this.pictureBox16.Location = new System.Drawing.Point(633, 21);
             this.pictureBox16.Name = "pictureBox16";
             this.pictureBox16.Size = new System.Drawing.Size(20, 20);
             this.pictureBox16.TabIndex = 3;
@@ -1078,7 +1131,7 @@
             // 
             this.RegionLogFileEnabled.AutoSize = true;
             this.RegionLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.RegionLogFileEnabled.Location = new System.Drawing.Point(554, 47);
+            this.RegionLogFileEnabled.Location = new System.Drawing.Point(566, 21);
             this.RegionLogFileEnabled.Name = "RegionLogFileEnabled";
             this.RegionLogFileEnabled.Size = new System.Drawing.Size(62, 17);
             this.RegionLogFileEnabled.TabIndex = 1;
@@ -1091,7 +1144,7 @@
             this.RegionLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.RegionLogFile.Location = new System.Drawing.Point(7, 20);
             this.RegionLogFile.Name = "RegionLogFile";
-            this.RegionLogFile.Size = new System.Drawing.Size(646, 20);
+            this.RegionLogFile.Size = new System.Drawing.Size(553, 20);
             this.RegionLogFile.TabIndex = 0;
             // 
             // groupBox13
@@ -1099,9 +1152,9 @@
             this.groupBox13.Controls.Add(this.pictureBox15);
             this.groupBox13.Controls.Add(this.LocalLogFileEnabled);
             this.groupBox13.Controls.Add(this.LocalLogFile);
-            this.groupBox13.Location = new System.Drawing.Point(7, 170);
+            this.groupBox13.Location = new System.Drawing.Point(7, 126);
             this.groupBox13.Name = "groupBox13";
-            this.groupBox13.Size = new System.Drawing.Size(659, 76);
+            this.groupBox13.Size = new System.Drawing.Size(659, 57);
             this.groupBox13.TabIndex = 2;
             this.groupBox13.TabStop = false;
             this.groupBox13.Text = "Local Messages Directory";
@@ -1110,7 +1163,7 @@
             // 
             this.pictureBox15.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox15.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox15.Image")));
-            this.pictureBox15.Location = new System.Drawing.Point(7, 46);
+            this.pictureBox15.Location = new System.Drawing.Point(633, 20);
             this.pictureBox15.Name = "pictureBox15";
             this.pictureBox15.Size = new System.Drawing.Size(20, 20);
             this.pictureBox15.TabIndex = 2;
@@ -1123,7 +1176,7 @@
             // 
             this.LocalLogFileEnabled.AutoSize = true;
             this.LocalLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LocalLogFileEnabled.Location = new System.Drawing.Point(554, 47);
+            this.LocalLogFileEnabled.Location = new System.Drawing.Point(565, 23);
             this.LocalLogFileEnabled.Name = "LocalLogFileEnabled";
             this.LocalLogFileEnabled.Size = new System.Drawing.Size(62, 17);
             this.LocalLogFileEnabled.TabIndex = 1;
@@ -1136,7 +1189,7 @@
             this.LocalLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.LocalLogFile.Location = new System.Drawing.Point(7, 20);
             this.LocalLogFile.Name = "LocalLogFile";
-            this.LocalLogFile.Size = new System.Drawing.Size(646, 20);
+            this.LocalLogFile.Size = new System.Drawing.Size(552, 20);
             this.LocalLogFile.TabIndex = 0;
             // 
             // groupBox12
@@ -1144,9 +1197,9 @@
             this.groupBox12.Controls.Add(this.pictureBox14);
             this.groupBox12.Controls.Add(this.InstantMessageLogFileEnabled);
             this.groupBox12.Controls.Add(this.InstantMessageLogFile);
-            this.groupBox12.Location = new System.Drawing.Point(7, 88);
+            this.groupBox12.Location = new System.Drawing.Point(7, 64);
             this.groupBox12.Name = "groupBox12";
-            this.groupBox12.Size = new System.Drawing.Size(659, 76);
+            this.groupBox12.Size = new System.Drawing.Size(659, 56);
             this.groupBox12.TabIndex = 1;
             this.groupBox12.TabStop = false;
             this.groupBox12.Text = "Instant Message Log Directory";
@@ -1155,7 +1208,7 @@
             // 
             this.pictureBox14.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox14.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox14.Image")));
-            this.pictureBox14.Location = new System.Drawing.Point(7, 46);
+            this.pictureBox14.Location = new System.Drawing.Point(633, 21);
             this.pictureBox14.Name = "pictureBox14";
             this.pictureBox14.Size = new System.Drawing.Size(20, 20);
             this.pictureBox14.TabIndex = 2;
@@ -1168,7 +1221,7 @@
             // 
             this.InstantMessageLogFileEnabled.AutoSize = true;
             this.InstantMessageLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.InstantMessageLogFileEnabled.Location = new System.Drawing.Point(554, 47);
+            this.InstantMessageLogFileEnabled.Location = new System.Drawing.Point(565, 23);
             this.InstantMessageLogFileEnabled.Name = "InstantMessageLogFileEnabled";
             this.InstantMessageLogFileEnabled.Size = new System.Drawing.Size(62, 17);
             this.InstantMessageLogFileEnabled.TabIndex = 1;
@@ -1181,7 +1234,7 @@
             this.InstantMessageLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.InstantMessageLogFile.Location = new System.Drawing.Point(7, 20);
             this.InstantMessageLogFile.Name = "InstantMessageLogFile";
-            this.InstantMessageLogFile.Size = new System.Drawing.Size(646, 20);
+            this.InstantMessageLogFile.Size = new System.Drawing.Size(552, 20);
             this.InstantMessageLogFile.TabIndex = 0;
             // 
             // groupBox11
@@ -1191,7 +1244,7 @@
             this.groupBox11.Controls.Add(this.ClientLogFileEnabled);
             this.groupBox11.Location = new System.Drawing.Point(7, 6);
             this.groupBox11.Name = "groupBox11";
-            this.groupBox11.Size = new System.Drawing.Size(659, 76);
+            this.groupBox11.Size = new System.Drawing.Size(659, 52);
             this.groupBox11.TabIndex = 0;
             this.groupBox11.TabStop = false;
             this.groupBox11.Text = "Client Log File";
@@ -1200,7 +1253,7 @@
             // 
             this.pictureBox13.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox13.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox13.Image")));
-            this.pictureBox13.Location = new System.Drawing.Point(7, 45);
+            this.pictureBox13.Location = new System.Drawing.Point(633, 21);
             this.pictureBox13.Name = "pictureBox13";
             this.pictureBox13.Size = new System.Drawing.Size(20, 20);
             this.pictureBox13.TabIndex = 4;
@@ -1215,14 +1268,14 @@
             this.ClientLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ClientLogFile.Location = new System.Drawing.Point(6, 19);
             this.ClientLogFile.Name = "ClientLogFile";
-            this.ClientLogFile.Size = new System.Drawing.Size(647, 20);
+            this.ClientLogFile.Size = new System.Drawing.Size(553, 20);
             this.ClientLogFile.TabIndex = 1;
             // 
             // ClientLogFileEnabled
             // 
             this.ClientLogFileEnabled.AutoSize = true;
             this.ClientLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ClientLogFileEnabled.Location = new System.Drawing.Point(554, 45);
+            this.ClientLogFileEnabled.Location = new System.Drawing.Point(565, 22);
             this.ClientLogFileEnabled.Name = "ClientLogFileEnabled";
             this.ClientLogFileEnabled.Size = new System.Drawing.Size(62, 17);
             this.ClientLogFileEnabled.TabIndex = 0;
@@ -3967,6 +4020,7 @@
             this.pictureBox92.TabIndex = 13;
             this.pictureBox92.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox92, resources.GetString("pictureBox92.ToolTip"));
+            this.pictureBox92.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // MasterPasswordOverride
             // 
@@ -4316,7 +4370,8 @@
             "animation",
             "outfit",
             "feed",
-            "sound"});
+            "sound",
+            "conference"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -4705,6 +4760,9 @@
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.LogsTabPage.ResumeLayout(false);
+            this.groupBox6.ResumeLayout(false);
+            this.groupBox6.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox94)).EndInit();
             this.groupBox14.ResumeLayout(false);
             this.groupBox14.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox16)).EndInit();
@@ -5297,6 +5355,10 @@
         private System.Windows.Forms.PictureBox pictureBox92;
         private System.Windows.Forms.TextBox MasterPasswordOverride;
         private System.Windows.Forms.CheckBox MasterPasswordOverrideEnabled;
+        private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.PictureBox pictureBox94;
+        private System.Windows.Forms.CheckBox ConferenceMessageLogFileEnabled;
+        private System.Windows.Forms.TextBox ConferenceMessageLogFile;
     }
 }
 

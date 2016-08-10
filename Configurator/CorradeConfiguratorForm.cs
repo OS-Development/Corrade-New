@@ -62,6 +62,8 @@ namespace Configurator
             mainForm.LocalLogFileEnabled.Checked = corradeConfiguration.LocalMessageLogEnabled;
             mainForm.RegionLogFile.Text = corradeConfiguration.RegionMessageLogDirectory;
             mainForm.RegionLogFileEnabled.Checked = corradeConfiguration.RegionMessageLogEnabled;
+            mainForm.ConferenceMessageLogFile.Text = corradeConfiguration.ConferenceMessageLogDirectory;
+            mainForm.ConferenceMessageLogFileEnabled.Checked = corradeConfiguration.ConferenceMessageLogEnabled;
 
             // filters
             mainForm.ActiveInputFilters.Items.Clear();
@@ -258,6 +260,8 @@ namespace Configurator
             corradeConfiguration.LocalMessageLogEnabled = mainForm.LocalLogFileEnabled.Checked;
             corradeConfiguration.RegionMessageLogDirectory = mainForm.RegionLogFile.Text;
             corradeConfiguration.RegionMessageLogEnabled = mainForm.RegionLogFileEnabled.Checked;
+            corradeConfiguration.ConferenceMessageLogDirectory = mainForm.ConferenceMessageLogFile.Text;
+            corradeConfiguration.ConferenceMessageLogEnabled = mainForm.ConferenceMessageLogFileEnabled.Checked;
 
             // filters
             corradeConfiguration.InputFilters =
@@ -2837,6 +2841,15 @@ namespace Configurator
 
         private void SaveCheck(object sender, FormClosingEventArgs e)
         {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    // Save form settings.
+                    Properties.Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
+                    Properties.Settings.Default.Save();
+                }));
+
+            // Prompt for saving Corrade configuration.
             switch (isConfigurationSaved)
             {
                 case false:
@@ -2879,7 +2892,7 @@ namespace Configurator
             {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
         }
 
-        void setTabPageVisibility(TabControl tc, TabPage tp, bool visibility)
+        static void setTabPageVisibility(TabControl tc, TabPage tp, bool visibility)
         {
             //if tp is not visible and visibility is set to true
             if ((visibility == true) && (tc.TabPages.IndexOf(tp) <= -1))
@@ -2902,110 +2915,111 @@ namespace Configurator
             //else do nothing
         }
 
-        void setGroupBoxVisibility(GroupBox bx, bool visibility)
+        static void setGroupBoxVisibility(GroupBox bx, bool visibility)
         {
             bx.Visible = visibility;
         }
 
-        private void ConfiguratorLoaded(object sender, EventArgs e)
-        {
-            /* Set basic experience level. */
-            mainForm.ExperienceLevel.SelectedIndex = 0;
-            /* Hide non-basic experience tabs. */
-            setTabPageVisibility(Tabs, LogsTabPage, false);
-            setTabPageVisibility(Tabs, FiltersTabPage, false);
-            setTabPageVisibility(Tabs, CryptographyTabPage, false);
-            setTabPageVisibility(Tabs, SIMLTabPage, false);
-            setTabPageVisibility(Tabs, RLVTabPage, false);
-            setTabPageVisibility(Tabs, HTTPTabPage, false);
-            setTabPageVisibility(Tabs, TCPTabPage, false);
-            setTabPageVisibility(Tabs, NetworkTabPage, false);
-            setTabPageVisibility(Tabs, ThrottlesTabPage, false);
-            setTabPageVisibility(Tabs, LimitsTabPage, false);
-            /* Hide non-basic experience group boxes. */
-            setGroupBoxVisibility(AutoActivateGroupBox, false);
-            setGroupBoxVisibility(GroupCreateFeeBox, false);
-            setGroupBoxVisibility(ClientIdentificationTagBox, false);
-            setGroupBoxVisibility(ExpectedExitCodeBox, false);
-            setGroupBoxVisibility(AbnormalExitCodeBox, false);
-        }
-
-        private void ExperienceLevelChanged(object sender, EventArgs e)
+        private readonly Action SetExperienceLevel = () =>
         {
             mainForm.BeginInvoke(
                 (Action) (() =>
                 {
-                    ComboBox experienceComboBox = sender as ComboBox;
+                    ComboBox experienceComboBox = mainForm.ExperienceLevel;
                     if (experienceComboBox == null) return;
-                    Tabs.Enabled = false;
+                    mainForm.Tabs.Enabled = false;
                     switch ((string) experienceComboBox.SelectedItem)
                     {
                         case "Basic":
                             /* Hide non-basic experience tabs. */
-                            setTabPageVisibility(Tabs, LogsTabPage, false);
-                            setTabPageVisibility(Tabs, FiltersTabPage, false);
-                            setTabPageVisibility(Tabs, CryptographyTabPage, false);
-                            setTabPageVisibility(Tabs, SIMLTabPage, false);
-                            setTabPageVisibility(Tabs, RLVTabPage, false);
-                            setTabPageVisibility(Tabs, HTTPTabPage, false);
-                            setTabPageVisibility(Tabs, TCPTabPage, false);
-                            setTabPageVisibility(Tabs, NetworkTabPage, false);
-                            setTabPageVisibility(Tabs, ThrottlesTabPage, false);
-                            setTabPageVisibility(Tabs, LimitsTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
                             /* Hide non-basic experience group boxes. */
-                            setGroupBoxVisibility(AutoActivateGroupBox, false);
-                            setGroupBoxVisibility(GroupCreateFeeBox, false);
-                            setGroupBoxVisibility(ClientIdentificationTagBox, false);
-                            setGroupBoxVisibility(ExpectedExitCodeBox, false);
-                            setGroupBoxVisibility(AbnormalExitCodeBox, false);
-                            setGroupBoxVisibility(HTTPServerLimitsBox, false);
-                            setGroupBoxVisibility(CompressionBox, false);
+                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, false);
+                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
+                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
+                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
+                            setGroupBoxVisibility(mainForm.CompressionBox, false);
                             break;
                         case "Intermediary":
                             /* Hide non-advanced experience tabs. */
-                            setTabPageVisibility(Tabs, LogsTabPage, false);
-                            setTabPageVisibility(Tabs, FiltersTabPage, false);
-                            setTabPageVisibility(Tabs, CryptographyTabPage, false);
-                            setTabPageVisibility(Tabs, SIMLTabPage, true);
-                            setTabPageVisibility(Tabs, RLVTabPage, true);
-                            setTabPageVisibility(Tabs, HTTPTabPage, true);
-                            setTabPageVisibility(Tabs, TCPTabPage, false);
-                            setTabPageVisibility(Tabs, NetworkTabPage, false);
-                            setTabPageVisibility(Tabs, ThrottlesTabPage, false);
-                            setTabPageVisibility(Tabs, LimitsTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
                             /* Hide non-advanced experience group boxes. */
-                            setGroupBoxVisibility(AutoActivateGroupBox, true);
-                            setGroupBoxVisibility(GroupCreateFeeBox, false);
-                            setGroupBoxVisibility(ClientIdentificationTagBox, false);
-                            setGroupBoxVisibility(ExpectedExitCodeBox, false);
-                            setGroupBoxVisibility(AbnormalExitCodeBox, false);
-                            setGroupBoxVisibility(HTTPServerLimitsBox, false);
-                            setGroupBoxVisibility(CompressionBox, false);
+                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
+                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
+                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
+                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
+                            setGroupBoxVisibility(mainForm.CompressionBox, false);
                             break;
                         case "Advanced":
                             /* Show everything. */
-                            setTabPageVisibility(Tabs, LogsTabPage, true);
-                            setTabPageVisibility(Tabs, FiltersTabPage, true);
-                            setTabPageVisibility(Tabs, CryptographyTabPage, true);
-                            setTabPageVisibility(Tabs, SIMLTabPage, true);
-                            setTabPageVisibility(Tabs, RLVTabPage, true);
-                            setTabPageVisibility(Tabs, HTTPTabPage, true);
-                            setTabPageVisibility(Tabs, TCPTabPage, true);
-                            setTabPageVisibility(Tabs, NetworkTabPage, true);
-                            setTabPageVisibility(Tabs, ThrottlesTabPage, true);
-                            setTabPageVisibility(Tabs, LimitsTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, true);
                             /* Show everything. */
-                            setGroupBoxVisibility(AutoActivateGroupBox, true);
-                            setGroupBoxVisibility(GroupCreateFeeBox, true);
-                            setGroupBoxVisibility(ClientIdentificationTagBox, true);
-                            setGroupBoxVisibility(ExpectedExitCodeBox, true);
-                            setGroupBoxVisibility(AbnormalExitCodeBox, true);
-                            setGroupBoxVisibility(HTTPServerLimitsBox, true);
-                            setGroupBoxVisibility(CompressionBox, true);
+                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
+                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, true);
+                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, true);
+                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, true);
+                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, true);
+                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, true);
+                            setGroupBoxVisibility(mainForm.CompressionBox, true);
                             break;
                     }
-                    Tabs.Enabled = true;
+                    mainForm.Tabs.Enabled = true;
+
+                    // Save form settings.
+                    Properties.Settings.Default["ExperienceLevel"] = (string) experienceComboBox.SelectedItem;
+                    Properties.Settings.Default.Save();
                 }));
+        };
+
+        private void ConfiguratorLoaded(object sender, EventArgs e)
+        {
+            // Load form settings.
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    //Properties.Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
+                    //Properties.Settings.Default.Save();
+                    var experienceLevel = Properties.Settings.Default["ExperienceLevel"];
+                    mainForm.ExperienceLevel.SelectedIndex = mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                    mainForm.ExperienceLevel.SelectedItem = experienceLevel;
+                }));
+            SetExperienceLevel.Invoke();
+        }
+
+        private void ExperienceLevelChanged(object sender, EventArgs e)
+        {
+            SetExperienceLevel.Invoke();
         }
 
         private void MasterPasswordOverrideChanged(object sender, EventArgs e)

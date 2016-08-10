@@ -395,7 +395,13 @@ namespace Corrade
             [Status(33047)] [Reflection.DescriptionAttribute("failed rezzing root primitive")] FAILED_REZZING_ROOT_PRIMITIVE,
             [Status(25329)] [Reflection.DescriptionAttribute("failed rezzing child primitive")] FAILED_REZZING_CHILD_PRIMITIVE,
             [Status(29530)] [Reflection.DescriptionAttribute("could not read XML file")] COULD_NOT_READ_XML_FILE,
-            [Status(40901)] [Reflection.DescriptionAttribute("SIML not enabled")] SIML_NOT_ENABLED
+            [Status(40901)] [Reflection.DescriptionAttribute("SIML not enabled")] SIML_NOT_ENABLED,
+            [Status(14989)] [Reflection.DescriptionAttribute("no avatars found")] NO_AVATARS_FOUND,
+            [Status(42351)] [Reflection.DescriptionAttribute("timeout starting conference")] TIMEOUT_STARTING_CONFERENCE,
+            [Status(41969)] [Reflection.DescriptionAttribute("unable to start conference")] UNABLE_TO_START_CONFERENCE,
+            [Status(43898)] [Reflection.DescriptionAttribute("session not found")] SESSION_NOT_FOUND,
+            [Status(22786)] [Reflection.DescriptionAttribute("conference member not found")] CONFERENCE_MEMBER_NOT_FOUND,
+            [Status(46804)] [Reflection.DescriptionAttribute("could not send message")] COULD_NOT_SEND_MESSAGE
         }
 
         /// <summary>
@@ -437,6 +443,7 @@ namespace Corrade
         private static readonly object LocalLogFileLock = new object();
         private static readonly object RegionLogFileLock = new object();
         private static readonly object InstantMessageLogFileLock = new object();
+        private static readonly object ConferenceMessageLogFileLock = new object();
 
         private static readonly Time.TimedThrottle TimedTeleportThrottle =
             new Time.TimedThrottle(Constants.TELEPORTS.THROTTLE.MAX_TELEPORTS,
@@ -511,6 +518,8 @@ namespace Corrade
         private static readonly object OutputFiltersLock = new object();
         private static readonly HashSet<GroupSchedule> GroupSchedules = new HashSet<GroupSchedule>();
         private static readonly object GroupSchedulesLock = new object();
+        private static readonly HashSet<Conference> Conferences = new HashSet<Conference>();
+        private static readonly object ConferencesLock = new object();
 
         private static readonly Dictionary<UUID, CookieContainer> GroupCookieContainers =
             new Dictionary<UUID, CookieContainer>();
@@ -1336,6 +1345,102 @@ namespace Corrade
                 {
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade movement state.
+        /// </summary>
+        private static readonly System.Action SaveConferenceState = () =>
+        {
+            try
+            {
+                using (
+                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.CONFERENCE_STATE_FILE), FileMode.Create,
+                        FileAccess.Write, FileShare.None))
+                {
+                    using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                    {
+                        var serializer = new XmlSerializer(typeof (HashSet<Conference>));
+                        lock (ConferencesLock)
+                        {
+                            serializer.Serialize(writer, Conferences);
+                        }
+                        writer.Flush();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CONFERENCE_STATE),
+                    e.Message);
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade movement state.
+        /// </summary>
+        private static readonly System.Action LoadConferenceState = () =>
+        {
+            var conferenceStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
+            if (File.Exists(conferenceStateFile))
+            {
+                try
+                {
+                    using (
+                        var fileStream = File.Open(conferenceStateFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read))
+                    {
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            var serializer = new XmlSerializer(typeof (HashSet<Conference>));
+                            ((HashSet<Conference>) serializer.Deserialize(streamReader)).AsParallel().ForAll(o =>
+                            {
+                                try
+                                {
+                                    // Attempt to rejoin the conference.
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        if (!Client.Self.GroupChatSessions.ContainsKey(o.Session))
+                                            Client.Self.ChatterBoxAcceptInvite(o.Session);
+                                    }
+                                    // Add the conference to the list of conferences.
+                                    lock (ConferencesLock)
+                                    {
+                                        if (!Conferences.AsParallel()
+                                            .Any(
+                                                p =>
+                                                    p.Name.Equals(o.Name, StringComparison.Ordinal) &&
+                                                    p.Session.Equals(o.Session)))
+                                        {
+                                            Conferences.Add(new Conference
+                                            {
+                                                Name = o.Name,
+                                                Session = o.Session,
+                                                Restored = true
+                                            });
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ConsoleError.UNABLE_TO_RESTORE_CONFERENCE), o.Name,
+                                        ex.Message);
+                                }
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CONFERENCE_STATE),
                         ex.Message);
                 }
             }
@@ -3259,8 +3364,6 @@ namespace Corrade
             LoadNotificationState.Invoke();
             // Load group scheduls state.
             LoadGroupSchedulesState.Invoke();
-            // Load movement state.
-            LoadMovementState.Invoke();
             // Load feeds state.
             LoadGroupFeedState.Invoke();
             // Start the callback thread to send callbacks.
@@ -3450,6 +3553,8 @@ namespace Corrade
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+            // Save conferences state.
+            SaveConferenceState.Invoke();
             // Save feeds state.
             SaveGroupFeedState.Invoke();
             // Save notification states.
@@ -4436,7 +4541,23 @@ namespace Corrade
                 case LoginStatus.Success:
                     // Login succeeded so start all the updates.
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
-
+                    // Load movement state.
+                    LoadMovementState.Invoke();
+                    // Start thread and wait on caps to restore conferences.
+                    new Thread(() =>
+                    {
+                        var EventQueueRunningEvent = new ManualResetEvent(false);
+                        EventHandler<EventQueueRunningEventArgs> EventQueueRunningHandler =
+                            (o, p) => { EventQueueRunningEvent.Set(); };
+                        Client.Network.EventQueueRunning += EventQueueRunningHandler;
+                        if (EventQueueRunningEvent.WaitOne(Timeout.Infinite, false))
+                        {
+                            // Load conference state.
+                            LoadConferenceState.Invoke();
+                        }
+                        Client.Network.EventQueueRunning -= EventQueueRunningHandler;
+                    })
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Start inventory update thread.
                     new Thread(() =>
                     {
@@ -4825,75 +4946,164 @@ namespace Corrade
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                         return;
+                    var messageGroups = new HashSet<UUID>(currentGroups);
 
-                    if (new HashSet<UUID>(currentGroups).Contains(args.IM.IMSessionID))
+                    // Check if this is a group message.
+                    switch (messageGroups.Contains(args.IM.IMSessionID))
                     {
-                        var messageGroup =
-                            corradeConfiguration.Groups.AsParallel()
-                                .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
-                        if (!messageGroup.Equals(default(Configuration.Group)))
-                        {
-                            // Add the group to the cache.
-                            Cache.AddGroup(messageGroup.Name, messageGroup.UUID);
-                            // Add the agent to the cache.
-                            Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
-                            // Send group notice notifications.
-                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () =>
-                                    SendNotification(Configuration.Notifications.GroupMessage, new GroupMessageEventArgs
-                                    {
-                                        AgentUUID = args.IM.FromAgentID,
-                                        FirstName = fullName.First(),
-                                        LastName = fullName.Last(),
-                                        GroupName = messageGroup.Name,
-                                        GroupUUID = messageGroup.UUID,
-                                        Message = args.IM.Message
-                                    }),
-                                corradeConfiguration.MaximumNotificationThreads);
-                            // Log group messages
-                            corradeConfiguration.Groups.AsParallel().Where(
-                                o =>
-                                    messageGroup.UUID.Equals(o.UUID) &&
-                                    o.ChatLogEnabled).ForAll(o =>
-                                    {
-                                        // Attempt to write to log file,
-                                        CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
-                                        {
-                                            try
+                        case true:
+                            var messageGroup =
+                                corradeConfiguration.Groups.AsParallel()
+                                    .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
+                            if (!messageGroup.Equals(default(Configuration.Group)))
+                            {
+                                // Add the group to the cache.
+                                Cache.AddGroup(messageGroup.Name, messageGroup.UUID);
+                                // Add the agent to the cache.
+                                Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
+                                // Send group notice notifications.
+                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                    () =>
+                                        SendNotification(Configuration.Notifications.GroupMessage,
+                                            new GroupMessageEventArgs
                                             {
-                                                lock (GroupLogFileLock)
+                                                AgentUUID = args.IM.FromAgentID,
+                                                FirstName = fullName.First(),
+                                                LastName = fullName.Last(),
+                                                GroupName = messageGroup.Name,
+                                                GroupUUID = messageGroup.UUID,
+                                                Message = args.IM.Message
+                                            }),
+                                    corradeConfiguration.MaximumNotificationThreads);
+                                // Log group messages
+                                corradeConfiguration.Groups.AsParallel().Where(
+                                    o =>
+                                        messageGroup.UUID.Equals(o.UUID) &&
+                                        o.ChatLogEnabled).ForAll(o =>
+                                        {
+                                            // Attempt to write to log file,
+                                            CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
+                                            {
+                                                try
                                                 {
-                                                    using (
-                                                        var fileStream = File.Open(o.ChatLog, FileMode.Append,
-                                                            FileAccess.Write, FileShare.None))
+                                                    lock (GroupLogFileLock)
                                                     {
                                                         using (
-                                                            var logWriter = new StreamWriter(fileStream,
-                                                                Encoding.UTF8))
+                                                            var fileStream = File.Open(o.ChatLog, FileMode.Append,
+                                                                FileAccess.Write, FileShare.None))
                                                         {
-                                                            logWriter.WriteLine(
-                                                                CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                    Utils.EnUsCulture.DateTimeFormat),
-                                                                fullName.First(),
-                                                                fullName.Last(),
-                                                                args.IM.Message);
+                                                            using (
+                                                                var logWriter = new StreamWriter(fileStream,
+                                                                    Encoding.UTF8))
+                                                            {
+                                                                logWriter.WriteLine(
+                                                                    CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                                    DateTime.Now.ToString(
+                                                                        CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                        Utils.EnUsCulture.DateTimeFormat),
+                                                                    fullName.First(),
+                                                                    fullName.Last(),
+                                                                    args.IM.Message);
+                                                            }
                                                         }
                                                     }
                                                 }
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                // or fail and append the fail message.
-                                                Feedback(
-                                                    Reflection.GetDescriptionFromEnumValue(
-                                                        ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                    ex.Message);
-                                            }
-                                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                                                catch (Exception ex)
+                                                {
+                                                    // or fail and append the fail message.
+                                                    Feedback(
+                                                        Reflection.GetDescriptionFromEnumValue(
+                                                            ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                        ex.Message);
+                                                }
+                                            }, corradeConfiguration.MaximumLogThreads,
+                                                corradeConfiguration.ServicesTimeout);
+                                        });
+                            }
+                            return;
+                    }
+                    // Check if this is a conference message.
+                    switch (
+                        (args.IM.Dialog == InstantMessageDialog.SessionSend &&
+                         !messageGroups.Contains(args.IM.IMSessionID)) ||
+                        (args.IM.Dialog == InstantMessageDialog.MessageFromAgent && args.IM.BinaryBucket.Length > 1))
+                    {
+                        case true:
+                            // Join the chat if not yet joined
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                if (!Client.Self.GroupChatSessions.ContainsKey(args.IM.IMSessionID))
+                                    Client.Self.ChatterBoxAcceptInvite(args.IM.IMSessionID);
+                            }
+                            var conferenceName = Utils.BytesToString(args.IM.BinaryBucket);
+                            // Add the conference to the list of conferences.
+                            lock (ConferencesLock)
+                            {
+                                if (!Conferences.AsParallel()
+                                    .Any(
+                                        o =>
+                                            o.Name.Equals(conferenceName, StringComparison.Ordinal) &&
+                                            o.Session.Equals(args.IM.IMSessionID)))
+                                {
+                                    Conferences.Add(new Conference
+                                    {
+                                        Name = conferenceName,
+                                        Session = args.IM.IMSessionID,
+                                        Restored = false
                                     });
-                        }
-                        return;
+                                }
+                            }
+                            // Save the conference state.
+                            SaveConferenceState.Invoke();
+                            // Add the agent to the cache.
+                            Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
+                            // Send conference message notification.
+                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                () => SendNotification(Configuration.Notifications.Conference, args),
+                                corradeConfiguration.MaximumNotificationThreads);
+                            // Log conference messages,
+                            if (corradeConfiguration.ConferenceMessageLogEnabled)
+                            {
+                                CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
+                                {
+                                    try
+                                    {
+                                        lock (ConferenceMessageLogFileLock)
+                                        {
+                                            using (
+                                                var fileStream =
+                                                    File.Open(
+                                                        Path.Combine(corradeConfiguration.ConferenceMessageLogDirectory,
+                                                            conferenceName) +
+                                                        "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
+                                                        FileAccess.Write, FileShare.None))
+                                            {
+                                                using (
+                                                    var logWriter = new StreamWriter(fileStream,
+                                                        Encoding.UTF8))
+                                                {
+                                                    logWriter.WriteLine(
+                                                        CORRADE_CONSTANTS.CONFERENCE_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            Utils.EnUsCulture.DateTimeFormat),
+                                                        fullName.First(),
+                                                        fullName.Last(),
+                                                        args.IM.Message);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            Reflection.GetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_CONFERENCE_MESSAGE_LOG_FILE),
+                                            ex.Message);
+                                    }
+                                }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                            }
+                            return;
                     }
                     // Check if this is an instant message.
                     switch (!args.IM.ToAgentID.Equals(Client.Self.AgentID))
@@ -6584,7 +6794,8 @@ namespace Corrade
             [Reflection.NameAttribute("reject")] REJECT,
             [Reflection.NameAttribute("propose")] PROPOSE,
             [Reflection.NameAttribute("append")] APPEND,
-            [Reflection.NameAttribute("create")] CREATE
+            [Reflection.NameAttribute("create")] CREATE,
+            [Reflection.NameAttribute("detail")] DETAIL
         }
 
         /// <summary>
@@ -6670,6 +6881,7 @@ namespace Corrade
             public const string GROUP_COOKIES_STATE_FILE = @"GroupCookies.state";
             public const string MOVEMENT_STATE_FILE = @"Movement.state";
             public const string FEEDS_STATE_FILE = @"Feeds.state";
+            public const string CONFERENCE_STATE_FILE = @"Conferences.state";
             public const string LIBS_DIRECTORY = @"libs";
             public const string LANGUAGE_PROFILE_FILE = @"Core14.profile.xml";
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
@@ -6693,6 +6905,11 @@ namespace Corrade
             public static readonly string INSTANT_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} : {3}";
 
             public static readonly Regex InstantMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) : (.+?)$",
+                RegexOptions.Compiled);
+
+            public static readonly string CONFERENCE_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} : {3}";
+
+            public static readonly Regex ConferenceMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) : (.+?)$",
                 RegexOptions.Compiled);
 
             public static readonly string LOCAL_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} ({3}) : {4}";
@@ -7190,7 +7407,11 @@ namespace Corrade
             [Reflection.DescriptionAttribute("Connecting to simulator")] CONNECTING_TO_SIMULATOR,
             [Reflection.DescriptionAttribute("Reading response")] READING_RESPONSE,
             [Reflection.DescriptionAttribute("unable to load group cookies state")] UNABLE_TO_LOAD_GROUP_COOKIES_STATE,
-            [Reflection.DescriptionAttribute("unable to save group cookies state")] UNABLE_TO_SAVE_GROUP_COOKIES_STATE
+            [Reflection.DescriptionAttribute("unable to save group cookies state")] UNABLE_TO_SAVE_GROUP_COOKIES_STATE,
+            [Reflection.DescriptionAttribute("could not write to conference message log file")] COULD_NOT_WRITE_TO_CONFERENCE_MESSAGE_LOG_FILE,
+            [Reflection.DescriptionAttribute("unable to load conference state")] UNABLE_TO_LOAD_CONFERENCE_STATE,
+            [Reflection.DescriptionAttribute("unable to save conference state")] UNABLE_TO_SAVE_CONFERENCE_STATE,
+            [Reflection.DescriptionAttribute("unable to restore conference")] UNABLE_TO_RESTORE_CONFERENCE
         }
 
         /// <summary>
@@ -7633,7 +7854,8 @@ namespace Corrade
             [Reflection.NameAttribute("message")] MESSAGE,
             [Reflection.NameAttribute("world")] WORLD,
             [Reflection.NameAttribute("statistics")] STATISTICS,
-            [Reflection.NameAttribute("lindex")] LINDEX
+            [Reflection.NameAttribute("lindex")] LINDEX,
+            [Reflection.NameAttribute("conference")] CONFERENCE
         }
 
         /// <summary>
@@ -7690,6 +7912,16 @@ namespace Corrade
             [Reflection.NameAttribute("identifier")] public string Identifier;
             [Reflection.NameAttribute("message")] public string Message;
             [Reflection.NameAttribute("sender")] public string Sender;
+        }
+
+        /// <summary>
+        ///     A structure for conferences.
+        /// </summary>
+        public struct Conference
+        {
+            [Reflection.NameAttribute("name")] public string Name;
+            [Reflection.NameAttribute("session")] public UUID Session;
+            [Reflection.NameAttribute("restored")] public bool Restored;
         }
 
         /// <summary>
@@ -8053,6 +8285,21 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [Reflection.NameAttribute("restored")]
+            RESTORED,
+
+            [CommandInputSyntax(
+                "<command=getconferencemembersdata>&<group=<UUID|STRING>>&<password=<STRING>>&<session=<UUID>>&<data=<ChatSessionMember[,ChatSessionMember...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("getconferencemembersdata")] [Reflection.NameAttribute("getconferencemembersdata")] GETCONFERENCEMEMBERSDATA,
+
+            [CommandInputSyntax(
+                "<command=getconferencememberdata>&<group=<UUID|STRING>>&<password=<STRING>>&<session=<UUID>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<ChatSessionMember[,ChatSessionMember...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("getconferencememberdata")] [Reflection.NameAttribute("getconferencememberdata")] GETCONFERENCEMEMBERDATA,
+
+            [CommandInputSyntax(
+                "<command=conference>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<start|detail|list>>&action=start:<avatars=<UUID|STRING[,UUID|STRING...]>>&action=detail:<session=<UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Talk)] [CorradeCommand("conference")] [Reflection.NameAttribute("conference")] CONFERENCE,
 
             [Reflection.NameAttribute("parent")] PARENT,
 
@@ -9263,6 +9510,10 @@ namespace Corrade
             [Reflection.NameAttribute("sphere")] SPHERE,
             [Reflection.NameAttribute("beam")] BEAM
         }
+
+        #region Conference State
+
+        #endregion
 
         #region NON PORTABLE HELPERS
 

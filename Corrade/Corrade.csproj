@@ -176,10 +176,19 @@
     <Compile Include="commands\Corrade\AddEvent.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Conference.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\DeleteEvent.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetAvatarGroupsData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetConferenceMemberData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetConferenceMembersData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetGridLiveDataFeedData.cs">
@@ -995,6 +1004,9 @@
     <Compile Include="notifications\Collision.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Conference.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Control.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -1791,6 +1803,7 @@
     <Folder Include="cache\assets\" />
     <Folder Include="databases\" />
     <Folder Include="libs\" />
+    <Folder Include="logs\conference\" />
     <Folder Include="logs\groupchat\" />
     <Folder Include="logs\im\" />
     <Folder Include="logs\local\" />

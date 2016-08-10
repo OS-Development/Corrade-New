@@ -22,5 +22,17 @@ namespace Configurator.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Basic")]
+        public string ExperienceLevel {
+            get {
+                return ((string)(this["ExperienceLevel"]));
+            }
+            set {
+                this["ExperienceLevel"] = value;
+            }
+        }
     }
 }

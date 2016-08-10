@@ -85,7 +85,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "animation")] [Reflection.NameAttribute("animation")] AnimationsChanged = 1073741824uL,
             [XmlEnum(Name = "outfit")] [Reflection.NameAttribute("outfit")] OutfitChanged = 2147483648uL,
             [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 4294967296uL,
-            [XmlEnum(Name = "sound")] [Reflection.NameAttribute("sound")] Sound = 8589934592uL
+            [XmlEnum(Name = "sound")] [Reflection.NameAttribute("sound")] Sound = 8589934592uL,
+            [XmlEnum(Name = "conference")] [Reflection.NameAttribute("conference")] Conference = 17179869184ul
         }
 
         /// <summary>
@@ -164,6 +165,8 @@ namespace CorradeConfiguration
         private string _lastName = string.Empty;
         private string _localMessageLogDirectory = @"logs/local";
         private bool _localMessageLogEnabled;
+        private string _conferenceMessageLogDirectory = @"logs/conference";
+        private bool _conferenceMessageLogEnabled;
         private string _loginURL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
         private uint _logoutGrace = 2500;
         private HashSet<Master> _masters = new HashSet<Master>();
@@ -384,6 +387,42 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _localMessageLogEnabled = value;
+                }
+            }
+        }
+        
+        public string ConferenceMessageLogDirectory
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _conferenceMessageLogDirectory;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _conferenceMessageLogDirectory = value;
+                }
+            }
+        }
+
+        public bool ConferenceMessageLogEnabled
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _conferenceMessageLogEnabled;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _conferenceMessageLogEnabled = value;
                 }
             }
         }

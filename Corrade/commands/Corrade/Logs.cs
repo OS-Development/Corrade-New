@@ -428,6 +428,209 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                             }
                             break;
+                        case Entity.CONFERENCE:
+                            var conferenceMessages = new HashSet<InstantMessage>();
+                            Directory.GetFiles(corradeConfiguration.ConferenceMessageLogDirectory)
+                                .AsParallel()
+                                .ForAll(o =>
+                                {
+                                    string messageLine;
+                                    lock (ConferenceMessageLogFileLock)
+                                    {
+                                        using (
+                                            var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
+                                                FileShare.Read))
+                                        {
+                                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                            {
+                                                messageLine = streamReader.ReadToEnd();
+                                            }
+                                        }
+                                    }
+                                    if (string.IsNullOrEmpty(messageLine)) return;
+                                    messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                        .AsParallel()
+                                        .ForAll(
+                                            p =>
+                                            {
+                                                var match = CORRADE_CONSTANTS.ConferenceMessageLogRegex.Match(p);
+                                                if (!match.Success) return;
+                                                DateTime messageDateTime;
+                                                if (!DateTime.TryParse(match.Groups[1].Value, out messageDateTime))
+                                                    return;
+                                                var messageFirstName = match.Groups[2].Value;
+                                                if (string.IsNullOrEmpty(messageFirstName)) return;
+                                                var messageLastName = match.Groups[3].Value;
+                                                if (string.IsNullOrEmpty(messageLastName)) return;
+                                                var message = match.Groups[4].Value;
+                                                lock (LockObject)
+                                                {
+                                                    conferenceMessages.Add(new InstantMessage
+                                                    {
+                                                        DateTime = messageDateTime,
+                                                        FirstName = messageFirstName,
+                                                        LastName = messageLastName,
+                                                        Message = message
+                                                    });
+                                                }
+                                            });
+                                });
+                            switch (Reflection.GetEnumValueFromName<Action>(
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        corradeCommandParameters.Message))
+                                    .ToLowerInvariant()))
+                            {
+                                case Action.GET:
+                                    // search by date
+                                    DateTime getConferenceMessageFromDate;
+                                    if (!DateTime.TryParse(KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
+                                        corradeCommandParameters.Message), out getConferenceMessageFromDate))
+                                    {
+                                        getConferenceMessageFromDate = DateTime.MinValue;
+                                    }
+                                    DateTime getConferenceMessageToDate;
+                                    if (!DateTime.TryParse(KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
+                                        corradeCommandParameters.Message), out getConferenceMessageToDate))
+                                    {
+                                        getConferenceMessageToDate = DateTime.MaxValue;
+                                    }
+                                    // build regular expressions based on fed data
+                                    Regex getConferenceMessageFirstNameRegex;
+                                    try
+                                    {
+                                        getConferenceMessageFirstNameRegex = new Regex(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message),
+                                            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        getConferenceMessageFirstNameRegex = CORRADE_CONSTANTS.OneOrMoRegex;
+                                    }
+                                    Regex getConferenceMessageLastNameRegex;
+                                    try
+                                    {
+                                        getConferenceMessageLastNameRegex = new Regex(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message),
+                                            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        getConferenceMessageLastNameRegex = CORRADE_CONSTANTS.OneOrMoRegex;
+                                    }
+                                    Regex getConferenceMessageMessageRegex;
+                                    try
+                                    {
+                                        getConferenceMessageMessageRegex = new Regex(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                            corradeCommandParameters.Message),
+                                            RegexOptions.Compiled);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        getConferenceMessageMessageRegex = CORRADE_CONSTANTS.OneOrMoRegex;
+                                    }
+                                    // cull the message list depending on what parameters have been specified
+                                    conferenceMessages.AsParallel()
+                                        .Where(o => (getConferenceMessageToDate >= o.DateTime ||
+                                                     getConferenceMessageFromDate <= o.DateTime) &&
+                                                    getConferenceMessageFirstNameRegex.IsMatch(
+                                                        o.FirstName) &&
+                                                    getConferenceMessageLastNameRegex.IsMatch(
+                                                        o.LastName) &&
+                                                    getConferenceMessageMessageRegex.IsMatch(
+                                                        o.Message)).ForAll(o =>
+                                                        {
+                                                            lock (LockObject)
+                                                            {
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection
+                                                                        .GetNameFromEnumValue(
+                                                                            ScriptKeys.TIME),
+                                                                    o.DateTime.ToUniversalTime()
+                                                                        .ToString(
+                                                                            Constants.LSL
+                                                                                .DATE_TIME_STAMP)
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection
+                                                                        .GetNameFromEnumValue(
+                                                                            ScriptKeys.FIRSTNAME),
+                                                                    o.FirstName
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection
+                                                                        .GetNameFromEnumValue(
+                                                                            ScriptKeys.LASTNAME),
+                                                                    o.LastName
+                                                                });
+                                                                csv.AddRange(new[]
+                                                                {
+                                                                    Reflection
+                                                                        .GetNameFromEnumValue(
+                                                                            ScriptKeys.MESSAGE),
+                                                                    o.Message
+                                                                });
+                                                            }
+                                                        });
+                                    break;
+                                case Action.SEARCH:
+                                    // build regular expressions based on fed data
+                                    Regex searchConferenceMessagesRegex;
+                                    try
+                                    {
+                                        searchConferenceMessagesRegex = new Regex(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            corradeCommandParameters.Message),
+                                            RegexOptions.Compiled);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                                    }
+                                    conferenceMessages.AsParallel()
+                                        .Where(o => searchConferenceMessagesRegex.IsMatch(o.FirstName) ||
+                                                    searchConferenceMessagesRegex.IsMatch(o.LastName) ||
+                                                    searchConferenceMessagesRegex.IsMatch(o.Message)).ForAll(o =>
+                                                    {
+                                                        lock (LockObject)
+                                                        {
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                o.DateTime.ToUniversalTime()
+                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                o.FirstName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                o.LastName
+                                                            });
+                                                            csv.AddRange(new[]
+                                                            {
+                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                o.Message
+                                                            });
+                                                        }
+                                                    });
+                                    break;
+                                default:
+                                    throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            }
+                            break;
                         case Entity.LOCAL:
                             var localMessages = new HashSet<LocalMessage>();
                             Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory).AsParallel().ForAll(o =>

@@ -35,6 +35,9 @@ namespace Corrade
                     var myName =
                         new List<string>(
                             Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
+                    UUID sessionUUID;
+                    var currentGroups = Enumerable.Empty<UUID>();
+                    bool gotChatSession;
                     switch (
                         Reflection.GetEnumValueFromName<Entity>(
                             wasInput(
@@ -42,6 +45,36 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
+                        case Entity.CONFERENCE:
+                            // check message length for SecondLife grids
+                            if (string.IsNullOrEmpty(data) || (Helpers.IsSecondLife(Client) &&
+                                                               Encoding.UTF8.GetByteCount(data) >
+                                                               Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
+                            {
+                                throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                            }
+                            // Get the session UUID
+                            if (!UUID.TryParse(wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
+                                    corradeCommandParameters.Message)), out sessionUUID))
+                            {
+                                throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
+                            }
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                try
+                                {
+                                    if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
+                                        Client.Self.ChatterBoxAcceptInvite(sessionUUID);
+                                    Client.Self.InstantMessageGroup(sessionUUID, data);
+                                }
+                                catch (Exception ex)
+                                {
+                                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), ex.Message);
+                                    throw new ScriptException(ScriptError.COULD_NOT_SEND_MESSAGE);
+                                }
+                            }
+                            break;
                         case Entity.AVATAR:
                             UUID agentUUID;
                             if (
@@ -118,7 +151,6 @@ namespace Corrade
                                         .GetValue(null)
                                 : InstantMessageOnline.Offline;
                             // get the session UUID (defaults to UUID.Zero)
-                            UUID sessionUUID;
                             if (!UUID.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)), out sessionUUID))
@@ -208,7 +240,6 @@ namespace Corrade
                                     groupUUID = corradeCommandParameters.Group.UUID;
                                     break;
                             }
-                            var currentGroups = Enumerable.Empty<UUID>();
                             if (
                                 !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                                     ref currentGroups))
@@ -225,7 +256,6 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
-                            bool gotChatSession;
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 gotChatSession =
@@ -345,10 +375,7 @@ namespace Corrade
                             // send the message
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.Chat(
-                                    data,
-                                    chatChannel,
-                                    chatType);
+                                Client.Self.Chat(data, chatChannel, chatType);
                             }
                             // do not log empty messages
                             if (string.IsNullOrEmpty(data))
