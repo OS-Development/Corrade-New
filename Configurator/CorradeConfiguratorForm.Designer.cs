@@ -149,6 +149,15 @@
             this.pictureBox22 = new System.Windows.Forms.PictureBox();
             this.RLVEnabled = new System.Windows.Forms.CheckBox();
             this.HTTPTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox25 = new System.Windows.Forms.GroupBox();
+            this.pictureBox101 = new System.Windows.Forms.PictureBox();
+            this.HTTPServerAuthenticationEnabled = new System.Windows.Forms.CheckBox();
+            this.groupBox28 = new System.Windows.Forms.GroupBox();
+            this.pictureBox99 = new System.Windows.Forms.PictureBox();
+            this.HTTPServerPassword = new System.Windows.Forms.TextBox();
+            this.groupBox42 = new System.Windows.Forms.GroupBox();
+            this.pictureBox100 = new System.Windows.Forms.PictureBox();
+            this.HTTPServerUsername = new System.Windows.Forms.TextBox();
             this.groupBox43 = new System.Windows.Forms.GroupBox();
             this.pictureBox24 = new System.Windows.Forms.PictureBox();
             this.HTTPServerKeepAliveEnabled = new System.Windows.Forms.CheckBox();
@@ -381,6 +390,22 @@
             this.GroupName = new System.Windows.Forms.TextBox();
             this.groupBox21 = new System.Windows.Forms.GroupBox();
             this.Groups = new System.Windows.Forms.ListBox();
+            this.HordeTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox7 = new System.Windows.Forms.GroupBox();
+            this.button13 = new System.Windows.Forms.Button();
+            this.groupBox10 = new System.Windows.Forms.GroupBox();
+            this.pictureBox98 = new System.Windows.Forms.PictureBox();
+            this.HordePeerPassword = new System.Windows.Forms.TextBox();
+            this.button12 = new System.Windows.Forms.Button();
+            this.groupBox9 = new System.Windows.Forms.GroupBox();
+            this.pictureBox97 = new System.Windows.Forms.PictureBox();
+            this.HordePeerUsername = new System.Windows.Forms.TextBox();
+            this.groupBox8 = new System.Windows.Forms.GroupBox();
+            this.pictureBox96 = new System.Windows.Forms.PictureBox();
+            this.HordePeerURL = new System.Windows.Forms.TextBox();
+            this.HordePeers = new System.Windows.Forms.ListBox();
+            this.pictureBox95 = new System.Windows.Forms.PictureBox();
+            this.HordeEnabled = new System.Windows.Forms.CheckBox();
             this.button1 = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
             this.Status = new System.Windows.Forms.StatusStrip();
@@ -466,6 +491,12 @@
             this.groupBox39.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).BeginInit();
             this.HTTPTabPage.SuspendLayout();
+            this.groupBox25.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox101)).BeginInit();
+            this.groupBox28.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox99)).BeginInit();
+            this.groupBox42.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).BeginInit();
             this.groupBox43.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox24)).BeginInit();
             this.CompressionBox.SuspendLayout();
@@ -592,6 +623,15 @@
             this.groupBox22.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).BeginInit();
             this.groupBox21.SuspendLayout();
+            this.HordeTabPage.SuspendLayout();
+            this.groupBox7.SuspendLayout();
+            this.groupBox10.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox98)).BeginInit();
+            this.groupBox9.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox97)).BeginInit();
+            this.groupBox8.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox96)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox95)).BeginInit();
             this.Status.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -620,6 +660,7 @@
             this.Tabs.Controls.Add(this.LimitsTabPage);
             this.Tabs.Controls.Add(this.MastersTabPage);
             this.Tabs.Controls.Add(this.GroupsTabPage);
+            this.Tabs.Controls.Add(this.HordeTabPage);
             this.Tabs.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Tabs.Location = new System.Drawing.Point(12, 192);
             this.Tabs.Name = "Tabs";
@@ -2001,6 +2042,7 @@
             // 
             // HTTPTabPage
             // 
+            this.HTTPTabPage.Controls.Add(this.groupBox25);
             this.HTTPTabPage.Controls.Add(this.groupBox43);
             this.HTTPTabPage.Controls.Add(this.CompressionBox);
             this.HTTPTabPage.Controls.Add(this.groupBox41);
@@ -2013,13 +2055,113 @@
             this.HTTPTabPage.Text = "HTTP";
             this.HTTPTabPage.UseVisualStyleBackColor = true;
             // 
+            // groupBox25
+            // 
+            this.groupBox25.Controls.Add(this.pictureBox101);
+            this.groupBox25.Controls.Add(this.HTTPServerAuthenticationEnabled);
+            this.groupBox25.Controls.Add(this.groupBox28);
+            this.groupBox25.Controls.Add(this.groupBox42);
+            this.groupBox25.Location = new System.Drawing.Point(7, 149);
+            this.groupBox25.Name = "groupBox25";
+            this.groupBox25.Size = new System.Drawing.Size(285, 147);
+            this.groupBox25.TabIndex = 13;
+            this.groupBox25.TabStop = false;
+            this.groupBox25.Text = "Authentication";
+            // 
+            // pictureBox101
+            // 
+            this.pictureBox101.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox101.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox101.Image")));
+            this.pictureBox101.Location = new System.Drawing.Point(258, 43);
+            this.pictureBox101.Name = "pictureBox101";
+            this.pictureBox101.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox101.TabIndex = 10;
+            this.pictureBox101.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox101, "Whether to enable authentication for the HTTP \r\nserver. This setting is required " +
+        "for the Corrade\r\nHorde features and is an essential part of the\r\nHTTP component " +
+        "of Corrade.");
+            this.pictureBox101.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HTTPServerAuthenticationEnabled
+            // 
+            this.HTTPServerAuthenticationEnabled.AutoSize = true;
+            this.HTTPServerAuthenticationEnabled.Location = new System.Drawing.Point(186, 43);
+            this.HTTPServerAuthenticationEnabled.Name = "HTTPServerAuthenticationEnabled";
+            this.HTTPServerAuthenticationEnabled.Size = new System.Drawing.Size(66, 20);
+            this.HTTPServerAuthenticationEnabled.TabIndex = 9;
+            this.HTTPServerAuthenticationEnabled.Text = "Enabled";
+            this.HTTPServerAuthenticationEnabled.UseVisualStyleBackColor = true;
+            // 
+            // groupBox28
+            // 
+            this.groupBox28.Controls.Add(this.pictureBox99);
+            this.groupBox28.Controls.Add(this.HTTPServerPassword);
+            this.groupBox28.Location = new System.Drawing.Point(14, 83);
+            this.groupBox28.Name = "groupBox28";
+            this.groupBox28.Size = new System.Drawing.Size(163, 56);
+            this.groupBox28.TabIndex = 8;
+            this.groupBox28.TabStop = false;
+            this.groupBox28.Text = "Password";
+            // 
+            // pictureBox99
+            // 
+            this.pictureBox99.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox99.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox99.Image")));
+            this.pictureBox99.Location = new System.Drawing.Point(136, 21);
+            this.pictureBox99.Name = "pictureBox99";
+            this.pictureBox99.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox99.TabIndex = 10;
+            this.pictureBox99.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox99, "The password for the HTTP server.");
+            this.pictureBox99.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HTTPServerPassword
+            // 
+            this.HTTPServerPassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HTTPServerPassword.Location = new System.Drawing.Point(7, 22);
+            this.HTTPServerPassword.Name = "HTTPServerPassword";
+            this.HTTPServerPassword.Size = new System.Drawing.Size(123, 20);
+            this.HTTPServerPassword.TabIndex = 0;
+            this.HTTPServerPassword.UseSystemPasswordChar = true;
+            // 
+            // groupBox42
+            // 
+            this.groupBox42.Controls.Add(this.pictureBox100);
+            this.groupBox42.Controls.Add(this.HTTPServerUsername);
+            this.groupBox42.Location = new System.Drawing.Point(14, 21);
+            this.groupBox42.Name = "groupBox42";
+            this.groupBox42.Size = new System.Drawing.Size(162, 56);
+            this.groupBox42.TabIndex = 7;
+            this.groupBox42.TabStop = false;
+            this.groupBox42.Text = "Username";
+            // 
+            // pictureBox100
+            // 
+            this.pictureBox100.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox100.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox100.Image")));
+            this.pictureBox100.Location = new System.Drawing.Point(136, 22);
+            this.pictureBox100.Name = "pictureBox100";
+            this.pictureBox100.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox100.TabIndex = 10;
+            this.pictureBox100.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox100, "The username for the HTTP server.");
+            this.pictureBox100.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HTTPServerUsername
+            // 
+            this.HTTPServerUsername.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HTTPServerUsername.Location = new System.Drawing.Point(7, 22);
+            this.HTTPServerUsername.Name = "HTTPServerUsername";
+            this.HTTPServerUsername.Size = new System.Drawing.Size(123, 20);
+            this.HTTPServerUsername.TabIndex = 0;
+            // 
             // groupBox43
             // 
             this.groupBox43.Controls.Add(this.pictureBox24);
             this.groupBox43.Controls.Add(this.HTTPServerKeepAliveEnabled);
-            this.groupBox43.Location = new System.Drawing.Point(419, 128);
+            this.groupBox43.Location = new System.Drawing.Point(7, 76);
             this.groupBox43.Name = "groupBox43";
-            this.groupBox43.Size = new System.Drawing.Size(150, 67);
+            this.groupBox43.Size = new System.Drawing.Size(144, 67);
             this.groupBox43.TabIndex = 3;
             this.groupBox43.TabStop = false;
             this.groupBox43.Text = "KeepAlive";
@@ -2028,7 +2170,7 @@
             // 
             this.pictureBox24.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox24.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox24.Image")));
-            this.pictureBox24.Location = new System.Drawing.Point(98, 27);
+            this.pictureBox24.Location = new System.Drawing.Point(118, 27);
             this.pictureBox24.Name = "pictureBox24";
             this.pictureBox24.Size = new System.Drawing.Size(20, 20);
             this.pictureBox24.TabIndex = 4;
@@ -2039,7 +2181,7 @@
             // HTTPServerKeepAliveEnabled
             // 
             this.HTTPServerKeepAliveEnabled.AutoSize = true;
-            this.HTTPServerKeepAliveEnabled.Location = new System.Drawing.Point(26, 27);
+            this.HTTPServerKeepAliveEnabled.Location = new System.Drawing.Point(46, 27);
             this.HTTPServerKeepAliveEnabled.Name = "HTTPServerKeepAliveEnabled";
             this.HTTPServerKeepAliveEnabled.Size = new System.Drawing.Size(66, 20);
             this.HTTPServerKeepAliveEnabled.TabIndex = 0;
@@ -2050,9 +2192,9 @@
             // 
             this.CompressionBox.Controls.Add(this.pictureBox25);
             this.CompressionBox.Controls.Add(this.HTTPServerCompression);
-            this.CompressionBox.Location = new System.Drawing.Point(258, 128);
+            this.CompressionBox.Location = new System.Drawing.Point(160, 76);
             this.CompressionBox.Name = "CompressionBox";
-            this.CompressionBox.Size = new System.Drawing.Size(150, 67);
+            this.CompressionBox.Size = new System.Drawing.Size(132, 67);
             this.CompressionBox.TabIndex = 2;
             this.CompressionBox.TabStop = false;
             this.CompressionBox.Text = "Compression";
@@ -2061,7 +2203,7 @@
             // 
             this.pictureBox25.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox25.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox25.Image")));
-            this.pictureBox25.Location = new System.Drawing.Point(124, 27);
+            this.pictureBox25.Location = new System.Drawing.Point(105, 28);
             this.pictureBox25.Name = "pictureBox25";
             this.pictureBox25.Size = new System.Drawing.Size(20, 20);
             this.pictureBox25.TabIndex = 4;
@@ -2077,18 +2219,18 @@
             "none",
             "deflate",
             "gzip"});
-            this.HTTPServerCompression.Location = new System.Drawing.Point(12, 25);
+            this.HTTPServerCompression.Location = new System.Drawing.Point(6, 27);
             this.HTTPServerCompression.Name = "HTTPServerCompression";
-            this.HTTPServerCompression.Size = new System.Drawing.Size(106, 24);
+            this.HTTPServerCompression.Size = new System.Drawing.Size(91, 24);
             this.HTTPServerCompression.TabIndex = 0;
             // 
             // groupBox41
             // 
             this.groupBox41.Controls.Add(this.pictureBox26);
             this.groupBox41.Controls.Add(this.HTTPServerPrefix);
-            this.groupBox41.Location = new System.Drawing.Point(102, 44);
+            this.groupBox41.Location = new System.Drawing.Point(7, 3);
             this.groupBox41.Name = "groupBox41";
-            this.groupBox41.Size = new System.Drawing.Size(467, 67);
+            this.groupBox41.Size = new System.Drawing.Size(506, 67);
             this.groupBox41.TabIndex = 1;
             this.groupBox41.TabStop = false;
             this.groupBox41.Text = "HTTP Server Prefix";
@@ -2097,7 +2239,7 @@
             // 
             this.pictureBox26.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox26.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox26.Image")));
-            this.pictureBox26.Location = new System.Drawing.Point(441, 29);
+            this.pictureBox26.Location = new System.Drawing.Point(473, 27);
             this.pictureBox26.Name = "pictureBox26";
             this.pictureBox26.Size = new System.Drawing.Size(20, 20);
             this.pictureBox26.TabIndex = 5;
@@ -2111,14 +2253,14 @@
             this.HTTPServerPrefix.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HTTPServerPrefix.Location = new System.Drawing.Point(7, 29);
             this.HTTPServerPrefix.Name = "HTTPServerPrefix";
-            this.HTTPServerPrefix.Size = new System.Drawing.Size(428, 20);
+            this.HTTPServerPrefix.Size = new System.Drawing.Size(460, 20);
             this.HTTPServerPrefix.TabIndex = 0;
             // 
             // groupBox40
             // 
             this.groupBox40.Controls.Add(this.pictureBox23);
             this.groupBox40.Controls.Add(this.HTTPServerEnabled);
-            this.groupBox40.Location = new System.Drawing.Point(102, 128);
+            this.groupBox40.Location = new System.Drawing.Point(519, 3);
             this.groupBox40.Name = "groupBox40";
             this.groupBox40.Size = new System.Drawing.Size(150, 67);
             this.groupBox40.TabIndex = 0;
@@ -2168,9 +2310,9 @@
             this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerBody);
             this.HTTPServerLimitsBox.Controls.Add(this.label13);
             this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerDrain);
-            this.HTTPServerLimitsBox.Location = new System.Drawing.Point(54, 223);
+            this.HTTPServerLimitsBox.Location = new System.Drawing.Point(298, 76);
             this.HTTPServerLimitsBox.Name = "HTTPServerLimitsBox";
-            this.HTTPServerLimitsBox.Size = new System.Drawing.Size(553, 83);
+            this.HTTPServerLimitsBox.Size = new System.Drawing.Size(371, 106);
             this.HTTPServerLimitsBox.TabIndex = 9;
             this.HTTPServerLimitsBox.TabStop = false;
             this.HTTPServerLimitsBox.Text = "HTTP Server Limits";
@@ -2179,7 +2321,7 @@
             // 
             this.pictureBox66.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox66.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox66.Image")));
-            this.pictureBox66.Location = new System.Drawing.Point(521, 41);
+            this.pictureBox66.Location = new System.Drawing.Point(334, 70);
             this.pictureBox66.Name = "pictureBox66";
             this.pictureBox66.Size = new System.Drawing.Size(20, 20);
             this.pictureBox66.TabIndex = 21;
@@ -2216,7 +2358,7 @@
             // 
             this.pictureBox63.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox63.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox63.Image")));
-            this.pictureBox63.Location = new System.Drawing.Point(521, 18);
+            this.pictureBox63.Location = new System.Drawing.Point(334, 18);
             this.pictureBox63.Name = "pictureBox63";
             this.pictureBox63.Size = new System.Drawing.Size(20, 20);
             this.pictureBox63.TabIndex = 18;
@@ -2228,7 +2370,7 @@
             // 
             this.pictureBox62.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox62.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox62.Image")));
-            this.pictureBox62.Location = new System.Drawing.Point(334, 18);
+            this.pictureBox62.Location = new System.Drawing.Point(155, 71);
             this.pictureBox62.Name = "pictureBox62";
             this.pictureBox62.Size = new System.Drawing.Size(20, 20);
             this.pictureBox62.TabIndex = 17;
@@ -2251,7 +2393,7 @@
             // label18
             // 
             this.label18.AutoSize = true;
-            this.label18.Location = new System.Drawing.Point(371, 45);
+            this.label18.Location = new System.Drawing.Point(185, 74);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(49, 16);
             this.label18.TabIndex = 11;
@@ -2260,7 +2402,7 @@
             // LimitsHTTPServerTimeout
             // 
             this.LimitsHTTPServerTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsHTTPServerTimeout.Location = new System.Drawing.Point(426, 44);
+            this.LimitsHTTPServerTimeout.Location = new System.Drawing.Point(239, 72);
             this.LimitsHTTPServerTimeout.Name = "LimitsHTTPServerTimeout";
             this.LimitsHTTPServerTimeout.Size = new System.Drawing.Size(89, 20);
             this.LimitsHTTPServerTimeout.TabIndex = 10;
@@ -2285,7 +2427,7 @@
             // label16
             // 
             this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(6, 48);
+            this.label16.Location = new System.Drawing.Point(25, 48);
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(26, 16);
             this.label16.TabIndex = 7;
@@ -2302,7 +2444,7 @@
             // label15
             // 
             this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(376, 20);
+            this.label15.Location = new System.Drawing.Point(189, 20);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(44, 16);
             this.label15.TabIndex = 5;
@@ -2311,7 +2453,7 @@
             // LimitsHTTPServerHeader
             // 
             this.LimitsHTTPServerHeader.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsHTTPServerHeader.Location = new System.Drawing.Point(426, 18);
+            this.LimitsHTTPServerHeader.Location = new System.Drawing.Point(239, 18);
             this.LimitsHTTPServerHeader.Name = "LimitsHTTPServerHeader";
             this.LimitsHTTPServerHeader.Size = new System.Drawing.Size(89, 20);
             this.LimitsHTTPServerHeader.TabIndex = 4;
@@ -2319,7 +2461,7 @@
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(198, 20);
+            this.label14.Location = new System.Drawing.Point(19, 73);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(35, 16);
             this.label14.TabIndex = 3;
@@ -2328,7 +2470,7 @@
             // LimitsHTTPServerBody
             // 
             this.LimitsHTTPServerBody.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsHTTPServerBody.Location = new System.Drawing.Point(239, 18);
+            this.LimitsHTTPServerBody.Location = new System.Drawing.Point(60, 71);
             this.LimitsHTTPServerBody.Name = "LimitsHTTPServerBody";
             this.LimitsHTTPServerBody.Size = new System.Drawing.Size(89, 20);
             this.LimitsHTTPServerBody.TabIndex = 2;
@@ -2336,7 +2478,7 @@
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(6, 22);
+            this.label13.Location = new System.Drawing.Point(19, 22);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(35, 16);
             this.label13.TabIndex = 1;
@@ -4154,6 +4296,7 @@
             this.Masters.Name = "Masters";
             this.Masters.Size = new System.Drawing.Size(214, 186);
             this.Masters.TabIndex = 0;
+            this.Masters.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MastersClicked);
             this.Masters.SelectedIndexChanged += new System.EventHandler(this.MasterSelected);
             // 
             // GroupsTabPage
@@ -4519,7 +4662,7 @@
             this.pictureBox74.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox74, "This must be set to a password in order to identify \r\nscripts to the defined grou" +
         "p.");
-            this.pictureBox74.Click += new System.EventHandler(this.ShowToolTip);
+            this.pictureBox74.Click += new System.EventHandler(this.AESIVChanged);
             // 
             // GroupPassword
             // 
@@ -4584,7 +4727,187 @@
             this.Groups.Name = "Groups";
             this.Groups.Size = new System.Drawing.Size(177, 316);
             this.Groups.TabIndex = 0;
+            this.Groups.MouseClick += new System.Windows.Forms.MouseEventHandler(this.GroupsClicked);
             this.Groups.SelectedIndexChanged += new System.EventHandler(this.GroupSelected);
+            // 
+            // HordeTabPage
+            // 
+            this.HordeTabPage.Controls.Add(this.groupBox7);
+            this.HordeTabPage.Location = new System.Drawing.Point(4, 25);
+            this.HordeTabPage.Name = "HordeTabPage";
+            this.HordeTabPage.Size = new System.Drawing.Size(672, 363);
+            this.HordeTabPage.TabIndex = 13;
+            this.HordeTabPage.Text = "Horde";
+            this.HordeTabPage.UseVisualStyleBackColor = true;
+            // 
+            // groupBox7
+            // 
+            this.groupBox7.Controls.Add(this.button13);
+            this.groupBox7.Controls.Add(this.groupBox10);
+            this.groupBox7.Controls.Add(this.button12);
+            this.groupBox7.Controls.Add(this.groupBox9);
+            this.groupBox7.Controls.Add(this.groupBox8);
+            this.groupBox7.Controls.Add(this.HordePeers);
+            this.groupBox7.Controls.Add(this.pictureBox95);
+            this.groupBox7.Controls.Add(this.HordeEnabled);
+            this.groupBox7.Location = new System.Drawing.Point(3, 3);
+            this.groupBox7.Name = "groupBox7";
+            this.groupBox7.Size = new System.Drawing.Size(666, 185);
+            this.groupBox7.TabIndex = 11;
+            this.groupBox7.TabStop = false;
+            this.groupBox7.Text = "Horde";
+            // 
+            // button13
+            // 
+            this.button13.Location = new System.Drawing.Point(438, 145);
+            this.button13.Name = "button13";
+            this.button13.Size = new System.Drawing.Size(103, 23);
+            this.button13.TabIndex = 8;
+            this.button13.Text = "Remove Peer";
+            this.toolTip1.SetToolTip(this.button13, "Delete the currently selected horde peer URL.");
+            this.button13.UseVisualStyleBackColor = true;
+            this.button13.Click += new System.EventHandler(this.RemoveHordePeerRequested);
+            // 
+            // groupBox10
+            // 
+            this.groupBox10.Controls.Add(this.pictureBox98);
+            this.groupBox10.Controls.Add(this.HordePeerPassword);
+            this.groupBox10.Location = new System.Drawing.Point(497, 83);
+            this.groupBox10.Name = "groupBox10";
+            this.groupBox10.Size = new System.Drawing.Size(163, 56);
+            this.groupBox10.TabIndex = 8;
+            this.groupBox10.TabStop = false;
+            this.groupBox10.Text = "Password";
+            // 
+            // pictureBox98
+            // 
+            this.pictureBox98.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox98.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox98.Image")));
+            this.pictureBox98.Location = new System.Drawing.Point(136, 21);
+            this.pictureBox98.Name = "pictureBox98";
+            this.pictureBox98.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox98.TabIndex = 10;
+            this.pictureBox98.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox98, "The password for the horde peer.");
+            this.pictureBox98.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HordePeerPassword
+            // 
+            this.HordePeerPassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeerPassword.Location = new System.Drawing.Point(7, 22);
+            this.HordePeerPassword.Name = "HordePeerPassword";
+            this.HordePeerPassword.Size = new System.Drawing.Size(123, 20);
+            this.HordePeerPassword.TabIndex = 0;
+            this.HordePeerPassword.UseSystemPasswordChar = true;
+            this.HordePeerPassword.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
+            // 
+            // button12
+            // 
+            this.button12.Location = new System.Drawing.Point(329, 145);
+            this.button12.Name = "button12";
+            this.button12.Size = new System.Drawing.Size(103, 23);
+            this.button12.TabIndex = 7;
+            this.button12.Text = "Add Peer";
+            this.toolTip1.SetToolTip(this.button12, "Add a horde peer URL.");
+            this.button12.UseVisualStyleBackColor = true;
+            this.button12.Click += new System.EventHandler(this.AddHordePeerRequested);
+            // 
+            // groupBox9
+            // 
+            this.groupBox9.Controls.Add(this.pictureBox97);
+            this.groupBox9.Controls.Add(this.HordePeerUsername);
+            this.groupBox9.Location = new System.Drawing.Point(329, 83);
+            this.groupBox9.Name = "groupBox9";
+            this.groupBox9.Size = new System.Drawing.Size(162, 56);
+            this.groupBox9.TabIndex = 7;
+            this.groupBox9.TabStop = false;
+            this.groupBox9.Text = "Username";
+            // 
+            // pictureBox97
+            // 
+            this.pictureBox97.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox97.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox97.Image")));
+            this.pictureBox97.Location = new System.Drawing.Point(136, 22);
+            this.pictureBox97.Name = "pictureBox97";
+            this.pictureBox97.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox97.TabIndex = 10;
+            this.pictureBox97.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox97, "The username for the horde peer.");
+            this.pictureBox97.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HordePeerUsername
+            // 
+            this.HordePeerUsername.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeerUsername.Location = new System.Drawing.Point(7, 22);
+            this.HordePeerUsername.Name = "HordePeerUsername";
+            this.HordePeerUsername.Size = new System.Drawing.Size(123, 20);
+            this.HordePeerUsername.TabIndex = 0;
+            this.HordePeerUsername.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
+            // 
+            // groupBox8
+            // 
+            this.groupBox8.Controls.Add(this.pictureBox96);
+            this.groupBox8.Controls.Add(this.HordePeerURL);
+            this.groupBox8.Location = new System.Drawing.Point(329, 21);
+            this.groupBox8.Name = "groupBox8";
+            this.groupBox8.Size = new System.Drawing.Size(331, 56);
+            this.groupBox8.TabIndex = 6;
+            this.groupBox8.TabStop = false;
+            this.groupBox8.Text = "Horde Peer URL";
+            // 
+            // pictureBox96
+            // 
+            this.pictureBox96.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox96.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox96.Image")));
+            this.pictureBox96.Location = new System.Drawing.Point(304, 21);
+            this.pictureBox96.Name = "pictureBox96";
+            this.pictureBox96.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox96.TabIndex = 10;
+            this.pictureBox96.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox96, resources.GetString("pictureBox96.ToolTip"));
+            this.pictureBox96.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HordePeerURL
+            // 
+            this.HordePeerURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeerURL.Location = new System.Drawing.Point(7, 22);
+            this.HordePeerURL.Name = "HordePeerURL";
+            this.HordePeerURL.Size = new System.Drawing.Size(291, 20);
+            this.HordePeerURL.TabIndex = 0;
+            this.HordePeerURL.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
+            // 
+            // HordePeers
+            // 
+            this.HordePeers.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeers.FormattingEnabled = true;
+            this.HordePeers.Location = new System.Drawing.Point(8, 21);
+            this.HordePeers.Name = "HordePeers";
+            this.HordePeers.Size = new System.Drawing.Size(315, 147);
+            this.HordePeers.TabIndex = 5;
+            this.HordePeers.MouseClick += new System.Windows.Forms.MouseEventHandler(this.HordePeersClicked);
+            this.HordePeers.SelectedIndexChanged += new System.EventHandler(this.HordePeerSelected);
+            // 
+            // pictureBox95
+            // 
+            this.pictureBox95.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox95.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox95.Image")));
+            this.pictureBox95.Location = new System.Drawing.Point(633, 148);
+            this.pictureBox95.Name = "pictureBox95";
+            this.pictureBox95.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox95.TabIndex = 4;
+            this.pictureBox95.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox95, resources.GetString("pictureBox95.ToolTip"));
+            this.pictureBox95.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // HordeEnabled
+            // 
+            this.HordeEnabled.AutoSize = true;
+            this.HordeEnabled.Location = new System.Drawing.Point(561, 148);
+            this.HordeEnabled.Name = "HordeEnabled";
+            this.HordeEnabled.Size = new System.Drawing.Size(66, 20);
+            this.HordeEnabled.TabIndex = 0;
+            this.HordeEnabled.Text = "Enabled";
+            this.HordeEnabled.UseVisualStyleBackColor = true;
             // 
             // button1
             // 
@@ -4813,6 +5136,15 @@
             this.groupBox39.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).EndInit();
             this.HTTPTabPage.ResumeLayout(false);
+            this.groupBox25.ResumeLayout(false);
+            this.groupBox25.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox101)).EndInit();
+            this.groupBox28.ResumeLayout(false);
+            this.groupBox28.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox99)).EndInit();
+            this.groupBox42.ResumeLayout(false);
+            this.groupBox42.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).EndInit();
             this.groupBox43.ResumeLayout(false);
             this.groupBox43.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox24)).EndInit();
@@ -4986,6 +5318,19 @@
             this.groupBox22.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox73)).EndInit();
             this.groupBox21.ResumeLayout(false);
+            this.HordeTabPage.ResumeLayout(false);
+            this.groupBox7.ResumeLayout(false);
+            this.groupBox7.PerformLayout();
+            this.groupBox10.ResumeLayout(false);
+            this.groupBox10.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox98)).EndInit();
+            this.groupBox9.ResumeLayout(false);
+            this.groupBox9.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox97)).EndInit();
+            this.groupBox8.ResumeLayout(false);
+            this.groupBox8.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox96)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox95)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
             this.ResumeLayout(false);
@@ -5359,6 +5704,31 @@
         private System.Windows.Forms.PictureBox pictureBox94;
         private System.Windows.Forms.CheckBox ConferenceMessageLogFileEnabled;
         private System.Windows.Forms.TextBox ConferenceMessageLogFile;
+        private System.Windows.Forms.TabPage HordeTabPage;
+        private System.Windows.Forms.GroupBox groupBox7;
+        private System.Windows.Forms.Button button13;
+        private System.Windows.Forms.Button button12;
+        private System.Windows.Forms.GroupBox groupBox8;
+        private System.Windows.Forms.PictureBox pictureBox96;
+        private System.Windows.Forms.TextBox HordePeerURL;
+        private System.Windows.Forms.ListBox HordePeers;
+        private System.Windows.Forms.PictureBox pictureBox95;
+        private System.Windows.Forms.CheckBox HordeEnabled;
+        private System.Windows.Forms.GroupBox groupBox10;
+        private System.Windows.Forms.PictureBox pictureBox98;
+        private System.Windows.Forms.TextBox HordePeerPassword;
+        private System.Windows.Forms.GroupBox groupBox9;
+        private System.Windows.Forms.PictureBox pictureBox97;
+        private System.Windows.Forms.TextBox HordePeerUsername;
+        private System.Windows.Forms.GroupBox groupBox25;
+        private System.Windows.Forms.PictureBox pictureBox101;
+        private System.Windows.Forms.CheckBox HTTPServerAuthenticationEnabled;
+        private System.Windows.Forms.GroupBox groupBox28;
+        private System.Windows.Forms.PictureBox pictureBox99;
+        private System.Windows.Forms.TextBox HTTPServerPassword;
+        private System.Windows.Forms.GroupBox groupBox42;
+        private System.Windows.Forms.PictureBox pictureBox100;
+        private System.Windows.Forms.TextBox HTTPServerUsername;
     }
 }
 

@@ -205,6 +205,7 @@ namespace Corrade
                             {
                                 Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
                             }
+                            PushBinaryAssetCache(itemUUID, assetData);
                             break;
                         default:
                             lock (Locks.ClientInstanceAssetsLock)

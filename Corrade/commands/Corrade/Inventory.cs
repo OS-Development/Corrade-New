@@ -277,7 +277,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
                         case Action.CHMOD:
@@ -344,7 +344,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
                         case Action.RM:
@@ -393,7 +393,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
                         case Action.CP:
@@ -513,7 +513,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
                         default:

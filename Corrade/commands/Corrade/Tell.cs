@@ -215,7 +215,7 @@ namespace Corrade
                                         // or fail and append the fail message.
                                         Feedback(
                                             Reflection.GetNameFromEnumValue(
-                                                ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
+                                                ConsoleMessage.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
@@ -318,7 +318,7 @@ namespace Corrade
                                                 // or fail and append the fail message.
                                                 Feedback(
                                                     Reflection.GetNameFromEnumValue(
-                                                        ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                        ConsoleMessage.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                     ex.Message);
                                             }
                                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
@@ -422,7 +422,7 @@ namespace Corrade
                                         // or fail and append the fail message.
                                         Feedback(
                                             Reflection.GetNameFromEnumValue(
-                                                ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
+                                                ConsoleMessage.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);

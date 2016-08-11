@@ -89,7 +89,7 @@ namespace wasSharp
             private readonly string MediaType;
 
             public wasHTTPClient(ProductInfoHeaderValue userAgent, CookieContainer cookieContainer, string mediaType,
-                uint timeout)
+                AuthenticationHeaderValue authentication, uint timeout)
             {
                 var HTTPClientHandler = new HttpClientHandler
                 {
@@ -113,8 +113,69 @@ namespace wasSharp
 
                 HTTPClient = new HttpClient(HTTPClientHandler, false);
                 HTTPClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
+                if (authentication != null)
+                {
+                    HTTPClient.DefaultRequestHeaders.Authorization = authentication;
+                }
                 HTTPClient.Timeout = TimeSpan.FromMilliseconds(timeout);
                 MediaType = mediaType;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////
+            //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+            ///////////////////////////////////////////////////////////////////////////
+            /// <summary>
+            ///     Sends a PUT request to an URL with binary data.
+            /// </summary>
+            /// <param name="URL">the url to send the message to</param>
+            /// <param name="data">key-value pairs to send</param>
+            public async Task<byte[]> PUT(string URL, byte[] data)
+            {
+                try
+                {
+                    using (var content = new ByteArrayContent(data))
+                    {
+                        using (var response = await HTTPClient.PutAsync(URL, content))
+                        {
+                            return response.IsSuccessStatusCode
+                                ? await response.Content.ReadAsByteArrayAsync()
+                                : null;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+
+            ///////////////////////////////////////////////////////////////////////////
+            //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+            ///////////////////////////////////////////////////////////////////////////
+            /// <summary>
+            ///     Sends a PUT request to an URL with text.
+            /// </summary>
+            /// <param name="URL">the url to send the message to</param>
+            /// <param name="data">key-value pairs to send</param>
+            public async Task<byte[]> PUT(string URL, string data)
+            {
+                try
+                {
+                    using (var content =
+                        new StringContent(data, Encoding.UTF8, MediaType))
+                    {
+                        using (var response = await HTTPClient.PutAsync(URL, content))
+                        {
+                            return response.IsSuccessStatusCode
+                                ? await response.Content.ReadAsByteArrayAsync()
+                                : null;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
             }
 
             ///////////////////////////////////////////////////////////////////////////

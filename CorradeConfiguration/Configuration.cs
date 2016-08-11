@@ -135,6 +135,9 @@ namespace CorradeConfiguration
         private string _driveIdentifierHash = string.Empty;
         private bool _enableSIML;
         private bool _enableHTTPServer;
+        private bool _enableHTTPServerAuthentication;
+        private string _HTTPServerUsername = string.Empty;
+        private string _HTTPServerPassword = string.Empty;
         private bool _enableRLV;
         private bool _enableTCPNotificationsServer;
 
@@ -170,6 +173,8 @@ namespace CorradeConfiguration
         private string _loginURL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
         private uint _logoutGrace = 2500;
         private HashSet<Master> _masters = new HashSet<Master>();
+        private HashSet<HordePeer> _cachePeers = new HashSet<HordePeer>();
+        private bool _enableDistributedCache = false;
         private uint _maximumCommandThreads = 10;
         private uint _maximumInstantMessageThreads = 10;
         private uint _maximumLogThreads = 40;
@@ -279,6 +284,24 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _enableMasterPasswordOverride = value;
+                }
+            }
+        }
+
+        public bool EnableHorde
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _enableDistributedCache;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _enableDistributedCache = value;
                 }
             }
         }
@@ -477,6 +500,60 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _enableHTTPServer = value;
+                }
+            }
+        }
+
+        public bool EnableHTTPServerAuthentication
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _enableHTTPServerAuthentication;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _enableHTTPServerAuthentication = value;
+                }
+            }
+        }
+
+        public string HTTPServerUsername
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _HTTPServerUsername;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _HTTPServerUsername = value;
+                }
+            }
+        }
+
+        public string HTTPServerPassword
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _HTTPServerPassword;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _HTTPServerPassword = value;
                 }
             }
         }
@@ -1615,6 +1692,24 @@ namespace CorradeConfiguration
             }
         }
 
+        public HashSet<HordePeer> HordePeers
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _cachePeers;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _cachePeers = value;
+                }
+            }
+        } 
+
         public List<Filter> InputFilters
         {
             get
@@ -1862,6 +1957,16 @@ namespace CorradeConfiguration
             public char[] plugs;
             public char reflector;
             public char[] rotors;
+        }
+
+        /// <summary>
+        ///     Distributed cache peer.
+        /// </summary>
+        public struct HordePeer
+        {
+            public string URL;
+            public string Username;
+            public string Password;
         }
     }
 }

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,9 +17,13 @@ namespace wasOpenMetaverse
 {
     public static class Cache
     {
-        private static HashSet<Regions> _regionCache = new HashSet<Regions>();
-        private static HashSet<Agents> _agentCache = new HashSet<Agents>();
-        private static HashSet<Groups> _groupCache = new HashSet<Groups>();
+        public static readonly ObservableCollection<Region> ObservableRegionCache = new ObservableCollection<Region>();
+        private static HashSet<Region> _regionCache = new HashSet<Region>();
+        public static readonly ObservableCollection<Agent> ObservableAgentCache = new ObservableCollection<Agent>();
+        private static HashSet<Agent> _agentCache = new HashSet<Agent>();
+        public static readonly ObservableCollection<Group> ObservableGroupCache = new ObservableCollection<Group>();
+        private static HashSet<Group> _groupCache = new HashSet<Group>();
+
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
         private static HashSet<MuteEntry> _mutesCache;
         private static readonly object RegionCacheLock = new object();
@@ -27,8 +32,7 @@ namespace wasOpenMetaverse
         private static readonly object CurrentGroupsCacheLock = new object();
         private static readonly object MutesCacheLock = new object();
 
-
-        public static HashSet<Regions> RegionCache
+        public static HashSet<Region> RegionCache
         {
             get
             {
@@ -42,11 +46,14 @@ namespace wasOpenMetaverse
                 lock (RegionCacheLock)
                 {
                     _regionCache = value;
+                    ObservableRegionCache.Clear();
+                    foreach (var region in value)
+                        ObservableRegionCache.Add(region);
                 }
             }
         }
 
-        public static HashSet<Agents> AgentCache
+        public static HashSet<Agent> AgentCache
         {
             get
             {
@@ -60,11 +67,14 @@ namespace wasOpenMetaverse
                 lock (AgentCacheLock)
                 {
                     _agentCache = value;
+                    ObservableAgentCache.Clear();
+                    foreach (var agent in value)
+                        ObservableAgentCache.Add(agent);
                 }
             }
         }
 
-        public static HashSet<Groups> GroupCache
+        public static HashSet<Group> GroupCache
         {
             get
             {
@@ -78,6 +88,9 @@ namespace wasOpenMetaverse
                 lock (AgentCacheLock)
                 {
                     _groupCache = value;
+                    ObservableGroupCache.Clear();
+                    foreach (var agent in value)
+                        ObservableGroupCache.Add(agent);
                 }
             }
         }
@@ -123,14 +136,17 @@ namespace wasOpenMetaverse
             lock (RegionCacheLock)
             {
                 _regionCache.Clear();
+                ObservableRegionCache.Clear();
             }
             lock (AgentCacheLock)
             {
                 _agentCache.Clear();
+                ObservableAgentCache.Clear();
             }
             lock (GroupCacheLock)
             {
                 _groupCache.Clear();
+                ObservableGroupCache.Clear();
             }
             lock (CurrentGroupsCacheLock)
             {
@@ -142,24 +158,30 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static void AddRegion(string name, ulong handle)
+        public static bool AddRegion(string name, ulong handle)
         {
-            var region = new Regions
+            return AddRegion(new Region
             {
                 Name = name,
                 Handle = handle
-            };
+            });
+        }
 
+        public static bool AddRegion(Region region)
+        {
             lock (RegionCacheLock)
             {
                 if (!_regionCache.Contains(region))
                 {
                     _regionCache.Add(region);
+                    ObservableRegionCache.Add(region);
+                    return true;
                 }
+                return false;
             }
         }
 
-        public static Regions GetRegion(string name)
+        public static Region GetRegion(string name)
         {
             lock (RegionCacheLock)
             {
@@ -196,25 +218,31 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static void AddAgent(string FirstName, string LastName, UUID agentUUID)
+        public static bool AddAgent(string FirstName, string LastName, UUID agentUUID)
         {
-            var agent = new Agents
+            return AddAgent(new Agent
             {
                 FirstName = FirstName,
                 LastName = LastName,
                 UUID = agentUUID
-            };
+            });
+        }
 
+        public static bool AddAgent(Agent agent)
+        {
             lock (AgentCacheLock)
             {
                 if (!_agentCache.Contains(agent))
                 {
                     _agentCache.Add(agent);
+                    ObservableAgentCache.Add(agent);
+                    return true;
                 }
+                return false;
             }
         }
 
-        public static Agents GetAgent(string FirstName, string LastName)
+        public static Agent GetAgent(string FirstName, string LastName)
         {
             lock (AgentCacheLock)
             {
@@ -225,7 +253,7 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static Agents GetAgent(UUID agentUUID)
+        public static Agent GetAgent(UUID agentUUID)
         {
             lock (AgentCacheLock)
             {
@@ -244,23 +272,30 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static void AddGroup(string GroupName, UUID GroupUUID)
+        public static bool AddGroup(string GroupName, UUID GroupUUID)
         {
-            var group = new Groups
+            return AddGroup(new Group
             {
                 Name = GroupName,
                 UUID = GroupUUID
-            };
+            });
+        }
+
+        public static bool AddGroup(Group group)
+        {
             lock (GroupCacheLock)
             {
                 if (!_groupCache.Contains(group))
                 {
                     _groupCache.Add(group);
+                    ObservableGroupCache.Add(group);
+                    return true;
                 }
+                return false;
             }
         }
 
-        public static Groups GetGroup(string GroupName)
+        public static Group GetGroup(string GroupName)
         {
             lock (GroupCacheLock)
             {
@@ -271,7 +306,7 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static Groups GetGroup(UUID GroupUUID)
+        public static Group GetGroup(UUID GroupUUID)
         {
             lock (GroupCacheLock)
             {
@@ -317,23 +352,26 @@ namespace wasOpenMetaverse
             }
         }
 
-        public struct Regions
+        [XmlRoot("region")]
+        public struct Region
         {
-            public string Name;
-            public ulong Handle;
+            [XmlElement("name")] public string Name;
+            [XmlElement("handle")] public ulong Handle;
         }
 
-        public struct Agents
+        [XmlRoot("agent")]
+        public struct Agent
         {
-            public string FirstName;
-            public string LastName;
-            public UUID UUID;
+            [XmlElement("firstname")] public string FirstName;
+            [XmlElement("lastname")] public string LastName;
+            [XmlElement("UUID")] public UUID UUID;
         }
 
-        public struct Groups
+        [XmlRoot("group")]
+        public struct Group
         {
-            public string Name;
-            public UUID UUID;
+            [XmlElement("Name")] public string Name;
+            [XmlElement("UUID")] public UUID UUID;
         }
     }
 }

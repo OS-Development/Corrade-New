@@ -84,7 +84,7 @@ namespace wasOpenMetaverse
             {
                 var @group = Cache.GetGroup(GroupName);
 
-                if (!@group.Equals(default(Cache.Groups)))
+                if (!@group.Equals(default(Cache.Group)))
                 {
                     GroupUUID = @group.UUID;
                     return true;
@@ -179,7 +179,7 @@ namespace wasOpenMetaverse
             lock (Locks.ClientInstanceDirectoryLock)
             {
                 var agent = Cache.GetAgent(FirstName, LastName);
-                if (!agent.Equals(default(Cache.Agents)))
+                if (!agent.Equals(default(Cache.Agent)))
                 {
                     AgentUUID = agent.UUID;
                     return true;
@@ -251,7 +251,7 @@ namespace wasOpenMetaverse
             {
                 var @group = Cache.GetGroup(GroupUUID);
 
-                if (!@group.Equals(default(Cache.Groups)))
+                if (!@group.Equals(default(Cache.Group)))
                 {
                     GroupName = @group.Name;
                     return true;
@@ -321,7 +321,7 @@ namespace wasOpenMetaverse
             lock (Locks.ClientInstanceAvatarsLock)
             {
                 var agent = Cache.GetAgent(AgentUUID);
-                if (!agent.Equals(default(Cache.Agents)))
+                if (!agent.Equals(default(Cache.Agent)))
                 {
                     AgentName = string.Join(" ", agent.FirstName, agent.LastName);
                     return true;
@@ -492,7 +492,7 @@ namespace wasOpenMetaverse
             lock (Locks.ClientInstanceGridLock)
             {
                 var region = Cache.GetRegion(name);
-                if (!region.Equals(default(Cache.Regions)))
+                if (!region.Equals(default(Cache.Region)))
                 {
                     regionHandle = region.Handle;
                     return true;

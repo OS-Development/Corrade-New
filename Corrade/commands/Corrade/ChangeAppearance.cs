@@ -199,7 +199,7 @@ namespace Corrade
                     }
                     catch (Exception)
                     {
-                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
                     }
 
                     attachments = Inventory.GetAttachments(Client,

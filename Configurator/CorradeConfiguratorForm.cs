@@ -13,11 +13,12 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Text.RegularExpressions;
 using System.Xml;
+using Configurator.Properties;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -29,7 +30,7 @@ namespace Configurator
         private static readonly object ConfigurationFileLock = new object();
         private static Configuration corradeConfiguration = new Configuration();
         private static CorradeConfiguratorForm mainForm;
-        private static bool isConfigurationSaved = false;
+        private static bool isConfigurationSaved;
 
         private readonly Action GetUserConfiguration = () =>
         {
@@ -67,7 +68,7 @@ namespace Configurator
 
             // filters
             mainForm.ActiveInputFilters.Items.Clear();
-            foreach (Configuration.Filter filter in corradeConfiguration.InputFilters)
+            foreach (var filter in corradeConfiguration.InputFilters)
             {
                 mainForm.ActiveInputFilters.Items.Add(new ListViewItem
                 {
@@ -77,7 +78,7 @@ namespace Configurator
             }
             mainForm.ActiveOutputFilters.Items.Clear();
             mainForm.ActiveInputFilters.DisplayMember = "Text";
-            foreach (Configuration.Filter filter in corradeConfiguration.OutputFilters)
+            foreach (var filter in corradeConfiguration.OutputFilters)
             {
                 mainForm.ActiveOutputFilters.Items.Add(new ListViewItem
                 {
@@ -89,7 +90,7 @@ namespace Configurator
 
             // cryptography
             mainForm.ENIGMARotorSequence.Items.Clear();
-            foreach (char rotor in corradeConfiguration.ENIGMAConfiguration.rotors)
+            foreach (var rotor in corradeConfiguration.ENIGMAConfiguration.rotors)
             {
                 mainForm.ENIGMARotorSequence.Items.Add(new ListViewItem
                 {
@@ -99,7 +100,7 @@ namespace Configurator
             }
             mainForm.ENIGMARotorSequence.DisplayMember = "Text";
             mainForm.ENIGMAPlugSequence.Items.Clear();
-            foreach (char plug in corradeConfiguration.ENIGMAConfiguration.plugs)
+            foreach (var plug in corradeConfiguration.ENIGMAConfiguration.plugs)
             {
                 mainForm.ENIGMAPlugSequence.Items.Add(new ListViewItem
                 {
@@ -147,6 +148,9 @@ namespace Configurator
             mainForm.HTTPServerCompression.Text =
                 Reflection.GetNameFromEnumValue(corradeConfiguration.HTTPServerCompression);
             mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
+            mainForm.HTTPServerAuthenticationEnabled.Checked = corradeConfiguration.EnableHTTPServerAuthentication;
+            mainForm.HTTPServerUsername.Text = corradeConfiguration.HTTPServerUsername;
+            mainForm.HTTPServerPassword.Text = corradeConfiguration.HTTPServerPassword;
 
             // TCP
             mainForm.TCPNotificationsServerEnabled.Checked = corradeConfiguration.EnableTCPNotificationsServer;
@@ -190,7 +194,7 @@ namespace Configurator
 
             // masters
             mainForm.Masters.Items.Clear();
-            foreach (Configuration.Master master in corradeConfiguration.Masters)
+            foreach (var master in corradeConfiguration.Masters)
             {
                 mainForm.Masters.Items.Add(new ListViewItem
                 {
@@ -202,9 +206,22 @@ namespace Configurator
             mainForm.MasterPasswordOverrideEnabled.Checked = corradeConfiguration.EnableMasterPasswordOverride;
             mainForm.MasterPasswordOverride.Text = corradeConfiguration.MasterPasswordOverride;
 
+            // horde peers
+            mainForm.HordePeers.Items.Clear();
+            foreach (var cachePeer in corradeConfiguration.HordePeers)
+            {
+                mainForm.HordePeers.Items.Add(new ListViewItem
+                {
+                    Text = cachePeer.URL.Trim('/'),
+                    Tag = cachePeer
+                });
+            }
+            mainForm.HordePeers.DisplayMember = "Text";
+            mainForm.HordeEnabled.Checked = corradeConfiguration.EnableHorde;
+
             // groups
             mainForm.Groups.Items.Clear();
-            foreach (Configuration.Group group in corradeConfiguration.Groups)
+            foreach (var group in corradeConfiguration.Groups)
             {
                 mainForm.Groups.Items.Add(new ListViewItem
                 {
@@ -213,6 +230,91 @@ namespace Configurator
                 });
             }
             mainForm.Groups.DisplayMember = "Text";
+        };
+
+        private readonly Action SetExperienceLevel = () =>
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    var experienceComboBox = mainForm.ExperienceLevel;
+                    if (experienceComboBox == null) return;
+                    mainForm.Tabs.Enabled = false;
+                    switch ((string) experienceComboBox.SelectedItem)
+                    {
+                        case "Basic":
+                            /* Hide non-basic experience tabs. */
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HordeTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
+                            /* Hide non-basic experience group boxes. */
+                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, false);
+                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
+                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
+                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
+                            setGroupBoxVisibility(mainForm.CompressionBox, false);
+                            break;
+                        case "Intermediary":
+                            /* Hide non-advanced experience tabs. */
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HordeTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
+                            /* Hide non-advanced experience group boxes. */
+                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
+                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
+                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
+                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
+                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
+                            setGroupBoxVisibility(mainForm.CompressionBox, false);
+                            break;
+                        case "Advanced":
+                            /* Show everything. */
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.HordeTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, true);
+                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, true);
+                            /* Show everything. */
+                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
+                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, true);
+                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, true);
+                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, true);
+                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, true);
+                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, true);
+                            setGroupBoxVisibility(mainForm.CompressionBox, true);
+                            break;
+                    }
+                    mainForm.Tabs.Enabled = true;
+
+                    // Save form settings.
+                    Settings.Default["ExperienceLevel"] = (string) experienceComboBox.SelectedItem;
+                    Settings.Default.Save();
+                }));
         };
 
         private readonly Action SetUserConfiguration = () =>
@@ -283,7 +385,7 @@ namespace Configurator
 
             corradeConfiguration.VIGENERESecret = mainForm.VIGENERESecret.Text;
 
-            byte[] AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
+            var AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
             // Only accept FIPS-197 key-lengths
             switch (AESKeyBytes.Length)
             {
@@ -293,7 +395,7 @@ namespace Configurator
                     corradeConfiguration.AESKey = AESKeyBytes;
                     break;
             }
-            byte[] AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
+            var AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
             switch (AESIVBytes.Length)
             {
                 case 16:
@@ -354,6 +456,18 @@ namespace Configurator
                 Reflection.GetEnumValueFromName<Configuration.HTTPCompressionMethod>(
                     mainForm.HTTPServerCompression.Text);
             corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
+            corradeConfiguration.EnableHTTPServerAuthentication = mainForm.HTTPServerAuthenticationEnabled.Checked;
+            corradeConfiguration.HTTPServerUsername = mainForm.HTTPServerUsername.Text;
+            // Hash HTTP password.
+            switch (Regex.IsMatch(mainForm.HTTPServerPassword.Text, "[a-fA-F0-9]{40}"))
+            {
+                case false:
+                    corradeConfiguration.HTTPServerPassword =
+                        string.IsNullOrEmpty(mainForm.HTTPServerPassword.Text)
+                            ? mainForm.HTTPServerPassword.Text
+                            : Utils.SHA1String(mainForm.HTTPServerPassword.Text);
+                    break;
+            }
 
             // TCP
             corradeConfiguration.EnableTCPNotificationsServer = mainForm.TCPNotificationsServerEnabled.Checked;
@@ -498,13 +612,35 @@ namespace Configurator
             // Hash the group passwords using SHA1
             foreach (ListViewItem item in mainForm.Groups.Items)
             {
-                Configuration.Group group = (Configuration.Group) item.Tag;
+                var group = (Configuration.Group) item.Tag;
                 switch (Regex.IsMatch(group.Password, "[a-fA-F0-9]{40}"))
                 {
                     case false:
                         corradeConfiguration.Groups.Remove(group);
                         group.Password = Utils.SHA1String(group.Password);
                         corradeConfiguration.Groups.Add(group);
+                        break;
+                }
+            }
+
+            // Hash the cache peer passwords using SHA1 and trim trailing slashes from URLs
+            foreach (ListViewItem item in mainForm.HordePeers.Items)
+            {
+                var hordePeer = (Configuration.HordePeer) item.Tag;
+                switch (Regex.IsMatch(hordePeer.Password, "[a-fA-F0-9]{40}"))
+                {
+                    case false:
+                        corradeConfiguration.HordePeers.Remove(hordePeer);
+                        hordePeer.Password = Utils.SHA1String(hordePeer.Password);
+                        corradeConfiguration.HordePeers.Add(hordePeer);
+                        break;
+                }
+                switch (!hordePeer.URL[hordePeer.URL.Length - 1].Equals('/'))
+                {
+                    case false:
+                        corradeConfiguration.HordePeers.Remove(hordePeer);
+                        hordePeer.URL = hordePeer.URL.Trim('/');
+                        corradeConfiguration.HordePeers.Add(hordePeer);
                         break;
                 }
             }
@@ -520,6 +656,8 @@ namespace Configurator
                             : Utils.SHA1String(mainForm.MasterPasswordOverride.Text);
                     break;
             }
+
+            corradeConfiguration.EnableHorde = mainForm.HordeEnabled.Checked;
         };
 
         public CorradeConfiguratorForm()
@@ -531,13 +669,13 @@ namespace Configurator
         private static string CalculateMD5Hash(string input)
         {
             // step 1, calculate MD5 hash from input
-            MD5 md5 = MD5.Create();
-            byte[] inputBytes = Encoding.ASCII.GetBytes(input);
-            byte[] hash = md5.ComputeHash(inputBytes);
+            var md5 = MD5.Create();
+            var inputBytes = Encoding.ASCII.GetBytes(input);
+            var hash = md5.ComputeHash(inputBytes);
 
             // step 2, convert byte array to hex string
-            StringBuilder sb = new StringBuilder();
-            foreach (byte b in hash)
+            var sb = new StringBuilder();
+            foreach (var b in hash)
             {
                 sb.Append(b.ToString("x2"));
             }
@@ -552,7 +690,7 @@ namespace Configurator
                 switch (mainForm.LoadLegacyConfigurationDialog.ShowDialog())
                 {
                     case DialogResult.OK:
-                        string file = mainForm.LoadLegacyConfigurationDialog.FileName;
+                        var file = mainForm.LoadLegacyConfigurationDialog.FileName;
                         new Thread(() =>
                         {
                             mainForm.BeginInvoke((MethodInvoker) (() =>
@@ -589,7 +727,7 @@ namespace Configurator
                 switch (mainForm.LoadConfigurationDialog.ShowDialog())
                 {
                     case DialogResult.OK:
-                        string file = mainForm.LoadConfigurationDialog.FileName;
+                        var file = mainForm.LoadConfigurationDialog.FileName;
                         new Thread(() =>
                         {
                             mainForm.BeginInvoke((MethodInvoker) (() =>
@@ -625,7 +763,7 @@ namespace Configurator
                 switch (mainForm.SaveConfigurationDialog.ShowDialog())
                 {
                     case DialogResult.OK:
-                        string file = mainForm.SaveConfigurationDialog.FileName;
+                        var file = mainForm.SaveConfigurationDialog.FileName;
                         new Thread(() =>
                         {
                             mainForm.BeginInvoke((MethodInvoker) (() =>
@@ -658,10 +796,10 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Masters.SelectedItem as ListViewItem;
+                var listViewItem = Masters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
-                Configuration.Master master = (Configuration.Master) listViewItem.Tag;
+                var master = (Configuration.Master) listViewItem.Tag;
                 MasterFirstName.Text = master.FirstName;
                 MasterLastName.Text = master.LastName;
             }));
@@ -671,11 +809,11 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
+                var listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
 
-                Configuration.Group group = (Configuration.Group) listViewItem.Tag;
+                var group = (Configuration.Group) listViewItem.Tag;
                 GroupName.Text = group.Name;
                 GroupPassword.Text = group.Password;
                 GroupUUID.Text = group.UUID.ToString();
@@ -686,11 +824,11 @@ namespace Configurator
                 GroupChatLogFile.Text = group.ChatLog;
 
                 // Permissions
-                for (int i = 0; i < GroupPermissions.Items.Count; ++i)
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
                     switch (
                         !(group.PermissionMask &
-                          (UInt64)
+                          (ulong)
                               Reflection.GetEnumValueFromName<Configuration.Permissions>(
                                   (string) GroupPermissions.Items[i]))
                             .Equals
@@ -706,11 +844,11 @@ namespace Configurator
                 }
 
                 // Notifications
-                for (int i = 0; i < GroupNotifications.Items.Count; ++i)
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
                     switch (
                         !(group.NotificationMask &
-                          (UInt64)
+                          (ulong)
                               Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                   (string) GroupNotifications.Items[i]))
                             .Equals(0))
@@ -730,13 +868,13 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
+                var listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
-                Configuration.Group group = (Configuration.Group) listViewItem.Tag;
+                var group = (Configuration.Group) listViewItem.Tag;
                 corradeConfiguration.Groups.Remove(group);
 
-                Configuration.Permissions permission =
+                var permission =
                     Reflection.GetEnumValueFromName<Configuration.Permissions>(
                         (string) GroupPermissions.Items[e.Index]);
 
@@ -761,13 +899,13 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
+                var listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
-                Configuration.Group group = (Configuration.Group) listViewItem.Tag;
+                var group = (Configuration.Group) listViewItem.Tag;
                 corradeConfiguration.Groups.Remove(group);
 
-                Configuration.Notifications notification =
+                var notification =
                     Reflection.GetEnumValueFromName<Configuration.Notifications>(
                         (string) GroupNotifications.Items[e.Index]);
 
@@ -792,10 +930,10 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
+                var listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
-                Configuration.Group group = (Configuration.Group) listViewItem.Tag;
+                var group = (Configuration.Group) listViewItem.Tag;
                 corradeConfiguration.Groups.Remove(group);
                 Groups.Items.RemoveAt(Groups.SelectedIndex);
 
@@ -810,13 +948,13 @@ namespace Configurator
                 GroupChatLogFile.Text = string.Empty;
 
                 // Permissions
-                for (int i = 0; i < GroupPermissions.Items.Count; ++i)
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
                     GroupPermissions.SetItemChecked(i, false);
                 }
 
                 // Notifications
-                for (int i = 0; i < GroupNotifications.Items.Count; ++i)
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
                     GroupNotifications.SetItemChecked(i, false);
                 }
@@ -827,11 +965,11 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Masters.SelectedItem as ListViewItem;
+                var listViewItem = Masters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
 
-                Configuration.Master master = (Configuration.Master) listViewItem.Tag;
+                var master = (Configuration.Master) listViewItem.Tag;
 
                 if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
                 {
@@ -857,11 +995,11 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
+                var listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
 
-                Configuration.Group group = (Configuration.Group) listViewItem.Tag;
+                var group = (Configuration.Group) listViewItem.Tag;
 
                 if (GroupName.Text.Equals(string.Empty))
                 {
@@ -919,8 +1057,8 @@ namespace Configurator
                 GroupChatLogFile.BackColor = Color.Empty;
 
                 // Permissions
-                HashSet<Configuration.Permissions> permissions = new HashSet<Configuration.Permissions>();
-                for (int i = 0; i < GroupPermissions.Items.Count; ++i)
+                var permissions = new HashSet<Configuration.Permissions>();
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
                     switch (GroupPermissions.GetItemCheckState(i))
                     {
@@ -933,8 +1071,8 @@ namespace Configurator
                 }
 
                 // Notifications
-                HashSet<Configuration.Notifications> notifications = new HashSet<Configuration.Notifications>();
-                for (int i = 0; i < GroupNotifications.Items.Count; ++i)
+                var notifications = new HashSet<Configuration.Notifications>();
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
                     switch (GroupNotifications.GetItemCheckState(i))
                     {
@@ -962,7 +1100,7 @@ namespace Configurator
                     Permissions = permissions,
                     Notifications = notifications
                 };
-                
+
                 corradeConfiguration.Groups.Add(group);
                 Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = GroupName.Text, Tag = group};
             }));
@@ -1025,8 +1163,8 @@ namespace Configurator
                 GroupChatLogFile.BackColor = Color.Empty;
 
                 // Permissions
-                HashSet<Configuration.Permissions> permissions = new HashSet<Configuration.Permissions>();
-                for (int i = 0; i < GroupPermissions.Items.Count; ++i)
+                var permissions = new HashSet<Configuration.Permissions>();
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
                     switch (GroupPermissions.GetItemCheckState(i))
                     {
@@ -1039,8 +1177,8 @@ namespace Configurator
                 }
 
                 // Notifications
-                HashSet<Configuration.Notifications> notifications = new HashSet<Configuration.Notifications>();
-                for (int i = 0; i < GroupNotifications.Items.Count; ++i)
+                var notifications = new HashSet<Configuration.Notifications>();
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
                     switch (GroupNotifications.GetItemCheckState(i))
                     {
@@ -1052,7 +1190,7 @@ namespace Configurator
                     }
                 }
 
-                Configuration.Group group = new Configuration.Group
+                var group = new Configuration.Group
                 {
                     Name = GroupName.Text,
                     UUID = groupUUID,
@@ -1147,7 +1285,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = ActiveOutputFilters.SelectedItem as ListViewItem;
+                var listViewItem = ActiveOutputFilters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                 {
                     ActiveOutputFilters.BackColor = Color.MistyRose;
@@ -1162,7 +1300,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = ActiveInputFilters.SelectedItem as ListViewItem;
+                var listViewItem = ActiveInputFilters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                 {
                     ActiveInputFilters.BackColor = Color.MistyRose;
@@ -1195,7 +1333,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = ENIGMARotorSequence.SelectedItem as ListViewItem;
+                var listViewItem = ENIGMARotorSequence.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                 {
                     ENIGMARotorSequence.BackColor = Color.MistyRose;
@@ -1228,7 +1366,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = ENIGMAPlugSequence.SelectedItem as ListViewItem;
+                var listViewItem = ENIGMAPlugSequence.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                 {
                     ENIGMAPlugSequence.BackColor = Color.MistyRose;
@@ -1268,7 +1406,7 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
-                ListViewItem listViewItem = Masters.SelectedItem as ListViewItem;
+                var listViewItem = Masters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                 {
                     Masters.BackColor = Color.MistyRose;
@@ -1285,9 +1423,10 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
         }
+
         private void ClearGroupPasswordRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker)(() => { mainForm.GroupPassword.Text = string.Empty; }));
+            mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.GroupPassword.Text = string.Empty; }));
         }
 
         private void CorradeConfiguratorShown(object sender, EventArgs e)
@@ -1303,7 +1442,7 @@ namespace Configurator
             {
                 new Thread(() =>
                 {
-                    mainForm.BeginInvoke((MethodInvoker)(() =>
+                    mainForm.BeginInvoke((MethodInvoker) (() =>
                     {
                         try
                         {
@@ -1322,15 +1461,15 @@ namespace Configurator
                         }
                     }));
                 })
-                { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+                {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
             }
         }
 
         private void GenerateAESKeyIVRequested(object sender, EventArgs e)
         {
-            string readableCharacters =
+            var readableCharacters =
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&'()*+,-./:;<=>?@[\\]^_`{}~0123456789";
-            Random random = new Random();
+            var random = new Random();
             mainForm.BeginInvoke(
                 (Action) (() =>
                 {
@@ -1351,7 +1490,7 @@ namespace Configurator
                         mainForm.AESKey.BackColor = Color.MistyRose;
                         return;
                     }
-                    byte[] AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
+                    var AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
                     switch (AESKeyBytes.Length)
                     {
                         case 16:
@@ -1376,7 +1515,7 @@ namespace Configurator
                         mainForm.AESIV.BackColor = Color.MistyRose;
                         return;
                     }
-                    byte[] AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
+                    var AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
                     switch (AESIVBytes.Length)
                     {
                         case 16:
@@ -1409,7 +1548,7 @@ namespace Configurator
                 return;
             }
 
-            XmlDocument conf = new XmlDocument();
+            var conf = new XmlDocument();
             try
             {
                 conf.LoadXml(file);
@@ -1482,7 +1621,7 @@ namespace Configurator
                             corradeConfiguration.GroupCreateFee = groupCreateFee;
                             break;
                         case ConfigurationKeys.EXIT_CODE:
-                            XmlNodeList exitCodeNodeList = client.SelectNodes("*");
+                            var exitCodeNodeList = client.SelectNodes("*");
                             if (exitCodeNodeList == null)
                             {
                                 throw new Exception("error in client section");
@@ -1542,7 +1681,7 @@ namespace Configurator
                     switch (LogNode.Name.ToLowerInvariant())
                     {
                         case ConfigurationKeys.IM:
-                            XmlNodeList imLogNodeList = LogNode.SelectNodes("*");
+                            var imLogNodeList = LogNode.SelectNodes("*");
                             if (imLogNodeList == null)
                             {
                                 throw new Exception("error in logs section");
@@ -1570,7 +1709,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.CLIENT:
-                            XmlNodeList clientLogNodeList = LogNode.SelectNodes("*");
+                            var clientLogNodeList = LogNode.SelectNodes("*");
                             if (clientLogNodeList == null)
                             {
                                 throw new Exception("error in logs section");
@@ -1598,7 +1737,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.LOCAL:
-                            XmlNodeList localLogNodeList = LogNode.SelectNodes("*");
+                            var localLogNodeList = LogNode.SelectNodes("*");
                             if (localLogNodeList == null)
                             {
                                 throw new Exception("error in logs section");
@@ -1626,7 +1765,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.REGION:
-                            XmlNodeList regionLogNodeList = LogNode.SelectNodes("*");
+                            var regionLogNodeList = LogNode.SelectNodes("*");
                             if (regionLogNodeList == null)
                             {
                                 throw new Exception("error in logs section");
@@ -1670,7 +1809,7 @@ namespace Configurator
                     switch (FilterNode.Name.ToLowerInvariant())
                     {
                         case ConfigurationKeys.INPUT:
-                            XmlNodeList inputFilterNodeList = FilterNode.SelectNodes("*");
+                            var inputFilterNodeList = FilterNode.SelectNodes("*");
                             if (inputFilterNodeList == null)
                             {
                                 throw new Exception("error in filters section");
@@ -1694,7 +1833,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.OUTPUT:
-                            XmlNodeList outputFilterNodeList = FilterNode.SelectNodes("*");
+                            var outputFilterNodeList = FilterNode.SelectNodes("*");
                             if (outputFilterNodeList == null)
                             {
                                 throw new Exception("error in filters section");
@@ -1734,12 +1873,12 @@ namespace Configurator
                     switch (FilterNode.Name.ToLowerInvariant())
                     {
                         case ConfigurationKeys.ENIGMA:
-                            XmlNodeList ENIGMANodeList = FilterNode.SelectNodes("*");
+                            var ENIGMANodeList = FilterNode.SelectNodes("*");
                             if (ENIGMANodeList == null)
                             {
                                 throw new Exception("error in cryptography section");
                             }
-                            Configuration.ENIGMA enigma = new Configuration.ENIGMA();
+                            var enigma = new Configuration.ENIGMA();
                             foreach (XmlNode ENIGMANode in ENIGMANodeList)
                             {
                                 switch (ENIGMANode.Name.ToLowerInvariant())
@@ -1758,7 +1897,7 @@ namespace Configurator
                             corradeConfiguration.ENIGMAConfiguration = enigma;
                             break;
                         case ConfigurationKeys.VIGENERE:
-                            XmlNodeList VIGENERENodeList = FilterNode.SelectNodes("*");
+                            var VIGENERENodeList = FilterNode.SelectNodes("*");
                             if (VIGENERENodeList == null)
                             {
                                 throw new Exception("error in cryptography section");
@@ -2029,7 +2168,7 @@ namespace Configurator
                             corradeConfiguration.Range = range;
                             break;
                         case ConfigurationKeys.RLV:
-                            XmlNodeList rlvLimitNodeList = limitsNode.SelectNodes("*");
+                            var rlvLimitNodeList = limitsNode.SelectNodes("*");
                             if (rlvLimitNodeList == null)
                             {
                                 throw new Exception("error in RLV limits section");
@@ -2052,7 +2191,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.COMMANDS:
-                            XmlNodeList commandsLimitNodeList = limitsNode.SelectNodes("*");
+                            var commandsLimitNodeList = limitsNode.SelectNodes("*");
                             if (commandsLimitNodeList == null)
                             {
                                 throw new Exception("error in commands limits section");
@@ -2075,7 +2214,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.IM:
-                            XmlNodeList instantMessageLimitNodeList = limitsNode.SelectNodes("*");
+                            var instantMessageLimitNodeList = limitsNode.SelectNodes("*");
                             if (instantMessageLimitNodeList == null)
                             {
                                 throw new Exception("error in instant message limits section");
@@ -2098,7 +2237,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.SCHEDULER:
-                            XmlNodeList schedulerLimitNodeList = limitsNode.SelectNodes("*");
+                            var schedulerLimitNodeList = limitsNode.SelectNodes("*");
                             if (schedulerLimitNodeList == null)
                             {
                                 throw new Exception("error in scheduler limits section");
@@ -2121,7 +2260,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.LOG:
-                            XmlNodeList logLimitNodeList = limitsNode.SelectNodes("*");
+                            var logLimitNodeList = limitsNode.SelectNodes("*");
                             if (logLimitNodeList == null)
                             {
                                 throw new Exception("error in log limits section");
@@ -2144,7 +2283,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.POST:
-                            XmlNodeList postLimitNodeList = limitsNode.SelectNodes("*");
+                            var postLimitNodeList = limitsNode.SelectNodes("*");
                             if (postLimitNodeList == null)
                             {
                                 throw new Exception("error in post limits section");
@@ -2167,7 +2306,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.CLIENT:
-                            XmlNodeList clientLimitNodeList = limitsNode.SelectNodes("*");
+                            var clientLimitNodeList = limitsNode.SelectNodes("*");
                             if (clientLimitNodeList == null)
                             {
                                 throw new Exception("error in client limits section");
@@ -2200,7 +2339,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.CALLBACKS:
-                            XmlNodeList callbackLimitNodeList = limitsNode.SelectNodes("*");
+                            var callbackLimitNodeList = limitsNode.SelectNodes("*");
                             if (callbackLimitNodeList == null)
                             {
                                 throw new Exception("error in callback limits section");
@@ -2240,7 +2379,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.NOTIFICATIONS:
-                            XmlNodeList notificationLimitNodeList = limitsNode.SelectNodes("*");
+                            var notificationLimitNodeList = limitsNode.SelectNodes("*");
                             if (notificationLimitNodeList == null)
                             {
                                 throw new Exception("error in notification limits section");
@@ -2293,7 +2432,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.SERVER:
-                            XmlNodeList HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
+                            var HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
                             if (HTTPServerLimitNodeList == null)
                             {
                                 throw new Exception("error in server limits section");
@@ -2366,7 +2505,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.SERVICES:
-                            XmlNodeList servicesLimitNodeList = limitsNode.SelectNodes("*");
+                            var servicesLimitNodeList = limitsNode.SelectNodes("*");
                             if (servicesLimitNodeList == null)
                             {
                                 throw new Exception("error in services limits section");
@@ -2407,7 +2546,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.DATA:
-                            XmlNodeList dataLimitNodeList = limitsNode.SelectNodes("*");
+                            var dataLimitNodeList = limitsNode.SelectNodes("*");
                             if (dataLimitNodeList == null)
                             {
                                 throw new Exception("error in data limits section");
@@ -2435,7 +2574,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.MEMBERSHIP:
-                            XmlNodeList membershipLimitNodeList = limitsNode.SelectNodes("*");
+                            var membershipLimitNodeList = limitsNode.SelectNodes("*");
                             if (membershipLimitNodeList == null)
                             {
                                 throw new Exception("error in membership limits section");
@@ -2458,7 +2597,7 @@ namespace Configurator
                             }
                             break;
                         case ConfigurationKeys.LOGOUT:
-                            XmlNodeList logoutLimitNodeList = limitsNode.SelectNodes("*");
+                            var logoutLimitNodeList = limitsNode.SelectNodes("*");
                             if (logoutLimitNodeList == null)
                             {
                                 throw new Exception("error in logout limits section");
@@ -2495,7 +2634,7 @@ namespace Configurator
             {
                 foreach (XmlNode mastersNode in root.SelectNodes("/config/masters/*"))
                 {
-                    Configuration.Master configMaster = new Configuration.Master();
+                    var configMaster = new Configuration.Master();
                     foreach (XmlNode masterNode in mastersNode.ChildNodes)
                     {
                         switch (masterNode.Name.ToLowerInvariant())
@@ -2532,7 +2671,7 @@ namespace Configurator
             {
                 foreach (XmlNode groupsNode in root.SelectNodes("/config/groups/*"))
                 {
-                    Configuration.Group configGroup = new Configuration.Group
+                    var configGroup = new Configuration.Group
                     {
                         ChatLog = string.Empty,
                         ChatLogEnabled = false,
@@ -2575,7 +2714,7 @@ namespace Configurator
                                 }
                                 break;
                             case ConfigurationKeys.CHATLOG:
-                                XmlNodeList groupChatLogNodeList = groupNode.SelectNodes("*");
+                                var groupChatLogNodeList = groupNode.SelectNodes("*");
                                 if (groupChatLogNodeList == null)
                                 {
                                     throw new Exception("error in group section");
@@ -2610,17 +2749,17 @@ namespace Configurator
                                 configGroup.DatabaseFile = groupNode.InnerText;
                                 break;
                             case ConfigurationKeys.PERMISSIONS:
-                                XmlNodeList permissionNodeList = groupNode.SelectNodes("*");
+                                var permissionNodeList = groupNode.SelectNodes("*");
                                 if (permissionNodeList == null)
                                 {
                                     throw new Exception("error in group permission section");
                                 }
-                                HashSet<Configuration.Permissions> permissions =
+                                var permissions =
                                     new HashSet<Configuration.Permissions>();
                                 foreach (XmlNode permissioNode in permissionNodeList)
                                 {
-                                    XmlNode node = permissioNode;
-                                    object LockObject = new object();
+                                    var node = permissioNode;
+                                    var LockObject = new object();
                                     Parallel.ForEach(
                                         Reflection.GetEnumNames<Configuration.Permissions>()
                                             .AsParallel().Where(name => name.Equals(node.Name,
@@ -2647,17 +2786,17 @@ namespace Configurator
                                 configGroup.Permissions = permissions;
                                 break;
                             case ConfigurationKeys.NOTIFICATIONS:
-                                XmlNodeList notificationNodeList = groupNode.SelectNodes("*");
+                                var notificationNodeList = groupNode.SelectNodes("*");
                                 if (notificationNodeList == null)
                                 {
                                     throw new Exception("error in group notification section");
                                 }
-                                HashSet<Configuration.Notifications> notifications =
+                                var notifications =
                                     new HashSet<Configuration.Notifications>();
                                 foreach (XmlNode notificationNode in notificationNodeList)
                                 {
-                                    XmlNode node = notificationNode;
-                                    object LockObject = new object();
+                                    var node = notificationNode;
+                                    var LockObject = new object();
                                     Parallel.ForEach(
                                         Reflection.GetEnumNames<Configuration.Notifications>()
                                             .AsParallel().Where(name => name.Equals(node.Name,
@@ -2699,6 +2838,334 @@ namespace Configurator
             {
                 mainForm.StatusText.Text = @"read configuration file";
                 mainForm.StatusProgress.Value = 100;
+            }));
+        }
+
+        private void ShowToolTip(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    var pictureBox = sender as PictureBox;
+                    if (pictureBox != null)
+                    {
+                        toolTip1.Show(toolTip1.GetToolTip(pictureBox), pictureBox);
+                    }
+                }));
+        }
+
+        private void SaveCheck(object sender, FormClosingEventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    // Save form settings.
+                    Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
+                    Settings.Default.Save();
+                }));
+
+            // Prompt for saving Corrade configuration.
+            switch (isConfigurationSaved)
+            {
+                case false:
+                    if (
+                        MessageBox.Show(@"Configuration not saved, are you sure you want to quit?", @"Configurator",
+                            MessageBoxButtons.YesNo) == DialogResult.No)
+                        e.Cancel = true;
+                    break;
+            }
+        }
+
+        private void LoadDefaults(object sender, EventArgs e)
+        {
+            new Thread(() =>
+            {
+                mainForm.BeginInvoke((MethodInvoker) (() =>
+                {
+                    try
+                    {
+                        using (
+                            var stream =
+                                Assembly.GetExecutingAssembly().GetManifestResourceStream(@"Configurator.Corrade.ini"))
+                        {
+                            mainForm.StatusText.Text = @"loading configuration...";
+                            mainForm.StatusProgress.Value = 0;
+                            corradeConfiguration.Load(stream, ref corradeConfiguration);
+                            mainForm.StatusProgress.Value = 50;
+                            mainForm.StatusText.Text = @"applying settings...";
+                            GetUserConfiguration.Invoke();
+                            mainForm.StatusText.Text = @"configuration loaded";
+                            mainForm.StatusProgress.Value = 100;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        mainForm.StatusText.Text = ex.Message;
+                    }
+                }));
+            })
+            {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+        }
+
+        private static void setTabPageVisibility(TabControl tc, TabPage tp, bool visibility)
+        {
+            //if tp is not visible and visibility is set to true
+            if (visibility && (tc.TabPages.IndexOf(tp) <= -1))
+            {
+                tc.TabPages.Insert(tc.TabCount, tp);
+                //guarantee tabcontrol visibility
+                tc.Visible = true;
+                //tc.SelectTab(tp);
+            }
+            //if tp is visible and visibility is set to false
+            else if ((visibility == false) && (tc.TabPages.IndexOf(tp) > -1))
+            {
+                tc.TabPages.Remove(tp);
+                //no pages to show, hide tabcontrol
+                if (tc.TabCount == 0)
+                {
+                    tc.Visible = false;
+                }
+            }
+            //else do nothing
+        }
+
+        private static void setGroupBoxVisibility(GroupBox bx, bool visibility)
+        {
+            bx.Visible = visibility;
+        }
+
+        private void ConfiguratorLoaded(object sender, EventArgs e)
+        {
+            // Load form settings.
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    //Properties.Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
+                    //Properties.Settings.Default.Save();
+                    var experienceLevel = Settings.Default["ExperienceLevel"];
+                    mainForm.ExperienceLevel.SelectedIndex = mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                    mainForm.ExperienceLevel.SelectedItem = experienceLevel;
+                }));
+            SetExperienceLevel.Invoke();
+        }
+
+        private void ExperienceLevelChanged(object sender, EventArgs e)
+        {
+            SetExperienceLevel.Invoke();
+        }
+
+        private void MasterPasswordOverrideChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    // Check if the master password override is empty.
+                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
+                    {
+                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                        return;
+                    }
+
+                    // Hash the group passwords using SHA1
+                    foreach (ListViewItem item in mainForm.Groups.Items)
+                    {
+                        var group = (Configuration.Group) item.Tag;
+                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
+                        {
+                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                            return;
+                        }
+                    }
+                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
+                }));
+        }
+
+        private void EnableMasterPasswordOverrideRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    // Check if the master password override is empty.
+                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
+                    {
+                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                        return;
+                    }
+
+                    // Check if the master password override matches any group password.
+                    foreach (ListViewItem item in mainForm.Groups.Items)
+                    {
+                        var group = (Configuration.Group) item.Tag;
+                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
+                        {
+                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                            return;
+                        }
+                    }
+                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
+                }));
+        }
+
+        private void HordePeerSelected(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = HordePeers.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+                var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
+                HordePeerURL.Text = hordePeer.URL;
+                HordePeerUsername.Text = hordePeer.Username;
+                HordePeerPassword.Text = hordePeer.Password;
+            }));
+        }
+
+        private void HordePeerConfigurationChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = HordePeers.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+
+                var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
+                if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
+                    string.IsNullOrEmpty(HordePeerPassword.Text) ||
+                    string.IsNullOrEmpty(HordePeerURL.Text))
+                {
+                    HordePeerUsername.BackColor = Color.MistyRose;
+                    HordePeerPassword.BackColor = Color.MistyRose;
+                    HordePeerURL.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                HordePeerUsername.BackColor = Color.Empty;
+                HordePeerPassword.BackColor = Color.Empty;
+                HordePeerURL.BackColor = Color.Empty;
+
+                corradeConfiguration.HordePeers.Remove(hordePeer);
+                hordePeer = new Configuration.HordePeer
+                {
+                    URL = HordePeerURL.Text,
+                    Username = HordePeerUsername.Text,
+                    Password = HordePeerPassword.Text
+                };
+                corradeConfiguration.HordePeers.Add(hordePeer);
+                HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem
+                {
+                    Text = HordePeerURL.Text,
+                    Tag = hordePeer
+                };
+            }));
+        }
+
+        private void AddHordePeerRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
+                    string.IsNullOrEmpty(HordePeerPassword.Text) ||
+                    string.IsNullOrEmpty(HordePeerURL.Text))
+                {
+                    HordePeerUsername.BackColor = Color.MistyRose;
+                    HordePeerPassword.BackColor = Color.MistyRose;
+                    HordePeerURL.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                HordePeerUsername.BackColor = Color.Empty;
+                HordePeerPassword.BackColor = Color.Empty;
+                HordePeerURL.BackColor = Color.Empty;
+
+                var hordePeer = new Configuration.HordePeer
+                {
+                    URL = HordePeerURL.Text,
+                    Username = HordePeerUsername.Text,
+                    Password = HordePeerPassword.Text
+                };
+
+                HordePeers.Items.Add(new ListViewItem
+                {
+                    Text = HordePeerURL.Text,
+                    Tag = hordePeer
+                });
+                corradeConfiguration.HordePeers.Add(hordePeer);
+            }));
+        }
+
+        private void RemoveHordePeerRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = HordePeers.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                {
+                    HordePeers.BackColor = Color.MistyRose;
+                    return;
+                }
+                HordePeers.BackColor = Color.Empty;
+                corradeConfiguration.HordePeers.Remove(
+                    (Configuration.HordePeer) ((ListViewItem) HordePeers.Items[HordePeers.SelectedIndex]).Tag);
+                HordePeers.Items.RemoveAt(HordePeers.SelectedIndex);
+            }));
+        }
+
+        private void HordePeersClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                if (e.Y < HordePeers.ItemHeight*HordePeers.Items.Count)
+                    return;
+                HordePeers.ClearSelected();
+                HordePeerUsername.Text = string.Empty;
+                HordePeerPassword.Text = string.Empty;
+                HordePeerURL.Text = string.Empty;
+            }));
+        }
+
+        private void MastersClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                if (e.Y < Masters.ItemHeight*Masters.Items.Count)
+                    return;
+                Masters.ClearSelected();
+                MasterFirstName.Text = string.Empty;
+                MasterLastName.Text = string.Empty;
+            }));
+        }
+
+        private void GroupsClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                if (e.Y < Groups.ItemHeight*Groups.Items.Count)
+                    return;
+                Groups.ClearSelected();
+                GroupName.Text = string.Empty;
+                GroupPassword.Text = string.Empty;
+                GroupUUID.Text = string.Empty;
+                GroupWorkers.Text = string.Empty;
+                GroupSchedules.Text = string.Empty;
+                GroupDatabaseFile.Text = string.Empty;
+                GroupChatLogEnabled.Checked = false;
+                GroupChatLogFile.Text = string.Empty;
+                // Permissions
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+                {
+                    GroupPermissions.SetItemChecked(i, false);
+                }
+
+                // Notifications
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+                {
+                    GroupNotifications.SetItemChecked(i, false);
+                }
             }));
         }
 
@@ -2824,258 +3291,6 @@ namespace Configurator
             public const string BODY = @"body";
             public const string HEADER = @"header";
             public const string QUEUE = @"queue";
-        }
-
-        private void ShowToolTip(object sender, EventArgs e)
-        {
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    PictureBox pictureBox = sender as PictureBox;
-                    if (pictureBox != null)
-                    {
-                        toolTip1.Show(toolTip1.GetToolTip(pictureBox), pictureBox);
-                    }
-                }));
-        }
-
-        private void SaveCheck(object sender, FormClosingEventArgs e)
-        {
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    // Save form settings.
-                    Properties.Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
-                    Properties.Settings.Default.Save();
-                }));
-
-            // Prompt for saving Corrade configuration.
-            switch (isConfigurationSaved)
-            {
-                case false:
-                    if (
-                        MessageBox.Show(@"Configuration not saved, are you sure you want to quit?", @"Configurator",
-                            MessageBoxButtons.YesNo) == DialogResult.No)
-                        e.Cancel = true;
-                    break;
-            }
-        }
-
-        private void LoadDefaults(object sender, EventArgs e)
-        {
-            new Thread(() =>
-            {
-                mainForm.BeginInvoke((MethodInvoker) (() =>
-                {
-                    try
-                    {
-                        using (
-                            Stream stream =
-                                Assembly.GetExecutingAssembly().GetManifestResourceStream(@"Configurator.Corrade.ini"))
-                        {
-                            mainForm.StatusText.Text = @"loading configuration...";
-                            mainForm.StatusProgress.Value = 0;
-                            corradeConfiguration.Load(stream, ref corradeConfiguration);
-                            mainForm.StatusProgress.Value = 50;
-                            mainForm.StatusText.Text = @"applying settings...";
-                            GetUserConfiguration.Invoke();
-                            mainForm.StatusText.Text = @"configuration loaded";
-                            mainForm.StatusProgress.Value = 100;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        mainForm.StatusText.Text = ex.Message;
-                    }
-                }));
-            })
-            {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
-        }
-
-        static void setTabPageVisibility(TabControl tc, TabPage tp, bool visibility)
-        {
-            //if tp is not visible and visibility is set to true
-            if ((visibility == true) && (tc.TabPages.IndexOf(tp) <= -1))
-            {
-                tc.TabPages.Insert(tc.TabCount, tp);
-                //guarantee tabcontrol visibility
-                tc.Visible = true;
-                //tc.SelectTab(tp);
-            }
-            //if tp is visible and visibility is set to false
-            else if ((visibility == false) && (tc.TabPages.IndexOf(tp) > -1))
-            {
-                tc.TabPages.Remove(tp);
-                //no pages to show, hide tabcontrol
-                if (tc.TabCount == 0)
-                {
-                    tc.Visible = false;
-                }
-            }
-            //else do nothing
-        }
-
-        static void setGroupBoxVisibility(GroupBox bx, bool visibility)
-        {
-            bx.Visible = visibility;
-        }
-
-        private readonly Action SetExperienceLevel = () =>
-        {
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    ComboBox experienceComboBox = mainForm.ExperienceLevel;
-                    if (experienceComboBox == null) return;
-                    mainForm.Tabs.Enabled = false;
-                    switch ((string) experienceComboBox.SelectedItem)
-                    {
-                        case "Basic":
-                            /* Hide non-basic experience tabs. */
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
-                            /* Hide non-basic experience group boxes. */
-                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, false);
-                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
-                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
-                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
-                            setGroupBoxVisibility(mainForm.CompressionBox, false);
-                            break;
-                        case "Intermediary":
-                            /* Hide non-advanced experience tabs. */
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
-                            /* Hide non-advanced experience group boxes. */
-                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
-                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
-                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
-                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
-                            setGroupBoxVisibility(mainForm.CompressionBox, false);
-                            break;
-                        case "Advanced":
-                            /* Show everything. */
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, true);
-                            /* Show everything. */
-                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
-                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, true);
-                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, true);
-                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, true);
-                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, true);
-                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, true);
-                            setGroupBoxVisibility(mainForm.CompressionBox, true);
-                            break;
-                    }
-                    mainForm.Tabs.Enabled = true;
-
-                    // Save form settings.
-                    Properties.Settings.Default["ExperienceLevel"] = (string) experienceComboBox.SelectedItem;
-                    Properties.Settings.Default.Save();
-                }));
-        };
-
-        private void ConfiguratorLoaded(object sender, EventArgs e)
-        {
-            // Load form settings.
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    //Properties.Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
-                    //Properties.Settings.Default.Save();
-                    var experienceLevel = Properties.Settings.Default["ExperienceLevel"];
-                    mainForm.ExperienceLevel.SelectedIndex = mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
-                    mainForm.ExperienceLevel.SelectedItem = experienceLevel;
-                }));
-            SetExperienceLevel.Invoke();
-        }
-
-        private void ExperienceLevelChanged(object sender, EventArgs e)
-        {
-            SetExperienceLevel.Invoke();
-        }
-
-        private void MasterPasswordOverrideChanged(object sender, EventArgs e)
-        {
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    // Check if the master password override is empty.
-                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
-                    {
-                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                        return;
-                    }
-
-                    // Hash the group passwords using SHA1
-                    foreach (ListViewItem item in mainForm.Groups.Items)
-                    {
-                        Configuration.Group group = (Configuration.Group)item.Tag;
-                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
-                        {
-                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                            return;
-                        }
-                    }
-                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
-                }));
-        }
-
-        private void EnableMasterPasswordOverrideRequested(object sender, EventArgs e)
-        {
-            mainForm.BeginInvoke(
-                (Action)(() =>
-                {
-                    // Check if the master password override is empty.
-                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
-                    {
-                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                        return;
-                    }
-
-                    // Check if the master password override matches any group password.
-                    foreach (ListViewItem item in mainForm.Groups.Items)
-                    {
-                        Configuration.Group group = (Configuration.Group)item.Tag;
-                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
-                        {
-                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                            return;
-                        }
-                    }
-                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
-                }));
         }
     }
 }

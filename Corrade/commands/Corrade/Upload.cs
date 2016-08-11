@@ -414,6 +414,7 @@ namespace Corrade
                         {
                             Client.Assets.Cache.SaveAssetToCache(assetUUID, data);
                         }
+                        PushBinaryAssetCache(itemUUID, data);
                     }
                     // Return the item and asset UUID.
                     result.Add(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
