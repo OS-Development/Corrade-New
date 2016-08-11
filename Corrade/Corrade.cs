@@ -3961,20 +3961,20 @@ namespace Corrade
                                                     var region = (Cache.Region)
                                                         new XmlSerializer(typeof (Cache.Region)).Deserialize(
                                                             stringReader);
-                                                    Cache.AddRegion(region);
-                                                    PushRegionAssetCache(region, httpRequest.RemoteEndPoint.Address);
+                                                    if (Cache.AddRegion(region))
+                                                        PushRegionAssetCache(region, httpRequest.RemoteEndPoint.Address);
                                                     break;
                                                 case "agent":
                                                     var agent = (Cache.Agent)
                                                         new XmlSerializer(typeof (Cache.Agent)).Deserialize(stringReader);
-                                                    Cache.AddAgent(agent);
-                                                    PushAgentAssetCache(agent, httpRequest.RemoteEndPoint.Address);
+                                                    if (Cache.AddAgent(agent))
+                                                        PushAgentAssetCache(agent, httpRequest.RemoteEndPoint.Address);
                                                     break;
                                                 case "group":
                                                     var group = (Cache.Group)
                                                         new XmlSerializer(typeof (Cache.Group)).Deserialize(stringReader);
-                                                    Cache.AddGroup(group);
-                                                    PushGroupAssetCache(group, httpRequest.RemoteEndPoint.Address);
+                                                    if (Cache.AddGroup(group))
+                                                        PushGroupAssetCache(group, httpRequest.RemoteEndPoint.Address);
                                                     break;
                                             }
                                             Feedback(
@@ -4002,9 +4002,9 @@ namespace Corrade
                                                 if (!Client.Assets.Cache.HasAsset(assetUUID))
                                                 {
                                                     Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
+                                                    PushBinaryAssetCache(assetUUID, requestData,
+                                                        httpRequest.RemoteEndPoint.Address);
                                                 }
-                                                PushBinaryAssetCache(assetUUID, requestData,
-                                                    httpRequest.RemoteEndPoint.Address);
                                             }
                                         }
                                         Feedback(
