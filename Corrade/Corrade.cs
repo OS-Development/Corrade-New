@@ -3962,19 +3962,19 @@ namespace Corrade
                                                         new XmlSerializer(typeof (Cache.Region)).Deserialize(
                                                             stringReader);
                                                     if (Cache.AddRegion(region))
-                                                        PushRegionAssetCache(region, httpRequest.RemoteEndPoint.Address);
+                                                        PushRegionAssetCache(region, httpRequest.RemoteEndPoint);
                                                     break;
                                                 case "agent":
                                                     var agent = (Cache.Agent)
                                                         new XmlSerializer(typeof (Cache.Agent)).Deserialize(stringReader);
                                                     if (Cache.AddAgent(agent))
-                                                        PushAgentAssetCache(agent, httpRequest.RemoteEndPoint.Address);
+                                                        PushAgentAssetCache(agent, httpRequest.RemoteEndPoint);
                                                     break;
                                                 case "group":
                                                     var group = (Cache.Group)
                                                         new XmlSerializer(typeof (Cache.Group)).Deserialize(stringReader);
                                                     if (Cache.AddGroup(group))
-                                                        PushGroupAssetCache(group, httpRequest.RemoteEndPoint.Address);
+                                                        PushGroupAssetCache(group, httpRequest.RemoteEndPoint);
                                                     break;
                                             }
                                             Feedback(
@@ -4003,7 +4003,7 @@ namespace Corrade
                                                 {
                                                     Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
                                                     PushBinaryAssetCache(assetUUID, requestData,
-                                                        httpRequest.RemoteEndPoint.Address);
+                                                        httpRequest.RemoteEndPoint);
                                                 }
                                             }
                                         }
@@ -6887,7 +6887,7 @@ namespace Corrade
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushBinaryAssetCache(UUID assetUUID, byte[] data, IPAddress exclude)
+        private static void PushBinaryAssetCache(UUID assetUUID, byte[] data, IPEndPoint exclude)
         {
             new Thread(() =>
             {
@@ -6897,7 +6897,8 @@ namespace Corrade
                     {
                         try
                         {
-                            if (Dns.GetHostAddresses(new Uri(p.Key).Host).Contains(exclude))
+                            var uri = new Uri(p.Key);
+                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
                                 return;
 
                             await
@@ -6949,7 +6950,7 @@ namespace Corrade
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushGroupAssetCache(Cache.Group o, IPAddress exclude)
+        private static void PushGroupAssetCache(Cache.Group o, IPEndPoint exclude)
         {
             new Thread(() =>
             {
@@ -6959,7 +6960,8 @@ namespace Corrade
                     {
                         try
                         {
-                            if (Dns.GetHostAddresses(new Uri(p.Key).Host).Contains(exclude))
+                            var uri = new Uri(p.Key);
+                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
                                 return;
 
                             using (var writer = new StringWriter())
@@ -7016,7 +7018,7 @@ namespace Corrade
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushRegionAssetCache(Cache.Region o, IPAddress exclude)
+        private static void PushRegionAssetCache(Cache.Region o, IPEndPoint exclude)
         {
             new Thread(() =>
             {
@@ -7026,7 +7028,8 @@ namespace Corrade
                     {
                         try
                         {
-                            if (Dns.GetHostAddresses(new Uri(p.Key).Host).Contains(exclude))
+                            var uri = new Uri(p.Key);
+                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
                                 return;
 
                             using (var writer = new StringWriter())
@@ -7083,7 +7086,7 @@ namespace Corrade
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushAgentAssetCache(Cache.Agent o, IPAddress exclude)
+        private static void PushAgentAssetCache(Cache.Agent o, IPEndPoint exclude)
         {
             new Thread(() =>
             {
@@ -7093,7 +7096,8 @@ namespace Corrade
                     {
                         try
                         {
-                            if (Dns.GetHostAddresses(new Uri(p.Key).Host).Contains(exclude))
+                            var uri = new Uri(p.Key);
+                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
                                 return;
 
                             using (var writer = new StringWriter())
