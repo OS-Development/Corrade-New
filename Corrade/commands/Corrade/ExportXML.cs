@@ -191,7 +191,7 @@ namespace Corrade
                                 {
                                     Client.Assets.Cache.SaveAssetToCache(o, assetData);
                                 }
-                                PushBinaryAssetCache(o, assetData);
+                                HordeDistributeCacheAsset(o, assetData);
                                 break;
                             default:
                                 lock (Locks.ClientInstanceAssetsLock)

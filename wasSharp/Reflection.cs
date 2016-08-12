@@ -77,7 +77,7 @@ namespace wasSharp
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Get the description from an enumeration value.
+        ///     Get the name from an enumeration value.
         /// </summary>
         /// <param name="value">an enumeration value</param>
         /// <returns>the description or the empty string</returns>

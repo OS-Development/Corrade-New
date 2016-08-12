@@ -23,14 +23,15 @@ namespace wasOpenMetaverse
         private static HashSet<Agent> _agentCache = new HashSet<Agent>();
         public static readonly ObservableCollection<Group> ObservableGroupCache = new ObservableCollection<Group>();
         private static HashSet<Group> _groupCache = new HashSet<Group>();
+        public static readonly ObservableCollection<MuteEntry> ObservableMuteCache = new ObservableCollection<MuteEntry>();
+        private static HashSet<MuteEntry> _muteCache = new HashSet<MuteEntry>();
 
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
-        private static HashSet<MuteEntry> _mutesCache;
         private static readonly object RegionCacheLock = new object();
         private static readonly object AgentCacheLock = new object();
         private static readonly object GroupCacheLock = new object();
         private static readonly object CurrentGroupsCacheLock = new object();
-        private static readonly object MutesCacheLock = new object();
+        private static readonly object MuteCacheLock = new object();
 
         public static HashSet<Region> RegionCache
         {
@@ -113,20 +114,23 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static HashSet<MuteEntry> MutesCache
+        public static HashSet<MuteEntry> MuteCache
         {
             get
             {
-                lock (MutesCacheLock)
+                lock (MuteCacheLock)
                 {
-                    return _mutesCache;
+                    return _muteCache;
                 }
             }
             set
             {
                 lock (AgentCacheLock)
                 {
-                    _mutesCache = value;
+                    _muteCache = value;
+                    ObservableMuteCache.Clear();
+                    foreach (var mute in value)
+                        ObservableMuteCache.Add(mute);
                 }
             }
         }
@@ -152,9 +156,10 @@ namespace wasOpenMetaverse
             {
                 _currentGroupsCache.Clear();
             }
-            lock (MutesCacheLock)
+            lock (MuteCacheLock)
             {
-                _mutesCache.Clear();
+                _muteCache.Clear();
+                ObservableMuteCache.Clear();
             }
         }
 
@@ -191,30 +196,36 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static void AddMute(MuteFlags flags, UUID uuid, string name, MuteType type)
+        public static bool AddMute(MuteFlags flags, UUID uuid, string name, MuteType type)
         {
-            var muteEntry = new MuteEntry
+            return AddMute(new MuteEntry
             {
                 Flags = flags,
                 ID = uuid,
                 Name = name,
                 Type = type
-            };
+            });
+        }
 
-            lock (MutesCacheLock)
+        public static bool AddMute(MuteEntry muteEntry)
+        {
+            lock (MuteCacheLock)
             {
-                if (!_mutesCache.Contains(muteEntry))
+                if (!_muteCache.Contains(muteEntry))
                 {
-                    _mutesCache.Add(muteEntry);
+                    _muteCache.Add(muteEntry);
+                    ObservableMuteCache.Add(muteEntry);
+                    return true;
                 }
+                return false;
             }
         }
 
         public static void RemoveMute(MuteEntry mute)
         {
-            lock (MutesCacheLock)
+            lock (MuteCacheLock)
             {
-                _mutesCache.Remove(mute);
+                _muteCache.Remove(mute);
             }
         }
 
@@ -352,22 +363,22 @@ namespace wasOpenMetaverse
             }
         }
 
-        [XmlRoot("region")]
+        [XmlRoot("Region")]
         public struct Region
         {
-            [XmlElement("name")] public string Name;
-            [XmlElement("handle")] public ulong Handle;
+            [XmlElement("Name")] public string Name;
+            [XmlElement("Handle")] public ulong Handle;
         }
 
-        [XmlRoot("agent")]
+        [XmlRoot("Agent")]
         public struct Agent
         {
-            [XmlElement("firstname")] public string FirstName;
-            [XmlElement("lastname")] public string LastName;
+            [XmlElement("FirstName")] public string FirstName;
+            [XmlElement("LastName")] public string LastName;
             [XmlElement("UUID")] public UUID UUID;
         }
 
-        [XmlRoot("group")]
+        [XmlRoot("Group")]
         public struct Group
         {
             [XmlElement("Name")] public string Name;

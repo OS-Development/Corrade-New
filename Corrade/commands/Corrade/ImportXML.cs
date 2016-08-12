@@ -316,7 +316,7 @@ namespace Corrade
                                                     Client.Assets.Cache.SaveAssetToCache(replaceByTextureUUID,
                                                         j2cBytes);
                                                 }
-                                                PushBinaryAssetCache(replaceByTextureUUID, j2cBytes);
+                                                HordeDistributeCacheAsset(replaceByTextureUUID, j2cBytes);
                                                 // Finally, add the replacement texture to the dictionary.
                                                 lock (LockObject)
                                                 {

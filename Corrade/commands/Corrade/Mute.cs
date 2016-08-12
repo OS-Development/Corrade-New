@@ -70,7 +70,7 @@ namespace Corrade
                             // retrieve the current mute list
                             Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
 
-                            // check that the mute list does not already exist
+                            // check that the mute entry does not already exist
                             if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(targetUUID) && o.Name.Equals(name)))
                                 throw new ScriptException(ScriptError.MUTE_ENTRY_ALREADY_EXISTS);
 

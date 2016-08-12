@@ -3909,16 +3909,22 @@ namespace Corrade
             switch (httpRequest.HttpMethod)
             {
                 case WebRequestMethods.Http.Put: // Receive cache pushes.
+
+                    // Do not proceed if horde synchronization is not enabled.
+                    if (!corradeConfiguration.EnableHorde)
+                        break;
+
+                    // Get the URL path.
+                    var urlPath = httpRequest.Url.Segments.Select(o => o.Trim('/')).Skip(1).ToList();
+                    if (!urlPath.Any())
+                        break;
+
                     // If authentication is not enabled or the client has not sent any authentication then stop.
                     if (!corradeConfiguration.EnableHTTPServerAuthentication || !httpContext.Request.IsAuthenticated)
                     {
                         httpContext?.Response.Close();
                         return;
                     }
-
-                    // Log the attempt to put cache objects.
-                    Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                        Reflection.GetDescriptionFromEnumValue(ConsoleMessage.PEER_ATTEMPTING_CACHE_PUT));
 
                     // Authenticate.
                     var identity = (HttpListenerBasicIdentity) httpContext.User.Identity;
@@ -3930,98 +3936,217 @@ namespace Corrade
                         return;
                     }
 
-                    // Get the URL path.
-                    var urlPath = httpRequest.Url.Segments.Select(o => o.Trim('/')).Skip(1).ToList();
-                    if (urlPath.Count < 2)
+                    // Find peer from shared secret.
+                    string sharedSecretKey;
+                    try
                     {
-                        httpContext?.Response.Close();
-                        return;
+                        sharedSecretKey =
+                            httpRequest.Headers.AllKeys.AsParallel()
+                                .SingleOrDefault(
+                                    o =>
+                                        o.Equals(CORRADE_CONSTANTS.HORDE_SHARED_SECRET_HEADER, StringComparison.Ordinal));
+                        if (string.IsNullOrEmpty(sharedSecretKey))
+                            break;
+                    }
+                    catch (Exception)
+                    {
+                        break;
                     }
 
-                    var urlResource = urlPath[0].ToLowerInvariant();
-                    var resourceType = urlPath[1].ToLowerInvariant();
-
-                    switch (urlResource)
+                    // Find the horde peer.
+                    Configuration.HordePeer hordePeer;
+                    try
                     {
-                        case "cache":
-                            switch (resourceType)
+                        hordePeer =
+                            corradeConfiguration.HordePeers.AsParallel()
+                                .SingleOrDefault(
+                                    o =>
+                                        o.SharedSecret.Equals(
+                                            Encoding.UTF8.GetString(
+                                                Convert.FromBase64String(httpRequest.Headers[sharedSecretKey])),
+                                            StringComparison.Ordinal));
+                        if (hordePeer.Equals(default(Configuration.HordePeer)))
+                            break;
+                    }
+                    catch (Exception)
+                    {
+                        break;
+                    }
+
+                    Configuration.HordeSynchronization synchronizationType;
+                    switch (Reflection.GetEnumValueFromName<WebResource>(urlPath[0].ToLowerInvariant()))
+                    {
+                        case WebResource.CACHE:
+
+                            // Break if the cache request is incompatible with the cache web resource.
+                            if (urlPath.Count < 2)
+                                break;
+
+                            synchronizationType =
+                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                                    urlPath[1].ToLowerInvariant());
+
+                            // Log the attempt to put cache objects.
+                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                Reflection.GetDescriptionFromEnumValue(ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
+                                Reflection.GetNameFromEnumValue(synchronizationType));
+
+                            // If this synchronization is not allowed with this peer, then break.
+                            if ((hordePeer.SynchronizationMask & (ulong) synchronizationType).Equals(0))
+                                break;
+
+                            // Now attempt to add the asset to the cache.
+                            switch (synchronizationType)
                             {
-                                case "region":
-                                case "agent":
-                                case "group":
+                                case Configuration.HordeSynchronization.Region:
+                                case Configuration.HordeSynchronization.Agent:
+                                case Configuration.HordeSynchronization.Group:
                                     try
                                     {
                                         using (
                                             var stringReader =
                                                 new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
                                         {
-                                            switch (resourceType)
+                                            switch (synchronizationType)
                                             {
-                                                case "region":
+                                                case Configuration.HordeSynchronization.Region:
                                                     var region = (Cache.Region)
                                                         new XmlSerializer(typeof (Cache.Region)).Deserialize(
                                                             stringReader);
-                                                    if (Cache.AddRegion(region))
-                                                        PushRegionAssetCache(region, httpRequest.RemoteEndPoint);
+                                                    Cache.AddRegion(region);
                                                     break;
-                                                case "agent":
+                                                case Configuration.HordeSynchronization.Agent:
                                                     var agent = (Cache.Agent)
                                                         new XmlSerializer(typeof (Cache.Agent)).Deserialize(stringReader);
-                                                    if (Cache.AddAgent(agent))
-                                                        PushAgentAssetCache(agent, httpRequest.RemoteEndPoint);
+                                                    Cache.AddAgent(agent);
                                                     break;
-                                                case "group":
+                                                case Configuration.HordeSynchronization.Group:
                                                     var group = (Cache.Group)
                                                         new XmlSerializer(typeof (Cache.Group)).Deserialize(stringReader);
-                                                    if (Cache.AddGroup(group))
-                                                        PushGroupAssetCache(group, httpRequest.RemoteEndPoint);
+                                                    Cache.AddGroup(group);
                                                     break;
                                             }
                                             Feedback(
                                                 CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                                 Reflection.GetDescriptionFromEnumValue(
-                                                    ConsoleMessage.PEER_CACHE_PUT_SUCCESSFUL), resourceType);
+                                                    ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
+                                                Reflection.GetNameFromEnumValue(synchronizationType));
                                         }
                                     }
                                     catch (Exception ex)
                                     {
                                         Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                             Reflection.GetDescriptionFromEnumValue(
-                                                ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY), resourceType,
+                                                ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
+                                            Reflection.GetNameFromEnumValue(synchronizationType),
                                             ex.Message);
                                     }
                                     break;
-                                case "asset":
+                                case Configuration.HordeSynchronization.Asset:
                                     try
                                     {
                                         UUID assetUUID;
-                                        if (urlPath.Count.Equals(3) && UUID.TryParse(urlPath[2], out assetUUID))
+                                        if (!urlPath.Count.Equals(3) || !UUID.TryParse(urlPath[2], out assetUUID))
                                         {
-                                            lock (Locks.ClientInstanceAssetsLock)
+                                            break;
+                                        }
+                                        lock (Locks.ClientInstanceAssetsLock)
+                                        {
+                                            if (!Client.Assets.Cache.HasAsset(assetUUID))
                                             {
-                                                if (!Client.Assets.Cache.HasAsset(assetUUID))
-                                                {
-                                                    Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
-                                                    PushBinaryAssetCache(assetUUID, requestData,
-                                                        httpRequest.RemoteEndPoint);
-                                                }
+                                                Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
+                                                HordeDistributeCacheAsset(assetUUID, requestData);
                                             }
                                         }
                                         Feedback(
                                             CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint +
                                             ")",
                                             Reflection.GetDescriptionFromEnumValue(
-                                                ConsoleMessage.PEER_CACHE_PUT_SUCCESSFUL), resourceType);
+                                                ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
+                                            Reflection.GetNameFromEnumValue(synchronizationType));
                                     }
                                     catch (Exception ex)
                                     {
                                         Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                             Reflection.GetDescriptionFromEnumValue(
-                                                ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY), resourceType,
+                                                ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
+                                            Reflection.GetNameFromEnumValue(synchronizationType),
                                             ex.Message);
                                     }
                                     break;
                             }
+                            break;
+                        case WebResource.MUTE:
+
+                            synchronizationType =
+                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                                    urlPath[0].ToLowerInvariant());
+
+                            // Log the attempt to put cache objects.
+                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                Reflection.GetDescriptionFromEnumValue(ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
+                                Reflection.GetNameFromEnumValue(synchronizationType));
+
+                            // If this synchronization is not allowed with this peer, then break.
+                            if ((hordePeer.SynchronizationMask & (ulong)synchronizationType).Equals(0))
+                                break;
+
+                            MuteEntry mute;
+
+                            try
+                            {
+                                using (
+                                    var stringReader =
+                                        new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
+                                {
+                                    mute = (MuteEntry)
+                                        new XmlSerializer(typeof (MuteEntry)).Deserialize(stringReader);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
+                                    Reflection.GetNameFromEnumValue(synchronizationType),
+                                    ex.Message);
+                                break;
+                            }
+
+                            // The currently active mutes.
+                            var mutes = Enumerable.Empty<MuteEntry>();
+                            // Retrieve the current mute list
+                            Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
+
+                            // Check that the mute entry does not already exist
+                            if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name)))
+                                break;
+
+                            // Add the mute.
+                            var MuteListUpdatedEvent = new ManualResetEvent(false);
+                            EventHandler<EventArgs> MuteListUpdatedEventHandler =
+                                (sender, args) => MuteListUpdatedEvent.Set();
+
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
+                                if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                    throw new ScriptException(ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
+                                }
+                                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                            }
+
+                            // Add the mute to the cache.
+                            Cache.AddMute(mute);
+
+                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                Reflection.GetDescriptionFromEnumValue(
+                                    ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
+                                Reflection.GetNameFromEnumValue(synchronizationType));
+
                             break;
                     }
                     httpContext?.Response.Close();
@@ -4317,7 +4442,7 @@ namespace Corrade
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
         {
             // Check if message is from muted agent or object and ignore it.
-            if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(e.SourceID) || o.ID.Equals(e.OwnerID)))
+            if (Cache.MuteCache.Any(o => o.ID.Equals(e.SourceID) || o.ID.Equals(e.OwnerID)))
                 return;
             // Get the full name.
             var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.FromName));
@@ -4753,7 +4878,7 @@ namespace Corrade
                         var mutes = Enumerable.Empty<MuteEntry>();
                         if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                             return;
-                        Cache.MutesCache.UnionWith(mutes);
+                        Cache.MuteCache.UnionWith(mutes);
                     })
                     {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set the camera on the avatar.
@@ -4838,7 +4963,7 @@ namespace Corrade
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
             // Check if message is from muted agent and ignore it.
-            if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(args.IM.FromAgentID)))
+            if (Cache.MuteCache.Any(o => o.ID.Equals(args.IM.FromAgentID)))
                 return;
             var fullName =
                 new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(args.IM.FromAgentName));
@@ -5926,12 +6051,13 @@ namespace Corrade
                     {
                         GroupHTTPClients.Add(o.UUID, new Web.wasHTTPClient
                             (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType, null,
+                                null,
                                 corradeConfiguration.ServicesTimeout));
                     }
                 }
             });
 
-            // Setup distributed cache.
+            // Setup horde synchronization if enabled.
             switch (corradeConfiguration.EnableHorde)
             {
                 case true:
@@ -5949,13 +6075,42 @@ namespace Corrade
                                     new AuthenticationHeaderValue(@"Basic",
                                         Convert.ToBase64String(
                                             Encoding.ASCII.GetBytes($"{o.Username}:{o.Password}"))),
+                                    new Dictionary<string, string>
+                                    {
+                                        {
+                                            CORRADE_CONSTANTS.HORDE_SHARED_SECRET_HEADER,
+                                            Convert.ToBase64String(Encoding.UTF8.GetBytes(o.SharedSecret))
+                                        }
+                                    },
                                     corradeConfiguration.ServicesTimeout));
                         }
                     });
-                    // Bind to cache changes.
-                    Cache.ObservableAgentCache.CollectionChanged += HandleAgentCacheChanged;
-                    Cache.ObservableRegionCache.CollectionChanged += HandleRegionCacheChanged;
-                    Cache.ObservableGroupCache.CollectionChanged += HandleGroupCacheChanged;
+                    // Bind to horde synchronization changes.
+                    if (
+                        configuration.HordePeers.AsParallel()
+                            .Any(
+                                o =>
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Agent).Equals(0)))
+                        Cache.ObservableAgentCache.CollectionChanged += HandleAgentCacheChanged;
+                    if (
+                        configuration.HordePeers.AsParallel()
+                            .Any(
+                                o =>
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Region).Equals(
+                                        0)))
+                        Cache.ObservableRegionCache.CollectionChanged += HandleRegionCacheChanged;
+                    if (
+                        configuration.HordePeers.AsParallel()
+                            .Any(
+                                o =>
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Group).Equals(0)))
+                        Cache.ObservableGroupCache.CollectionChanged += HandleGroupCacheChanged;
+                    if (
+                        configuration.HordePeers.AsParallel()
+                            .Any(
+                                o =>
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Mute).Equals(0)))
+                        Cache.ObservableMuteCache.CollectionChanged += HandleMuteCacheChanged;
                     break;
                 default:
                     // Remove HTTP clients.
@@ -5966,6 +6121,7 @@ namespace Corrade
                     Cache.ObservableAgentCache.CollectionChanged -= HandleAgentCacheChanged;
                     Cache.ObservableRegionCache.CollectionChanged -= HandleRegionCacheChanged;
                     Cache.ObservableGroupCache.CollectionChanged -= HandleGroupCacheChanged;
+                    Cache.ObservableMuteCache.CollectionChanged -= HandleMuteCacheChanged;
                     break;
             }
 
@@ -6860,263 +7016,189 @@ namespace Corrade
             Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.CORRADE_CONFIGURATION_UPDATED));
         }
 
-        private static void PushBinaryAssetCache(UUID assetUUID, byte[] data)
+        private static void HordeDistributeCacheAsset(UUID assetUUID, byte[] data)
         {
             new Thread(() =>
             {
-                lock (HordeHTTPClientsLock)
+                try
                 {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
+                    lock (HordeHTTPClientsLock)
                     {
-                        try
-                        {
-                            await
-                                p.Value.PUT(p.Key + "/" + "cache" + "/" + "asset" + "/" + assetUUID.ToString(),
-                                    data);
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"asset", p.Key,
-                                ex.Message);
-                        }
-                    });
-                }
-            })
-            {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
-        }
-
-        private static void PushBinaryAssetCache(UUID assetUUID, byte[] data, IPEndPoint exclude)
-        {
-            new Thread(() =>
-            {
-                lock (HordeHTTPClientsLock)
-                {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
-                    {
-                        try
-                        {
-                            var uri = new Uri(p.Key);
-                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
-                                return;
-
-                            await
-                                p.Value.PUT(p.Key + "/" + "cache" + "/" + "asset" + "/" + assetUUID.ToString(),
-                                    data);
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"asset", p.Key,
-                                ex.Message);
-                        }
-                    });
-                }
-            })
-            {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
-        }
-
-        private static void PushGroupAssetCache(Cache.Group o)
-        {
-            new Thread(() =>
-            {
-                lock (HordeHTTPClientsLock)
-                {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
-                    {
-                        try
-                        {
-                            using (var writer = new StringWriter())
+                        HordeHTTPClients.AsParallel()
+                            .Where(
+                                p =>
+                                    !(corradeConfiguration.HordePeers.SingleOrDefault(
+                                        q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
+                                        .SynchronizationMask &
+                                      (ulong) Configuration.HordeSynchronization.Asset).Equals(0))
+                            .ForAll(async p =>
                             {
-                                var serializer = new XmlSerializer(typeof (Cache.Group));
-                                serializer.Serialize(writer, o);
                                 await
-                                    p.Value.PUT($"{p.Key}/{"cache"}/{"group"}",
-                                        writer.ToString());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"group", p.Key,
-                                ex.Message);
-                        }
-                    });
+                                    p.Value.PUT(
+                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Asset)}/{assetUUID.ToString()}",
+                                        data);
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Asset),
+                        ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushGroupAssetCache(Cache.Group o, IPEndPoint exclude)
+        private static void HordeDistributeCacheGroup(Cache.Group o)
         {
             new Thread(() =>
             {
-                lock (HordeHTTPClientsLock)
+                try
                 {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
+                    lock (HordeHTTPClientsLock)
                     {
-                        try
-                        {
-                            var uri = new Uri(p.Key);
-                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
-                                return;
-
-                            using (var writer = new StringWriter())
-                            {
-                                var serializer = new XmlSerializer(typeof (Cache.Group));
-                                serializer.Serialize(writer, o);
-                                await
-                                    p.Value.PUT($"{p.Key}/{"cache"}/{"group"}",
-                                        writer.ToString());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"group", p.Key,
-                                ex.Message);
-                        }
-                    });
+                        HordeHTTPClients.AsParallel().Where(
+                            p =>
+                                !(corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
+                                  (ulong) Configuration.HordeSynchronization.Group).Equals(0)).ForAll(async p =>
+                                  {
+                                      using (var writer = new StringWriter())
+                                      {
+                                          var serializer = new XmlSerializer(typeof (Cache.Group));
+                                          serializer.Serialize(writer, o);
+                                          await
+                                              p.Value.PUT(
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Group)}",
+                                                  writer.ToString());
+                                      }
+                                  });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Group),
+                        ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushRegionAssetCache(Cache.Region o)
+        private static void HordeDistributeCacheRegion(Cache.Region o)
         {
             new Thread(() =>
             {
-                lock (HordeHTTPClientsLock)
+                try
                 {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
+                    lock (HordeHTTPClientsLock)
                     {
-                        try
-                        {
-                            using (var writer = new StringWriter())
-                            {
-                                var serializer = new XmlSerializer(typeof (Cache.Region));
-                                serializer.Serialize(writer, o);
-                                await
-                                    p.Value.PUT($"{p.Key}/{"cache"}/{"region"}",
-                                        writer.ToString());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"region", p.Key,
-                                ex.Message);
-                        }
-                    });
+                        HordeHTTPClients.AsParallel().Where(
+                            p =>
+                                !(corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
+                                  (ulong) Configuration.HordeSynchronization.Region).Equals(0)).ForAll(async p =>
+                                  {
+                                      using (var writer = new StringWriter())
+                                      {
+                                          var serializer = new XmlSerializer(typeof (Cache.Region));
+                                          serializer.Serialize(writer, o);
+                                          await
+                                              p.Value.PUT(
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Region)}",
+                                                  writer.ToString());
+                                      }
+                                  });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Region),
+                        ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushRegionAssetCache(Cache.Region o, IPEndPoint exclude)
+        private static void HordeDistributeCacheAgent(Cache.Agent o)
         {
             new Thread(() =>
             {
-                lock (HordeHTTPClientsLock)
+                try
                 {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
+                    lock (HordeHTTPClientsLock)
                     {
-                        try
-                        {
-                            var uri = new Uri(p.Key);
-                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
-                                return;
-
-                            using (var writer = new StringWriter())
-                            {
-                                var serializer = new XmlSerializer(typeof (Cache.Region));
-                                serializer.Serialize(writer, o);
-                                await
-                                    p.Value.PUT($"{p.Key}/{"cache"}/{"region"}",
-                                        writer.ToString());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"region", p.Key,
-                                ex.Message);
-                        }
-                    });
+                        HordeHTTPClients.AsParallel().Where(
+                            p =>
+                                !(corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
+                                  (ulong) Configuration.HordeSynchronization.Agent).Equals(0)).ForAll(async p =>
+                                  {
+                                      using (var writer = new StringWriter())
+                                      {
+                                          var serializer = new XmlSerializer(typeof (Cache.Agent));
+                                          serializer.Serialize(writer, o);
+                                          await
+                                              p.Value.PUT(
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Agent)}",
+                                                  writer.ToString());
+                                      }
+                                  });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Agent),
+                        ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void PushAgentAssetCache(Cache.Agent o)
+        private static void HordeDistributeCacheMute(MuteEntry o)
         {
             new Thread(() =>
             {
-                lock (HordeHTTPClientsLock)
+                try
                 {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
+                    lock (HordeHTTPClientsLock)
                     {
-                        try
-                        {
-                            using (var writer = new StringWriter())
-                            {
-                                var serializer = new XmlSerializer(typeof (Cache.Agent));
-                                serializer.Serialize(writer, o);
-                                await
-                                    p.Value.PUT($"{p.Key}/{"cache"}/{"agent"}",
-                                        writer.ToString());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"agent", p.Key,
-                                ex.Message);
-                        }
-                    });
+                        HordeHTTPClients.AsParallel().Where(
+                            p =>
+                                !(corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
+                                  (ulong) Configuration.HordeSynchronization.Mute).Equals(0)).ForAll(async p =>
+                                  {
+                                      using (var writer = new StringWriter())
+                                      {
+                                          var serializer = new XmlSerializer(typeof (MuteEntry));
+                                          serializer.Serialize(writer, o);
+                                          await
+                                              p.Value.PUT(
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Mute)}",
+                                                  writer.ToString());
+                                      }
+                                  });
+                    }
                 }
-            })
-            {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
-        }
-
-        private static void PushAgentAssetCache(Cache.Agent o, IPEndPoint exclude)
-        {
-            new Thread(() =>
-            {
-                lock (HordeHTTPClientsLock)
+                catch (Exception ex)
                 {
-                    HordeHTTPClients.AsParallel().ForAll(async p =>
-                    {
-                        try
-                        {
-                            var uri = new Uri(p.Key);
-                            if (Dns.GetHostAddresses(uri.Host).Contains(exclude.Address) && uri.Port.Equals(exclude.Port))
-                                return;
-
-                            using (var writer = new StringWriter())
-                            {
-                                var serializer = new XmlSerializer(typeof (Cache.Agent));
-                                serializer.Serialize(writer, o);
-                                await
-                                    p.Value.PUT($"{p.Key}/{"cache"}/{"agent"}",
-                                        writer.ToString());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    ConsoleMessage.UNABLE_TO_DISTRIBUTE_CACHE_OBJECT), @"agent", p.Key,
-                                ex.Message);
-                        }
-                    });
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Mute),
+                        ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
@@ -7124,17 +7206,22 @@ namespace Corrade
 
         private static void HandleGroupCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<Cache.Group>().ToList().AsParallel().ForAll(PushGroupAssetCache);
+            e.NewItems?.Cast<Cache.Group>().ToList().AsParallel().ForAll(HordeDistributeCacheGroup);
         }
 
         private static void HandleRegionCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<Cache.Region>().ToList().AsParallel().ForAll(PushRegionAssetCache);
+            e.NewItems?.Cast<Cache.Region>().ToList().AsParallel().ForAll(HordeDistributeCacheRegion);
         }
 
         private static void HandleAgentCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<Cache.Agent>().ToList().AsParallel().ForAll(PushAgentAssetCache);
+            e.NewItems?.Cast<Cache.Agent>().ToList().AsParallel().ForAll(HordeDistributeCacheAgent);
+        }
+
+        private static void HandleMuteCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            e.NewItems?.Cast<MuteEntry>().ToList().AsParallel().ForAll(HordeDistributeCacheMute);
         }
 
         private static void HandleSynBotLearning(object sender, LearningEventArgs e)
@@ -7260,6 +7347,15 @@ namespace Corrade
             [Reflection.NameAttribute("append")] APPEND,
             [Reflection.NameAttribute("create")] CREATE,
             [Reflection.NameAttribute("detail")] DETAIL
+        }
+
+        /// <summary>
+        ///     Possible webserver resources.
+        /// </summary>
+        private enum WebResource : uint
+        {
+            [Reflection.NameAttribute("cache")] CACHE,
+            [Reflection.NameAttribute("mute")] MUTE
         }
 
         /// <summary>
@@ -7419,6 +7515,8 @@ namespace Corrade
                     CORRADE_COMPILE_DATE),
                 string.Format(Utils.EnUsCulture, "Copyright: {0}", COPYRIGHT)
             };
+
+            public static readonly string HORDE_SHARED_SECRET_HEADER = @"Corrade-Horde-SharedSecret";
 
             /// <summary>
             ///     Conten-types that Corrade can send and receive.
@@ -7877,9 +7975,10 @@ namespace Corrade
             [Reflection.DescriptionAttribute("unable to save conference state")] UNABLE_TO_SAVE_CONFERENCE_STATE,
             [Reflection.DescriptionAttribute("unable to restore conference")] UNABLE_TO_RESTORE_CONFERENCE,
             [Reflection.DescriptionAttribute("unable to store peer cache entity")] UNABLE_TO_STORE_PEER_CACHE_ENTITY,
-            [Reflection.DescriptionAttribute("unable to distribute cache object")] UNABLE_TO_DISTRIBUTE_CACHE_OBJECT,
-            [Reflection.DescriptionAttribute("peer cache put successful")] PEER_CACHE_PUT_SUCCESSFUL,
-            [Reflection.DescriptionAttribute("peer attempting cache put")] PEER_ATTEMPTING_CACHE_PUT
+            [Reflection.DescriptionAttribute("unable to distribute resource")] UNABLE_TO_DISTRIBUTE_RESOURCE,
+            [Reflection.DescriptionAttribute("peer synchronization successful")] PEER_SYNCHRONIZATION_SUCCESSFUL,
+            [Reflection.DescriptionAttribute("peer attempting synchronization")] PEER_ATTEMPTING_SYNCHRONIZATION,
+            [Reflection.DescriptionAttribute("unable to read distributed resource")] UNABLE_TO_READ_DISTRIBUTED_RESOURCE
         }
 
         /// <summary>

@@ -83,9 +83,9 @@ namespace wasOpenMetaverse
             bool succeeded;
             lock (Locks.ClientInstanceSelfLock)
             {
-                if (Cache.MutesCache != null)
+                if (Cache.MuteCache.Any())
                 {
-                    mutes = Cache.MutesCache;
+                    mutes = Cache.MuteCache;
                     return true;
                 }
 
@@ -93,15 +93,7 @@ namespace wasOpenMetaverse
 
                 if (succeeded)
                 {
-                    switch (Cache.MutesCache != null)
-                    {
-                        case true:
-                            Cache.MutesCache.UnionWith(mutes);
-                            break;
-                        default:
-                            Cache.MutesCache = new HashSet<MuteEntry>(mutes);
-                            break;
-                    }
+                    Cache.MuteCache.UnionWith(mutes);
                 }
             }
             return succeeded;
@@ -167,7 +159,7 @@ namespace wasOpenMetaverse
 
                 if (succeeded)
                 {
-                    Cache.CurrentGroupsCache = new HashSet<UUID>(groups);
+                    Cache.CurrentGroupsCache.UnionWith(groups);
                 }
             }
             return succeeded;

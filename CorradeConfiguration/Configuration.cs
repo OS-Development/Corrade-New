@@ -35,6 +35,20 @@ namespace CorradeConfiguration
         }
 
         /// <summary>
+        ///     Corrade horde synchronization options.
+        /// </summary>
+        [Flags]
+        public enum HordeSynchronization : ulong
+        {
+            [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] None = 0uL,
+            [XmlEnum(Name = "agent")] [Reflection.NameAttribute("agent")] Agent = 1uL,
+            [XmlEnum(Name = "group")] [Reflection.NameAttribute("group")] Group = 2uL,
+            [XmlEnum(Name = "region")] [Reflection.NameAttribute("region")] Region = 4uL,
+            [XmlEnum(Name = "asset")] [Reflection.NameAttribute("asset")] Asset = 8uL,
+            [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 16uL
+        }
+
+        /// <summary>
         ///     An enumeration of various compression methods
         ///     supproted by Corrade's internal HTTP server.
         /// </summary>
@@ -128,17 +142,19 @@ namespace CorradeConfiguration
         private UUID _clientIdentificationTag = new UUID(@"0705230f-cbd0-99bd-040b-28eb348b5255");
         private bool _clientLogEnabled = true;
         private string _clientLogFile = @"logs/Corrade.log";
+        private string _conferenceMessageLogDirectory = @"logs/conference";
+        private bool _conferenceMessageLogEnabled;
         private uint _connectionIdleTime = 900000;
         private uint _connectionLimit = 100;
         private Time.DecayingAlarm.DECAY_TYPE _dataDecayType = Time.DecayingAlarm.DECAY_TYPE.ARITHMETIC;
         private uint _dataTimeout = 2500;
         private string _driveIdentifierHash = string.Empty;
-        private bool _enableSIML;
+        private bool _enableHorde;
         private bool _enableHTTPServer;
         private bool _enableHTTPServerAuthentication;
-        private string _HTTPServerUsername = string.Empty;
-        private string _HTTPServerPassword = string.Empty;
+        private bool _enableMasterPasswordOverride;
         private bool _enableRLV;
+        private bool _enableSIML;
         private bool _enableTCPNotificationsServer;
 
         private ENIGMA _enigmaConfiguration = new ENIGMA
@@ -150,31 +166,32 @@ namespace CorradeConfiguration
 
         private int _exitCodeAbnormal = -2;
         private int _exitCodeExpected = -1;
+        private uint _feedsUpdateInterval = 60000;
         private string _firstName = string.Empty;
         private uint _groupCreateFee = 100;
         private HashSet<Group> _groups = new HashSet<Group>();
+        private HashSet<HordePeer> _hordePeers = new HashSet<HordePeer>();
         private uint _HTTPServerBodyTimeout = 5000;
         private HTTPCompressionMethod _HTTPServerCompression = HTTPCompressionMethod.NONE;
         private uint _HTTPServerDrainTimeout = 10000;
         private uint _HTTPServerHeaderTimeout = 2500;
         private uint _HTTPServerIdleTimeout = 2500;
         private bool _HTTPServerKeepAlive = true;
+        private string _HTTPServerPassword = string.Empty;
         private string _HTTPServerPrefix = @"http://+:8080/";
         private uint _HTTPServerQueueTimeout = 10000;
         private uint _HTTPServerTimeout = 5000;
+        private string _HTTPServerUsername = string.Empty;
         private List<Filter> _inputFilters = new List<Filter>();
         private string _instantMessageLogDirectory = @"logs/im";
         private bool _instantMessageLogEnabled;
         private string _lastName = string.Empty;
         private string _localMessageLogDirectory = @"logs/local";
         private bool _localMessageLogEnabled;
-        private string _conferenceMessageLogDirectory = @"logs/conference";
-        private bool _conferenceMessageLogEnabled;
         private string _loginURL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
         private uint _logoutGrace = 2500;
+        private string _masterPasswordOverride = string.Empty;
         private HashSet<Master> _masters = new HashSet<Master>();
-        private HashSet<HordePeer> _cachePeers = new HashSet<HordePeer>();
-        private bool _enableDistributedCache = false;
         private uint _maximumCommandThreads = 10;
         private uint _maximumInstantMessageThreads = 10;
         private uint _maximumLogThreads = 40;
@@ -182,15 +199,12 @@ namespace CorradeConfiguration
         private uint _maximumPOSTThreads = 25;
         private uint _maximumRLVThreads = 10;
         private uint _membershipSweepInterval = 60000;
-        private uint _feedsUpdateInterval = 60000;
         private string _networkCardMAC = string.Empty;
         private uint _notificationQueueLength = 100;
         private uint _notificationThrottle = 1000;
         private uint _notificationTimeout = 5000;
         private List<Filter> _outputFilters = new List<Filter>();
         private string _password = string.Empty;
-        private string _masterPasswordOverride = string.Empty;
-        private bool _enableMasterPasswordOverride = false;
         private float _range = 64;
         private uint _rebakeDelay = 1000;
         private string _regionMessageLogDirectory = @"logs/region";
@@ -294,14 +308,14 @@ namespace CorradeConfiguration
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    return _enableDistributedCache;
+                    return _enableHorde;
                 }
             }
             set
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    _enableDistributedCache = value;
+                    _enableHorde = value;
                 }
             }
         }
@@ -413,7 +427,7 @@ namespace CorradeConfiguration
                 }
             }
         }
-        
+
         public string ConferenceMessageLogDirectory
         {
             get
@@ -1698,17 +1712,17 @@ namespace CorradeConfiguration
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    return _cachePeers;
+                    return _hordePeers;
                 }
             }
             set
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    _cachePeers = value;
+                    _hordePeers = value;
                 }
             }
-        } 
+        }
 
         public List<Filter> InputFilters
         {
@@ -1960,13 +1974,27 @@ namespace CorradeConfiguration
         }
 
         /// <summary>
-        ///     Distributed cache peer.
+        ///     Horde peer.
         /// </summary>
         public struct HordePeer
         {
             public string URL;
             public string Username;
             public string Password;
+            public string SharedSecret;
+
+            public HashSet<HordeSynchronization> Synchronization;
+
+            public ulong SynchronizationMask
+            {
+                get
+                {
+                    return Synchronization != null && Synchronization.Any()
+                        ? Synchronization.Cast<ulong>()
+                            .Aggregate((p, q) => p |= q)
+                        : 0;
+                }
+            }
         }
     }
 }

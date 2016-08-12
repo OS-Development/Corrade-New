@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace wasSharp
@@ -80,6 +81,22 @@ namespace wasSharp
         }
 
         ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <param name="prefix">a HttpListener prefix</param>
+        /// <returns>the port of the HttpListener</returns>
+        public static long GetPortFromPrefix(string prefix)
+        {
+            var split = Regex.Replace(
+                prefix,
+                @"^([a-zA-Z]+:\/\/)?([^\/]+)\/.*?$",
+                "$2"
+                ).Split(':');
+            long port;
+            return split.Length <= 1 || !long.TryParse(split[1], out port) ? 80 : port;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         // <summary>A portable HTTP client.</summar>
@@ -89,7 +106,7 @@ namespace wasSharp
             private readonly string MediaType;
 
             public wasHTTPClient(ProductInfoHeaderValue userAgent, CookieContainer cookieContainer, string mediaType,
-                AuthenticationHeaderValue authentication, uint timeout)
+                AuthenticationHeaderValue authentication, Dictionary<string, string> headers, uint timeout)
             {
                 var HTTPClientHandler = new HttpClientHandler
                 {
@@ -117,8 +134,100 @@ namespace wasSharp
                 {
                     HTTPClient.DefaultRequestHeaders.Authorization = authentication;
                 }
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        HTTPClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+                    }
+                }
                 HTTPClient.Timeout = TimeSpan.FromMilliseconds(timeout);
                 MediaType = mediaType;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////
+            //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+            ///////////////////////////////////////////////////////////////////////////
+            /// <summary>
+            ///     Sends a PUT request to an URL with binary data.
+            /// </summary>
+            /// <param name="URL">the url to send the message to</param>
+            /// <param name="data">key-value pairs to send</param>
+            /// <param name="headers">headers to send with the request</param>
+            public async Task<byte[]> PUT(string URL, byte[] data, Dictionary<string, string> headers)
+            {
+                try
+                {
+                    using (var content = new ByteArrayContent(data))
+                    {
+                        using (
+                            var request = new HttpRequestMessage
+                            {
+                                RequestUri = new Uri(URL),
+                                Method = HttpMethod.Put,
+                                Content = content
+                            })
+                        {
+                            foreach (var header in headers)
+                            {
+                                request.Headers.Add(header.Key, header.Value);
+                            }
+                            using (var response = await HTTPClient.SendAsync(request))
+                            {
+                                return response.IsSuccessStatusCode
+                                    ? await response.Content.ReadAsByteArrayAsync()
+                                    : null;
+                            }
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+
+            ///////////////////////////////////////////////////////////////////////////
+            //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+            ///////////////////////////////////////////////////////////////////////////
+            /// <summary>
+            ///     Sends a PUT request to an URL with text.
+            /// </summary>
+            /// <param name="URL">the url to send the message to</param>
+            /// <param name="data">key-value pairs to send</param>
+            /// <param name="headers">headers to send with the request</param>
+            public async Task<byte[]> PUT(string URL, string data, Dictionary<string, string> headers)
+            {
+                try
+                {
+                    using (var content =
+                        new StringContent(data, Encoding.UTF8, MediaType))
+                    {
+                        using (
+                            var request = new HttpRequestMessage
+                            {
+                                RequestUri = new Uri(URL),
+                                Method = HttpMethod.Put,
+                                Content = content
+                            })
+                        {
+                            foreach (var header in headers)
+                            {
+                                request.Headers.Add(header.Key, header.Value);
+                            }
+                            using (var response = await HTTPClient.SendAsync(request))
+                            {
+                                return response.IsSuccessStatusCode
+                                    ? await response.Content.ReadAsByteArrayAsync()
+                                    : null;
+                            }
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
             }
 
             ///////////////////////////////////////////////////////////////////////////

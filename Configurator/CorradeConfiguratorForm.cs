@@ -16,6 +16,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web.Security;
 using System.Windows.Forms;
 using System.Xml;
 using Configurator.Properties;
@@ -212,7 +213,7 @@ namespace Configurator
             {
                 mainForm.HordePeers.Items.Add(new ListViewItem
                 {
-                    Text = cachePeer.URL.Trim('/'),
+                    Text = cachePeer.URL.TrimEnd('/') + @"/",
                     Tag = cachePeer
                 });
             }
@@ -244,69 +245,69 @@ namespace Configurator
                     {
                         case "Basic":
                             /* Hide non-basic experience tabs. */
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HordeTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
+                            mainForm.LogsTabPage.Enabled = false;
+                            mainForm.FiltersTabPage.Enabled = false;
+                            mainForm.CryptographyTabPage.Enabled = false;
+                            mainForm.SIMLTabPage.Enabled = false;
+                            mainForm.RLVTabPage.Enabled = false;
+                            mainForm.HTTPTabPage.Enabled = false;
+                            mainForm.HordeTabPage.Enabled = false;
+                            mainForm.TCPTabPage.Enabled = false;
+                            mainForm.NetworkTabPage.Enabled = false;
+                            mainForm.ThrottlesTabPage.Enabled = false;
+                            mainForm.LimitsTabPage.Enabled = false;
                             /* Hide non-basic experience group boxes. */
-                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, false);
-                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
-                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
-                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
-                            setGroupBoxVisibility(mainForm.CompressionBox, false);
+                            mainForm.AutoActivateGroupBox.Visible = false;
+                            mainForm.GroupCreateFeeBox.Visible = false;
+                            mainForm.ClientIdentificationTagBox.Visible = false;
+                            mainForm.ExpectedExitCodeBox.Visible = false;
+                            mainForm.AbnormalExitCodeBox.Visible = false;
+                            mainForm.HTTPServerLimitsBox.Visible = false;
+                            mainForm.CompressionBox.Visible = false;
                             break;
                         case "Intermediary":
                             /* Hide non-advanced experience tabs. */
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HordeTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, false);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, false);
+                            mainForm.LogsTabPage.Enabled = false;
+                            mainForm.FiltersTabPage.Enabled = false;
+                            mainForm.CryptographyTabPage.Enabled = false;
+                            mainForm.SIMLTabPage.Enabled = true;
+                            mainForm.RLVTabPage.Enabled = true;
+                            mainForm.HTTPTabPage.Enabled = true;
+                            mainForm.HordeTabPage.Enabled = true;
+                            mainForm.TCPTabPage.Enabled = false;
+                            mainForm.NetworkTabPage.Enabled = false;
+                            mainForm.ThrottlesTabPage.Enabled = false;
+                            mainForm.LimitsTabPage.Enabled = false;
                             /* Hide non-advanced experience group boxes. */
-                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
-                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, false);
-                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, false);
-                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, false);
-                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, false);
-                            setGroupBoxVisibility(mainForm.CompressionBox, false);
+                            mainForm.AutoActivateGroupBox.Visible = true;
+                            mainForm.GroupCreateFeeBox.Visible = false;
+                            mainForm.ClientIdentificationTagBox.Visible = false;
+                            mainForm.ExpectedExitCodeBox.Visible = false;
+                            mainForm.AbnormalExitCodeBox.Visible = false;
+                            mainForm.HTTPServerLimitsBox.Visible = false;
+                            mainForm.CompressionBox.Visible = false;
                             break;
                         case "Advanced":
                             /* Show everything. */
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LogsTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.FiltersTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.CryptographyTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.SIMLTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.RLVTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HTTPTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.HordeTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.TCPTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.NetworkTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.ThrottlesTabPage, true);
-                            setTabPageVisibility(mainForm.Tabs, mainForm.LimitsTabPage, true);
+                            mainForm.LogsTabPage.Enabled = true;
+                            mainForm.FiltersTabPage.Enabled = true;
+                            mainForm.CryptographyTabPage.Enabled = true;
+                            mainForm.SIMLTabPage.Enabled = true;
+                            mainForm.RLVTabPage.Enabled = true;
+                            mainForm.HTTPTabPage.Enabled = true;
+                            mainForm.HordeTabPage.Enabled = true;
+                            mainForm.TCPTabPage.Enabled = true;
+                            mainForm.NetworkTabPage.Enabled = true;
+                            mainForm.ThrottlesTabPage.Enabled = true;
+                            mainForm.LimitsTabPage.Enabled = true;
                             /* Show everything. */
-                            setGroupBoxVisibility(mainForm.AutoActivateGroupBox, true);
-                            setGroupBoxVisibility(mainForm.GroupCreateFeeBox, true);
-                            setGroupBoxVisibility(mainForm.ClientIdentificationTagBox, true);
-                            setGroupBoxVisibility(mainForm.ExpectedExitCodeBox, true);
-                            setGroupBoxVisibility(mainForm.AbnormalExitCodeBox, true);
-                            setGroupBoxVisibility(mainForm.HTTPServerLimitsBox, true);
-                            setGroupBoxVisibility(mainForm.CompressionBox, true);
+                            mainForm.AutoActivateGroupBox.Visible = true;
+                            mainForm.GroupCreateFeeBox.Visible = true;
+                            mainForm.ClientIdentificationTagBox.Visible = true;
+                            mainForm.ExpectedExitCodeBox.Visible = true;
+                            mainForm.AbnormalExitCodeBox.Visible = true;
+                            mainForm.HTTPServerLimitsBox.Visible = true;
+                            mainForm.CompressionBox.Visible = true;
                             break;
                     }
                     mainForm.Tabs.Enabled = true;
@@ -639,7 +640,7 @@ namespace Configurator
                 {
                     case false:
                         corradeConfiguration.HordePeers.Remove(hordePeer);
-                        hordePeer.URL = hordePeer.URL.Trim('/');
+                        hordePeer.URL = hordePeer.URL.TrimEnd('/') + @"/";
                         corradeConfiguration.HordePeers.Add(hordePeer);
                         break;
                 }
@@ -1454,6 +1455,11 @@ namespace Configurator
                             GetUserConfiguration.Invoke();
                             mainForm.StatusText.Text = @"configuration loaded";
                             mainForm.StatusProgress.Value = 100;
+
+                            var experienceLevel = Settings.Default["ExperienceLevel"];
+                            mainForm.ExperienceLevel.SelectedIndex =
+                                mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                            mainForm.ExperienceLevel.SelectedItem = experienceLevel;
                         }
                         catch (Exception ex)
                         {
@@ -2849,7 +2855,9 @@ namespace Configurator
                     var pictureBox = sender as PictureBox;
                     if (pictureBox != null)
                     {
-                        toolTip1.Show(toolTip1.GetToolTip(pictureBox), pictureBox);
+                        var help = toolTip1.GetToolTip(pictureBox);
+                        if (!string.IsNullOrEmpty(help))
+                            toolTip1.Show(help, pictureBox);
                     }
                 }));
         }
@@ -2905,49 +2913,6 @@ namespace Configurator
                 }));
             })
             {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
-        }
-
-        private static void setTabPageVisibility(TabControl tc, TabPage tp, bool visibility)
-        {
-            //if tp is not visible and visibility is set to true
-            if (visibility && (tc.TabPages.IndexOf(tp) <= -1))
-            {
-                tc.TabPages.Insert(tc.TabCount, tp);
-                //guarantee tabcontrol visibility
-                tc.Visible = true;
-                //tc.SelectTab(tp);
-            }
-            //if tp is visible and visibility is set to false
-            else if ((visibility == false) && (tc.TabPages.IndexOf(tp) > -1))
-            {
-                tc.TabPages.Remove(tp);
-                //no pages to show, hide tabcontrol
-                if (tc.TabCount == 0)
-                {
-                    tc.Visible = false;
-                }
-            }
-            //else do nothing
-        }
-
-        private static void setGroupBoxVisibility(GroupBox bx, bool visibility)
-        {
-            bx.Visible = visibility;
-        }
-
-        private void ConfiguratorLoaded(object sender, EventArgs e)
-        {
-            // Load form settings.
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    //Properties.Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
-                    //Properties.Settings.Default.Save();
-                    var experienceLevel = Settings.Default["ExperienceLevel"];
-                    mainForm.ExperienceLevel.SelectedIndex = mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
-                    mainForm.ExperienceLevel.SelectedItem = experienceLevel;
-                }));
-            SetExperienceLevel.Invoke();
         }
 
         private void ExperienceLevelChanged(object sender, EventArgs e)
@@ -3019,9 +2984,32 @@ namespace Configurator
                 if (listViewItem == null)
                     return;
                 var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
+
+
+                // Horde peer synchronization
+                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                {
+                    switch (
+                        !(hordePeer.SynchronizationMask &
+                          (ulong)
+                              Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                                  (string) HordePeerSynchronization.Items[i]))
+                            .Equals
+                            (0))
+                    {
+                        case true:
+                            HordePeerSynchronization.SetItemChecked(i, true);
+                            break;
+                        default:
+                            HordePeerSynchronization.SetItemChecked(i, false);
+                            break;
+                    }
+                }
+
                 HordePeerURL.Text = hordePeer.URL;
                 HordePeerUsername.Text = hordePeer.Username;
                 HordePeerPassword.Text = hordePeer.Password;
+                HordePeerSharedSecret.Text = hordePeer.SharedSecret;
             }));
         }
 
@@ -3036,24 +3024,44 @@ namespace Configurator
                 var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
                 if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
-                    string.IsNullOrEmpty(HordePeerURL.Text))
+                    string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                    corradeConfiguration.HordePeers.AsParallel().Where(o => !o.Equals(hordePeer))
+                        .Any(o => o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
                 {
                     HordePeerUsername.BackColor = Color.MistyRose;
                     HordePeerPassword.BackColor = Color.MistyRose;
                     HordePeerURL.BackColor = Color.MistyRose;
+                    HordePeerSharedSecret.BackColor = Color.MistyRose;
                     return;
                 }
 
                 HordePeerUsername.BackColor = Color.Empty;
                 HordePeerPassword.BackColor = Color.Empty;
                 HordePeerURL.BackColor = Color.Empty;
+                HordePeerSharedSecret.BackColor = Color.Empty;
+
+                // Synchronization
+                var synchronization = new HashSet<Configuration.HordeSynchronization>();
+                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                {
+                    switch (HordePeerSynchronization.GetItemCheckState(i))
+                    {
+                        case CheckState.Checked:
+                            synchronization.Add(
+                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                                    (string) HordePeerSynchronization.Items[i]));
+                            break;
+                    }
+                }
 
                 corradeConfiguration.HordePeers.Remove(hordePeer);
                 hordePeer = new Configuration.HordePeer
                 {
                     URL = HordePeerURL.Text,
                     Username = HordePeerUsername.Text,
-                    Password = HordePeerPassword.Text
+                    Password = HordePeerPassword.Text,
+                    Synchronization = synchronization,
+                    SharedSecret = HordePeerSharedSecret.Text
                 };
                 corradeConfiguration.HordePeers.Add(hordePeer);
                 HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem
@@ -3070,23 +3078,43 @@ namespace Configurator
             {
                 if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
-                    string.IsNullOrEmpty(HordePeerURL.Text))
+                    string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                    corradeConfiguration.HordePeers.AsParallel()
+                        .Any(o => o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
                 {
                     HordePeerUsername.BackColor = Color.MistyRose;
                     HordePeerPassword.BackColor = Color.MistyRose;
                     HordePeerURL.BackColor = Color.MistyRose;
+                    HordePeerSharedSecret.BackColor = Color.MistyRose;
                     return;
                 }
 
                 HordePeerUsername.BackColor = Color.Empty;
                 HordePeerPassword.BackColor = Color.Empty;
                 HordePeerURL.BackColor = Color.Empty;
+                HordePeerSharedSecret.BackColor = Color.Empty;
+
+                // Synchronization
+                var synchronization = new HashSet<Configuration.HordeSynchronization>();
+                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                {
+                    switch (HordePeerSynchronization.GetItemCheckState(i))
+                    {
+                        case CheckState.Checked:
+                            synchronization.Add(
+                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                                    (string) HordePeerSynchronization.Items[i]));
+                            break;
+                    }
+                }
 
                 var hordePeer = new Configuration.HordePeer
                 {
                     URL = HordePeerURL.Text,
                     Username = HordePeerUsername.Text,
-                    Password = HordePeerPassword.Text
+                    Password = HordePeerPassword.Text,
+                    Synchronization = synchronization,
+                    SharedSecret = HordePeerSharedSecret.Text
                 };
 
                 HordePeers.Items.Add(new ListViewItem
@@ -3109,6 +3137,13 @@ namespace Configurator
                     return;
                 }
                 HordePeers.BackColor = Color.Empty;
+
+                // Synchronization
+                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                {
+                    HordePeerSynchronization.SetItemChecked(i, false);
+                }
+
                 corradeConfiguration.HordePeers.Remove(
                     (Configuration.HordePeer) ((ListViewItem) HordePeers.Items[HordePeers.SelectedIndex]).Tag);
                 HordePeers.Items.RemoveAt(HordePeers.SelectedIndex);
@@ -3125,6 +3160,13 @@ namespace Configurator
                 HordePeerUsername.Text = string.Empty;
                 HordePeerPassword.Text = string.Empty;
                 HordePeerURL.Text = string.Empty;
+                HordePeerSharedSecret.Text = string.Empty;
+
+                // Synchronization
+                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                {
+                    HordePeerSynchronization.SetItemChecked(i, false);
+                }
             }));
         }
 
@@ -3167,6 +3209,43 @@ namespace Configurator
                     GroupNotifications.SetItemChecked(i, false);
                 }
             }));
+        }
+
+        private void SynchronizationSelected(object sender, ItemCheckEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = HordePeers.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+                var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
+                corradeConfiguration.HordePeers.Remove(hordePeer);
+
+                var synchronization =
+                    Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                        (string) HordePeerSynchronization.Items[e.Index]);
+
+                switch (e.NewValue)
+                {
+                    case CheckState.Checked: // add synchronization
+                        if (!hordePeer.Synchronization.Contains(synchronization))
+                            hordePeer.Synchronization.Add(synchronization);
+                        break;
+                    case CheckState.Unchecked: // remove synchronization
+                        if (hordePeer.Synchronization.Contains(synchronization))
+                            hordePeer.Synchronization.Remove(synchronization);
+                        break;
+                }
+
+                corradeConfiguration.HordePeers.Add(hordePeer);
+                HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem {Text = hordePeer.URL, Tag = hordePeer};
+            }));
+        }
+
+        private void GenerateHordePeerSharedSecretRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (MethodInvoker) (() => { HordePeerSharedSecret.Text = Membership.GeneratePassword(128, 64); }));
         }
 
         /// <summary>
