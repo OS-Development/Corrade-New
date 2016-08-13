@@ -161,7 +161,7 @@ namespace Corrade
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             }
                             // remove the mute from the cache
-                            Cache.RemoveMute(mute);
+                            Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

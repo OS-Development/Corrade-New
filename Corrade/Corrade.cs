@@ -3973,64 +3973,102 @@ namespace Corrade
                         break;
                     }
 
-                    Configuration.HordeSynchronization synchronizationType;
+                    Configuration.HordeDataSynchronization dataSynchronizationType;
+                    Configuration.HordeDataSynchronizationOption dataSynchronizationOption;
                     switch (Reflection.GetEnumValueFromName<WebResource>(urlPath[0].ToLowerInvariant()))
                     {
-                        case WebResource.CACHE:
+                        case WebResource.CACHE: /* /cache/{asset}/add | /cache/{asset}/remove */
 
                             // Break if the cache request is incompatible with the cache web resource.
-                            if (urlPath.Count < 2)
+                            if (urlPath.Count < 3)
                                 break;
 
-                            synchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                            dataSynchronizationType =
+                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
                                     urlPath[1].ToLowerInvariant());
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                 Reflection.GetDescriptionFromEnumValue(ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(synchronizationType));
+                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
 
                             // If this synchronization is not allowed with this peer, then break.
-                            if ((hordePeer.SynchronizationMask & (ulong) synchronizationType).Equals(0))
+                            if ((hordePeer.SynchronizationMask & (ulong) dataSynchronizationType).Equals(0))
                                 break;
 
                             // Now attempt to add the asset to the cache.
-                            switch (synchronizationType)
+                            switch (dataSynchronizationType)
                             {
-                                case Configuration.HordeSynchronization.Region:
-                                case Configuration.HordeSynchronization.Agent:
-                                case Configuration.HordeSynchronization.Group:
+                                case Configuration.HordeDataSynchronization.Region:
+                                case Configuration.HordeDataSynchronization.Agent:
+                                case Configuration.HordeDataSynchronization.Group:
+
+                                    // Get the synchronization option.
+                                    dataSynchronizationOption =
+                                        Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
+                                            urlPath[2].ToLowerInvariant());
+
+                                    // If this synchronization option is not allowed with this peer, then break.
+                                    if (
+                                        !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
+                                            dataSynchronizationOption))
+                                        break;
+
                                     try
                                     {
                                         using (
                                             var stringReader =
                                                 new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
                                         {
-                                            switch (synchronizationType)
+                                            switch (dataSynchronizationType)
                                             {
-                                                case Configuration.HordeSynchronization.Region:
+                                                case Configuration.HordeDataSynchronization.Region:
                                                     var region = (Cache.Region)
                                                         new XmlSerializer(typeof (Cache.Region)).Deserialize(
                                                             stringReader);
-                                                    Cache.AddRegion(region);
+                                                    switch (dataSynchronizationOption)
+                                                    {
+                                                        case Configuration.HordeDataSynchronizationOption.Add:
+                                                            Cache.AddRegion(region.Name, region.Handle);
+                                                            break;
+                                                        case Configuration.HordeDataSynchronizationOption.Remove:
+                                                            Cache.RemoveRegion(region.Name, region.Handle);
+                                                            break;
+                                                    }
                                                     break;
-                                                case Configuration.HordeSynchronization.Agent:
+                                                case Configuration.HordeDataSynchronization.Agent:
                                                     var agent = (Cache.Agent)
                                                         new XmlSerializer(typeof (Cache.Agent)).Deserialize(stringReader);
-                                                    Cache.AddAgent(agent);
+                                                    switch (dataSynchronizationOption)
+                                                    {
+                                                        case Configuration.HordeDataSynchronizationOption.Add:
+                                                            Cache.AddAgent(agent.FirstName, agent.LastName, agent.UUID);
+                                                            break;
+                                                        case Configuration.HordeDataSynchronizationOption.Remove:
+                                                            Cache.RemoveAgent(agent.FirstName, agent.LastName,
+                                                                agent.UUID);
+                                                            break;
+                                                    }
                                                     break;
-                                                case Configuration.HordeSynchronization.Group:
+                                                case Configuration.HordeDataSynchronization.Group:
                                                     var group = (Cache.Group)
                                                         new XmlSerializer(typeof (Cache.Group)).Deserialize(stringReader);
-                                                    Cache.AddGroup(group);
+                                                    switch (dataSynchronizationOption)
+                                                    {
+                                                        case Configuration.HordeDataSynchronizationOption.Add:
+                                                            Cache.AddGroup(group.Name, group.UUID);
+                                                            break;
+                                                        case Configuration.HordeDataSynchronizationOption.Remove:
+                                                            Cache.RemoveGroup(group.Name, group.UUID);
+                                                            break;
+                                                    }
                                                     break;
                                             }
                                             Feedback(
                                                 CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                                 Reflection.GetDescriptionFromEnumValue(
                                                     ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                                Reflection.GetNameFromEnumValue(synchronizationType));
+                                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
                                         }
                                     }
                                     catch (Exception ex)
@@ -4038,61 +4076,114 @@ namespace Corrade
                                         Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                             Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
-                                            Reflection.GetNameFromEnumValue(synchronizationType),
+                                            Reflection.GetNameFromEnumValue(dataSynchronizationType),
                                             ex.Message);
                                     }
                                     break;
-                                case Configuration.HordeSynchronization.Asset:
+                                case Configuration.HordeDataSynchronization.Asset:
+                                    /* /cache/asset/add/UUID | /cache/asset/remove/UUID */
+
+                                    // Invalid request.
+                                    if (!urlPath.Count.Equals(4))
+                                        break;
+
+                                    // Get the synchronization option.
+                                    dataSynchronizationOption =
+                                        Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
+                                            urlPath[2].ToLowerInvariant());
+
+                                    // If this synchronization option is not allowed with this peer, then break.
+                                    if (
+                                        !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
+                                            dataSynchronizationOption))
+                                        break;
+
+                                    // Invalid asset UUID.
+                                    UUID assetUUID;
+                                    if (!UUID.TryParse(urlPath[3], out assetUUID))
+                                    {
+                                        break;
+                                    }
+
                                     try
                                     {
-                                        UUID assetUUID;
-                                        if (!urlPath.Count.Equals(3) || !UUID.TryParse(urlPath[2], out assetUUID))
+                                        switch (dataSynchronizationOption)
                                         {
-                                            break;
-                                        }
-                                        lock (Locks.ClientInstanceAssetsLock)
-                                        {
-                                            if (!Client.Assets.Cache.HasAsset(assetUUID))
-                                            {
-                                                Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
-                                                HordeDistributeCacheAsset(assetUUID, requestData);
-                                            }
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                lock (Locks.ClientInstanceAssetsLock)
+                                                {
+                                                    if (!Client.Assets.Cache.HasAsset(assetUUID))
+                                                    {
+                                                        Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
+                                                        HordeDistributeCacheAsset(assetUUID, requestData,
+                                                            Configuration.HordeDataSynchronizationOption.Add);
+                                                    }
+                                                }
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                bool hasAsset;
+                                                lock (Locks.ClientInstanceAssetsLock)
+                                                {
+                                                    hasAsset = Client.Assets.Cache.HasAsset(assetUUID);
+                                                }
+                                                if (hasAsset)
+                                                {
+                                                    var fileName = Client.Assets.Cache.AssetFileName(assetUUID);
+                                                    File.Delete(Path.Combine(Client.Settings.ASSET_CACHE_DIR, fileName));
+                                                    HordeDistributeCacheAsset(assetUUID, requestData,
+                                                        Configuration.HordeDataSynchronizationOption.Remove);
+                                                }
+                                                break;
                                         }
                                         Feedback(
                                             CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint +
                                             ")",
                                             Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                            Reflection.GetNameFromEnumValue(synchronizationType));
+                                            Reflection.GetNameFromEnumValue(dataSynchronizationType));
                                     }
                                     catch (Exception ex)
                                     {
                                         Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                             Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
-                                            Reflection.GetNameFromEnumValue(synchronizationType),
+                                            Reflection.GetNameFromEnumValue(dataSynchronizationType),
                                             ex.Message);
                                     }
                                     break;
                             }
                             break;
-                        case WebResource.MUTE:
+                        case WebResource.MUTE: /* /mute/add | /mute/remove */
 
-                            synchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
+                            // Break if the mute request is incompatible with the mute web resource.
+                            if (urlPath.Count < 2)
+                                break;
+
+                            dataSynchronizationType =
+                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
                                     urlPath[0].ToLowerInvariant());
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                 Reflection.GetDescriptionFromEnumValue(ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(synchronizationType));
+                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
 
                             // If this synchronization is not allowed with this peer, then break.
-                            if ((hordePeer.SynchronizationMask & (ulong)synchronizationType).Equals(0))
+                            if ((hordePeer.SynchronizationMask & (ulong) dataSynchronizationType).Equals(0))
+                                break;
+
+                            // Get the synchronization option.
+                            dataSynchronizationOption =
+                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
+                                    urlPath[1].ToLowerInvariant());
+
+                            // If this synchronization option is not allowed with this peer, then break.
+                            if (
+                                !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
+                                    dataSynchronizationOption))
                                 break;
 
                             MuteEntry mute;
-
                             try
                             {
                                 using (
@@ -4108,7 +4199,7 @@ namespace Corrade
                                 Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                     Reflection.GetDescriptionFromEnumValue(
                                         ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
-                                    Reflection.GetNameFromEnumValue(synchronizationType),
+                                    Reflection.GetNameFromEnumValue(dataSynchronizationType),
                                     ex.Message);
                                 break;
                             }
@@ -4118,34 +4209,50 @@ namespace Corrade
                             // Retrieve the current mute list
                             Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
 
-                            // Check that the mute entry does not already exist
-                            if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name)))
-                                break;
+                            var muteExists =
+                                mutes.ToList().AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name));
 
-                            // Add the mute.
-                            var MuteListUpdatedEvent = new ManualResetEvent(false);
-                            EventHandler<EventArgs> MuteListUpdatedEventHandler =
-                                (sender, args) => MuteListUpdatedEvent.Set();
-
-                            lock (Locks.ClientInstanceSelfLock)
+                            switch (dataSynchronizationOption)
                             {
-                                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
-                                if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
-                                }
-                                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                            }
+                                case Configuration.HordeDataSynchronizationOption.Add:
+                                    // Check that the mute entry does not already exist
+                                    if (muteExists)
+                                        break;
 
-                            // Add the mute to the cache.
-                            Cache.AddMute(mute);
+                                    // Add the mute.
+                                    var MuteListUpdatedEvent = new ManualResetEvent(false);
+                                    EventHandler<EventArgs> MuteListUpdatedEventHandler =
+                                        (sender, args) => MuteListUpdatedEvent.Set();
+
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                        Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
+                                        if (
+                                            !MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                                false))
+                                        {
+                                            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                            throw new ScriptException(ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
+                                        }
+                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                    }
+
+                                    // Add the mute to the cache.
+                                    Cache.AddMute(mute.Flags, mute.ID, mute.Name, mute.Type);
+                                    break;
+                                case Configuration.HordeDataSynchronizationOption.Remove:
+                                    // If the mute does not exist then we have nothing to do.
+                                    if (!muteExists)
+                                        break;
+                                    Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
+                                    break;
+                            }
 
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                 Reflection.GetDescriptionFromEnumValue(
                                     ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                Reflection.GetNameFromEnumValue(synchronizationType));
+                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
 
                             break;
                     }
@@ -6090,26 +6197,30 @@ namespace Corrade
                         configuration.HordePeers.AsParallel()
                             .Any(
                                 o =>
-                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Agent).Equals(0)))
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeDataSynchronization.Agent)
+                                        .Equals(0)))
                         Cache.ObservableAgentCache.CollectionChanged += HandleAgentCacheChanged;
                     if (
                         configuration.HordePeers.AsParallel()
                             .Any(
                                 o =>
-                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Region).Equals(
-                                        0)))
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeDataSynchronization.Region)
+                                        .Equals(
+                                            0)))
                         Cache.ObservableRegionCache.CollectionChanged += HandleRegionCacheChanged;
                     if (
                         configuration.HordePeers.AsParallel()
                             .Any(
                                 o =>
-                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Group).Equals(0)))
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeDataSynchronization.Group)
+                                        .Equals(0)))
                         Cache.ObservableGroupCache.CollectionChanged += HandleGroupCacheChanged;
                     if (
                         configuration.HordePeers.AsParallel()
                             .Any(
                                 o =>
-                                    !(o.SynchronizationMask & (ulong) Configuration.HordeSynchronization.Mute).Equals(0)))
+                                    !(o.SynchronizationMask & (ulong) Configuration.HordeDataSynchronization.Mute)
+                                        .Equals(0)))
                         Cache.ObservableMuteCache.CollectionChanged += HandleMuteCacheChanged;
                     break;
                 default:
@@ -7016,7 +7127,8 @@ namespace Corrade
             Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.CORRADE_CONFIGURATION_UPDATED));
         }
 
-        private static void HordeDistributeCacheAsset(UUID assetUUID, byte[] data)
+        private static void HordeDistributeCacheAsset(UUID assetUUID, byte[] data,
+            Configuration.HordeDataSynchronizationOption option)
         {
             new Thread(() =>
             {
@@ -7030,12 +7142,12 @@ namespace Corrade
                                     !(corradeConfiguration.HordePeers.SingleOrDefault(
                                         q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
                                         .SynchronizationMask &
-                                      (ulong) Configuration.HordeSynchronization.Asset).Equals(0))
+                                      (ulong) Configuration.HordeDataSynchronization.Asset).Equals(0))
                             .ForAll(async p =>
                             {
                                 await
                                     p.Value.PUT(
-                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Asset)}/{assetUUID.ToString()}",
+                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Asset)}/{Reflection.GetNameFromEnumValue(option)}/{assetUUID.ToString()}",
                                         data);
                             });
                     }
@@ -7045,14 +7157,14 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
-                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Asset),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Asset),
                         ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void HordeDistributeCacheGroup(Cache.Group o)
+        private static void HordeDistributeCacheGroup(Cache.Group o, Configuration.HordeDataSynchronizationOption option)
         {
             new Thread(() =>
             {
@@ -7064,7 +7176,7 @@ namespace Corrade
                             p =>
                                 !(corradeConfiguration.HordePeers.SingleOrDefault(
                                     q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
-                                  (ulong) Configuration.HordeSynchronization.Group).Equals(0)).ForAll(async p =>
+                                  (ulong) Configuration.HordeDataSynchronization.Group).Equals(0)).ForAll(async p =>
                                   {
                                       using (var writer = new StringWriter())
                                       {
@@ -7072,7 +7184,7 @@ namespace Corrade
                                           serializer.Serialize(writer, o);
                                           await
                                               p.Value.PUT(
-                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Group)}",
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group)}/{Reflection.GetNameFromEnumValue(option)}",
                                                   writer.ToString());
                                       }
                                   });
@@ -7083,14 +7195,15 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
-                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Group),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group),
                         ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void HordeDistributeCacheRegion(Cache.Region o)
+        private static void HordeDistributeCacheRegion(Cache.Region o,
+            Configuration.HordeDataSynchronizationOption option)
         {
             new Thread(() =>
             {
@@ -7102,7 +7215,7 @@ namespace Corrade
                             p =>
                                 !(corradeConfiguration.HordePeers.SingleOrDefault(
                                     q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
-                                  (ulong) Configuration.HordeSynchronization.Region).Equals(0)).ForAll(async p =>
+                                  (ulong) Configuration.HordeDataSynchronization.Region).Equals(0)).ForAll(async p =>
                                   {
                                       using (var writer = new StringWriter())
                                       {
@@ -7110,7 +7223,7 @@ namespace Corrade
                                           serializer.Serialize(writer, o);
                                           await
                                               p.Value.PUT(
-                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Region)}",
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region)}/{Reflection.GetNameFromEnumValue(option)}",
                                                   writer.ToString());
                                       }
                                   });
@@ -7121,14 +7234,14 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
-                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Region),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region),
                         ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void HordeDistributeCacheAgent(Cache.Agent o)
+        private static void HordeDistributeCacheAgent(Cache.Agent o, Configuration.HordeDataSynchronizationOption option)
         {
             new Thread(() =>
             {
@@ -7140,7 +7253,7 @@ namespace Corrade
                             p =>
                                 !(corradeConfiguration.HordePeers.SingleOrDefault(
                                     q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
-                                  (ulong) Configuration.HordeSynchronization.Agent).Equals(0)).ForAll(async p =>
+                                  (ulong) Configuration.HordeDataSynchronization.Agent).Equals(0)).ForAll(async p =>
                                   {
                                       using (var writer = new StringWriter())
                                       {
@@ -7148,7 +7261,7 @@ namespace Corrade
                                           serializer.Serialize(writer, o);
                                           await
                                               p.Value.PUT(
-                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Agent)}",
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent)}/{Reflection.GetNameFromEnumValue(option)}",
                                                   writer.ToString());
                                       }
                                   });
@@ -7159,14 +7272,14 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
-                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Agent),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent),
                         ex.Message);
                 }
             })
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
-        private static void HordeDistributeCacheMute(MuteEntry o)
+        private static void HordeDistributeCacheMute(MuteEntry o, Configuration.HordeDataSynchronizationOption option)
         {
             new Thread(() =>
             {
@@ -7178,7 +7291,7 @@ namespace Corrade
                             p =>
                                 !(corradeConfiguration.HordePeers.SingleOrDefault(
                                     q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase)).SynchronizationMask &
-                                  (ulong) Configuration.HordeSynchronization.Mute).Equals(0)).ForAll(async p =>
+                                  (ulong) Configuration.HordeDataSynchronization.Mute).Equals(0)).ForAll(async p =>
                                   {
                                       using (var writer = new StringWriter())
                                       {
@@ -7186,7 +7299,7 @@ namespace Corrade
                                           serializer.Serialize(writer, o);
                                           await
                                               p.Value.PUT(
-                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Mute)}",
+                                                  $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute)}/{Reflection.GetNameFromEnumValue(option)}",
                                                   writer.ToString());
                                       }
                                   });
@@ -7197,7 +7310,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
-                        Reflection.GetNameFromEnumValue(Configuration.HordeSynchronization.Mute),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute),
                         ex.Message);
                 }
             })
@@ -7206,22 +7319,78 @@ namespace Corrade
 
         private static void HandleGroupCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<Cache.Group>().ToList().AsParallel().ForAll(HordeDistributeCacheGroup);
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    e.NewItems?.Cast<Cache.Group>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheGroup(o, Configuration.HordeDataSynchronizationOption.Add));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    e.OldItems?.Cast<Cache.Group>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheGroup(o, Configuration.HordeDataSynchronizationOption.Remove));
+                    break;
+            }
         }
 
         private static void HandleRegionCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<Cache.Region>().ToList().AsParallel().ForAll(HordeDistributeCacheRegion);
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    e.NewItems?.Cast<Cache.Region>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheRegion(o, Configuration.HordeDataSynchronizationOption.Add));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    e.OldItems?.Cast<Cache.Region>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheRegion(o, Configuration.HordeDataSynchronizationOption.Remove));
+                    break;
+            }
         }
 
         private static void HandleAgentCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<Cache.Agent>().ToList().AsParallel().ForAll(HordeDistributeCacheAgent);
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    e.NewItems?.Cast<Cache.Agent>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheAgent(o, Configuration.HordeDataSynchronizationOption.Add));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    e.OldItems?.Cast<Cache.Agent>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheAgent(o, Configuration.HordeDataSynchronizationOption.Remove));
+                    break;
+            }
         }
 
         private static void HandleMuteCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            e.NewItems?.Cast<MuteEntry>().ToList().AsParallel().ForAll(HordeDistributeCacheMute);
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    e.NewItems?.Cast<MuteEntry>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheMute(o, Configuration.HordeDataSynchronizationOption.Add));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    e.OldItems?.Cast<MuteEntry>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o => HordeDistributeCacheMute(o, Configuration.HordeDataSynchronizationOption.Remove));
+                    break;
+            }
         }
 
         private static void HandleSynBotLearning(object sender, LearningEventArgs e)

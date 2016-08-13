@@ -38,7 +38,7 @@ namespace CorradeConfiguration
         ///     Corrade horde synchronization options.
         /// </summary>
         [Flags]
-        public enum HordeSynchronization : ulong
+        public enum HordeDataSynchronization : ulong
         {
             [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] None = 0uL,
             [XmlEnum(Name = "agent")] [Reflection.NameAttribute("agent")] Agent = 1uL,
@@ -46,6 +46,17 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "region")] [Reflection.NameAttribute("region")] Region = 4uL,
             [XmlEnum(Name = "asset")] [Reflection.NameAttribute("asset")] Asset = 8uL,
             [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 16uL
+        }
+
+        /// <summary>
+        ///     Data synchronization options.
+        /// </summary>
+        [Flags]
+        public enum HordeDataSynchronizationOption : ulong
+        {
+            [XmlEnum(Name = "none")] [Reflection.NameAttribute("none")] None = 0uL,
+            [XmlEnum(Name = "add")] [Reflection.NameAttribute("add")] Add = 1uL,
+            [XmlEnum(Name = "remove")] [Reflection.NameAttribute("remove")] Remove = 2uL
         }
 
         /// <summary>
@@ -1976,24 +1987,31 @@ namespace CorradeConfiguration
         /// <summary>
         ///     Horde peer.
         /// </summary>
-        public struct HordePeer
+        public class HordePeer
         {
             public string URL;
             public string Username;
             public string Password;
             public string SharedSecret;
 
-            public HashSet<HordeSynchronization> Synchronization;
+            public Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>
+                DataSynchronization =
+                    new Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>();
 
             public ulong SynchronizationMask
             {
                 get
                 {
-                    return Synchronization != null && Synchronization.Any()
-                        ? Synchronization.Cast<ulong>()
+                    return DataSynchronization != null && DataSynchronization.Any()
+                        ? DataSynchronization.Keys.Cast<ulong>()
                             .Aggregate((p, q) => p |= q)
                         : 0;
                 }
+            }
+
+            public bool HasDataSynchronizationOption(HordeDataSynchronization sync, HordeDataSynchronizationOption option)
+            {
+                return DataSynchronization.ContainsKey(sync) && BitTwiddling.IsMaskFlagSet(DataSynchronization[sync], option);
             }
         }
     }

@@ -414,7 +414,8 @@ namespace Corrade
                         {
                             Client.Assets.Cache.SaveAssetToCache(assetUUID, data);
                         }
-                        HordeDistributeCacheAsset(itemUUID, data);
+                        if (corradeConfiguration.EnableHorde)
+                            HordeDistributeCacheAsset(itemUUID, data, Configuration.HordeDataSynchronizationOption.Add);
                     }
                     // Return the item and asset UUID.
                     result.Add(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),

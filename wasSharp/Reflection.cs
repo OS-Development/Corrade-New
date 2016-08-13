@@ -122,7 +122,7 @@ namespace wasSharp
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(
                     typeof (NameAttribute), false), (
                         f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((NameAttribute) a.Att)
-                            .Name.Equals(name));
+                            .Name.Equals(name, StringComparison.Ordinal));
             return field != null ? (T) field.Field.GetValue(Activator.CreateInstance<T>()) : default(T);
         }
 

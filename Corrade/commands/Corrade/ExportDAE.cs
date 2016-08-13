@@ -191,7 +191,8 @@ namespace Corrade
                                 {
                                     Client.Assets.Cache.SaveAssetToCache(o, assetData);
                                 }
-                                HordeDistributeCacheAsset(o, assetData);
+                                if (corradeConfiguration.EnableHorde)
+                                    HordeDistributeCacheAsset(o, assetData, Configuration.HordeDataSynchronizationOption.Add);
                                 break;
                             default:
                                 lock (Locks.ClientInstanceAssetsLock)

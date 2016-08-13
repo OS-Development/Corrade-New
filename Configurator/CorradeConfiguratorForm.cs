@@ -1437,6 +1437,18 @@ namespace Configurator
                 mainForm.Version.Text = @"v" +
                                         CORRADE_CONSTANTS
                                             .CONFIGURATOR_VERSION;
+
+                foreach (var sync in Reflection.GetEnumNames<Configuration.HordeDataSynchronization>())
+                {
+                    switch (Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(sync))
+                    {
+                        case Configuration.HordeDataSynchronization.None:
+                            break;
+                        default:
+                            HordeSynchronizationDataGridView.Rows.Add(sync, false, false);
+                            break;
+                    }
+                }
             }));
 
             if (File.Exists("Corrade.ini"))
@@ -2985,24 +2997,31 @@ namespace Configurator
                     return;
                 var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
 
-
-                // Horde peer synchronization
-                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                // Synchronization
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
-                    switch (
-                        !(hordePeer.SynchronizationMask &
-                          (ulong)
-                              Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
-                                  (string) HordePeerSynchronization.Items[i]))
-                            .Equals
-                            (0))
+                    var data = Reflection
+                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                            dataRow.Cells["Data"].Value as string);
+
+                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+
+                    if (addCheckBox != null)
                     {
-                        case true:
-                            HordePeerSynchronization.SetItemChecked(i, true);
-                            break;
-                        default:
-                            HordePeerSynchronization.SetItemChecked(i, false);
-                            break;
+                        addCheckBox.Value = hordePeer.HasDataSynchronizationOption(data,
+                            Configuration.HordeDataSynchronizationOption.Add)
+                            ? 1
+                            : 0;
+                    }
+
+                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+
+                    if (removeCheckBox != null)
+                    {
+                        removeCheckBox.Value = hordePeer.HasDataSynchronizationOption(data,
+                            Configuration.HordeDataSynchronizationOption.Remove)
+                            ? 1
+                            : 0;
                     }
                 }
 
@@ -3026,7 +3045,10 @@ namespace Configurator
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
                     string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
                     corradeConfiguration.HordePeers.AsParallel().Where(o => !o.Equals(hordePeer))
-                        .Any(o => o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
+                        .Any(
+                            o =>
+                                !string.IsNullOrEmpty(o.SharedSecret) &&
+                                o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
                 {
                     HordePeerUsername.BackColor = Color.MistyRose;
                     HordePeerPassword.BackColor = Color.MistyRose;
@@ -3041,15 +3063,46 @@ namespace Configurator
                 HordePeerSharedSecret.BackColor = Color.Empty;
 
                 // Synchronization
-                var synchronization = new HashSet<Configuration.HordeSynchronization>();
-                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                var synchronization =
+                    new Collections.SerializableDictionary
+                        <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>();
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
-                    switch (HordePeerSynchronization.GetItemCheckState(i))
+                    var data = Reflection
+                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                            dataRow.Cells["Data"].Value as string);
+
+                    var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
+
+                    switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
                     {
-                        case CheckState.Checked:
-                            synchronization.Add(
-                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
-                                    (string) HordePeerSynchronization.Items[i]));
+                        case true:
+                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Add);
+                            break;
+                        default:
+                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Add);
+                            break;
+                    }
+                    switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
+                    {
+                        case true:
+                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Remove);
+                            break;
+                        default:
+                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Remove);
+                            break;
+                    }
+                    switch (synchronization.ContainsKey(data))
+                    {
+                        case true:
+                            synchronization[data] = synchronizationOption;
+                            break;
+                        default:
+                            synchronization.Add(data, synchronizationOption);
                             break;
                     }
                 }
@@ -3060,7 +3113,7 @@ namespace Configurator
                     URL = HordePeerURL.Text,
                     Username = HordePeerUsername.Text,
                     Password = HordePeerPassword.Text,
-                    Synchronization = synchronization,
+                    DataSynchronization = synchronization,
                     SharedSecret = HordePeerSharedSecret.Text
                 };
                 corradeConfiguration.HordePeers.Add(hordePeer);
@@ -3080,7 +3133,10 @@ namespace Configurator
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
                     string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
                     corradeConfiguration.HordePeers.AsParallel()
-                        .Any(o => o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
+                        .Any(
+                            o =>
+                                !string.IsNullOrEmpty(o.SharedSecret) &&
+                                o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
                 {
                     HordePeerUsername.BackColor = Color.MistyRose;
                     HordePeerPassword.BackColor = Color.MistyRose;
@@ -3095,15 +3151,48 @@ namespace Configurator
                 HordePeerSharedSecret.BackColor = Color.Empty;
 
                 // Synchronization
-                var synchronization = new HashSet<Configuration.HordeSynchronization>();
-                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                var synchronization =
+                    new Collections.SerializableDictionary
+                        <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>
+                        ();
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
-                    switch (HordePeerSynchronization.GetItemCheckState(i))
+                    var data = Reflection
+                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                            dataRow.Cells["Data"].Value as string);
+
+                    var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
+
+                    switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
                     {
-                        case CheckState.Checked:
-                            synchronization.Add(
-                                Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
-                                    (string) HordePeerSynchronization.Items[i]));
+                        case true:
+                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Add);
+                            break;
+                        default:
+                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Add);
+                            break;
+                    }
+                    switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
+                    {
+                        case true:
+                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Remove);
+                            break;
+                        default:
+                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Remove);
+                            break;
+                    }
+
+                    switch (synchronization.ContainsKey(data))
+                    {
+                        case true:
+                            synchronization[data] = synchronizationOption;
+                            break;
+                        default:
+                            synchronization.Add(data, synchronizationOption);
                             break;
                     }
                 }
@@ -3113,7 +3202,7 @@ namespace Configurator
                     URL = HordePeerURL.Text,
                     Username = HordePeerUsername.Text,
                     Password = HordePeerPassword.Text,
-                    Synchronization = synchronization,
+                    DataSynchronization = synchronization,
                     SharedSecret = HordePeerSharedSecret.Text
                 };
 
@@ -3139,9 +3228,18 @@ namespace Configurator
                 HordePeers.BackColor = Color.Empty;
 
                 // Synchronization
-                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
-                    HordePeerSynchronization.SetItemChecked(i, false);
+                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+                    if (addCheckBox != null)
+                    {
+                        addCheckBox.Value = 0;
+                    }
+                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+                    if (removeCheckBox != null)
+                    {
+                        removeCheckBox.Value = 0;
+                    }
                 }
 
                 corradeConfiguration.HordePeers.Remove(
@@ -3163,9 +3261,18 @@ namespace Configurator
                 HordePeerSharedSecret.Text = string.Empty;
 
                 // Synchronization
-                for (var i = 0; i < HordePeerSynchronization.Items.Count; ++i)
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
-                    HordePeerSynchronization.SetItemChecked(i, false);
+                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+                    if (addCheckBox != null)
+                    {
+                        addCheckBox.Value = 0;
+                    }
+                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+                    if (removeCheckBox != null)
+                    {
+                        removeCheckBox.Value = 0;
+                    }
                 }
             }));
         }
@@ -3211,7 +3318,13 @@ namespace Configurator
             }));
         }
 
-        private void SynchronizationSelected(object sender, ItemCheckEventArgs e)
+        private void GenerateHordePeerSharedSecretRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (MethodInvoker) (() => { HordePeerSharedSecret.Text = Membership.GeneratePassword(128, 64); }));
+        }
+
+        private void SynchronizationDataChanged(object sender, EventArgs e)
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
@@ -3221,20 +3334,40 @@ namespace Configurator
                 var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
                 corradeConfiguration.HordePeers.Remove(hordePeer);
 
-                var synchronization =
-                    Reflection.GetEnumValueFromName<Configuration.HordeSynchronization>(
-                        (string) HordePeerSynchronization.Items[e.Index]);
-
-                switch (e.NewValue)
+                // Synchronization
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
-                    case CheckState.Checked: // add synchronization
-                        if (!hordePeer.Synchronization.Contains(synchronization))
-                            hordePeer.Synchronization.Add(synchronization);
-                        break;
-                    case CheckState.Unchecked: // remove synchronization
-                        if (hordePeer.Synchronization.Contains(synchronization))
-                            hordePeer.Synchronization.Remove(synchronization);
-                        break;
+                    var data = Reflection
+                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                            dataRow.Cells["Data"].Value as string);
+
+                    if (!hordePeer.DataSynchronization.ContainsKey(data)) continue;
+
+                    var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
+
+                    switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
+                    {
+                        case true:
+                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Add);
+                            break;
+                        default:
+                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Add);
+                            break;
+                    }
+                    switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
+                    {
+                        case true:
+                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Remove);
+                            break;
+                        default:
+                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                                Configuration.HordeDataSynchronizationOption.Remove);
+                            break;
+                    }
+                    hordePeer.DataSynchronization[data] = synchronizationOption;
                 }
 
                 corradeConfiguration.HordePeers.Add(hordePeer);
@@ -3242,10 +3375,9 @@ namespace Configurator
             }));
         }
 
-        private void GenerateHordePeerSharedSecretRequested(object sender, EventArgs e)
+        private void SynchronizationDataClick(object sender, DataGridViewCellEventArgs e)
         {
-            mainForm.BeginInvoke(
-                (MethodInvoker) (() => { HordePeerSharedSecret.Text = Membership.GeneratePassword(128, 64); }));
+            HordeSynchronizationDataGridView.CommitEdit(DataGridViewDataErrorContexts.Commit);
         }
 
         /// <summary>

@@ -183,11 +183,9 @@
             this.button14 = new System.Windows.Forms.Button();
             this.pictureBox102 = new System.Windows.Forms.PictureBox();
             this.HordePeerSharedSecret = new System.Windows.Forms.TextBox();
-            this.groupBox77 = new System.Windows.Forms.GroupBox();
-            this.pictureBox103 = new System.Windows.Forms.PictureBox();
-            this.HordePeerSynchronization = new System.Windows.Forms.CheckedListBox();
             this.button12 = new System.Windows.Forms.Button();
             this.groupBox7 = new System.Windows.Forms.GroupBox();
+            this.HordeSynchronizationDataGridView = new System.Windows.Forms.DataGridView();
             this.HordePeers = new System.Windows.Forms.ListBox();
             this.LogsTabPage = new System.Windows.Forms.TabPage();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
@@ -289,6 +287,105 @@
             this.groupBox44 = new System.Windows.Forms.GroupBox();
             this.pictureBox27 = new System.Windows.Forms.PictureBox();
             this.NetworkBindAddress = new System.Windows.Forms.TextBox();
+            this.LimitsTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox86 = new System.Windows.Forms.GroupBox();
+            this.pictureBox93 = new System.Windows.Forms.PictureBox();
+            this.label32 = new System.Windows.Forms.Label();
+            this.label33 = new System.Windows.Forms.Label();
+            this.LimitsFeedsUpdate = new System.Windows.Forms.TextBox();
+            this.groupBox82 = new System.Windows.Forms.GroupBox();
+            this.pictureBox82 = new System.Windows.Forms.PictureBox();
+            this.pictureBox83 = new System.Windows.Forms.PictureBox();
+            this.label30 = new System.Windows.Forms.Label();
+            this.label31 = new System.Windows.Forms.Label();
+            this.LimitsTCPNotificationsQueue = new System.Windows.Forms.TextBox();
+            this.LimitsTCPNotificationsThrottle = new System.Windows.Forms.TextBox();
+            this.groupBox76 = new System.Windows.Forms.GroupBox();
+            this.pictureBox51 = new System.Windows.Forms.PictureBox();
+            this.label29 = new System.Windows.Forms.Label();
+            this.LimitsSchedulesResolution = new System.Windows.Forms.TextBox();
+            this.groupBox71 = new System.Windows.Forms.GroupBox();
+            this.pictureBox45 = new System.Windows.Forms.PictureBox();
+            this.pictureBox44 = new System.Windows.Forms.PictureBox();
+            this.label27 = new System.Windows.Forms.Label();
+            this.label26 = new System.Windows.Forms.Label();
+            this.LimitsClientIdle = new System.Windows.Forms.TextBox();
+            this.LimitsClientConnections = new System.Windows.Forms.TextBox();
+            this.groupBox70 = new System.Windows.Forms.GroupBox();
+            this.pictureBox43 = new System.Windows.Forms.PictureBox();
+            this.label25 = new System.Windows.Forms.Label();
+            this.LimitsLogoutTimeout = new System.Windows.Forms.TextBox();
+            this.groupBox69 = new System.Windows.Forms.GroupBox();
+            this.pictureBox42 = new System.Windows.Forms.PictureBox();
+            this.LimitsMembershipSweep = new System.Windows.Forms.TextBox();
+            this.label24 = new System.Windows.Forms.Label();
+            this.groupBox68 = new System.Windows.Forms.GroupBox();
+            this.pictureBox60 = new System.Windows.Forms.PictureBox();
+            this.pictureBox59 = new System.Windows.Forms.PictureBox();
+            this.label23 = new System.Windows.Forms.Label();
+            this.label22 = new System.Windows.Forms.Label();
+            this.LimitsDataTimeout = new System.Windows.Forms.TextBox();
+            this.LimitsDataDecay = new System.Windows.Forms.ComboBox();
+            this.groupBox67 = new System.Windows.Forms.GroupBox();
+            this.pictureBox69 = new System.Windows.Forms.PictureBox();
+            this.pictureBox68 = new System.Windows.Forms.PictureBox();
+            this.pictureBox67 = new System.Windows.Forms.PictureBox();
+            this.label21 = new System.Windows.Forms.Label();
+            this.LimitsServicesActivate = new System.Windows.Forms.TextBox();
+            this.label20 = new System.Windows.Forms.Label();
+            this.LimitsServicesRebake = new System.Windows.Forms.TextBox();
+            this.label19 = new System.Windows.Forms.Label();
+            this.LimitsServicesTimeout = new System.Windows.Forms.TextBox();
+            this.groupBox65 = new System.Windows.Forms.GroupBox();
+            this.pictureBox58 = new System.Windows.Forms.PictureBox();
+            this.pictureBox57 = new System.Windows.Forms.PictureBox();
+            this.pictureBox56 = new System.Windows.Forms.PictureBox();
+            this.pictureBox55 = new System.Windows.Forms.PictureBox();
+            this.label28 = new System.Windows.Forms.Label();
+            this.LimitsNotificationsThreads = new System.Windows.Forms.TextBox();
+            this.label12 = new System.Windows.Forms.Label();
+            this.label11 = new System.Windows.Forms.Label();
+            this.label10 = new System.Windows.Forms.Label();
+            this.LimitsNotificationsQueue = new System.Windows.Forms.TextBox();
+            this.LimitsNotificationsThrottle = new System.Windows.Forms.TextBox();
+            this.LimitsNotificationsTimeout = new System.Windows.Forms.TextBox();
+            this.groupBox64 = new System.Windows.Forms.GroupBox();
+            this.pictureBox54 = new System.Windows.Forms.PictureBox();
+            this.pictureBox53 = new System.Windows.Forms.PictureBox();
+            this.pictureBox52 = new System.Windows.Forms.PictureBox();
+            this.label9 = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.LimitsCallbackQueue = new System.Windows.Forms.TextBox();
+            this.LimitsCallbacksThrottle = new System.Windows.Forms.TextBox();
+            this.LimitsCallbacksTimeout = new System.Windows.Forms.TextBox();
+            this.groupBox63 = new System.Windows.Forms.GroupBox();
+            this.pictureBox50 = new System.Windows.Forms.PictureBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.LimitsInstantMessageThreads = new System.Windows.Forms.TextBox();
+            this.groupBox62 = new System.Windows.Forms.GroupBox();
+            this.pictureBox49 = new System.Windows.Forms.PictureBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.LimitsRLVThreads = new System.Windows.Forms.TextBox();
+            this.groupBox61 = new System.Windows.Forms.GroupBox();
+            this.pictureBox48 = new System.Windows.Forms.PictureBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.LimitsCommandsThreads = new System.Windows.Forms.TextBox();
+            this.groupBox60 = new System.Windows.Forms.GroupBox();
+            this.pictureBox47 = new System.Windows.Forms.PictureBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.LimitsLoggingThreads = new System.Windows.Forms.TextBox();
+            this.groupBox59 = new System.Windows.Forms.GroupBox();
+            this.pictureBox41 = new System.Windows.Forms.PictureBox();
+            this.label2 = new System.Windows.Forms.Label();
+            this.LimitsSchedulerExpiration = new System.Windows.Forms.TextBox();
+            this.groupBox58 = new System.Windows.Forms.GroupBox();
+            this.pictureBox46 = new System.Windows.Forms.PictureBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.LimitsPOSTThreads = new System.Windows.Forms.TextBox();
+            this.groupBox57 = new System.Windows.Forms.GroupBox();
+            this.pictureBox40 = new System.Windows.Forms.PictureBox();
+            this.LimitsRange = new System.Windows.Forms.TextBox();
             this.ThrottlesTabPage = new System.Windows.Forms.TabPage();
             this.groupBox56 = new System.Windows.Forms.GroupBox();
             this.pictureBox39 = new System.Windows.Forms.PictureBox();
@@ -314,78 +411,6 @@
             this.groupBox49 = new System.Windows.Forms.GroupBox();
             this.pictureBox32 = new System.Windows.Forms.PictureBox();
             this.ThrottlesTotalThrottle = new System.Windows.Forms.TextBox();
-            this.LimitsTabPage = new System.Windows.Forms.TabPage();
-            this.groupBox86 = new System.Windows.Forms.GroupBox();
-            this.label32 = new System.Windows.Forms.Label();
-            this.label33 = new System.Windows.Forms.Label();
-            this.LimitsFeedsUpdate = new System.Windows.Forms.TextBox();
-            this.groupBox82 = new System.Windows.Forms.GroupBox();
-            this.label30 = new System.Windows.Forms.Label();
-            this.label31 = new System.Windows.Forms.Label();
-            this.LimitsTCPNotificationsQueue = new System.Windows.Forms.TextBox();
-            this.LimitsTCPNotificationsThrottle = new System.Windows.Forms.TextBox();
-            this.groupBox76 = new System.Windows.Forms.GroupBox();
-            this.label29 = new System.Windows.Forms.Label();
-            this.LimitsSchedulesResolution = new System.Windows.Forms.TextBox();
-            this.groupBox71 = new System.Windows.Forms.GroupBox();
-            this.label27 = new System.Windows.Forms.Label();
-            this.label26 = new System.Windows.Forms.Label();
-            this.LimitsClientIdle = new System.Windows.Forms.TextBox();
-            this.LimitsClientConnections = new System.Windows.Forms.TextBox();
-            this.groupBox70 = new System.Windows.Forms.GroupBox();
-            this.label25 = new System.Windows.Forms.Label();
-            this.LimitsLogoutTimeout = new System.Windows.Forms.TextBox();
-            this.groupBox69 = new System.Windows.Forms.GroupBox();
-            this.LimitsMembershipSweep = new System.Windows.Forms.TextBox();
-            this.label24 = new System.Windows.Forms.Label();
-            this.groupBox68 = new System.Windows.Forms.GroupBox();
-            this.label23 = new System.Windows.Forms.Label();
-            this.label22 = new System.Windows.Forms.Label();
-            this.LimitsDataTimeout = new System.Windows.Forms.TextBox();
-            this.LimitsDataDecay = new System.Windows.Forms.ComboBox();
-            this.groupBox67 = new System.Windows.Forms.GroupBox();
-            this.label21 = new System.Windows.Forms.Label();
-            this.LimitsServicesActivate = new System.Windows.Forms.TextBox();
-            this.label20 = new System.Windows.Forms.Label();
-            this.LimitsServicesRebake = new System.Windows.Forms.TextBox();
-            this.label19 = new System.Windows.Forms.Label();
-            this.LimitsServicesTimeout = new System.Windows.Forms.TextBox();
-            this.groupBox65 = new System.Windows.Forms.GroupBox();
-            this.label28 = new System.Windows.Forms.Label();
-            this.LimitsNotificationsThreads = new System.Windows.Forms.TextBox();
-            this.label12 = new System.Windows.Forms.Label();
-            this.label11 = new System.Windows.Forms.Label();
-            this.label10 = new System.Windows.Forms.Label();
-            this.LimitsNotificationsQueue = new System.Windows.Forms.TextBox();
-            this.LimitsNotificationsThrottle = new System.Windows.Forms.TextBox();
-            this.LimitsNotificationsTimeout = new System.Windows.Forms.TextBox();
-            this.groupBox64 = new System.Windows.Forms.GroupBox();
-            this.label9 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
-            this.LimitsCallbackQueue = new System.Windows.Forms.TextBox();
-            this.LimitsCallbacksThrottle = new System.Windows.Forms.TextBox();
-            this.LimitsCallbacksTimeout = new System.Windows.Forms.TextBox();
-            this.groupBox63 = new System.Windows.Forms.GroupBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.LimitsInstantMessageThreads = new System.Windows.Forms.TextBox();
-            this.groupBox62 = new System.Windows.Forms.GroupBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.LimitsRLVThreads = new System.Windows.Forms.TextBox();
-            this.groupBox61 = new System.Windows.Forms.GroupBox();
-            this.label4 = new System.Windows.Forms.Label();
-            this.LimitsCommandsThreads = new System.Windows.Forms.TextBox();
-            this.groupBox60 = new System.Windows.Forms.GroupBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.LimitsLoggingThreads = new System.Windows.Forms.TextBox();
-            this.groupBox59 = new System.Windows.Forms.GroupBox();
-            this.label2 = new System.Windows.Forms.Label();
-            this.LimitsSchedulerExpiration = new System.Windows.Forms.TextBox();
-            this.groupBox58 = new System.Windows.Forms.GroupBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.LimitsPOSTThreads = new System.Windows.Forms.TextBox();
-            this.groupBox57 = new System.Windows.Forms.GroupBox();
-            this.LimitsRange = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
             this.Status = new System.Windows.Forms.StatusStrip();
@@ -399,33 +424,12 @@
             this.button11 = new System.Windows.Forms.Button();
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
-            this.pictureBox44 = new System.Windows.Forms.PictureBox();
-            this.pictureBox52 = new System.Windows.Forms.PictureBox();
-            this.pictureBox59 = new System.Windows.Forms.PictureBox();
-            this.pictureBox60 = new System.Windows.Forms.PictureBox();
-            this.pictureBox55 = new System.Windows.Forms.PictureBox();
-            this.pictureBox56 = new System.Windows.Forms.PictureBox();
-            this.pictureBox57 = new System.Windows.Forms.PictureBox();
-            this.pictureBox58 = new System.Windows.Forms.PictureBox();
-            this.pictureBox82 = new System.Windows.Forms.PictureBox();
-            this.pictureBox93 = new System.Windows.Forms.PictureBox();
-            this.pictureBox67 = new System.Windows.Forms.PictureBox();
-            this.pictureBox68 = new System.Windows.Forms.PictureBox();
-            this.pictureBox69 = new System.Windows.Forms.PictureBox();
-            this.pictureBox53 = new System.Windows.Forms.PictureBox();
-            this.pictureBox83 = new System.Windows.Forms.PictureBox();
-            this.pictureBox54 = new System.Windows.Forms.PictureBox();
-            this.pictureBox51 = new System.Windows.Forms.PictureBox();
-            this.pictureBox50 = new System.Windows.Forms.PictureBox();
-            this.pictureBox49 = new System.Windows.Forms.PictureBox();
-            this.pictureBox48 = new System.Windows.Forms.PictureBox();
-            this.pictureBox47 = new System.Windows.Forms.PictureBox();
-            this.pictureBox46 = new System.Windows.Forms.PictureBox();
-            this.pictureBox40 = new System.Windows.Forms.PictureBox();
-            this.pictureBox41 = new System.Windows.Forms.PictureBox();
-            this.pictureBox42 = new System.Windows.Forms.PictureBox();
-            this.pictureBox43 = new System.Windows.Forms.PictureBox();
-            this.pictureBox45 = new System.Windows.Forms.PictureBox();
+            this.tabControl1 = new System.Windows.Forms.TabControl();
+            this.DataSynchronizationTabPage = new System.Windows.Forms.TabPage();
+            this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Add = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.Remove = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.groupBox66 = new System.Windows.Forms.GroupBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -521,9 +525,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox95)).BeginInit();
             this.groupBox75.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox102)).BeginInit();
-            this.groupBox77.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).BeginInit();
             this.groupBox7.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.HordeSynchronizationDataGridView)).BeginInit();
             this.LogsTabPage.SuspendLayout();
             this.groupBox6.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox94)).BeginInit();
@@ -581,6 +584,51 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox28)).BeginInit();
             this.groupBox44.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox27)).BeginInit();
+            this.LimitsTabPage.SuspendLayout();
+            this.groupBox86.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
+            this.groupBox82.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox82)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox83)).BeginInit();
+            this.groupBox76.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox51)).BeginInit();
+            this.groupBox71.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox45)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox44)).BeginInit();
+            this.groupBox70.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).BeginInit();
+            this.groupBox69.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox42)).BeginInit();
+            this.groupBox68.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox60)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox59)).BeginInit();
+            this.groupBox67.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox68)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox67)).BeginInit();
+            this.groupBox65.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox58)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox57)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox56)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox55)).BeginInit();
+            this.groupBox64.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox54)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox53)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox52)).BeginInit();
+            this.groupBox63.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
+            this.groupBox62.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox49)).BeginInit();
+            this.groupBox61.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox48)).BeginInit();
+            this.groupBox60.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox47)).BeginInit();
+            this.groupBox59.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox41)).BeginInit();
+            this.groupBox58.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).BeginInit();
+            this.groupBox57.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).BeginInit();
             this.ThrottlesTabPage.SuspendLayout();
             this.groupBox56.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox39)).BeginInit();
@@ -598,52 +646,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox34)).BeginInit();
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
-            this.LimitsTabPage.SuspendLayout();
-            this.groupBox86.SuspendLayout();
-            this.groupBox82.SuspendLayout();
-            this.groupBox76.SuspendLayout();
-            this.groupBox71.SuspendLayout();
-            this.groupBox70.SuspendLayout();
-            this.groupBox69.SuspendLayout();
-            this.groupBox68.SuspendLayout();
-            this.groupBox67.SuspendLayout();
-            this.groupBox65.SuspendLayout();
-            this.groupBox64.SuspendLayout();
-            this.groupBox63.SuspendLayout();
-            this.groupBox62.SuspendLayout();
-            this.groupBox61.SuspendLayout();
-            this.groupBox60.SuspendLayout();
-            this.groupBox59.SuspendLayout();
-            this.groupBox58.SuspendLayout();
-            this.groupBox57.SuspendLayout();
             this.Status.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox44)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox52)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox59)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox60)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox55)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox56)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox57)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox58)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox82)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox67)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox68)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox53)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox83)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox54)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox51)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox49)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox48)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox47)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox41)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox42)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox45)).BeginInit();
+            this.tabControl1.SuspendLayout();
+            this.DataSynchronizationTabPage.SuspendLayout();
+            this.groupBox66.SuspendLayout();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -2249,15 +2255,8 @@
             // 
             // HordeTabPage
             // 
-            this.HordeTabPage.Controls.Add(this.groupBox9);
-            this.HordeTabPage.Controls.Add(this.groupBox10);
-            this.HordeTabPage.Controls.Add(this.groupBox8);
-            this.HordeTabPage.Controls.Add(this.pictureBox95);
-            this.HordeTabPage.Controls.Add(this.button13);
-            this.HordeTabPage.Controls.Add(this.HordeEnabled);
-            this.HordeTabPage.Controls.Add(this.groupBox75);
-            this.HordeTabPage.Controls.Add(this.groupBox77);
-            this.HordeTabPage.Controls.Add(this.button12);
+            this.HordeTabPage.Controls.Add(this.tabControl1);
+            this.HordeTabPage.Controls.Add(this.groupBox66);
             this.HordeTabPage.Controls.Add(this.groupBox7);
             this.HordeTabPage.Location = new System.Drawing.Point(4, 25);
             this.HordeTabPage.Name = "HordeTabPage";
@@ -2270,9 +2269,9 @@
             // 
             this.groupBox9.Controls.Add(this.pictureBox97);
             this.groupBox9.Controls.Add(this.HordePeerUsername);
-            this.groupBox9.Location = new System.Drawing.Point(280, 65);
+            this.groupBox9.Location = new System.Drawing.Point(6, 83);
             this.groupBox9.Name = "groupBox9";
-            this.groupBox9.Size = new System.Drawing.Size(189, 56);
+            this.groupBox9.Size = new System.Drawing.Size(183, 56);
             this.groupBox9.TabIndex = 7;
             this.groupBox9.TabStop = false;
             this.groupBox9.Text = "HTTP Username";
@@ -2281,7 +2280,7 @@
             // 
             this.pictureBox97.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox97.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox97.Image")));
-            this.pictureBox97.Location = new System.Drawing.Point(159, 22);
+            this.pictureBox97.Location = new System.Drawing.Point(157, 22);
             this.pictureBox97.Name = "pictureBox97";
             this.pictureBox97.Size = new System.Drawing.Size(20, 20);
             this.pictureBox97.TabIndex = 10;
@@ -2296,7 +2295,7 @@
             this.HordePeerUsername.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HordePeerUsername.Location = new System.Drawing.Point(6, 22);
             this.HordePeerUsername.Name = "HordePeerUsername";
-            this.HordePeerUsername.Size = new System.Drawing.Size(147, 20);
+            this.HordePeerUsername.Size = new System.Drawing.Size(145, 20);
             this.HordePeerUsername.TabIndex = 0;
             this.HordePeerUsername.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
             // 
@@ -2304,9 +2303,9 @@
             // 
             this.groupBox10.Controls.Add(this.pictureBox98);
             this.groupBox10.Controls.Add(this.HordePeerPassword);
-            this.groupBox10.Location = new System.Drawing.Point(480, 65);
+            this.groupBox10.Location = new System.Drawing.Point(200, 83);
             this.groupBox10.Name = "groupBox10";
-            this.groupBox10.Size = new System.Drawing.Size(189, 56);
+            this.groupBox10.Size = new System.Drawing.Size(183, 56);
             this.groupBox10.TabIndex = 8;
             this.groupBox10.TabStop = false;
             this.groupBox10.Text = "HTTP Password";
@@ -2315,7 +2314,7 @@
             // 
             this.pictureBox98.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox98.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox98.Image")));
-            this.pictureBox98.Location = new System.Drawing.Point(163, 21);
+            this.pictureBox98.Location = new System.Drawing.Point(154, 21);
             this.pictureBox98.Name = "pictureBox98";
             this.pictureBox98.Size = new System.Drawing.Size(20, 20);
             this.pictureBox98.TabIndex = 10;
@@ -2330,7 +2329,7 @@
             this.HordePeerPassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HordePeerPassword.Location = new System.Drawing.Point(6, 22);
             this.HordePeerPassword.Name = "HordePeerPassword";
-            this.HordePeerPassword.Size = new System.Drawing.Size(147, 20);
+            this.HordePeerPassword.Size = new System.Drawing.Size(142, 20);
             this.HordePeerPassword.TabIndex = 0;
             this.HordePeerPassword.UseSystemPasswordChar = true;
             this.HordePeerPassword.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
@@ -2339,9 +2338,9 @@
             // 
             this.groupBox8.Controls.Add(this.pictureBox96);
             this.groupBox8.Controls.Add(this.HordePeerURL);
-            this.groupBox8.Location = new System.Drawing.Point(280, 3);
+            this.groupBox8.Location = new System.Drawing.Point(7, 21);
             this.groupBox8.Name = "groupBox8";
-            this.groupBox8.Size = new System.Drawing.Size(389, 56);
+            this.groupBox8.Size = new System.Drawing.Size(376, 56);
             this.groupBox8.TabIndex = 6;
             this.groupBox8.TabStop = false;
             this.groupBox8.Text = "Horde Peer HTTP Server URL";
@@ -2350,7 +2349,7 @@
             // 
             this.pictureBox96.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox96.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox96.Image")));
-            this.pictureBox96.Location = new System.Drawing.Point(363, 22);
+            this.pictureBox96.Location = new System.Drawing.Point(347, 22);
             this.pictureBox96.Name = "pictureBox96";
             this.pictureBox96.Size = new System.Drawing.Size(20, 20);
             this.pictureBox96.TabIndex = 10;
@@ -2363,7 +2362,7 @@
             this.HordePeerURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HordePeerURL.Location = new System.Drawing.Point(6, 22);
             this.HordePeerURL.Name = "HordePeerURL";
-            this.HordePeerURL.Size = new System.Drawing.Size(351, 20);
+            this.HordePeerURL.Size = new System.Drawing.Size(335, 20);
             this.HordePeerURL.TabIndex = 0;
             this.HordePeerURL.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
             // 
@@ -2371,7 +2370,7 @@
             // 
             this.pictureBox95.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox95.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox95.Image")));
-            this.pictureBox95.Location = new System.Drawing.Point(643, 129);
+            this.pictureBox95.Location = new System.Drawing.Point(239, 203);
             this.pictureBox95.Name = "pictureBox95";
             this.pictureBox95.Size = new System.Drawing.Size(20, 20);
             this.pictureBox95.TabIndex = 4;
@@ -2381,7 +2380,7 @@
             // 
             // button13
             // 
-            this.button13.Location = new System.Drawing.Point(389, 127);
+            this.button13.Location = new System.Drawing.Point(116, 145);
             this.button13.Name = "button13";
             this.button13.Size = new System.Drawing.Size(103, 23);
             this.button13.TabIndex = 8;
@@ -2393,7 +2392,7 @@
             // HordeEnabled
             // 
             this.HordeEnabled.AutoSize = true;
-            this.HordeEnabled.Location = new System.Drawing.Point(572, 130);
+            this.HordeEnabled.Location = new System.Drawing.Point(167, 203);
             this.HordeEnabled.Name = "HordeEnabled";
             this.HordeEnabled.Size = new System.Drawing.Size(66, 20);
             this.HordeEnabled.TabIndex = 0;
@@ -2405,16 +2404,16 @@
             this.groupBox75.Controls.Add(this.button14);
             this.groupBox75.Controls.Add(this.pictureBox102);
             this.groupBox75.Controls.Add(this.HordePeerSharedSecret);
-            this.groupBox75.Location = new System.Drawing.Point(419, 156);
+            this.groupBox75.Location = new System.Drawing.Point(6, 219);
             this.groupBox75.Name = "groupBox75";
-            this.groupBox75.Size = new System.Drawing.Size(250, 132);
+            this.groupBox75.Size = new System.Drawing.Size(259, 132);
             this.groupBox75.TabIndex = 12;
             this.groupBox75.TabStop = false;
             this.groupBox75.Text = "Shared Secret";
             // 
             // button14
             // 
-            this.button14.Location = new System.Drawing.Point(116, 99);
+            this.button14.Location = new System.Drawing.Point(124, 99);
             this.button14.Name = "button14";
             this.button14.Size = new System.Drawing.Size(103, 23);
             this.button14.TabIndex = 11;
@@ -2427,7 +2426,7 @@
             // 
             this.pictureBox102.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox102.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox102.Image")));
-            this.pictureBox102.Location = new System.Drawing.Point(224, 99);
+            this.pictureBox102.Location = new System.Drawing.Point(233, 99);
             this.pictureBox102.Name = "pictureBox102";
             this.pictureBox102.Size = new System.Drawing.Size(20, 20);
             this.pictureBox102.TabIndex = 10;
@@ -2441,53 +2440,13 @@
             this.HordePeerSharedSecret.Location = new System.Drawing.Point(6, 22);
             this.HordePeerSharedSecret.Multiline = true;
             this.HordePeerSharedSecret.Name = "HordePeerSharedSecret";
-            this.HordePeerSharedSecret.Size = new System.Drawing.Size(238, 71);
+            this.HordePeerSharedSecret.Size = new System.Drawing.Size(247, 71);
             this.HordePeerSharedSecret.TabIndex = 0;
             this.HordePeerSharedSecret.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
             // 
-            // groupBox77
-            // 
-            this.groupBox77.Controls.Add(this.pictureBox103);
-            this.groupBox77.Controls.Add(this.HordePeerSynchronization);
-            this.groupBox77.Location = new System.Drawing.Point(280, 156);
-            this.groupBox77.Name = "groupBox77";
-            this.groupBox77.Size = new System.Drawing.Size(133, 197);
-            this.groupBox77.TabIndex = 14;
-            this.groupBox77.TabStop = false;
-            this.groupBox77.Text = "Synchronization";
-            // 
-            // pictureBox103
-            // 
-            this.pictureBox103.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox103.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox103.Image")));
-            this.pictureBox103.Location = new System.Drawing.Point(106, 171);
-            this.pictureBox103.Name = "pictureBox103";
-            this.pictureBox103.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox103.TabIndex = 11;
-            this.pictureBox103.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox103, resources.GetString("pictureBox103.ToolTip"));
-            this.pictureBox103.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // HordePeerSynchronization
-            // 
-            this.HordePeerSynchronization.CheckOnClick = true;
-            this.HordePeerSynchronization.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.HordePeerSynchronization.FormattingEnabled = true;
-            this.HordePeerSynchronization.Items.AddRange(new object[] {
-            "agent",
-            "group",
-            "region",
-            "asset",
-            "mute"});
-            this.HordePeerSynchronization.Location = new System.Drawing.Point(6, 19);
-            this.HordePeerSynchronization.Name = "HordePeerSynchronization";
-            this.HordePeerSynchronization.Size = new System.Drawing.Size(120, 139);
-            this.HordePeerSynchronization.TabIndex = 6;
-            this.HordePeerSynchronization.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.SynchronizationSelected);
-            // 
             // button12
             // 
-            this.button12.Location = new System.Drawing.Point(280, 127);
+            this.button12.Location = new System.Drawing.Point(7, 145);
             this.button12.Name = "button12";
             this.button12.Size = new System.Drawing.Size(103, 23);
             this.button12.TabIndex = 7;
@@ -2498,7 +2457,10 @@
             // 
             // groupBox7
             // 
+            this.groupBox7.Controls.Add(this.HordeEnabled);
+            this.groupBox7.Controls.Add(this.pictureBox95);
             this.groupBox7.Controls.Add(this.HordePeers);
+            this.groupBox7.Controls.Add(this.groupBox75);
             this.groupBox7.Location = new System.Drawing.Point(3, 3);
             this.groupBox7.Name = "groupBox7";
             this.groupBox7.Size = new System.Drawing.Size(271, 357);
@@ -2506,13 +2468,37 @@
             this.groupBox7.TabStop = false;
             this.groupBox7.Text = "Horde";
             // 
+            // HordeSynchronizationDataGridView
+            // 
+            this.HordeSynchronizationDataGridView.AllowUserToAddRows = false;
+            this.HordeSynchronizationDataGridView.AllowUserToDeleteRows = false;
+            this.HordeSynchronizationDataGridView.AllowUserToResizeColumns = false;
+            this.HordeSynchronizationDataGridView.AllowUserToResizeRows = false;
+            this.HordeSynchronizationDataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.HordeSynchronizationDataGridView.ClipboardCopyMode = System.Windows.Forms.DataGridViewClipboardCopyMode.Disable;
+            this.HordeSynchronizationDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.HordeSynchronizationDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.Data,
+            this.Add,
+            this.Remove});
+            this.HordeSynchronizationDataGridView.Location = new System.Drawing.Point(0, 2);
+            this.HordeSynchronizationDataGridView.MultiSelect = false;
+            this.HordeSynchronizationDataGridView.Name = "HordeSynchronizationDataGridView";
+            this.HordeSynchronizationDataGridView.RowHeadersVisible = false;
+            this.HordeSynchronizationDataGridView.RowTemplate.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.HordeSynchronizationDataGridView.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.HordeSynchronizationDataGridView.Size = new System.Drawing.Size(375, 142);
+            this.HordeSynchronizationDataGridView.TabIndex = 15;
+            this.HordeSynchronizationDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.SynchronizationDataClick);
+            this.HordeSynchronizationDataGridView.CurrentCellDirtyStateChanged += new System.EventHandler(this.SynchronizationDataChanged);
+            // 
             // HordePeers
             // 
             this.HordePeers.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HordePeers.FormattingEnabled = true;
-            this.HordePeers.Location = new System.Drawing.Point(6, 21);
+            this.HordePeers.Location = new System.Drawing.Point(7, 21);
             this.HordePeers.Name = "HordePeers";
-            this.HordePeers.Size = new System.Drawing.Size(258, 329);
+            this.HordePeers.Size = new System.Drawing.Size(258, 173);
             this.HordePeers.TabIndex = 5;
             this.HordePeers.MouseClick += new System.Windows.Forms.MouseEventHandler(this.HordePeersClicked);
             this.HordePeers.SelectedIndexChanged += new System.EventHandler(this.HordePeerSelected);
@@ -3688,6 +3674,1068 @@
             this.NetworkBindAddress.Size = new System.Drawing.Size(261, 22);
             this.NetworkBindAddress.TabIndex = 0;
             // 
+            // LimitsTabPage
+            // 
+            this.LimitsTabPage.Controls.Add(this.groupBox86);
+            this.LimitsTabPage.Controls.Add(this.groupBox82);
+            this.LimitsTabPage.Controls.Add(this.groupBox76);
+            this.LimitsTabPage.Controls.Add(this.groupBox71);
+            this.LimitsTabPage.Controls.Add(this.groupBox70);
+            this.LimitsTabPage.Controls.Add(this.groupBox69);
+            this.LimitsTabPage.Controls.Add(this.groupBox68);
+            this.LimitsTabPage.Controls.Add(this.groupBox67);
+            this.LimitsTabPage.Controls.Add(this.groupBox65);
+            this.LimitsTabPage.Controls.Add(this.groupBox64);
+            this.LimitsTabPage.Controls.Add(this.groupBox63);
+            this.LimitsTabPage.Controls.Add(this.groupBox62);
+            this.LimitsTabPage.Controls.Add(this.groupBox61);
+            this.LimitsTabPage.Controls.Add(this.groupBox60);
+            this.LimitsTabPage.Controls.Add(this.groupBox59);
+            this.LimitsTabPage.Controls.Add(this.groupBox58);
+            this.LimitsTabPage.Controls.Add(this.groupBox57);
+            this.LimitsTabPage.Location = new System.Drawing.Point(4, 25);
+            this.LimitsTabPage.Name = "LimitsTabPage";
+            this.LimitsTabPage.Size = new System.Drawing.Size(672, 363);
+            this.LimitsTabPage.TabIndex = 9;
+            this.LimitsTabPage.Text = "Limits";
+            this.LimitsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // groupBox86
+            // 
+            this.groupBox86.Controls.Add(this.pictureBox93);
+            this.groupBox86.Controls.Add(this.label32);
+            this.groupBox86.Controls.Add(this.label33);
+            this.groupBox86.Controls.Add(this.LimitsFeedsUpdate);
+            this.groupBox86.Location = new System.Drawing.Point(488, 213);
+            this.groupBox86.Name = "groupBox86";
+            this.groupBox86.Size = new System.Drawing.Size(181, 51);
+            this.groupBox86.TabIndex = 16;
+            this.groupBox86.TabStop = false;
+            this.groupBox86.Text = "RSS Feeds";
+            // 
+            // pictureBox93
+            // 
+            this.pictureBox93.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox93.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox93.Image")));
+            this.pictureBox93.Location = new System.Drawing.Point(155, 17);
+            this.pictureBox93.Name = "pictureBox93";
+            this.pictureBox93.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox93.TabIndex = 17;
+            this.pictureBox93.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox93, "The time to wait in seconds between checking\r\nfor new RSS feed updates.");
+            this.pictureBox93.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label32
+            // 
+            this.label32.AutoSize = true;
+            this.label32.Location = new System.Drawing.Point(40, 49);
+            this.label32.Name = "label32";
+            this.label32.Size = new System.Drawing.Size(0, 16);
+            this.label32.TabIndex = 16;
+            // 
+            // label33
+            // 
+            this.label33.AutoSize = true;
+            this.label33.Location = new System.Drawing.Point(34, 19);
+            this.label33.Name = "label33";
+            this.label33.Size = new System.Drawing.Size(42, 16);
+            this.label33.TabIndex = 15;
+            this.label33.Text = "Update";
+            // 
+            // LimitsFeedsUpdate
+            // 
+            this.LimitsFeedsUpdate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsFeedsUpdate.Location = new System.Drawing.Point(83, 17);
+            this.LimitsFeedsUpdate.Name = "LimitsFeedsUpdate";
+            this.LimitsFeedsUpdate.Size = new System.Drawing.Size(66, 20);
+            this.LimitsFeedsUpdate.TabIndex = 13;
+            // 
+            // groupBox82
+            // 
+            this.groupBox82.Controls.Add(this.pictureBox82);
+            this.groupBox82.Controls.Add(this.pictureBox83);
+            this.groupBox82.Controls.Add(this.label30);
+            this.groupBox82.Controls.Add(this.label31);
+            this.groupBox82.Controls.Add(this.LimitsTCPNotificationsQueue);
+            this.groupBox82.Controls.Add(this.LimitsTCPNotificationsThrottle);
+            this.groupBox82.Location = new System.Drawing.Point(488, 130);
+            this.groupBox82.Name = "groupBox82";
+            this.groupBox82.Size = new System.Drawing.Size(181, 77);
+            this.groupBox82.TabIndex = 3;
+            this.groupBox82.TabStop = false;
+            this.groupBox82.Text = "TCP Notifications";
+            // 
+            // pictureBox82
+            // 
+            this.pictureBox82.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox82.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox82.Image")));
+            this.pictureBox82.Location = new System.Drawing.Point(155, 48);
+            this.pictureBox82.Name = "pictureBox82";
+            this.pictureBox82.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox82.TabIndex = 18;
+            this.pictureBox82.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox82, "The length of the queue. Additional notifications will \r\nbe ignored until a slot " +
+        "is freed.");
+            this.pictureBox82.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox83
+            // 
+            this.pictureBox83.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox83.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox83.Image")));
+            this.pictureBox83.Location = new System.Drawing.Point(155, 17);
+            this.pictureBox83.Name = "pictureBox83";
+            this.pictureBox83.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox83.TabIndex = 17;
+            this.pictureBox83.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox83, "The time to wait in milliseconds between dequeuing a new\r\nnotification from the q" +
+        "ueue and processing it.");
+            this.pictureBox83.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label30
+            // 
+            this.label30.AutoSize = true;
+            this.label30.Location = new System.Drawing.Point(40, 49);
+            this.label30.Name = "label30";
+            this.label30.Size = new System.Drawing.Size(41, 16);
+            this.label30.TabIndex = 16;
+            this.label30.Text = "Queue";
+            // 
+            // label31
+            // 
+            this.label31.AutoSize = true;
+            this.label31.Location = new System.Drawing.Point(34, 19);
+            this.label31.Name = "label31";
+            this.label31.Size = new System.Drawing.Size(47, 16);
+            this.label31.TabIndex = 15;
+            this.label31.Text = "Throttle";
+            // 
+            // LimitsTCPNotificationsQueue
+            // 
+            this.LimitsTCPNotificationsQueue.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsTCPNotificationsQueue.Location = new System.Drawing.Point(83, 47);
+            this.LimitsTCPNotificationsQueue.Name = "LimitsTCPNotificationsQueue";
+            this.LimitsTCPNotificationsQueue.Size = new System.Drawing.Size(66, 20);
+            this.LimitsTCPNotificationsQueue.TabIndex = 14;
+            // 
+            // LimitsTCPNotificationsThrottle
+            // 
+            this.LimitsTCPNotificationsThrottle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsTCPNotificationsThrottle.Location = new System.Drawing.Point(83, 17);
+            this.LimitsTCPNotificationsThrottle.Name = "LimitsTCPNotificationsThrottle";
+            this.LimitsTCPNotificationsThrottle.Size = new System.Drawing.Size(66, 20);
+            this.LimitsTCPNotificationsThrottle.TabIndex = 13;
+            // 
+            // groupBox76
+            // 
+            this.groupBox76.Controls.Add(this.pictureBox51);
+            this.groupBox76.Controls.Add(this.label29);
+            this.groupBox76.Controls.Add(this.LimitsSchedulesResolution);
+            this.groupBox76.Location = new System.Drawing.Point(165, 309);
+            this.groupBox76.Name = "groupBox76";
+            this.groupBox76.Size = new System.Drawing.Size(156, 51);
+            this.groupBox76.TabIndex = 15;
+            this.groupBox76.TabStop = false;
+            this.groupBox76.Text = "Schedules Resolution";
+            // 
+            // pictureBox51
+            // 
+            this.pictureBox51.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox51.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox51.Image")));
+            this.pictureBox51.Location = new System.Drawing.Point(129, 22);
+            this.pictureBox51.Name = "pictureBox51";
+            this.pictureBox51.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox51.TabIndex = 9;
+            this.pictureBox51.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox51, resources.GetString("pictureBox51.ToolTip"));
+            this.pictureBox51.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label29
+            // 
+            this.label29.AutoSize = true;
+            this.label29.Location = new System.Drawing.Point(11, 24);
+            this.label29.Name = "label29";
+            this.label29.Size = new System.Drawing.Size(45, 16);
+            this.label29.TabIndex = 1;
+            this.label29.Text = "Interval";
+            // 
+            // LimitsSchedulesResolution
+            // 
+            this.LimitsSchedulesResolution.Location = new System.Drawing.Point(62, 21);
+            this.LimitsSchedulesResolution.Name = "LimitsSchedulesResolution";
+            this.LimitsSchedulesResolution.Size = new System.Drawing.Size(61, 22);
+            this.LimitsSchedulesResolution.TabIndex = 0;
+            // 
+            // groupBox71
+            // 
+            this.groupBox71.Controls.Add(this.pictureBox45);
+            this.groupBox71.Controls.Add(this.pictureBox44);
+            this.groupBox71.Controls.Add(this.label27);
+            this.groupBox71.Controls.Add(this.label26);
+            this.groupBox71.Controls.Add(this.LimitsClientIdle);
+            this.groupBox71.Controls.Add(this.LimitsClientConnections);
+            this.groupBox71.Location = new System.Drawing.Point(4, 248);
+            this.groupBox71.Name = "groupBox71";
+            this.groupBox71.Size = new System.Drawing.Size(155, 78);
+            this.groupBox71.TabIndex = 14;
+            this.groupBox71.TabStop = false;
+            this.groupBox71.Text = "Client (Service Point)";
+            // 
+            // pictureBox45
+            // 
+            this.pictureBox45.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox45.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox45.Image")));
+            this.pictureBox45.Location = new System.Drawing.Point(129, 47);
+            this.pictureBox45.Name = "pictureBox45";
+            this.pictureBox45.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox45.TabIndex = 10;
+            this.pictureBox45.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox45, "The time to keep the connections open such that they \r\ncan be reused before closi" +
+        "ng them down.");
+            this.pictureBox45.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox44
+            // 
+            this.pictureBox44.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox44.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox44.Image")));
+            this.pictureBox44.Location = new System.Drawing.Point(129, 19);
+            this.pictureBox44.Name = "pictureBox44";
+            this.pictureBox44.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox44.TabIndex = 9;
+            this.pictureBox44.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox44, "The number of concurrent service-point connections. \r\nIncrease this if your callb" +
+        "acks and notifications time out.");
+            this.pictureBox44.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label27
+            // 
+            this.label27.AutoSize = true;
+            this.label27.Location = new System.Drawing.Point(6, 51);
+            this.label27.Name = "label27";
+            this.label27.Size = new System.Drawing.Size(26, 16);
+            this.label27.TabIndex = 3;
+            this.label27.Text = "Idle";
+            // 
+            // label26
+            // 
+            this.label26.AutoSize = true;
+            this.label26.Location = new System.Drawing.Point(7, 22);
+            this.label26.Name = "label26";
+            this.label26.Size = new System.Drawing.Size(71, 16);
+            this.label26.TabIndex = 2;
+            this.label26.Text = "Connections";
+            // 
+            // LimitsClientIdle
+            // 
+            this.LimitsClientIdle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsClientIdle.Location = new System.Drawing.Point(38, 48);
+            this.LimitsClientIdle.Name = "LimitsClientIdle";
+            this.LimitsClientIdle.Size = new System.Drawing.Size(85, 20);
+            this.LimitsClientIdle.TabIndex = 1;
+            // 
+            // LimitsClientConnections
+            // 
+            this.LimitsClientConnections.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsClientConnections.Location = new System.Drawing.Point(84, 19);
+            this.LimitsClientConnections.Name = "LimitsClientConnections";
+            this.LimitsClientConnections.Size = new System.Drawing.Size(39, 20);
+            this.LimitsClientConnections.TabIndex = 0;
+            // 
+            // groupBox70
+            // 
+            this.groupBox70.Controls.Add(this.pictureBox43);
+            this.groupBox70.Controls.Add(this.label25);
+            this.groupBox70.Controls.Add(this.LimitsLogoutTimeout);
+            this.groupBox70.Location = new System.Drawing.Point(4, 187);
+            this.groupBox70.Name = "groupBox70";
+            this.groupBox70.Size = new System.Drawing.Size(155, 55);
+            this.groupBox70.TabIndex = 13;
+            this.groupBox70.TabStop = false;
+            this.groupBox70.Text = "Logout";
+            // 
+            // pictureBox43
+            // 
+            this.pictureBox43.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox43.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox43.Image")));
+            this.pictureBox43.Location = new System.Drawing.Point(128, 21);
+            this.pictureBox43.Name = "pictureBox43";
+            this.pictureBox43.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox43.TabIndex = 9;
+            this.pictureBox43.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox43, "The amount of time allowed for Corrade to gracefully \r\ndisconnect from the grid.");
+            this.pictureBox43.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label25
+            // 
+            this.label25.AutoSize = true;
+            this.label25.Location = new System.Drawing.Point(6, 22);
+            this.label25.Name = "label25";
+            this.label25.Size = new System.Drawing.Size(49, 16);
+            this.label25.TabIndex = 1;
+            this.label25.Text = "Timeout";
+            // 
+            // LimitsLogoutTimeout
+            // 
+            this.LimitsLogoutTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsLogoutTimeout.Location = new System.Drawing.Point(58, 21);
+            this.LimitsLogoutTimeout.Name = "LimitsLogoutTimeout";
+            this.LimitsLogoutTimeout.Size = new System.Drawing.Size(65, 20);
+            this.LimitsLogoutTimeout.TabIndex = 0;
+            // 
+            // groupBox69
+            // 
+            this.groupBox69.Controls.Add(this.pictureBox42);
+            this.groupBox69.Controls.Add(this.LimitsMembershipSweep);
+            this.groupBox69.Controls.Add(this.label24);
+            this.groupBox69.Location = new System.Drawing.Point(4, 126);
+            this.groupBox69.Name = "groupBox69";
+            this.groupBox69.Size = new System.Drawing.Size(155, 50);
+            this.groupBox69.TabIndex = 12;
+            this.groupBox69.TabStop = false;
+            this.groupBox69.Text = "Membership";
+            // 
+            // pictureBox42
+            // 
+            this.pictureBox42.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox42.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox42.Image")));
+            this.pictureBox42.Location = new System.Drawing.Point(128, 18);
+            this.pictureBox42.Name = "pictureBox42";
+            this.pictureBox42.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox42.TabIndex = 9;
+            this.pictureBox42.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox42, resources.GetString("pictureBox42.ToolTip"));
+            this.pictureBox42.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // LimitsMembershipSweep
+            // 
+            this.LimitsMembershipSweep.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsMembershipSweep.Location = new System.Drawing.Point(57, 18);
+            this.LimitsMembershipSweep.Name = "LimitsMembershipSweep";
+            this.LimitsMembershipSweep.Size = new System.Drawing.Size(66, 20);
+            this.LimitsMembershipSweep.TabIndex = 1;
+            // 
+            // label24
+            // 
+            this.label24.AutoSize = true;
+            this.label24.Location = new System.Drawing.Point(7, 22);
+            this.label24.Name = "label24";
+            this.label24.Size = new System.Drawing.Size(42, 16);
+            this.label24.TabIndex = 0;
+            this.label24.Text = "Sweep";
+            // 
+            // groupBox68
+            // 
+            this.groupBox68.Controls.Add(this.pictureBox60);
+            this.groupBox68.Controls.Add(this.pictureBox59);
+            this.groupBox68.Controls.Add(this.label23);
+            this.groupBox68.Controls.Add(this.label22);
+            this.groupBox68.Controls.Add(this.LimitsDataTimeout);
+            this.groupBox68.Controls.Add(this.LimitsDataDecay);
+            this.groupBox68.Location = new System.Drawing.Point(327, 282);
+            this.groupBox68.Name = "groupBox68";
+            this.groupBox68.Size = new System.Drawing.Size(155, 78);
+            this.groupBox68.TabIndex = 11;
+            this.groupBox68.TabStop = false;
+            this.groupBox68.Text = "Data";
+            // 
+            // pictureBox60
+            // 
+            this.pictureBox60.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox60.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox60.Image")));
+            this.pictureBox60.Location = new System.Drawing.Point(127, 50);
+            this.pictureBox60.Name = "pictureBox60";
+            this.pictureBox60.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox60.TabIndex = 16;
+            this.pictureBox60.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox60, "The grace period allowed for data bursts from the \r\ngrid to Corrade.");
+            this.pictureBox60.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox59
+            // 
+            this.pictureBox59.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox59.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox59.Image")));
+            this.pictureBox59.Location = new System.Drawing.Point(127, 17);
+            this.pictureBox59.Name = "pictureBox59";
+            this.pictureBox59.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox59.TabIndex = 10;
+            this.pictureBox59.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox59, "Corrade uses a decay for the data timeout in order to \r\nspeed-up the process of r" +
+        "eceiving packets.");
+            this.pictureBox59.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label23
+            // 
+            this.label23.AutoSize = true;
+            this.label23.Location = new System.Drawing.Point(7, 20);
+            this.label23.Name = "label23";
+            this.label23.Size = new System.Drawing.Size(0, 16);
+            this.label23.TabIndex = 3;
+            // 
+            // label22
+            // 
+            this.label22.AutoSize = true;
+            this.label22.Location = new System.Drawing.Point(6, 53);
+            this.label22.Name = "label22";
+            this.label22.Size = new System.Drawing.Size(49, 16);
+            this.label22.TabIndex = 2;
+            this.label22.Text = "Timeout";
+            // 
+            // LimitsDataTimeout
+            // 
+            this.LimitsDataTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsDataTimeout.Location = new System.Drawing.Point(56, 50);
+            this.LimitsDataTimeout.Name = "LimitsDataTimeout";
+            this.LimitsDataTimeout.Size = new System.Drawing.Size(65, 20);
+            this.LimitsDataTimeout.TabIndex = 0;
+            // 
+            // LimitsDataDecay
+            // 
+            this.LimitsDataDecay.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.LimitsDataDecay.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsDataDecay.FormattingEnabled = true;
+            this.LimitsDataDecay.Items.AddRange(new object[] {
+            "none",
+            "weighted",
+            "arithmetic",
+            "geometric",
+            "harmonic"});
+            this.LimitsDataDecay.Location = new System.Drawing.Point(13, 17);
+            this.LimitsDataDecay.Name = "LimitsDataDecay";
+            this.LimitsDataDecay.Size = new System.Drawing.Size(108, 21);
+            this.LimitsDataDecay.TabIndex = 1;
+            // 
+            // groupBox67
+            // 
+            this.groupBox67.Controls.Add(this.pictureBox69);
+            this.groupBox67.Controls.Add(this.pictureBox68);
+            this.groupBox67.Controls.Add(this.pictureBox67);
+            this.groupBox67.Controls.Add(this.label21);
+            this.groupBox67.Controls.Add(this.LimitsServicesActivate);
+            this.groupBox67.Controls.Add(this.label20);
+            this.groupBox67.Controls.Add(this.LimitsServicesRebake);
+            this.groupBox67.Controls.Add(this.label19);
+            this.groupBox67.Controls.Add(this.LimitsServicesTimeout);
+            this.groupBox67.Location = new System.Drawing.Point(488, 4);
+            this.groupBox67.Name = "groupBox67";
+            this.groupBox67.Size = new System.Drawing.Size(181, 120);
+            this.groupBox67.TabIndex = 10;
+            this.groupBox67.TabStop = false;
+            this.groupBox67.Text = "Services";
+            // 
+            // pictureBox69
+            // 
+            this.pictureBox69.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox69.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox69.Image")));
+            this.pictureBox69.Location = new System.Drawing.Point(155, 79);
+            this.pictureBox69.Name = "pictureBox69";
+            this.pictureBox69.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox69.TabIndex = 12;
+            this.pictureBox69.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox69, "The amount of time after which to attempt to activate\r\nthe current land group.");
+            this.pictureBox69.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox68
+            // 
+            this.pictureBox68.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox68.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox68.Image")));
+            this.pictureBox68.Location = new System.Drawing.Point(155, 51);
+            this.pictureBox68.Name = "pictureBox68";
+            this.pictureBox68.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox68.TabIndex = 11;
+            this.pictureBox68.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox68, "The amount of time to wait before attempting to \r\nrebake.");
+            this.pictureBox68.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox67
+            // 
+            this.pictureBox67.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox67.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox67.Image")));
+            this.pictureBox67.Location = new System.Drawing.Point(155, 22);
+            this.pictureBox67.Name = "pictureBox67";
+            this.pictureBox67.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox67.TabIndex = 10;
+            this.pictureBox67.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox67, "The amount of time allowed for querrying grid \r\nservices (agent, group lookups, e" +
+        "tc...).");
+            this.pictureBox67.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label21
+            // 
+            this.label21.AutoSize = true;
+            this.label21.Location = new System.Drawing.Point(8, 82);
+            this.label21.Name = "label21";
+            this.label21.Size = new System.Drawing.Size(50, 16);
+            this.label21.TabIndex = 5;
+            this.label21.Text = "Activate";
+            // 
+            // LimitsServicesActivate
+            // 
+            this.LimitsServicesActivate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsServicesActivate.Location = new System.Drawing.Point(60, 79);
+            this.LimitsServicesActivate.Name = "LimitsServicesActivate";
+            this.LimitsServicesActivate.Size = new System.Drawing.Size(89, 20);
+            this.LimitsServicesActivate.TabIndex = 4;
+            // 
+            // label20
+            // 
+            this.label20.AutoSize = true;
+            this.label20.Location = new System.Drawing.Point(11, 54);
+            this.label20.Name = "label20";
+            this.label20.Size = new System.Drawing.Size(44, 16);
+            this.label20.TabIndex = 3;
+            this.label20.Text = "Rebake";
+            // 
+            // LimitsServicesRebake
+            // 
+            this.LimitsServicesRebake.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsServicesRebake.Location = new System.Drawing.Point(60, 51);
+            this.LimitsServicesRebake.Name = "LimitsServicesRebake";
+            this.LimitsServicesRebake.Size = new System.Drawing.Size(89, 20);
+            this.LimitsServicesRebake.TabIndex = 2;
+            // 
+            // label19
+            // 
+            this.label19.AutoSize = true;
+            this.label19.Location = new System.Drawing.Point(9, 25);
+            this.label19.Name = "label19";
+            this.label19.Size = new System.Drawing.Size(49, 16);
+            this.label19.TabIndex = 1;
+            this.label19.Text = "Timeout";
+            // 
+            // LimitsServicesTimeout
+            // 
+            this.LimitsServicesTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsServicesTimeout.Location = new System.Drawing.Point(60, 22);
+            this.LimitsServicesTimeout.Name = "LimitsServicesTimeout";
+            this.LimitsServicesTimeout.Size = new System.Drawing.Size(89, 20);
+            this.LimitsServicesTimeout.TabIndex = 0;
+            // 
+            // groupBox65
+            // 
+            this.groupBox65.Controls.Add(this.pictureBox58);
+            this.groupBox65.Controls.Add(this.pictureBox57);
+            this.groupBox65.Controls.Add(this.pictureBox56);
+            this.groupBox65.Controls.Add(this.pictureBox55);
+            this.groupBox65.Controls.Add(this.label28);
+            this.groupBox65.Controls.Add(this.LimitsNotificationsThreads);
+            this.groupBox65.Controls.Add(this.label12);
+            this.groupBox65.Controls.Add(this.label11);
+            this.groupBox65.Controls.Add(this.label10);
+            this.groupBox65.Controls.Add(this.LimitsNotificationsQueue);
+            this.groupBox65.Controls.Add(this.LimitsNotificationsThrottle);
+            this.groupBox65.Controls.Add(this.LimitsNotificationsTimeout);
+            this.groupBox65.Location = new System.Drawing.Point(326, 126);
+            this.groupBox65.Name = "groupBox65";
+            this.groupBox65.Size = new System.Drawing.Size(155, 150);
+            this.groupBox65.TabIndex = 8;
+            this.groupBox65.TabStop = false;
+            this.groupBox65.Text = "Notifications";
+            // 
+            // pictureBox58
+            // 
+            this.pictureBox58.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox58.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox58.Image")));
+            this.pictureBox58.Location = new System.Drawing.Point(128, 107);
+            this.pictureBox58.Name = "pictureBox58";
+            this.pictureBox58.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox58.TabIndex = 13;
+            this.pictureBox58.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox58, "The total number of threads that Corrade is allowed \r\nto spawn for processing not" +
+        "ifications.");
+            this.pictureBox58.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox57
+            // 
+            this.pictureBox57.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox57.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox57.Image")));
+            this.pictureBox57.Location = new System.Drawing.Point(128, 79);
+            this.pictureBox57.Name = "pictureBox57";
+            this.pictureBox57.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox57.TabIndex = 12;
+            this.pictureBox57.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox57, "The length of the queue. Additional notifications will \r\nbe ignored until a slot " +
+        "is freed.");
+            this.pictureBox57.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox56
+            // 
+            this.pictureBox56.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox56.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox56.Image")));
+            this.pictureBox56.Location = new System.Drawing.Point(128, 50);
+            this.pictureBox56.Name = "pictureBox56";
+            this.pictureBox56.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox56.TabIndex = 11;
+            this.pictureBox56.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox56, "The interval between processing notification queue \r\nelements.");
+            this.pictureBox56.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox55
+            // 
+            this.pictureBox55.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox55.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox55.Image")));
+            this.pictureBox55.Location = new System.Drawing.Point(128, 22);
+            this.pictureBox55.Name = "pictureBox55";
+            this.pictureBox55.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox55.TabIndex = 10;
+            this.pictureBox55.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox55, "The amount of time allowed for a notification to be \r\nposted to an URL.");
+            this.pictureBox55.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label28
+            // 
+            this.label28.AutoSize = true;
+            this.label28.Location = new System.Drawing.Point(6, 110);
+            this.label28.Name = "label28";
+            this.label28.Size = new System.Drawing.Size(47, 16);
+            this.label28.TabIndex = 7;
+            this.label28.Text = "Threads";
+            // 
+            // LimitsNotificationsThreads
+            // 
+            this.LimitsNotificationsThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsNotificationsThreads.Location = new System.Drawing.Point(56, 107);
+            this.LimitsNotificationsThreads.Name = "LimitsNotificationsThreads";
+            this.LimitsNotificationsThreads.Size = new System.Drawing.Size(66, 20);
+            this.LimitsNotificationsThreads.TabIndex = 6;
+            // 
+            // label12
+            // 
+            this.label12.AutoSize = true;
+            this.label12.Location = new System.Drawing.Point(10, 83);
+            this.label12.Name = "label12";
+            this.label12.Size = new System.Drawing.Size(41, 16);
+            this.label12.TabIndex = 5;
+            this.label12.Text = "Queue";
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(7, 54);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(47, 16);
+            this.label11.TabIndex = 4;
+            this.label11.Text = "Throttle";
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(7, 25);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(49, 16);
+            this.label10.TabIndex = 3;
+            this.label10.Text = "Timeout";
+            // 
+            // LimitsNotificationsQueue
+            // 
+            this.LimitsNotificationsQueue.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsNotificationsQueue.Location = new System.Drawing.Point(56, 80);
+            this.LimitsNotificationsQueue.Name = "LimitsNotificationsQueue";
+            this.LimitsNotificationsQueue.Size = new System.Drawing.Size(66, 20);
+            this.LimitsNotificationsQueue.TabIndex = 2;
+            // 
+            // LimitsNotificationsThrottle
+            // 
+            this.LimitsNotificationsThrottle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsNotificationsThrottle.Location = new System.Drawing.Point(56, 51);
+            this.LimitsNotificationsThrottle.Name = "LimitsNotificationsThrottle";
+            this.LimitsNotificationsThrottle.Size = new System.Drawing.Size(66, 20);
+            this.LimitsNotificationsThrottle.TabIndex = 1;
+            // 
+            // LimitsNotificationsTimeout
+            // 
+            this.LimitsNotificationsTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsNotificationsTimeout.Location = new System.Drawing.Point(56, 22);
+            this.LimitsNotificationsTimeout.Name = "LimitsNotificationsTimeout";
+            this.LimitsNotificationsTimeout.Size = new System.Drawing.Size(66, 20);
+            this.LimitsNotificationsTimeout.TabIndex = 0;
+            // 
+            // groupBox64
+            // 
+            this.groupBox64.Controls.Add(this.pictureBox54);
+            this.groupBox64.Controls.Add(this.pictureBox53);
+            this.groupBox64.Controls.Add(this.pictureBox52);
+            this.groupBox64.Controls.Add(this.label9);
+            this.groupBox64.Controls.Add(this.label8);
+            this.groupBox64.Controls.Add(this.label7);
+            this.groupBox64.Controls.Add(this.LimitsCallbackQueue);
+            this.groupBox64.Controls.Add(this.LimitsCallbacksThrottle);
+            this.groupBox64.Controls.Add(this.LimitsCallbacksTimeout);
+            this.groupBox64.Location = new System.Drawing.Point(326, 4);
+            this.groupBox64.Name = "groupBox64";
+            this.groupBox64.Size = new System.Drawing.Size(155, 116);
+            this.groupBox64.TabIndex = 7;
+            this.groupBox64.TabStop = false;
+            this.groupBox64.Text = "Callbacks";
+            // 
+            // pictureBox54
+            // 
+            this.pictureBox54.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox54.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox54.Image")));
+            this.pictureBox54.Location = new System.Drawing.Point(128, 77);
+            this.pictureBox54.Name = "pictureBox54";
+            this.pictureBox54.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox54.TabIndex = 12;
+            this.pictureBox54.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox54, "The length of the queue. Additional callbacks will be\r\nignored until a slot is fr" +
+        "eed.");
+            this.pictureBox54.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox53
+            // 
+            this.pictureBox53.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox53.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox53.Image")));
+            this.pictureBox53.Location = new System.Drawing.Point(128, 48);
+            this.pictureBox53.Name = "pictureBox53";
+            this.pictureBox53.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox53.TabIndex = 11;
+            this.pictureBox53.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox53, "The interval between processing callback queue \r\nelements.");
+            this.pictureBox53.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // pictureBox52
+            // 
+            this.pictureBox52.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox52.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox52.Image")));
+            this.pictureBox52.Location = new System.Drawing.Point(128, 18);
+            this.pictureBox52.Name = "pictureBox52";
+            this.pictureBox52.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox52.TabIndex = 10;
+            this.pictureBox52.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox52, "The amount of time allowed for a callback to be \r\nposted to an URL.");
+            this.pictureBox52.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(7, 77);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(41, 16);
+            this.label9.TabIndex = 5;
+            this.label9.Text = "Queue";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(6, 51);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(47, 16);
+            this.label8.TabIndex = 4;
+            this.label8.Text = "Throttle";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(7, 22);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(49, 16);
+            this.label7.TabIndex = 3;
+            this.label7.Text = "Timeout";
+            // 
+            // LimitsCallbackQueue
+            // 
+            this.LimitsCallbackQueue.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsCallbackQueue.Location = new System.Drawing.Point(56, 77);
+            this.LimitsCallbackQueue.Name = "LimitsCallbackQueue";
+            this.LimitsCallbackQueue.Size = new System.Drawing.Size(66, 20);
+            this.LimitsCallbackQueue.TabIndex = 2;
+            // 
+            // LimitsCallbacksThrottle
+            // 
+            this.LimitsCallbacksThrottle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsCallbacksThrottle.Location = new System.Drawing.Point(56, 48);
+            this.LimitsCallbacksThrottle.Name = "LimitsCallbacksThrottle";
+            this.LimitsCallbacksThrottle.Size = new System.Drawing.Size(66, 20);
+            this.LimitsCallbacksThrottle.TabIndex = 1;
+            // 
+            // LimitsCallbacksTimeout
+            // 
+            this.LimitsCallbacksTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsCallbacksTimeout.Location = new System.Drawing.Point(56, 19);
+            this.LimitsCallbacksTimeout.Name = "LimitsCallbacksTimeout";
+            this.LimitsCallbacksTimeout.Size = new System.Drawing.Size(66, 20);
+            this.LimitsCallbacksTimeout.TabIndex = 0;
+            // 
+            // groupBox63
+            // 
+            this.groupBox63.Controls.Add(this.pictureBox50);
+            this.groupBox63.Controls.Add(this.label6);
+            this.groupBox63.Controls.Add(this.LimitsInstantMessageThreads);
+            this.groupBox63.Location = new System.Drawing.Point(165, 248);
+            this.groupBox63.Name = "groupBox63";
+            this.groupBox63.Size = new System.Drawing.Size(155, 55);
+            this.groupBox63.TabIndex = 6;
+            this.groupBox63.TabStop = false;
+            this.groupBox63.Text = "Instant Messages (IM)";
+            // 
+            // pictureBox50
+            // 
+            this.pictureBox50.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox50.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox50.Image")));
+            this.pictureBox50.Location = new System.Drawing.Point(129, 22);
+            this.pictureBox50.Name = "pictureBox50";
+            this.pictureBox50.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox50.TabIndex = 9;
+            this.pictureBox50.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox50, "The total number of concurrent instant messages that \r\nCorrade will be allowed to" +
+        " process.");
+            this.pictureBox50.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(6, 25);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(47, 16);
+            this.label6.TabIndex = 1;
+            this.label6.Text = "Threads";
+            // 
+            // LimitsInstantMessageThreads
+            // 
+            this.LimitsInstantMessageThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsInstantMessageThreads.Location = new System.Drawing.Point(62, 22);
+            this.LimitsInstantMessageThreads.Name = "LimitsInstantMessageThreads";
+            this.LimitsInstantMessageThreads.Size = new System.Drawing.Size(61, 20);
+            this.LimitsInstantMessageThreads.TabIndex = 0;
+            // 
+            // groupBox62
+            // 
+            this.groupBox62.Controls.Add(this.pictureBox49);
+            this.groupBox62.Controls.Add(this.label5);
+            this.groupBox62.Controls.Add(this.LimitsRLVThreads);
+            this.groupBox62.Location = new System.Drawing.Point(165, 187);
+            this.groupBox62.Name = "groupBox62";
+            this.groupBox62.Size = new System.Drawing.Size(155, 55);
+            this.groupBox62.TabIndex = 5;
+            this.groupBox62.TabStop = false;
+            this.groupBox62.Text = "RLV";
+            // 
+            // pictureBox49
+            // 
+            this.pictureBox49.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox49.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox49.Image")));
+            this.pictureBox49.Location = new System.Drawing.Point(129, 22);
+            this.pictureBox49.Name = "pictureBox49";
+            this.pictureBox49.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox49.TabIndex = 9;
+            this.pictureBox49.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox49, "The total number of RLV threads that Corrade will be \r\nallowed to spawn.");
+            this.pictureBox49.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(6, 25);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(47, 16);
+            this.label5.TabIndex = 1;
+            this.label5.Text = "Threads";
+            // 
+            // LimitsRLVThreads
+            // 
+            this.LimitsRLVThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsRLVThreads.Location = new System.Drawing.Point(62, 22);
+            this.LimitsRLVThreads.Name = "LimitsRLVThreads";
+            this.LimitsRLVThreads.Size = new System.Drawing.Size(61, 20);
+            this.LimitsRLVThreads.TabIndex = 0;
+            // 
+            // groupBox61
+            // 
+            this.groupBox61.Controls.Add(this.pictureBox48);
+            this.groupBox61.Controls.Add(this.label4);
+            this.groupBox61.Controls.Add(this.LimitsCommandsThreads);
+            this.groupBox61.Location = new System.Drawing.Point(165, 126);
+            this.groupBox61.Name = "groupBox61";
+            this.groupBox61.Size = new System.Drawing.Size(155, 55);
+            this.groupBox61.TabIndex = 4;
+            this.groupBox61.TabStop = false;
+            this.groupBox61.Text = "Commands";
+            // 
+            // pictureBox48
+            // 
+            this.pictureBox48.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox48.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox48.Image")));
+            this.pictureBox48.Location = new System.Drawing.Point(129, 21);
+            this.pictureBox48.Name = "pictureBox48";
+            this.pictureBox48.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox48.TabIndex = 9;
+            this.pictureBox48.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox48, "The total number of command threads that Corrade \r\nwill be allowed to spawn.");
+            this.pictureBox48.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(6, 24);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(47, 16);
+            this.label4.TabIndex = 1;
+            this.label4.Text = "Threads";
+            // 
+            // LimitsCommandsThreads
+            // 
+            this.LimitsCommandsThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsCommandsThreads.Location = new System.Drawing.Point(62, 21);
+            this.LimitsCommandsThreads.Name = "LimitsCommandsThreads";
+            this.LimitsCommandsThreads.Size = new System.Drawing.Size(61, 20);
+            this.LimitsCommandsThreads.TabIndex = 0;
+            // 
+            // groupBox60
+            // 
+            this.groupBox60.Controls.Add(this.pictureBox47);
+            this.groupBox60.Controls.Add(this.label3);
+            this.groupBox60.Controls.Add(this.LimitsLoggingThreads);
+            this.groupBox60.Location = new System.Drawing.Point(165, 65);
+            this.groupBox60.Name = "groupBox60";
+            this.groupBox60.Size = new System.Drawing.Size(155, 55);
+            this.groupBox60.TabIndex = 3;
+            this.groupBox60.TabStop = false;
+            this.groupBox60.Text = "Logging";
+            // 
+            // pictureBox47
+            // 
+            this.pictureBox47.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox47.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox47.Image")));
+            this.pictureBox47.Location = new System.Drawing.Point(129, 21);
+            this.pictureBox47.Name = "pictureBox47";
+            this.pictureBox47.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox47.TabIndex = 9;
+            this.pictureBox47.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox47, "The total number of threads that may be used to log \r\nmessages and feedback  mess" +
+        "ages.");
+            this.pictureBox47.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(6, 24);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(47, 16);
+            this.label3.TabIndex = 1;
+            this.label3.Text = "Threads";
+            // 
+            // LimitsLoggingThreads
+            // 
+            this.LimitsLoggingThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsLoggingThreads.Location = new System.Drawing.Point(62, 21);
+            this.LimitsLoggingThreads.Name = "LimitsLoggingThreads";
+            this.LimitsLoggingThreads.Size = new System.Drawing.Size(61, 20);
+            this.LimitsLoggingThreads.TabIndex = 0;
+            // 
+            // groupBox59
+            // 
+            this.groupBox59.Controls.Add(this.pictureBox41);
+            this.groupBox59.Controls.Add(this.label2);
+            this.groupBox59.Controls.Add(this.LimitsSchedulerExpiration);
+            this.groupBox59.Location = new System.Drawing.Point(4, 65);
+            this.groupBox59.Name = "groupBox59";
+            this.groupBox59.Size = new System.Drawing.Size(155, 55);
+            this.groupBox59.TabIndex = 2;
+            this.groupBox59.TabStop = false;
+            this.groupBox59.Text = "Scheduler";
+            // 
+            // pictureBox41
+            // 
+            this.pictureBox41.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox41.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox41.Image")));
+            this.pictureBox41.Location = new System.Drawing.Point(129, 21);
+            this.pictureBox41.Name = "pictureBox41";
+            this.pictureBox41.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox41.TabIndex = 9;
+            this.pictureBox41.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox41, "The amount of time in milliseconds after which to a \r\nthread metric gets expunged" +
+        " from the scheduler.\r\nCorrade uses an internal genetic-based algorithm for\r\ndela" +
+        "ying threads for multiple groups.\r\n");
+            this.pictureBox41.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(6, 24);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(57, 16);
+            this.label2.TabIndex = 1;
+            this.label2.Text = "Expiration";
+            // 
+            // LimitsSchedulerExpiration
+            // 
+            this.LimitsSchedulerExpiration.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsSchedulerExpiration.Location = new System.Drawing.Point(69, 21);
+            this.LimitsSchedulerExpiration.Name = "LimitsSchedulerExpiration";
+            this.LimitsSchedulerExpiration.Size = new System.Drawing.Size(54, 20);
+            this.LimitsSchedulerExpiration.TabIndex = 0;
+            // 
+            // groupBox58
+            // 
+            this.groupBox58.Controls.Add(this.pictureBox46);
+            this.groupBox58.Controls.Add(this.label1);
+            this.groupBox58.Controls.Add(this.LimitsPOSTThreads);
+            this.groupBox58.Location = new System.Drawing.Point(165, 4);
+            this.groupBox58.Name = "groupBox58";
+            this.groupBox58.Size = new System.Drawing.Size(155, 55);
+            this.groupBox58.TabIndex = 1;
+            this.groupBox58.TabStop = false;
+            this.groupBox58.Text = "POST";
+            // 
+            // pictureBox46
+            // 
+            this.pictureBox46.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox46.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox46.Image")));
+            this.pictureBox46.Location = new System.Drawing.Point(129, 22);
+            this.pictureBox46.Name = "pictureBox46";
+            this.pictureBox46.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox46.TabIndex = 9;
+            this.pictureBox46.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox46, "The number of POST requests that Corrade will be \r\nallowed to send at once withou" +
+        "t letting the other \r\nthreads finish first.");
+            this.pictureBox46.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(9, 25);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(47, 16);
+            this.label1.TabIndex = 1;
+            this.label1.Text = "Threads";
+            // 
+            // LimitsPOSTThreads
+            // 
+            this.LimitsPOSTThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsPOSTThreads.Location = new System.Drawing.Point(62, 22);
+            this.LimitsPOSTThreads.Name = "LimitsPOSTThreads";
+            this.LimitsPOSTThreads.Size = new System.Drawing.Size(61, 20);
+            this.LimitsPOSTThreads.TabIndex = 0;
+            // 
+            // groupBox57
+            // 
+            this.groupBox57.Controls.Add(this.pictureBox40);
+            this.groupBox57.Controls.Add(this.LimitsRange);
+            this.groupBox57.Location = new System.Drawing.Point(4, 4);
+            this.groupBox57.Name = "groupBox57";
+            this.groupBox57.Size = new System.Drawing.Size(155, 55);
+            this.groupBox57.TabIndex = 0;
+            this.groupBox57.TabStop = false;
+            this.groupBox57.Text = "Range (Draw Distance)";
+            // 
+            // pictureBox40
+            // 
+            this.pictureBox40.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox40.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox40.Image")));
+            this.pictureBox40.Location = new System.Drawing.Point(129, 22);
+            this.pictureBox40.Name = "pictureBox40";
+            this.pictureBox40.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox40.TabIndex = 9;
+            this.pictureBox40.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox40, resources.GetString("pictureBox40.ToolTip"));
+            this.pictureBox40.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // LimitsRange
+            // 
+            this.LimitsRange.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsRange.Location = new System.Drawing.Point(7, 22);
+            this.LimitsRange.Name = "LimitsRange";
+            this.LimitsRange.Size = new System.Drawing.Size(116, 20);
+            this.LimitsRange.TabIndex = 0;
+            // 
             // ThrottlesTabPage
             // 
             this.ThrottlesTabPage.Controls.Add(this.groupBox56);
@@ -3946,730 +4994,6 @@
             this.ThrottlesTotalThrottle.Size = new System.Drawing.Size(162, 22);
             this.ThrottlesTotalThrottle.TabIndex = 0;
             // 
-            // LimitsTabPage
-            // 
-            this.LimitsTabPage.Controls.Add(this.groupBox86);
-            this.LimitsTabPage.Controls.Add(this.groupBox82);
-            this.LimitsTabPage.Controls.Add(this.groupBox76);
-            this.LimitsTabPage.Controls.Add(this.groupBox71);
-            this.LimitsTabPage.Controls.Add(this.groupBox70);
-            this.LimitsTabPage.Controls.Add(this.groupBox69);
-            this.LimitsTabPage.Controls.Add(this.groupBox68);
-            this.LimitsTabPage.Controls.Add(this.groupBox67);
-            this.LimitsTabPage.Controls.Add(this.groupBox65);
-            this.LimitsTabPage.Controls.Add(this.groupBox64);
-            this.LimitsTabPage.Controls.Add(this.groupBox63);
-            this.LimitsTabPage.Controls.Add(this.groupBox62);
-            this.LimitsTabPage.Controls.Add(this.groupBox61);
-            this.LimitsTabPage.Controls.Add(this.groupBox60);
-            this.LimitsTabPage.Controls.Add(this.groupBox59);
-            this.LimitsTabPage.Controls.Add(this.groupBox58);
-            this.LimitsTabPage.Controls.Add(this.groupBox57);
-            this.LimitsTabPage.Location = new System.Drawing.Point(4, 25);
-            this.LimitsTabPage.Name = "LimitsTabPage";
-            this.LimitsTabPage.Size = new System.Drawing.Size(672, 363);
-            this.LimitsTabPage.TabIndex = 9;
-            this.LimitsTabPage.Text = "Limits";
-            this.LimitsTabPage.UseVisualStyleBackColor = true;
-            // 
-            // groupBox86
-            // 
-            this.groupBox86.Controls.Add(this.pictureBox93);
-            this.groupBox86.Controls.Add(this.label32);
-            this.groupBox86.Controls.Add(this.label33);
-            this.groupBox86.Controls.Add(this.LimitsFeedsUpdate);
-            this.groupBox86.Location = new System.Drawing.Point(488, 213);
-            this.groupBox86.Name = "groupBox86";
-            this.groupBox86.Size = new System.Drawing.Size(181, 51);
-            this.groupBox86.TabIndex = 16;
-            this.groupBox86.TabStop = false;
-            this.groupBox86.Text = "RSS Feeds";
-            // 
-            // label32
-            // 
-            this.label32.AutoSize = true;
-            this.label32.Location = new System.Drawing.Point(40, 49);
-            this.label32.Name = "label32";
-            this.label32.Size = new System.Drawing.Size(0, 16);
-            this.label32.TabIndex = 16;
-            // 
-            // label33
-            // 
-            this.label33.AutoSize = true;
-            this.label33.Location = new System.Drawing.Point(34, 19);
-            this.label33.Name = "label33";
-            this.label33.Size = new System.Drawing.Size(42, 16);
-            this.label33.TabIndex = 15;
-            this.label33.Text = "Update";
-            // 
-            // LimitsFeedsUpdate
-            // 
-            this.LimitsFeedsUpdate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsFeedsUpdate.Location = new System.Drawing.Point(83, 17);
-            this.LimitsFeedsUpdate.Name = "LimitsFeedsUpdate";
-            this.LimitsFeedsUpdate.Size = new System.Drawing.Size(66, 20);
-            this.LimitsFeedsUpdate.TabIndex = 13;
-            // 
-            // groupBox82
-            // 
-            this.groupBox82.Controls.Add(this.pictureBox82);
-            this.groupBox82.Controls.Add(this.pictureBox83);
-            this.groupBox82.Controls.Add(this.label30);
-            this.groupBox82.Controls.Add(this.label31);
-            this.groupBox82.Controls.Add(this.LimitsTCPNotificationsQueue);
-            this.groupBox82.Controls.Add(this.LimitsTCPNotificationsThrottle);
-            this.groupBox82.Location = new System.Drawing.Point(488, 130);
-            this.groupBox82.Name = "groupBox82";
-            this.groupBox82.Size = new System.Drawing.Size(181, 77);
-            this.groupBox82.TabIndex = 3;
-            this.groupBox82.TabStop = false;
-            this.groupBox82.Text = "TCP Notifications";
-            // 
-            // label30
-            // 
-            this.label30.AutoSize = true;
-            this.label30.Location = new System.Drawing.Point(40, 49);
-            this.label30.Name = "label30";
-            this.label30.Size = new System.Drawing.Size(41, 16);
-            this.label30.TabIndex = 16;
-            this.label30.Text = "Queue";
-            // 
-            // label31
-            // 
-            this.label31.AutoSize = true;
-            this.label31.Location = new System.Drawing.Point(34, 19);
-            this.label31.Name = "label31";
-            this.label31.Size = new System.Drawing.Size(47, 16);
-            this.label31.TabIndex = 15;
-            this.label31.Text = "Throttle";
-            // 
-            // LimitsTCPNotificationsQueue
-            // 
-            this.LimitsTCPNotificationsQueue.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsTCPNotificationsQueue.Location = new System.Drawing.Point(83, 47);
-            this.LimitsTCPNotificationsQueue.Name = "LimitsTCPNotificationsQueue";
-            this.LimitsTCPNotificationsQueue.Size = new System.Drawing.Size(66, 20);
-            this.LimitsTCPNotificationsQueue.TabIndex = 14;
-            // 
-            // LimitsTCPNotificationsThrottle
-            // 
-            this.LimitsTCPNotificationsThrottle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsTCPNotificationsThrottle.Location = new System.Drawing.Point(83, 17);
-            this.LimitsTCPNotificationsThrottle.Name = "LimitsTCPNotificationsThrottle";
-            this.LimitsTCPNotificationsThrottle.Size = new System.Drawing.Size(66, 20);
-            this.LimitsTCPNotificationsThrottle.TabIndex = 13;
-            // 
-            // groupBox76
-            // 
-            this.groupBox76.Controls.Add(this.pictureBox51);
-            this.groupBox76.Controls.Add(this.label29);
-            this.groupBox76.Controls.Add(this.LimitsSchedulesResolution);
-            this.groupBox76.Location = new System.Drawing.Point(165, 309);
-            this.groupBox76.Name = "groupBox76";
-            this.groupBox76.Size = new System.Drawing.Size(156, 51);
-            this.groupBox76.TabIndex = 15;
-            this.groupBox76.TabStop = false;
-            this.groupBox76.Text = "Schedules Resolution";
-            // 
-            // label29
-            // 
-            this.label29.AutoSize = true;
-            this.label29.Location = new System.Drawing.Point(11, 24);
-            this.label29.Name = "label29";
-            this.label29.Size = new System.Drawing.Size(45, 16);
-            this.label29.TabIndex = 1;
-            this.label29.Text = "Interval";
-            // 
-            // LimitsSchedulesResolution
-            // 
-            this.LimitsSchedulesResolution.Location = new System.Drawing.Point(62, 21);
-            this.LimitsSchedulesResolution.Name = "LimitsSchedulesResolution";
-            this.LimitsSchedulesResolution.Size = new System.Drawing.Size(61, 22);
-            this.LimitsSchedulesResolution.TabIndex = 0;
-            // 
-            // groupBox71
-            // 
-            this.groupBox71.Controls.Add(this.pictureBox45);
-            this.groupBox71.Controls.Add(this.pictureBox44);
-            this.groupBox71.Controls.Add(this.label27);
-            this.groupBox71.Controls.Add(this.label26);
-            this.groupBox71.Controls.Add(this.LimitsClientIdle);
-            this.groupBox71.Controls.Add(this.LimitsClientConnections);
-            this.groupBox71.Location = new System.Drawing.Point(4, 248);
-            this.groupBox71.Name = "groupBox71";
-            this.groupBox71.Size = new System.Drawing.Size(155, 78);
-            this.groupBox71.TabIndex = 14;
-            this.groupBox71.TabStop = false;
-            this.groupBox71.Text = "Client (Service Point)";
-            // 
-            // label27
-            // 
-            this.label27.AutoSize = true;
-            this.label27.Location = new System.Drawing.Point(6, 51);
-            this.label27.Name = "label27";
-            this.label27.Size = new System.Drawing.Size(26, 16);
-            this.label27.TabIndex = 3;
-            this.label27.Text = "Idle";
-            // 
-            // label26
-            // 
-            this.label26.AutoSize = true;
-            this.label26.Location = new System.Drawing.Point(7, 22);
-            this.label26.Name = "label26";
-            this.label26.Size = new System.Drawing.Size(71, 16);
-            this.label26.TabIndex = 2;
-            this.label26.Text = "Connections";
-            // 
-            // LimitsClientIdle
-            // 
-            this.LimitsClientIdle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsClientIdle.Location = new System.Drawing.Point(38, 48);
-            this.LimitsClientIdle.Name = "LimitsClientIdle";
-            this.LimitsClientIdle.Size = new System.Drawing.Size(85, 20);
-            this.LimitsClientIdle.TabIndex = 1;
-            // 
-            // LimitsClientConnections
-            // 
-            this.LimitsClientConnections.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsClientConnections.Location = new System.Drawing.Point(84, 19);
-            this.LimitsClientConnections.Name = "LimitsClientConnections";
-            this.LimitsClientConnections.Size = new System.Drawing.Size(39, 20);
-            this.LimitsClientConnections.TabIndex = 0;
-            // 
-            // groupBox70
-            // 
-            this.groupBox70.Controls.Add(this.pictureBox43);
-            this.groupBox70.Controls.Add(this.label25);
-            this.groupBox70.Controls.Add(this.LimitsLogoutTimeout);
-            this.groupBox70.Location = new System.Drawing.Point(4, 187);
-            this.groupBox70.Name = "groupBox70";
-            this.groupBox70.Size = new System.Drawing.Size(155, 55);
-            this.groupBox70.TabIndex = 13;
-            this.groupBox70.TabStop = false;
-            this.groupBox70.Text = "Logout";
-            // 
-            // label25
-            // 
-            this.label25.AutoSize = true;
-            this.label25.Location = new System.Drawing.Point(6, 22);
-            this.label25.Name = "label25";
-            this.label25.Size = new System.Drawing.Size(49, 16);
-            this.label25.TabIndex = 1;
-            this.label25.Text = "Timeout";
-            // 
-            // LimitsLogoutTimeout
-            // 
-            this.LimitsLogoutTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsLogoutTimeout.Location = new System.Drawing.Point(58, 21);
-            this.LimitsLogoutTimeout.Name = "LimitsLogoutTimeout";
-            this.LimitsLogoutTimeout.Size = new System.Drawing.Size(65, 20);
-            this.LimitsLogoutTimeout.TabIndex = 0;
-            // 
-            // groupBox69
-            // 
-            this.groupBox69.Controls.Add(this.pictureBox42);
-            this.groupBox69.Controls.Add(this.LimitsMembershipSweep);
-            this.groupBox69.Controls.Add(this.label24);
-            this.groupBox69.Location = new System.Drawing.Point(4, 126);
-            this.groupBox69.Name = "groupBox69";
-            this.groupBox69.Size = new System.Drawing.Size(155, 50);
-            this.groupBox69.TabIndex = 12;
-            this.groupBox69.TabStop = false;
-            this.groupBox69.Text = "Membership";
-            // 
-            // LimitsMembershipSweep
-            // 
-            this.LimitsMembershipSweep.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsMembershipSweep.Location = new System.Drawing.Point(57, 18);
-            this.LimitsMembershipSweep.Name = "LimitsMembershipSweep";
-            this.LimitsMembershipSweep.Size = new System.Drawing.Size(66, 20);
-            this.LimitsMembershipSweep.TabIndex = 1;
-            // 
-            // label24
-            // 
-            this.label24.AutoSize = true;
-            this.label24.Location = new System.Drawing.Point(7, 22);
-            this.label24.Name = "label24";
-            this.label24.Size = new System.Drawing.Size(42, 16);
-            this.label24.TabIndex = 0;
-            this.label24.Text = "Sweep";
-            // 
-            // groupBox68
-            // 
-            this.groupBox68.Controls.Add(this.pictureBox60);
-            this.groupBox68.Controls.Add(this.pictureBox59);
-            this.groupBox68.Controls.Add(this.label23);
-            this.groupBox68.Controls.Add(this.label22);
-            this.groupBox68.Controls.Add(this.LimitsDataTimeout);
-            this.groupBox68.Controls.Add(this.LimitsDataDecay);
-            this.groupBox68.Location = new System.Drawing.Point(327, 282);
-            this.groupBox68.Name = "groupBox68";
-            this.groupBox68.Size = new System.Drawing.Size(155, 78);
-            this.groupBox68.TabIndex = 11;
-            this.groupBox68.TabStop = false;
-            this.groupBox68.Text = "Data";
-            // 
-            // label23
-            // 
-            this.label23.AutoSize = true;
-            this.label23.Location = new System.Drawing.Point(7, 20);
-            this.label23.Name = "label23";
-            this.label23.Size = new System.Drawing.Size(0, 16);
-            this.label23.TabIndex = 3;
-            // 
-            // label22
-            // 
-            this.label22.AutoSize = true;
-            this.label22.Location = new System.Drawing.Point(6, 53);
-            this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(49, 16);
-            this.label22.TabIndex = 2;
-            this.label22.Text = "Timeout";
-            // 
-            // LimitsDataTimeout
-            // 
-            this.LimitsDataTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsDataTimeout.Location = new System.Drawing.Point(56, 50);
-            this.LimitsDataTimeout.Name = "LimitsDataTimeout";
-            this.LimitsDataTimeout.Size = new System.Drawing.Size(65, 20);
-            this.LimitsDataTimeout.TabIndex = 0;
-            // 
-            // LimitsDataDecay
-            // 
-            this.LimitsDataDecay.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.LimitsDataDecay.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsDataDecay.FormattingEnabled = true;
-            this.LimitsDataDecay.Items.AddRange(new object[] {
-            "none",
-            "weighted",
-            "arithmetic",
-            "geometric",
-            "harmonic"});
-            this.LimitsDataDecay.Location = new System.Drawing.Point(13, 17);
-            this.LimitsDataDecay.Name = "LimitsDataDecay";
-            this.LimitsDataDecay.Size = new System.Drawing.Size(108, 21);
-            this.LimitsDataDecay.TabIndex = 1;
-            // 
-            // groupBox67
-            // 
-            this.groupBox67.Controls.Add(this.pictureBox69);
-            this.groupBox67.Controls.Add(this.pictureBox68);
-            this.groupBox67.Controls.Add(this.pictureBox67);
-            this.groupBox67.Controls.Add(this.label21);
-            this.groupBox67.Controls.Add(this.LimitsServicesActivate);
-            this.groupBox67.Controls.Add(this.label20);
-            this.groupBox67.Controls.Add(this.LimitsServicesRebake);
-            this.groupBox67.Controls.Add(this.label19);
-            this.groupBox67.Controls.Add(this.LimitsServicesTimeout);
-            this.groupBox67.Location = new System.Drawing.Point(488, 4);
-            this.groupBox67.Name = "groupBox67";
-            this.groupBox67.Size = new System.Drawing.Size(181, 120);
-            this.groupBox67.TabIndex = 10;
-            this.groupBox67.TabStop = false;
-            this.groupBox67.Text = "Services";
-            // 
-            // label21
-            // 
-            this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(8, 82);
-            this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(50, 16);
-            this.label21.TabIndex = 5;
-            this.label21.Text = "Activate";
-            // 
-            // LimitsServicesActivate
-            // 
-            this.LimitsServicesActivate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsServicesActivate.Location = new System.Drawing.Point(60, 79);
-            this.LimitsServicesActivate.Name = "LimitsServicesActivate";
-            this.LimitsServicesActivate.Size = new System.Drawing.Size(89, 20);
-            this.LimitsServicesActivate.TabIndex = 4;
-            // 
-            // label20
-            // 
-            this.label20.AutoSize = true;
-            this.label20.Location = new System.Drawing.Point(11, 54);
-            this.label20.Name = "label20";
-            this.label20.Size = new System.Drawing.Size(44, 16);
-            this.label20.TabIndex = 3;
-            this.label20.Text = "Rebake";
-            // 
-            // LimitsServicesRebake
-            // 
-            this.LimitsServicesRebake.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsServicesRebake.Location = new System.Drawing.Point(60, 51);
-            this.LimitsServicesRebake.Name = "LimitsServicesRebake";
-            this.LimitsServicesRebake.Size = new System.Drawing.Size(89, 20);
-            this.LimitsServicesRebake.TabIndex = 2;
-            // 
-            // label19
-            // 
-            this.label19.AutoSize = true;
-            this.label19.Location = new System.Drawing.Point(9, 25);
-            this.label19.Name = "label19";
-            this.label19.Size = new System.Drawing.Size(49, 16);
-            this.label19.TabIndex = 1;
-            this.label19.Text = "Timeout";
-            // 
-            // LimitsServicesTimeout
-            // 
-            this.LimitsServicesTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsServicesTimeout.Location = new System.Drawing.Point(60, 22);
-            this.LimitsServicesTimeout.Name = "LimitsServicesTimeout";
-            this.LimitsServicesTimeout.Size = new System.Drawing.Size(89, 20);
-            this.LimitsServicesTimeout.TabIndex = 0;
-            // 
-            // groupBox65
-            // 
-            this.groupBox65.Controls.Add(this.pictureBox58);
-            this.groupBox65.Controls.Add(this.pictureBox57);
-            this.groupBox65.Controls.Add(this.pictureBox56);
-            this.groupBox65.Controls.Add(this.pictureBox55);
-            this.groupBox65.Controls.Add(this.label28);
-            this.groupBox65.Controls.Add(this.LimitsNotificationsThreads);
-            this.groupBox65.Controls.Add(this.label12);
-            this.groupBox65.Controls.Add(this.label11);
-            this.groupBox65.Controls.Add(this.label10);
-            this.groupBox65.Controls.Add(this.LimitsNotificationsQueue);
-            this.groupBox65.Controls.Add(this.LimitsNotificationsThrottle);
-            this.groupBox65.Controls.Add(this.LimitsNotificationsTimeout);
-            this.groupBox65.Location = new System.Drawing.Point(326, 126);
-            this.groupBox65.Name = "groupBox65";
-            this.groupBox65.Size = new System.Drawing.Size(155, 150);
-            this.groupBox65.TabIndex = 8;
-            this.groupBox65.TabStop = false;
-            this.groupBox65.Text = "Notifications";
-            // 
-            // label28
-            // 
-            this.label28.AutoSize = true;
-            this.label28.Location = new System.Drawing.Point(6, 110);
-            this.label28.Name = "label28";
-            this.label28.Size = new System.Drawing.Size(47, 16);
-            this.label28.TabIndex = 7;
-            this.label28.Text = "Threads";
-            // 
-            // LimitsNotificationsThreads
-            // 
-            this.LimitsNotificationsThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsNotificationsThreads.Location = new System.Drawing.Point(56, 107);
-            this.LimitsNotificationsThreads.Name = "LimitsNotificationsThreads";
-            this.LimitsNotificationsThreads.Size = new System.Drawing.Size(66, 20);
-            this.LimitsNotificationsThreads.TabIndex = 6;
-            // 
-            // label12
-            // 
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(10, 83);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(41, 16);
-            this.label12.TabIndex = 5;
-            this.label12.Text = "Queue";
-            // 
-            // label11
-            // 
-            this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(7, 54);
-            this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(47, 16);
-            this.label11.TabIndex = 4;
-            this.label11.Text = "Throttle";
-            // 
-            // label10
-            // 
-            this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(7, 25);
-            this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(49, 16);
-            this.label10.TabIndex = 3;
-            this.label10.Text = "Timeout";
-            // 
-            // LimitsNotificationsQueue
-            // 
-            this.LimitsNotificationsQueue.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsNotificationsQueue.Location = new System.Drawing.Point(56, 80);
-            this.LimitsNotificationsQueue.Name = "LimitsNotificationsQueue";
-            this.LimitsNotificationsQueue.Size = new System.Drawing.Size(66, 20);
-            this.LimitsNotificationsQueue.TabIndex = 2;
-            // 
-            // LimitsNotificationsThrottle
-            // 
-            this.LimitsNotificationsThrottle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsNotificationsThrottle.Location = new System.Drawing.Point(56, 51);
-            this.LimitsNotificationsThrottle.Name = "LimitsNotificationsThrottle";
-            this.LimitsNotificationsThrottle.Size = new System.Drawing.Size(66, 20);
-            this.LimitsNotificationsThrottle.TabIndex = 1;
-            // 
-            // LimitsNotificationsTimeout
-            // 
-            this.LimitsNotificationsTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsNotificationsTimeout.Location = new System.Drawing.Point(56, 22);
-            this.LimitsNotificationsTimeout.Name = "LimitsNotificationsTimeout";
-            this.LimitsNotificationsTimeout.Size = new System.Drawing.Size(66, 20);
-            this.LimitsNotificationsTimeout.TabIndex = 0;
-            // 
-            // groupBox64
-            // 
-            this.groupBox64.Controls.Add(this.pictureBox54);
-            this.groupBox64.Controls.Add(this.pictureBox53);
-            this.groupBox64.Controls.Add(this.pictureBox52);
-            this.groupBox64.Controls.Add(this.label9);
-            this.groupBox64.Controls.Add(this.label8);
-            this.groupBox64.Controls.Add(this.label7);
-            this.groupBox64.Controls.Add(this.LimitsCallbackQueue);
-            this.groupBox64.Controls.Add(this.LimitsCallbacksThrottle);
-            this.groupBox64.Controls.Add(this.LimitsCallbacksTimeout);
-            this.groupBox64.Location = new System.Drawing.Point(326, 4);
-            this.groupBox64.Name = "groupBox64";
-            this.groupBox64.Size = new System.Drawing.Size(155, 116);
-            this.groupBox64.TabIndex = 7;
-            this.groupBox64.TabStop = false;
-            this.groupBox64.Text = "Callbacks";
-            // 
-            // label9
-            // 
-            this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(7, 77);
-            this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(41, 16);
-            this.label9.TabIndex = 5;
-            this.label9.Text = "Queue";
-            // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(6, 51);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(47, 16);
-            this.label8.TabIndex = 4;
-            this.label8.Text = "Throttle";
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(7, 22);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(49, 16);
-            this.label7.TabIndex = 3;
-            this.label7.Text = "Timeout";
-            // 
-            // LimitsCallbackQueue
-            // 
-            this.LimitsCallbackQueue.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsCallbackQueue.Location = new System.Drawing.Point(56, 77);
-            this.LimitsCallbackQueue.Name = "LimitsCallbackQueue";
-            this.LimitsCallbackQueue.Size = new System.Drawing.Size(66, 20);
-            this.LimitsCallbackQueue.TabIndex = 2;
-            // 
-            // LimitsCallbacksThrottle
-            // 
-            this.LimitsCallbacksThrottle.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsCallbacksThrottle.Location = new System.Drawing.Point(56, 48);
-            this.LimitsCallbacksThrottle.Name = "LimitsCallbacksThrottle";
-            this.LimitsCallbacksThrottle.Size = new System.Drawing.Size(66, 20);
-            this.LimitsCallbacksThrottle.TabIndex = 1;
-            // 
-            // LimitsCallbacksTimeout
-            // 
-            this.LimitsCallbacksTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsCallbacksTimeout.Location = new System.Drawing.Point(56, 19);
-            this.LimitsCallbacksTimeout.Name = "LimitsCallbacksTimeout";
-            this.LimitsCallbacksTimeout.Size = new System.Drawing.Size(66, 20);
-            this.LimitsCallbacksTimeout.TabIndex = 0;
-            // 
-            // groupBox63
-            // 
-            this.groupBox63.Controls.Add(this.pictureBox50);
-            this.groupBox63.Controls.Add(this.label6);
-            this.groupBox63.Controls.Add(this.LimitsInstantMessageThreads);
-            this.groupBox63.Location = new System.Drawing.Point(165, 248);
-            this.groupBox63.Name = "groupBox63";
-            this.groupBox63.Size = new System.Drawing.Size(155, 55);
-            this.groupBox63.TabIndex = 6;
-            this.groupBox63.TabStop = false;
-            this.groupBox63.Text = "Instant Messages (IM)";
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(6, 25);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(47, 16);
-            this.label6.TabIndex = 1;
-            this.label6.Text = "Threads";
-            // 
-            // LimitsInstantMessageThreads
-            // 
-            this.LimitsInstantMessageThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsInstantMessageThreads.Location = new System.Drawing.Point(62, 22);
-            this.LimitsInstantMessageThreads.Name = "LimitsInstantMessageThreads";
-            this.LimitsInstantMessageThreads.Size = new System.Drawing.Size(61, 20);
-            this.LimitsInstantMessageThreads.TabIndex = 0;
-            // 
-            // groupBox62
-            // 
-            this.groupBox62.Controls.Add(this.pictureBox49);
-            this.groupBox62.Controls.Add(this.label5);
-            this.groupBox62.Controls.Add(this.LimitsRLVThreads);
-            this.groupBox62.Location = new System.Drawing.Point(165, 187);
-            this.groupBox62.Name = "groupBox62";
-            this.groupBox62.Size = new System.Drawing.Size(155, 55);
-            this.groupBox62.TabIndex = 5;
-            this.groupBox62.TabStop = false;
-            this.groupBox62.Text = "RLV";
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(6, 25);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(47, 16);
-            this.label5.TabIndex = 1;
-            this.label5.Text = "Threads";
-            // 
-            // LimitsRLVThreads
-            // 
-            this.LimitsRLVThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsRLVThreads.Location = new System.Drawing.Point(62, 22);
-            this.LimitsRLVThreads.Name = "LimitsRLVThreads";
-            this.LimitsRLVThreads.Size = new System.Drawing.Size(61, 20);
-            this.LimitsRLVThreads.TabIndex = 0;
-            // 
-            // groupBox61
-            // 
-            this.groupBox61.Controls.Add(this.pictureBox48);
-            this.groupBox61.Controls.Add(this.label4);
-            this.groupBox61.Controls.Add(this.LimitsCommandsThreads);
-            this.groupBox61.Location = new System.Drawing.Point(165, 126);
-            this.groupBox61.Name = "groupBox61";
-            this.groupBox61.Size = new System.Drawing.Size(155, 55);
-            this.groupBox61.TabIndex = 4;
-            this.groupBox61.TabStop = false;
-            this.groupBox61.Text = "Commands";
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(6, 24);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(47, 16);
-            this.label4.TabIndex = 1;
-            this.label4.Text = "Threads";
-            // 
-            // LimitsCommandsThreads
-            // 
-            this.LimitsCommandsThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsCommandsThreads.Location = new System.Drawing.Point(62, 21);
-            this.LimitsCommandsThreads.Name = "LimitsCommandsThreads";
-            this.LimitsCommandsThreads.Size = new System.Drawing.Size(61, 20);
-            this.LimitsCommandsThreads.TabIndex = 0;
-            // 
-            // groupBox60
-            // 
-            this.groupBox60.Controls.Add(this.pictureBox47);
-            this.groupBox60.Controls.Add(this.label3);
-            this.groupBox60.Controls.Add(this.LimitsLoggingThreads);
-            this.groupBox60.Location = new System.Drawing.Point(165, 65);
-            this.groupBox60.Name = "groupBox60";
-            this.groupBox60.Size = new System.Drawing.Size(155, 55);
-            this.groupBox60.TabIndex = 3;
-            this.groupBox60.TabStop = false;
-            this.groupBox60.Text = "Logging";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(6, 24);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(47, 16);
-            this.label3.TabIndex = 1;
-            this.label3.Text = "Threads";
-            // 
-            // LimitsLoggingThreads
-            // 
-            this.LimitsLoggingThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsLoggingThreads.Location = new System.Drawing.Point(62, 21);
-            this.LimitsLoggingThreads.Name = "LimitsLoggingThreads";
-            this.LimitsLoggingThreads.Size = new System.Drawing.Size(61, 20);
-            this.LimitsLoggingThreads.TabIndex = 0;
-            // 
-            // groupBox59
-            // 
-            this.groupBox59.Controls.Add(this.pictureBox41);
-            this.groupBox59.Controls.Add(this.label2);
-            this.groupBox59.Controls.Add(this.LimitsSchedulerExpiration);
-            this.groupBox59.Location = new System.Drawing.Point(4, 65);
-            this.groupBox59.Name = "groupBox59";
-            this.groupBox59.Size = new System.Drawing.Size(155, 55);
-            this.groupBox59.TabIndex = 2;
-            this.groupBox59.TabStop = false;
-            this.groupBox59.Text = "Scheduler";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(6, 24);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(57, 16);
-            this.label2.TabIndex = 1;
-            this.label2.Text = "Expiration";
-            // 
-            // LimitsSchedulerExpiration
-            // 
-            this.LimitsSchedulerExpiration.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsSchedulerExpiration.Location = new System.Drawing.Point(69, 21);
-            this.LimitsSchedulerExpiration.Name = "LimitsSchedulerExpiration";
-            this.LimitsSchedulerExpiration.Size = new System.Drawing.Size(54, 20);
-            this.LimitsSchedulerExpiration.TabIndex = 0;
-            // 
-            // groupBox58
-            // 
-            this.groupBox58.Controls.Add(this.pictureBox46);
-            this.groupBox58.Controls.Add(this.label1);
-            this.groupBox58.Controls.Add(this.LimitsPOSTThreads);
-            this.groupBox58.Location = new System.Drawing.Point(165, 4);
-            this.groupBox58.Name = "groupBox58";
-            this.groupBox58.Size = new System.Drawing.Size(155, 55);
-            this.groupBox58.TabIndex = 1;
-            this.groupBox58.TabStop = false;
-            this.groupBox58.Text = "POST";
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(9, 25);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(47, 16);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "Threads";
-            // 
-            // LimitsPOSTThreads
-            // 
-            this.LimitsPOSTThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsPOSTThreads.Location = new System.Drawing.Point(62, 22);
-            this.LimitsPOSTThreads.Name = "LimitsPOSTThreads";
-            this.LimitsPOSTThreads.Size = new System.Drawing.Size(61, 20);
-            this.LimitsPOSTThreads.TabIndex = 0;
-            // 
-            // groupBox57
-            // 
-            this.groupBox57.Controls.Add(this.pictureBox40);
-            this.groupBox57.Controls.Add(this.LimitsRange);
-            this.groupBox57.Location = new System.Drawing.Point(4, 4);
-            this.groupBox57.Name = "groupBox57";
-            this.groupBox57.Size = new System.Drawing.Size(155, 55);
-            this.groupBox57.TabIndex = 0;
-            this.groupBox57.TabStop = false;
-            this.groupBox57.Text = "Range (Draw Distance)";
-            // 
-            // LimitsRange
-            // 
-            this.LimitsRange.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsRange.Location = new System.Drawing.Point(7, 22);
-            this.LimitsRange.Name = "LimitsRange";
-            this.LimitsRange.Size = new System.Drawing.Size(116, 20);
-            this.LimitsRange.TabIndex = 0;
-            // 
             // button1
             // 
             this.button1.Font = new System.Drawing.Font("Palatino Linotype", 8.25F);
@@ -4742,6 +5066,9 @@
             // toolTip1
             // 
             this.toolTip1.AutomaticDelay = 0;
+            this.toolTip1.AutoPopDelay = 32767;
+            this.toolTip1.InitialDelay = 500;
+            this.toolTip1.ReshowDelay = 100;
             // 
             // button11
             // 
@@ -4780,343 +5107,59 @@
             this.ExperienceLevel.TabIndex = 12;
             this.ExperienceLevel.SelectedIndexChanged += new System.EventHandler(this.ExperienceLevelChanged);
             // 
-            // pictureBox44
+            // tabControl1
             // 
-            this.pictureBox44.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox44.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox44.Image")));
-            this.pictureBox44.Location = new System.Drawing.Point(129, 19);
-            this.pictureBox44.Name = "pictureBox44";
-            this.pictureBox44.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox44.TabIndex = 9;
-            this.pictureBox44.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox44, "The number of concurrent service-point connections. \r\nIncrease this if your callb" +
-        "acks and notifications time out.");
-            this.pictureBox44.Click += new System.EventHandler(this.ShowToolTip);
+            this.tabControl1.Controls.Add(this.DataSynchronizationTabPage);
+            this.tabControl1.Location = new System.Drawing.Point(280, 3);
+            this.tabControl1.Name = "tabControl1";
+            this.tabControl1.SelectedIndex = 0;
+            this.tabControl1.Size = new System.Drawing.Size(383, 176);
+            this.tabControl1.TabIndex = 16;
             // 
-            // pictureBox52
+            // DataSynchronizationTabPage
             // 
-            this.pictureBox52.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox52.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox52.Image")));
-            this.pictureBox52.Location = new System.Drawing.Point(128, 18);
-            this.pictureBox52.Name = "pictureBox52";
-            this.pictureBox52.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox52.TabIndex = 10;
-            this.pictureBox52.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox52, "The amount of time allowed for a callback to be \r\nposted to an URL.");
-            this.pictureBox52.Click += new System.EventHandler(this.ShowToolTip);
+            this.DataSynchronizationTabPage.Controls.Add(this.HordeSynchronizationDataGridView);
+            this.DataSynchronizationTabPage.Location = new System.Drawing.Point(4, 25);
+            this.DataSynchronizationTabPage.Name = "DataSynchronizationTabPage";
+            this.DataSynchronizationTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.DataSynchronizationTabPage.Size = new System.Drawing.Size(375, 147);
+            this.DataSynchronizationTabPage.TabIndex = 0;
+            this.DataSynchronizationTabPage.Text = "Sync";
+            this.DataSynchronizationTabPage.UseVisualStyleBackColor = true;
             // 
-            // pictureBox59
+            // Data
             // 
-            this.pictureBox59.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox59.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox59.Image")));
-            this.pictureBox59.Location = new System.Drawing.Point(127, 17);
-            this.pictureBox59.Name = "pictureBox59";
-            this.pictureBox59.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox59.TabIndex = 10;
-            this.pictureBox59.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox59, "Corrade uses a decay for the data timeout in order to \r\nspeed-up the process of r" +
-        "eceiving packets.");
-            this.pictureBox59.Click += new System.EventHandler(this.ShowToolTip);
+            this.Data.HeaderText = "Data";
+            this.Data.Name = "Data";
+            this.Data.ReadOnly = true;
             // 
-            // pictureBox60
+            // Add
             // 
-            this.pictureBox60.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox60.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox60.Image")));
-            this.pictureBox60.Location = new System.Drawing.Point(127, 50);
-            this.pictureBox60.Name = "pictureBox60";
-            this.pictureBox60.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox60.TabIndex = 16;
-            this.pictureBox60.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox60, "The grace period allowed for data bursts from the \r\ngrid to Corrade.");
-            this.pictureBox60.Click += new System.EventHandler(this.ShowToolTip);
+            this.Add.HeaderText = "Add";
+            this.Add.Name = "Add";
+            this.Add.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.Add.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
             // 
-            // pictureBox55
+            // Remove
             // 
-            this.pictureBox55.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox55.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox55.Image")));
-            this.pictureBox55.Location = new System.Drawing.Point(128, 22);
-            this.pictureBox55.Name = "pictureBox55";
-            this.pictureBox55.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox55.TabIndex = 10;
-            this.pictureBox55.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox55, "The amount of time allowed for a notification to be \r\nposted to an URL.");
-            this.pictureBox55.Click += new System.EventHandler(this.ShowToolTip);
+            this.Remove.HeaderText = "Remove";
+            this.Remove.Name = "Remove";
+            this.Remove.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.Remove.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
             // 
-            // pictureBox56
+            // groupBox66
             // 
-            this.pictureBox56.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox56.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox56.Image")));
-            this.pictureBox56.Location = new System.Drawing.Point(128, 50);
-            this.pictureBox56.Name = "pictureBox56";
-            this.pictureBox56.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox56.TabIndex = 11;
-            this.pictureBox56.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox56, "The interval between processing notification queue \r\nelements.");
-            this.pictureBox56.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox57
-            // 
-            this.pictureBox57.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox57.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox57.Image")));
-            this.pictureBox57.Location = new System.Drawing.Point(128, 79);
-            this.pictureBox57.Name = "pictureBox57";
-            this.pictureBox57.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox57.TabIndex = 12;
-            this.pictureBox57.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox57, "The length of the queue. Additional notifications will \r\nbe ignored until a slot " +
-        "is freed.");
-            this.pictureBox57.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox58
-            // 
-            this.pictureBox58.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox58.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox58.Image")));
-            this.pictureBox58.Location = new System.Drawing.Point(128, 107);
-            this.pictureBox58.Name = "pictureBox58";
-            this.pictureBox58.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox58.TabIndex = 13;
-            this.pictureBox58.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox58, "The total number of threads that Corrade is allowed \r\nto spawn for processing not" +
-        "ifications.");
-            this.pictureBox58.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox82
-            // 
-            this.pictureBox82.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox82.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox82.Image")));
-            this.pictureBox82.Location = new System.Drawing.Point(155, 48);
-            this.pictureBox82.Name = "pictureBox82";
-            this.pictureBox82.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox82.TabIndex = 18;
-            this.pictureBox82.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox82, "The length of the queue. Additional notifications will \r\nbe ignored until a slot " +
-        "is freed.");
-            this.pictureBox82.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox93
-            // 
-            this.pictureBox93.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox93.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox93.Image")));
-            this.pictureBox93.Location = new System.Drawing.Point(155, 17);
-            this.pictureBox93.Name = "pictureBox93";
-            this.pictureBox93.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox93.TabIndex = 17;
-            this.pictureBox93.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox93, "The time to wait in seconds between checking\r\nfor new RSS feed updates.");
-            this.pictureBox93.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox67
-            // 
-            this.pictureBox67.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox67.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox67.Image")));
-            this.pictureBox67.Location = new System.Drawing.Point(155, 22);
-            this.pictureBox67.Name = "pictureBox67";
-            this.pictureBox67.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox67.TabIndex = 10;
-            this.pictureBox67.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox67, "The amount of time allowed for querrying grid \r\nservices (agent, group lookups, e" +
-        "tc...).");
-            this.pictureBox67.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox68
-            // 
-            this.pictureBox68.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox68.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox68.Image")));
-            this.pictureBox68.Location = new System.Drawing.Point(155, 51);
-            this.pictureBox68.Name = "pictureBox68";
-            this.pictureBox68.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox68.TabIndex = 11;
-            this.pictureBox68.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox68, "The amount of time to wait before attempting to \r\nrebake.");
-            this.pictureBox68.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox69
-            // 
-            this.pictureBox69.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox69.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox69.Image")));
-            this.pictureBox69.Location = new System.Drawing.Point(155, 79);
-            this.pictureBox69.Name = "pictureBox69";
-            this.pictureBox69.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox69.TabIndex = 12;
-            this.pictureBox69.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox69, "The amount of time after which to attempt to activate\r\nthe current land group.");
-            this.pictureBox69.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox53
-            // 
-            this.pictureBox53.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox53.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox53.Image")));
-            this.pictureBox53.Location = new System.Drawing.Point(128, 48);
-            this.pictureBox53.Name = "pictureBox53";
-            this.pictureBox53.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox53.TabIndex = 11;
-            this.pictureBox53.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox53, "The interval between processing callback queue \r\nelements.");
-            this.pictureBox53.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox83
-            // 
-            this.pictureBox83.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox83.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox83.Image")));
-            this.pictureBox83.Location = new System.Drawing.Point(155, 17);
-            this.pictureBox83.Name = "pictureBox83";
-            this.pictureBox83.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox83.TabIndex = 17;
-            this.pictureBox83.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox83, "The time to wait in milliseconds between dequeuing a new\r\nnotification from the q" +
-        "ueue and processing it.");
-            this.pictureBox83.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox54
-            // 
-            this.pictureBox54.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox54.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox54.Image")));
-            this.pictureBox54.Location = new System.Drawing.Point(128, 77);
-            this.pictureBox54.Name = "pictureBox54";
-            this.pictureBox54.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox54.TabIndex = 12;
-            this.pictureBox54.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox54, "The length of the queue. Additional callbacks will be\r\nignored until a slot is fr" +
-        "eed.");
-            this.pictureBox54.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox51
-            // 
-            this.pictureBox51.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox51.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox51.Image")));
-            this.pictureBox51.Location = new System.Drawing.Point(129, 22);
-            this.pictureBox51.Name = "pictureBox51";
-            this.pictureBox51.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox51.TabIndex = 9;
-            this.pictureBox51.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox51, resources.GetString("pictureBox51.ToolTip"));
-            this.pictureBox51.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox50
-            // 
-            this.pictureBox50.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox50.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox50.Image")));
-            this.pictureBox50.Location = new System.Drawing.Point(129, 22);
-            this.pictureBox50.Name = "pictureBox50";
-            this.pictureBox50.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox50.TabIndex = 9;
-            this.pictureBox50.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox50, "The total number of concurrent instant messages that \r\nCorrade will be allowed to" +
-        " process.");
-            this.pictureBox50.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox49
-            // 
-            this.pictureBox49.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox49.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox49.Image")));
-            this.pictureBox49.Location = new System.Drawing.Point(129, 22);
-            this.pictureBox49.Name = "pictureBox49";
-            this.pictureBox49.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox49.TabIndex = 9;
-            this.pictureBox49.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox49, "The total number of RLV threads that Corrade will be \r\nallowed to spawn.");
-            this.pictureBox49.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox48
-            // 
-            this.pictureBox48.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox48.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox48.Image")));
-            this.pictureBox48.Location = new System.Drawing.Point(129, 21);
-            this.pictureBox48.Name = "pictureBox48";
-            this.pictureBox48.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox48.TabIndex = 9;
-            this.pictureBox48.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox48, "The total number of command threads that Corrade \r\nwill be allowed to spawn.");
-            this.pictureBox48.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox47
-            // 
-            this.pictureBox47.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox47.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox47.Image")));
-            this.pictureBox47.Location = new System.Drawing.Point(129, 21);
-            this.pictureBox47.Name = "pictureBox47";
-            this.pictureBox47.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox47.TabIndex = 9;
-            this.pictureBox47.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox47, "The total number of threads that may be used to log \r\nmessages and feedback  mess" +
-        "ages.");
-            this.pictureBox47.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox46
-            // 
-            this.pictureBox46.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox46.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox46.Image")));
-            this.pictureBox46.Location = new System.Drawing.Point(129, 22);
-            this.pictureBox46.Name = "pictureBox46";
-            this.pictureBox46.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox46.TabIndex = 9;
-            this.pictureBox46.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox46, "The number of POST requests that Corrade will be \r\nallowed to send at once withou" +
-        "t letting the other \r\nthreads finish first.");
-            this.pictureBox46.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox40
-            // 
-            this.pictureBox40.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox40.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox40.Image")));
-            this.pictureBox40.Location = new System.Drawing.Point(129, 22);
-            this.pictureBox40.Name = "pictureBox40";
-            this.pictureBox40.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox40.TabIndex = 9;
-            this.pictureBox40.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox40, resources.GetString("pictureBox40.ToolTip"));
-            this.pictureBox40.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox41
-            // 
-            this.pictureBox41.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox41.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox41.Image")));
-            this.pictureBox41.Location = new System.Drawing.Point(129, 21);
-            this.pictureBox41.Name = "pictureBox41";
-            this.pictureBox41.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox41.TabIndex = 9;
-            this.pictureBox41.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox41, "The amount of time in milliseconds after which to a \r\nthread metric gets expunged" +
-        " from the scheduler.\r\nCorrade uses an internal genetic-based algorithm for\r\ndela" +
-        "ying threads for multiple groups.\r\n");
-            this.pictureBox41.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox42
-            // 
-            this.pictureBox42.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox42.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox42.Image")));
-            this.pictureBox42.Location = new System.Drawing.Point(128, 18);
-            this.pictureBox42.Name = "pictureBox42";
-            this.pictureBox42.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox42.TabIndex = 9;
-            this.pictureBox42.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox42, resources.GetString("pictureBox42.ToolTip"));
-            this.pictureBox42.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox43
-            // 
-            this.pictureBox43.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox43.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox43.Image")));
-            this.pictureBox43.Location = new System.Drawing.Point(128, 21);
-            this.pictureBox43.Name = "pictureBox43";
-            this.pictureBox43.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox43.TabIndex = 9;
-            this.pictureBox43.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox43, "The amount of time allowed for Corrade to gracefully \r\ndisconnect from the grid.");
-            this.pictureBox43.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // pictureBox45
-            // 
-            this.pictureBox45.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox45.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox45.Image")));
-            this.pictureBox45.Location = new System.Drawing.Point(129, 47);
-            this.pictureBox45.Name = "pictureBox45";
-            this.pictureBox45.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox45.TabIndex = 10;
-            this.pictureBox45.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox45, "The time to keep the connections open such that they \r\ncan be reused before closi" +
-        "ng them down.");
-            this.pictureBox45.Click += new System.EventHandler(this.ShowToolTip);
+            this.groupBox66.Controls.Add(this.groupBox8);
+            this.groupBox66.Controls.Add(this.groupBox9);
+            this.groupBox66.Controls.Add(this.groupBox10);
+            this.groupBox66.Controls.Add(this.button12);
+            this.groupBox66.Controls.Add(this.button13);
+            this.groupBox66.Location = new System.Drawing.Point(280, 185);
+            this.groupBox66.Name = "groupBox66";
+            this.groupBox66.Size = new System.Drawing.Size(389, 175);
+            this.groupBox66.TabIndex = 13;
+            this.groupBox66.TabStop = false;
+            this.groupBox66.Text = "Manage Peers";
             // 
             // CorradeConfiguratorForm
             // 
@@ -5255,7 +5298,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox61)).EndInit();
             this.HordeTabPage.ResumeLayout(false);
-            this.HordeTabPage.PerformLayout();
             this.groupBox9.ResumeLayout(false);
             this.groupBox9.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox97)).EndInit();
@@ -5269,9 +5311,9 @@
             this.groupBox75.ResumeLayout(false);
             this.groupBox75.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox102)).EndInit();
-            this.groupBox77.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).EndInit();
             this.groupBox7.ResumeLayout(false);
+            this.groupBox7.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.HordeSynchronizationDataGridView)).EndInit();
             this.LogsTabPage.ResumeLayout(false);
             this.groupBox6.ResumeLayout(false);
             this.groupBox6.PerformLayout();
@@ -5345,6 +5387,68 @@
             this.groupBox44.ResumeLayout(false);
             this.groupBox44.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox27)).EndInit();
+            this.LimitsTabPage.ResumeLayout(false);
+            this.groupBox86.ResumeLayout(false);
+            this.groupBox86.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
+            this.groupBox82.ResumeLayout(false);
+            this.groupBox82.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox82)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox83)).EndInit();
+            this.groupBox76.ResumeLayout(false);
+            this.groupBox76.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox51)).EndInit();
+            this.groupBox71.ResumeLayout(false);
+            this.groupBox71.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox45)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox44)).EndInit();
+            this.groupBox70.ResumeLayout(false);
+            this.groupBox70.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).EndInit();
+            this.groupBox69.ResumeLayout(false);
+            this.groupBox69.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox42)).EndInit();
+            this.groupBox68.ResumeLayout(false);
+            this.groupBox68.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox60)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox59)).EndInit();
+            this.groupBox67.ResumeLayout(false);
+            this.groupBox67.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox68)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox67)).EndInit();
+            this.groupBox65.ResumeLayout(false);
+            this.groupBox65.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox58)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox57)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox56)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox55)).EndInit();
+            this.groupBox64.ResumeLayout(false);
+            this.groupBox64.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox54)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox53)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox52)).EndInit();
+            this.groupBox63.ResumeLayout(false);
+            this.groupBox63.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
+            this.groupBox62.ResumeLayout(false);
+            this.groupBox62.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox49)).EndInit();
+            this.groupBox61.ResumeLayout(false);
+            this.groupBox61.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox48)).EndInit();
+            this.groupBox60.ResumeLayout(false);
+            this.groupBox60.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox47)).EndInit();
+            this.groupBox59.ResumeLayout(false);
+            this.groupBox59.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox41)).EndInit();
+            this.groupBox58.ResumeLayout(false);
+            this.groupBox58.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).EndInit();
+            this.groupBox57.ResumeLayout(false);
+            this.groupBox57.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).EndInit();
             this.ThrottlesTabPage.ResumeLayout(false);
             this.groupBox56.ResumeLayout(false);
             this.groupBox56.PerformLayout();
@@ -5370,70 +5474,11 @@
             this.groupBox49.ResumeLayout(false);
             this.groupBox49.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
-            this.LimitsTabPage.ResumeLayout(false);
-            this.groupBox86.ResumeLayout(false);
-            this.groupBox86.PerformLayout();
-            this.groupBox82.ResumeLayout(false);
-            this.groupBox82.PerformLayout();
-            this.groupBox76.ResumeLayout(false);
-            this.groupBox76.PerformLayout();
-            this.groupBox71.ResumeLayout(false);
-            this.groupBox71.PerformLayout();
-            this.groupBox70.ResumeLayout(false);
-            this.groupBox70.PerformLayout();
-            this.groupBox69.ResumeLayout(false);
-            this.groupBox69.PerformLayout();
-            this.groupBox68.ResumeLayout(false);
-            this.groupBox68.PerformLayout();
-            this.groupBox67.ResumeLayout(false);
-            this.groupBox67.PerformLayout();
-            this.groupBox65.ResumeLayout(false);
-            this.groupBox65.PerformLayout();
-            this.groupBox64.ResumeLayout(false);
-            this.groupBox64.PerformLayout();
-            this.groupBox63.ResumeLayout(false);
-            this.groupBox63.PerformLayout();
-            this.groupBox62.ResumeLayout(false);
-            this.groupBox62.PerformLayout();
-            this.groupBox61.ResumeLayout(false);
-            this.groupBox61.PerformLayout();
-            this.groupBox60.ResumeLayout(false);
-            this.groupBox60.PerformLayout();
-            this.groupBox59.ResumeLayout(false);
-            this.groupBox59.PerformLayout();
-            this.groupBox58.ResumeLayout(false);
-            this.groupBox58.PerformLayout();
-            this.groupBox57.ResumeLayout(false);
-            this.groupBox57.PerformLayout();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox44)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox52)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox59)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox60)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox55)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox56)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox57)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox58)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox82)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox67)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox68)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox53)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox83)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox54)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox51)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox49)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox48)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox47)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox41)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox42)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox45)).EndInit();
+            this.tabControl1.ResumeLayout(false);
+            this.DataSynchronizationTabPage.ResumeLayout(false);
+            this.groupBox66.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -5803,9 +5848,6 @@
         private System.Windows.Forms.GroupBox groupBox42;
         private System.Windows.Forms.PictureBox pictureBox100;
         private System.Windows.Forms.TextBox HTTPServerUsername;
-        private System.Windows.Forms.GroupBox groupBox77;
-        private System.Windows.Forms.PictureBox pictureBox103;
-        private System.Windows.Forms.CheckedListBox HordePeerSynchronization;
         private System.Windows.Forms.GroupBox groupBox75;
         private System.Windows.Forms.Button button14;
         private System.Windows.Forms.PictureBox pictureBox102;
@@ -5837,6 +5879,13 @@
         private System.Windows.Forms.PictureBox pictureBox41;
         private System.Windows.Forms.PictureBox pictureBox46;
         private System.Windows.Forms.PictureBox pictureBox40;
+        private System.Windows.Forms.DataGridView HordeSynchronizationDataGridView;
+        private System.Windows.Forms.TabControl tabControl1;
+        private System.Windows.Forms.TabPage DataSynchronizationTabPage;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Data;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn Add;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn Remove;
+        private System.Windows.Forms.GroupBox groupBox66;
     }
 }
 

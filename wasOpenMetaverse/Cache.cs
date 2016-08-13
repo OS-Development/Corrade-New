@@ -6,25 +6,28 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 using OpenMetaverse;
+using wasSharp;
 
 namespace wasOpenMetaverse
 {
     public static class Cache
     {
-        public static readonly ObservableCollection<Region> ObservableRegionCache = new ObservableCollection<Region>();
-        private static HashSet<Region> _regionCache = new HashSet<Region>();
-        public static readonly ObservableCollection<Agent> ObservableAgentCache = new ObservableCollection<Agent>();
-        private static HashSet<Agent> _agentCache = new HashSet<Agent>();
-        public static readonly ObservableCollection<Group> ObservableGroupCache = new ObservableCollection<Group>();
-        private static HashSet<Group> _groupCache = new HashSet<Group>();
-        public static readonly ObservableCollection<MuteEntry> ObservableMuteCache = new ObservableCollection<MuteEntry>();
-        private static HashSet<MuteEntry> _muteCache = new HashSet<MuteEntry>();
+        public static readonly Collections.ObservableHashSet<Region> ObservableRegionCache =
+            new Collections.ObservableHashSet<Region>();
+
+        public static readonly Collections.ObservableHashSet<Agent> ObservableAgentCache =
+            new Collections.ObservableHashSet<Agent>();
+
+        public static readonly Collections.ObservableHashSet<Group> ObservableGroupCache =
+            new Collections.ObservableHashSet<Group>();
+
+        public static readonly Collections.ObservableHashSet<MuteEntry> ObservableMuteCache =
+            new Collections.ObservableHashSet<MuteEntry>();
 
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
         private static readonly object RegionCacheLock = new object();
@@ -33,65 +36,56 @@ namespace wasOpenMetaverse
         private static readonly object CurrentGroupsCacheLock = new object();
         private static readonly object MuteCacheLock = new object();
 
-        public static HashSet<Region> RegionCache
+        public static Collections.ObservableHashSet<Region> RegionCache
         {
             get
             {
                 lock (RegionCacheLock)
                 {
-                    return _regionCache;
+                    return ObservableRegionCache;
                 }
             }
             set
             {
                 lock (RegionCacheLock)
                 {
-                    _regionCache = value;
-                    ObservableRegionCache.Clear();
-                    foreach (var region in value)
-                        ObservableRegionCache.Add(region);
+                    ObservableRegionCache.AddRange(value);
                 }
             }
         }
 
-        public static HashSet<Agent> AgentCache
+        public static Collections.ObservableHashSet<Agent> AgentCache
         {
             get
             {
                 lock (AgentCacheLock)
                 {
-                    return _agentCache;
+                    return ObservableAgentCache;
                 }
             }
             set
             {
                 lock (AgentCacheLock)
                 {
-                    _agentCache = value;
-                    ObservableAgentCache.Clear();
-                    foreach (var agent in value)
-                        ObservableAgentCache.Add(agent);
+                    ObservableAgentCache.AddRange(value);
                 }
             }
         }
 
-        public static HashSet<Group> GroupCache
+        public static Collections.ObservableHashSet<Group> GroupCache
         {
             get
             {
                 lock (GroupCacheLock)
                 {
-                    return _groupCache;
+                    return ObservableGroupCache;
                 }
             }
             set
             {
                 lock (AgentCacheLock)
                 {
-                    _groupCache = value;
-                    ObservableGroupCache.Clear();
-                    foreach (var agent in value)
-                        ObservableGroupCache.Add(agent);
+                    ObservableGroupCache.AddRange(value);
                 }
             }
         }
@@ -114,23 +108,20 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static HashSet<MuteEntry> MuteCache
+        public static Collections.ObservableHashSet<MuteEntry> MuteCache
         {
             get
             {
                 lock (MuteCacheLock)
                 {
-                    return _muteCache;
+                    return ObservableMuteCache;
                 }
             }
             set
             {
                 lock (AgentCacheLock)
                 {
-                    _muteCache = value;
-                    ObservableMuteCache.Clear();
-                    foreach (var mute in value)
-                        ObservableMuteCache.Add(mute);
+                    ObservableMuteCache.AddRange(value);
                 }
             }
         }
@@ -139,17 +130,14 @@ namespace wasOpenMetaverse
         {
             lock (RegionCacheLock)
             {
-                _regionCache.Clear();
                 ObservableRegionCache.Clear();
             }
             lock (AgentCacheLock)
             {
-                _agentCache.Clear();
                 ObservableAgentCache.Clear();
             }
             lock (GroupCacheLock)
             {
-                _groupCache.Clear();
                 ObservableGroupCache.Clear();
             }
             lock (CurrentGroupsCacheLock)
@@ -158,31 +146,43 @@ namespace wasOpenMetaverse
             }
             lock (MuteCacheLock)
             {
-                _muteCache.Clear();
                 ObservableMuteCache.Clear();
             }
         }
 
         public static bool AddRegion(string name, ulong handle)
         {
-            return AddRegion(new Region
+            return !string.IsNullOrEmpty(name) && !handle.Equals(0) && AddRegion(new Region
             {
                 Name = name,
                 Handle = handle
             });
         }
 
-        public static bool AddRegion(Region region)
+        private static bool AddRegion(Region region)
         {
             lock (RegionCacheLock)
             {
-                if (!_regionCache.Contains(region))
-                {
-                    _regionCache.Add(region);
-                    ObservableRegionCache.Add(region);
-                    return true;
-                }
+                if (ObservableRegionCache.Contains(region)) return false;
+                ObservableRegionCache.Add(region);
+                return true;
+            }
+        }
+
+        public static bool RemoveRegion(string name, ulong handle)
+        {
+            Region region;
+            lock (RegionCacheLock)
+            {
+                region =
+                    ObservableRegionCache.AsParallel()
+                        .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && handle.Equals(o.Handle));
+            }
+            if (region.Equals(default(Region)))
                 return false;
+            lock (RegionCacheLock)
+            {
+                return ObservableRegionCache.Remove(region);
             }
         }
 
@@ -191,14 +191,14 @@ namespace wasOpenMetaverse
             lock (RegionCacheLock)
             {
                 return
-                    _regionCache.AsParallel()
+                    ObservableRegionCache.AsParallel()
                         .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
             }
         }
 
         public static bool AddMute(MuteFlags flags, UUID uuid, string name, MuteType type)
         {
-            return AddMute(new MuteEntry
+            return !uuid.Equals(UUID.Zero) && !string.IsNullOrEmpty(name) && AddMute(new MuteEntry
             {
                 Flags = flags,
                 ID = uuid,
@@ -207,49 +207,74 @@ namespace wasOpenMetaverse
             });
         }
 
-        public static bool AddMute(MuteEntry muteEntry)
+        private static bool AddMute(MuteEntry muteEntry)
         {
             lock (MuteCacheLock)
             {
-                if (!_muteCache.Contains(muteEntry))
-                {
-                    _muteCache.Add(muteEntry);
-                    ObservableMuteCache.Add(muteEntry);
-                    return true;
-                }
-                return false;
+                if (ObservableMuteCache.Contains(muteEntry)) return false;
+                ObservableMuteCache.Add(muteEntry);
+                return true;
             }
         }
 
-        public static void RemoveMute(MuteEntry mute)
+        public static bool RemoveMute(MuteFlags flags, UUID muteUUID, string name, MuteType type)
         {
+            MuteEntry mute;
             lock (MuteCacheLock)
             {
-                _muteCache.Remove(mute);
+                mute =
+                    ObservableMuteCache.AsParallel()
+                        .FirstOrDefault(
+                            o =>
+                                muteUUID.Equals(o.ID) && flags.Equals(o.Flags) && type.Equals(o.Type) && string.Equals(name, o.Name, StringComparison.Ordinal));
+            }
+            if (mute == null || mute.Equals(default(MuteEntry)))
+                return false;
+            lock (MuteCacheLock)
+            {
+                return ObservableMuteCache.Remove(mute);
             }
         }
 
         public static bool AddAgent(string FirstName, string LastName, UUID agentUUID)
         {
-            return AddAgent(new Agent
-            {
-                FirstName = FirstName,
-                LastName = LastName,
-                UUID = agentUUID
-            });
+            return !string.IsNullOrEmpty(FirstName) && !string.IsNullOrEmpty(LastName) && !agentUUID.Equals(UUID.Zero) &&
+                   AddAgent(new Agent
+                   {
+                       FirstName = FirstName,
+                       LastName = LastName,
+                       UUID = agentUUID
+                   });
         }
 
-        public static bool AddAgent(Agent agent)
+        private static bool AddAgent(Agent agent)
         {
             lock (AgentCacheLock)
             {
-                if (!_agentCache.Contains(agent))
-                {
-                    _agentCache.Add(agent);
-                    ObservableAgentCache.Add(agent);
-                    return true;
-                }
+                if (ObservableAgentCache.Contains(agent)) return false;
+                ObservableAgentCache.Add(agent);
+                return true;
+            }
+        }
+
+        public static bool RemoveAgent(string firstName, string lastName, UUID agentUUID)
+        {
+            Agent agent;
+            lock (AgentCacheLock)
+            {
+                agent =
+                    ObservableAgentCache.AsParallel()
+                        .FirstOrDefault(
+                            o =>
+                                string.Equals(firstName, o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(lastName, o.LastName, StringComparison.OrdinalIgnoreCase) &&
+                                agentUUID.Equals(o.UUID));
+            }
+            if (agent.Equals(default(Agent)))
                 return false;
+            lock (AgentCacheLock)
+            {
+                return ObservableAgentCache.Remove(agent);
             }
         }
 
@@ -257,7 +282,7 @@ namespace wasOpenMetaverse
         {
             lock (AgentCacheLock)
             {
-                return _agentCache.AsParallel().FirstOrDefault(
+                return ObservableAgentCache.AsParallel().FirstOrDefault(
                     o =>
                         o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
                         o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
@@ -268,7 +293,7 @@ namespace wasOpenMetaverse
         {
             lock (AgentCacheLock)
             {
-                return _agentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+                return ObservableAgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
             }
         }
 
@@ -285,24 +310,37 @@ namespace wasOpenMetaverse
 
         public static bool AddGroup(string GroupName, UUID GroupUUID)
         {
-            return AddGroup(new Group
+            return !string.IsNullOrEmpty(GroupName) && !GroupUUID.Equals(UUID.Zero) && AddGroup(new Group
             {
                 Name = GroupName,
                 UUID = GroupUUID
             });
         }
 
-        public static bool AddGroup(Group group)
+        private static bool AddGroup(Group group)
         {
             lock (GroupCacheLock)
             {
-                if (!_groupCache.Contains(group))
-                {
-                    _groupCache.Add(group);
-                    ObservableGroupCache.Add(group);
-                    return true;
-                }
+                if (ObservableGroupCache.Contains(@group)) return false;
+                ObservableGroupCache.Add(@group);
+                return true;
+            }
+        }
+
+        public static bool RemoveGroup(string name, UUID groupUUID)
+        {
+            Group group;
+            lock (RegionCacheLock)
+            {
+                group =
+                    ObservableGroupCache.AsParallel()
+                        .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID));
+            }
+            if (group.Equals(default(Group)))
                 return false;
+            lock (GroupCacheLock)
+            {
+                return ObservableGroupCache.Remove(group);
             }
         }
 
@@ -311,7 +349,7 @@ namespace wasOpenMetaverse
             lock (GroupCacheLock)
             {
                 return
-                    _groupCache.ToArray()
+                    ObservableGroupCache.ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Name.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
             }
@@ -321,7 +359,7 @@ namespace wasOpenMetaverse
         {
             lock (GroupCacheLock)
             {
-                return _groupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
+                return ObservableGroupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(GroupUUID));
             }
         }
 

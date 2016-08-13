@@ -5,7 +5,10 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Xml;
 using System.Xml.Schema;
@@ -15,6 +18,111 @@ namespace wasSharp
 {
     public static class Collections
     {
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     An implementation of an observable HashSet.
+        /// </summary>
+        /// <typeparam name="T">the object type</typeparam>
+        public class ObservableHashSet<T> : ICollection<T>, INotifyCollectionChanged
+        {
+            private readonly HashSet<T> store = new HashSet<T>();
+
+            public IEnumerator<T> GetEnumerator()
+            {
+                return store.GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+
+            public void Add(T item)
+            {
+                store.Add(item);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
+            }
+
+            public void Clear()
+            {
+                store.Clear();
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            }
+
+            public bool Contains(T item)
+            {
+                return store.Contains(item);
+            }
+
+            public void CopyTo(T[] array, int arrayIndex)
+            {
+                store.CopyTo(array);
+            }
+
+            public bool Remove(T item)
+            {
+                var removed = store.Remove(item);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                return removed;
+            }
+
+            public int Count => store.Count;
+
+            public bool IsReadOnly => false;
+
+            public event NotifyCollectionChangedEventHandler CollectionChanged;
+
+            public void AddRange(IEnumerable<T> list)
+            {
+                foreach (var item in list)
+                    store.Add(item);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            }
+
+            public void UnionWith(IEnumerable<T> list)
+            {
+                store.UnionWith(list);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            }
+
+            private void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
+            {
+                CollectionChanged?.Invoke(this, args);
+            }
+        }
+
+        /// <summary>
+        ///     An observable collection allowing the add of a range of items.
+        /// </summary>
+        /// <typeparam name="T">the collection type</typeparam>
+        public class ExtendedObservableCollection<T> : ObservableCollection<T>
+        {
+            private bool _suppressNotification;
+
+            protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+            {
+                if (!_suppressNotification)
+                    base.OnCollectionChanged(e);
+            }
+
+            public void AddRange(IEnumerable<T> list)
+            {
+                if (list == null)
+                    throw new ArgumentNullException(nameof(list));
+
+                _suppressNotification = true;
+
+                foreach (var item in list)
+                {
+                    Add(item);
+                }
+                _suppressNotification = false;
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            }
+        }
+
         /// <summary>
         ///     A serializable dictionary class.
         /// </summary>

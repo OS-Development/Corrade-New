@@ -190,7 +190,7 @@ namespace Corrade
                                         {
                                             case true:
                                                 // remove the mute from the cache
-                                                Cache.RemoveMute(mute);
+                                                Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
                                                 break;
                                             case false:
                                                 lock (LockObject)
