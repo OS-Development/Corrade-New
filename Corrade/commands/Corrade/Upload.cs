@@ -39,7 +39,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
-                    uint permissions = 0;
+                    var permissions = PermissionMask.None;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
@@ -50,8 +50,11 @@ namespace Corrade
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
                             o => typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                    q => { permissions |= (uint) q.GetValue(null); }));
+                                .AsParallel().Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                    q =>
+                                    {
+                                        BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask) q.GetValue(null));
+                                    }));
                     var assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                      BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
@@ -215,7 +218,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
-                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    permissions == 0 ? PermissionMask.Transfer : permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
@@ -272,7 +275,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Gesture,
-                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    permissions == 0 ? PermissionMask.Transfer : permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
@@ -320,7 +323,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Notecard,
-                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    permissions == 0 ? PermissionMask.Transfer : permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
@@ -368,7 +371,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     UUID.Random(), InventoryType.LSL,
-                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    permissions == 0 ? PermissionMask.Transfer : permissions,
                                     delegate(bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;

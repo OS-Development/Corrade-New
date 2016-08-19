@@ -108,8 +108,14 @@ namespace Corrade
                         .ForAll(
                             o =>
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        q => { groupRole.Powers |= (GroupPowers) q.GetValue(null); }));
+                                    .AsParallel()
+                                    .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .ForAll(
+                                        q =>
+                                        {
+                                            BitTwiddling.SetMaskFlag(ref groupRole.Powers,
+                                                (GroupPowers) q.GetValue(null));
+                                        }));
                     lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.UpdateRole(groupRole);

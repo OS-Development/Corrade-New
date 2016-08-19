@@ -35,9 +35,7 @@ namespace Corrade
                         CSV.FromEnumerable(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
                                                                                   BindingFlags.Static)
                             .AsParallel().Where(
-                                p =>
-                                    !((uint) p.GetValue(null) &
-                                      (uint) scriptControlEventArgs.Controls).Equals(0))
+                                p => scriptControlEventArgs.Controls.IsMaskFlagSet((ScriptControlChange)p.GetValue(null)))
                             .Select(p => p.Name)));
                     notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PASS),
                         scriptControlEventArgs.Pass.ToString());

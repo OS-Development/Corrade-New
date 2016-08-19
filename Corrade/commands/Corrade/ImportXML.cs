@@ -87,7 +87,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
+                    if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
                     {
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
@@ -317,7 +317,8 @@ namespace Corrade
                                                         j2cBytes);
                                                 }
                                                 if (corradeConfiguration.EnableHorde)
-                                                    HordeDistributeCacheAsset(replaceByTextureUUID, j2cBytes, Configuration.HordeDataSynchronizationOption.Add);
+                                                    HordeDistributeCacheAsset(replaceByTextureUUID, j2cBytes,
+                                                        Configuration.HordeDataSynchronizationOption.Add);
                                                 // Finally, add the replacement texture to the dictionary.
                                                 lock (LockObject)
                                                 {
@@ -383,7 +384,7 @@ namespace Corrade
                         var primitive = args.Prim;
 
                         // Skip updates for objects we did not create.
-                        if ((primitive.Flags & PrimFlags.CreateSelected) == 0)
+                        if (!primitive.Flags.IsMaskFlagSet(PrimFlags.CreateSelected))
                             return;
 
                         switch (rezState)

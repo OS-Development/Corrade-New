@@ -58,11 +58,7 @@ namespace Corrade
                             CSV.FromEnumerable(typeof (FriendRights).GetFields(BindingFlags.Public |
                                                                                BindingFlags.Static)
                                 .AsParallel().Where(
-                                    p =>
-                                        !((int) p.GetValue(null) &
-                                          (int) friendInfoEventArgs.Friend.MyFriendRights)
-                                            .Equals(
-                                                0))
+                                    p => friendInfoEventArgs.Friend.MyFriendRights.IsMaskFlagSet((FriendRights)p.GetValue(null)))
                                 .Select(p => p.Name)));
                         notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
                             Reflection.GetNameFromEnumValue(Action.UPDATE));

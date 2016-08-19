@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
 using wasOpenMetaverse;
+using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -47,7 +48,7 @@ namespace Corrade
                         // Try attachments
                         var RLVattachment =
                             RLVAttachments.AsParallel().FirstOrDefault(
-                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             attachment =
@@ -73,7 +74,7 @@ namespace Corrade
                         }
                         var RLVwearable =
                             RLVWearables.AsParallel().FirstOrDefault(
-                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (!RLVwearable.Equals(default(RLVWearable)))
                         {
                             var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |

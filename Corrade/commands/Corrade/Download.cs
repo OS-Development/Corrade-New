@@ -275,7 +275,7 @@ namespace Corrade
                                             BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 o =>
-                                                    string.Equals(o.Name, format, StringComparison.Ordinal));
+                                                    Strings.Equals(o.Name, format, StringComparison.Ordinal));
                                         if (formatProperty == null)
                                         {
                                             throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using OpenMetaverse;
 using wasOpenMetaverse;
+using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -33,7 +34,7 @@ namespace Corrade
                     case true:
                         var RLVwearable = RLVWearables.AsParallel()
                             .FirstOrDefault(
-                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVwearable.Equals(default(RLVWearable)))
                         {
                             case true:

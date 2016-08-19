@@ -105,7 +105,7 @@ namespace Corrade
                         typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
-                                    string.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
+                                    Strings.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
                                             InventoryItem inventoryItem;

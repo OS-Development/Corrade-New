@@ -63,6 +63,10 @@ namespace wasSharp
             {
             }
 
+            public Timer(Action<object> callback) : this(callback.Invoke, null, TimeSpan.Zero, TimeSpan.Zero)
+            {
+            }
+
             public void Dispose()
             {
                 Dispose(true);
@@ -87,6 +91,12 @@ namespace wasSharp
                 Reset(dueTime);
             }
 
+            public void Change(uint dueTime, int period)
+            {
+                Period = period;
+                Change((int) dueTime, period);
+            }
+
             public void Change(TimeSpan dueTime, TimeSpan period)
             {
                 Change((int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
@@ -95,30 +105,28 @@ namespace wasSharp
             private void Reset(int due)
             {
                 Cancel();
-                if (due >= 0)
+                if (due <= 0) return;
+                TokenSource = new CancellationTokenSource();
+                Action tick = null;
+                tick = () =>
                 {
-                    TokenSource = new CancellationTokenSource();
-                    Action tick = null;
-                    tick = () =>
-                    {
-                        Task.Run(() => Callback(State));
-                        if (Disposed || Period < 0) return;
-                        Delay = Period > 0 ? Task.Delay(Period, TokenSource.Token) : CompletedTask;
-                        Delay.ContinueWith(t => tick(), TokenSource.Token);
-                    };
-                    Delay = due > 0 ? Task.Delay(due, TokenSource.Token) : CompletedTask;
+                    Task.Run(() => Callback(State));
+                    if (Disposed) return;
+                    Delay = Period > 0 ? Task.Delay(Period, TokenSource.Token) : CompletedTask;
+                    if (Delay.IsCompleted) return;
                     Delay.ContinueWith(t => tick(), TokenSource.Token);
-                }
+                };
+                Delay = due > 0 ? Task.Delay(due, TokenSource.Token) : CompletedTask;
+                if (Delay.IsCompleted) return;
+                Delay.ContinueWith(t => tick(), TokenSource.Token);
             }
 
             private void Cancel()
             {
-                if (TokenSource != null)
-                {
-                    TokenSource.Cancel();
-                    TokenSource.Dispose();
-                    TokenSource = null;
-                }
+                if (TokenSource == null) return;
+                TokenSource.Cancel();
+                TokenSource.Dispose();
+                TokenSource = null;
             }
         }
 

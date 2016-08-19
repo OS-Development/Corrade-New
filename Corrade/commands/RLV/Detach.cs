@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
+using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -40,7 +41,7 @@ namespace Corrade
                     case true:
                         var RLVattachment =
                             RLVAttachments.AsParallel().FirstOrDefault(
-                                o => string.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                         switch (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             case true: // detach by attachment point
@@ -195,7 +196,7 @@ namespace Corrade
                             .SelectMany(
                                 o =>
                                     o.Key.NameValues.AsParallel()
-                                        .Where(p => string.Equals(@"AttachItemID", p.Name, StringComparison.Ordinal)))
+                                        .Where(p => Strings.Equals(@"AttachItemID", p.Name, StringComparison.Ordinal)))
                             .ForAll(
                                 o =>
                                 {

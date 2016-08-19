@@ -456,7 +456,7 @@ namespace wasOpenMetaverse
             EventHandler<GridRegionEventArgs> GridRegionEventHandler =
                 (sender, args) =>
                 {
-                    if (!string.Equals(name, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                    if (!Strings.Equals(name, args.Region.Name, StringComparison.OrdinalIgnoreCase))
                         return;
                     localRegionHandle = args.Region.RegionHandle;
                     GridRegionEvent.Set();

@@ -797,7 +797,7 @@ namespace wasOpenMetaverse
             if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
             var localPrimitive =
-                primitives.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
+                primitives.FirstOrDefault(o => Strings.Equals(o.Properties.Name, item, StringComparison.Ordinal));
             if (localPrimitive == null)
                 return false;
             primitive = localPrimitive;
@@ -842,7 +842,7 @@ namespace wasOpenMetaverse
             if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
             var localPrimitive =
-                primitives.FirstOrDefault(o => string.Equals(o.Properties.Name, item, StringComparison.Ordinal));
+                primitives.FirstOrDefault(o => Strings.Equals(o.Properties.Name, item, StringComparison.Ordinal));
             if (localPrimitive == null)
                 return false;
             primitive = localPrimitive;

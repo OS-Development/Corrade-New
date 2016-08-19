@@ -62,8 +62,7 @@ namespace Corrade
                                         .GetAttributeFromEnumValue
                                         <CommandInputSyntaxAttribute>(
                                             Reflection.GetEnumValueFromName<ScriptKeys>(name));
-                                    if (commandInputSyntaxAttribute != null &&
-                                        !string.IsNullOrEmpty(commandInputSyntaxAttribute.Syntax))
+                                    if (!string.IsNullOrEmpty(commandInputSyntaxAttribute?.Syntax))
                                     {
                                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                                             commandInputSyntaxAttribute.Syntax);
@@ -76,17 +75,19 @@ namespace Corrade
                         case Entity.PERMISSION:
                             var data = new HashSet<string>();
                             var LockObject = new object();
-                            Reflection.GetEnumNames<Configuration.Permissions>().AsParallel().ForAll(o =>
-                            {
-                                var permission =
-                                    Reflection.GetEnumValueFromName<Configuration.Permissions>(o);
-                                if ((commandPermissionMaskAttribute.PermissionMask & (uint) permission).Equals(0))
-                                    return;
-                                lock (LockObject)
+                            Reflection.GetEnumNames<Configuration.Permissions>()
+                                .AsParallel()
+                                .Where(
+                                    o =>
+                                        commandPermissionMaskAttribute.PermissionMask.IsMaskFlagSet(
+                                            Reflection.GetEnumValueFromName<Configuration.Permissions>(o)))
+                                .ForAll(o =>
                                 {
-                                    data.Add(o);
-                                }
-                            });
+                                    lock (LockObject)
+                                    {
+                                        data.Add(o);
+                                    }
+                                });
                             if (data.Any())
                             {
                                 result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

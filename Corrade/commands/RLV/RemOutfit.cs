@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -29,7 +30,7 @@ namespace Corrade
                         var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                            BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
-                                p => string.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
+                                p => Strings.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
                         if (wearTypeInfo == null)
                         {
                             break;

@@ -11,6 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
+using wasSharp;
 
 namespace wasOpenMetaverse
 {
@@ -255,7 +256,7 @@ namespace wasOpenMetaverse
             var inventoryFolders = new HashSet<InventoryFolder>();
             foreach (var item in Client.Inventory.Store.GetContents(rootFolder))
             {
-                if (string.Equals(criteria, item.Name, StringComparison.Ordinal))
+                if (Strings.Equals(criteria, item.Name, StringComparison.Ordinal))
                 {
                     if (typeof (T) == typeof (InventoryNode))
                     {
@@ -464,7 +465,7 @@ namespace wasOpenMetaverse
         private static IEnumerable<KeyValuePair<T, LinkedList<string>>> directFindInventoryPath<T>(GridClient Client,
             InventoryNode root, string criteria, LinkedList<string> prefix)
         {
-            if (string.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
+            if (Strings.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
             {
                 if (typeof (T) == typeof (InventoryBase))
                 {

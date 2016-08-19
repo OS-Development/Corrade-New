@@ -39,7 +39,9 @@ namespace Corrade
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
                             o => typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(q =>
+                                .AsParallel()
+                                .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                .ForAll(q =>
                                 {
                                     lock (LockObject)
                                     {

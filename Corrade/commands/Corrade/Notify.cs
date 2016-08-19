@@ -233,11 +233,11 @@ namespace Corrade
                                         .ToArray()
                                         .AsParallel()
                                         .Where(p => !string.IsNullOrEmpty(p))
-                                        .Any(p => !(o.NotificationMask &
-                                                    (ulong)
-                                                        Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                            p))
-                                            .Equals(0)) &&
+                                        .Any(
+                                            p =>
+                                                o.NotificationMask.IsMaskFlagSet(Reflection
+                                                    .GetEnumValueFromName<Configuration.Notifications>(
+                                                        p))) &&
                                          !o.NotificationURLDestination.Values.Any(p => p.Contains(url))) ||
                                         !o.GroupUUID.Equals(corradeCommandParameters.Group.UUID))
                                     {
@@ -273,7 +273,8 @@ namespace Corrade
                                                 var URLs =
                                                     new HashSet<string>(
                                                         p.Value.AsParallel()
-                                                            .Where(q => !string.Equals(url, q, StringComparison.Ordinal)));
+                                                            .Where(
+                                                                q => !Strings.Equals(url, q, StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)
                                                 {
@@ -317,18 +318,19 @@ namespace Corrade
                                     Reflection.GetEnumNames<Configuration.Notifications>()
                                         .ToArray()
                                         .AsParallel()
-                                        .Where(o => !(groupNotification.NotificationMask &
-                                                      (ulong)
-                                                          Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
-                                            .Equals(0)).ForAll(o =>
+                                        .Where(
+                                            o =>
+                                                groupNotification.NotificationMask.IsMaskFlagSet(
+                                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o)))
+                                        .ForAll(o =>
+                                        {
+                                            lock (LockObject)
                                             {
-                                                lock (LockObject)
-                                                {
-                                                    csv.Add(o);
-                                                    csv.AddRange(groupNotification.NotificationURLDestination[
-                                                        Reflection.GetEnumValueFromName<Configuration.Notifications>(o)]);
-                                                }
-                                            });
+                                                csv.Add(o);
+                                                csv.AddRange(groupNotification.NotificationURLDestination[
+                                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o)]);
+                                            }
+                                        });
                                 }
                             }
                             if (csv.Any())
@@ -415,7 +417,7 @@ namespace Corrade
                                     .AsParallel().ForAll(o =>
                                     {
                                         GroupNotifications.AsParallel()
-                                            .Where(p => !((ulong) o & p.NotificationMask).Equals(0)).ForAll(p =>
+                                            .Where(p => p.NotificationMask.IsMaskFlagSet(o)).ForAll(p =>
                                             {
                                                 lock (LockObject)
                                                 {

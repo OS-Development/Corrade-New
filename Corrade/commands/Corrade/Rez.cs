@@ -109,7 +109,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
+                    if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
                     {
                         if (!simulator.IsEstateManager)
                         {

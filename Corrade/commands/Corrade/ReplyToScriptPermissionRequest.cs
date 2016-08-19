@@ -54,7 +54,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.SCRIPT_PERMISSION_REQUEST_NOT_FOUND);
                     }
                     var succeeded = true;
-                    var permissionMask = 0;
+                    var permissionMask = ScriptPermission.None;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
@@ -66,7 +66,9 @@ namespace Corrade
                         .ForAll(
                             o =>
                                 typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                    .AsParallel()
+                                    .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .ForAll(
                                         q =>
                                         {
                                             var permission = (ScriptPermission) q.GetValue(null);
@@ -125,7 +127,7 @@ namespace Corrade
                                                     succeeded = false;
                                                     return;
                                             }
-                                            permissionMask |= (int) permission;
+                                            BitTwiddling.SetMaskFlag(ref permissionMask, permission);
                                         }));
                     if (!succeeded)
                     {
@@ -138,7 +140,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceNetworkLock)
                     {
                         simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                            o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
+                            o => Strings.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
                     }
                     if (simulator == null)
                     {
@@ -152,7 +154,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
-                            (ScriptPermission) permissionMask);
+                            permissionMask);
                     }
                 };
         }

@@ -95,7 +95,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_ROLE_NAME_SPECIFIED);
                     }
-                    ulong powers = 0;
+                    var powers = GroupPowers.None;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POWERS)),
@@ -106,8 +106,10 @@ namespace Corrade
                         .ForAll(
                             o =>
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        q => { powers |= (ulong) q.GetValue(null); }));
+                                    .AsParallel()
+                                    .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .ForAll(
+                                        q => { BitTwiddling.SetMaskFlag(ref powers, (GroupPowers) q.GetValue(null)); }));
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.ChangeActions,
@@ -135,7 +137,7 @@ namespace Corrade
                                         corradeCommandParameters.Message)),
                             GroupID = groupUUID,
                             ID = UUID.Random(),
-                            Powers = (GroupPowers) powers,
+                            Powers = powers,
                             Title = title
                         });
                     }

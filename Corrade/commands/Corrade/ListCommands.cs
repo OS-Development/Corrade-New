@@ -30,8 +30,8 @@ namespace Corrade
                             Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
                         if (!corradeCommandParameters.Group.Equals(default(Configuration.Group)) &&
-                            !(corradeCommandParameters.Group.PermissionMask &
-                              commandPermissionMaskAttribute.PermissionMask).Equals(0))
+                            corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
+                                commandPermissionMaskAttribute.PermissionMask))
                         {
                             lock (LockObject)
                             {

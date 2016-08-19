@@ -5,7 +5,9 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -176,7 +178,7 @@ namespace wasOpenMetaverse
             {
                 region =
                     ObservableRegionCache.AsParallel()
-                        .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && handle.Equals(o.Handle));
+                        .FirstOrDefault(o => Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && handle.Equals(o.Handle));
             }
             if (region.Equals(default(Region)))
                 return false;
@@ -192,7 +194,7 @@ namespace wasOpenMetaverse
             {
                 return
                     ObservableRegionCache.AsParallel()
-                        .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(o => Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -226,7 +228,7 @@ namespace wasOpenMetaverse
                     ObservableMuteCache.AsParallel()
                         .FirstOrDefault(
                             o =>
-                                muteUUID.Equals(o.ID) && flags.Equals(o.Flags) && type.Equals(o.Type) && string.Equals(name, o.Name, StringComparison.Ordinal));
+                                muteUUID.Equals(o.ID) && flags.Equals(o.Flags) && type.Equals(o.Type) && Strings.Equals(name, o.Name, StringComparison.Ordinal));
             }
             if (mute == null || mute.Equals(default(MuteEntry)))
                 return false;
@@ -266,8 +268,8 @@ namespace wasOpenMetaverse
                     ObservableAgentCache.AsParallel()
                         .FirstOrDefault(
                             o =>
-                                string.Equals(firstName, o.FirstName, StringComparison.OrdinalIgnoreCase) &&
-                                string.Equals(lastName, o.LastName, StringComparison.OrdinalIgnoreCase) &&
+                                Strings.Equals(firstName, o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                Strings.Equals(lastName, o.LastName, StringComparison.OrdinalIgnoreCase) &&
                                 agentUUID.Equals(o.UUID));
             }
             if (agent.Equals(default(Agent)))
@@ -334,7 +336,7 @@ namespace wasOpenMetaverse
             {
                 group =
                     ObservableGroupCache.AsParallel()
-                        .FirstOrDefault(o => string.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID));
+                        .FirstOrDefault(o => Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID));
             }
             if (group.Equals(default(Group)))
                 return false;

@@ -81,7 +81,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
+                    if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
                     {
                         if (!simulator.IsEstateManager)
                         {
@@ -111,7 +111,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out scale))
                     {
-                        scale = new Vector3(0.5f, 0.5f, 0.5f);
+                        scale = Constants.PRIMITIVES.DEFAULT_NEW_PRIMITIVE_SCALE;
                     }
                     if (Helpers.IsSecondLife(Client) &&
                         (scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
@@ -152,7 +152,7 @@ namespace Corrade
                             corradeCommandParameters.Message)),
                         ref constructionData);
                     // Get any primitive flags.
-                    uint primFlags = 0;
+                    PrimFlags primFlags = 0;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
@@ -163,8 +163,10 @@ namespace Corrade
                         .ForAll(
                             o =>
                                 typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                        q => { primFlags |= (uint) q.GetValue(null); }));
+                                    .AsParallel()
+                                    .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .ForAll(
+                                        q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags) q.GetValue(null)); }));
 
                     // Finally, add the primitive to the simulator.
                     lock (Locks.ClientInstanceObjectsLock)
@@ -172,7 +174,7 @@ namespace Corrade
                         Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID,
                             position,
                             scale, rotation,
-                            (PrimFlags) primFlags);
+                            primFlags);
                     }
                 };
         }

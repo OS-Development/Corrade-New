@@ -69,6 +69,7 @@ namespace wasOpenMetaverse
             public const double MAXIMUM_SIZE_X = 64.0;
             public const double MAXIMUM_SIZE_Y = 64.0;
             public const double MAXIMUM_SIZE_Z = 64.0;
+            public static Vector3 DEFAULT_NEW_PRIMITIVE_SCALE = new Vector3(0.5f, 0.5f, 0.5f);
         }
 
         public struct OBJECTS

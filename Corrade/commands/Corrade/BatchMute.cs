@@ -94,7 +94,7 @@ namespace Corrade
                                                     .GetValue(null)
                                             : MuteType.ByName;
                                         // Get the mute flags - default is "Default" equivalent to 0
-                                        var muteFlags = 0;
+                                        var muteFlags = MuteFlags.Default;
                                         CSV.ToEnumerable(
                                             wasInput(
                                                 KeyValue.Get(
@@ -106,16 +106,20 @@ namespace Corrade
                                                 typeof (MuteFlags).GetFields(BindingFlags.Public |
                                                                              BindingFlags.Static)
                                                     .AsParallel()
-                                                    .Where(q => string.Equals(p, q.Name, StringComparison.Ordinal))
+                                                    .Where(q => Strings.Equals(p, q.Name, StringComparison.Ordinal))
                                                     .ForAll(
-                                                        r => { muteFlags |= (int) r.GetValue(null); }));
+                                                        r =>
+                                                        {
+                                                            BitTwiddling.SetMaskFlag(ref muteFlags,
+                                                                (MuteFlags) r.GetValue(null));
+                                                        }));
                                         succeeded = true;
                                         lock (Locks.ClientInstanceSelfLock)
                                         {
                                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                                             MuteListUpdatedEvent.Reset();
                                             Client.Self.UpdateMuteListEntry(muteType, targetUUID, o.Key,
-                                                (MuteFlags) muteFlags);
+                                                muteFlags);
                                             if (
                                                 !MuteListUpdatedEvent.WaitOne(
                                                     (int) corradeConfiguration.ServicesTimeout,
@@ -129,7 +133,7 @@ namespace Corrade
                                         switch (succeeded)
                                         {
                                             case true:
-                                                Cache.AddMute((MuteFlags) muteFlags, targetUUID, o.Key, muteType);
+                                                Cache.AddMute(muteFlags, targetUUID, o.Key, muteType);
                                                 break;
                                             case false:
                                                 lock (LockObject)

@@ -76,9 +76,7 @@ namespace Corrade
                             args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
                         data.UnionWith(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
-                                o =>
-                                    !((ulong) o.GetValue(null) &
-                                      (ulong) queryRole.Powers).Equals(0))
+                                o => queryRole.Powers.IsMaskFlagSet((GroupPowers) o.GetValue(null)))
                             .Select(o => o.Name));
                         GroupRoleDataReplyEvent.Set();
                     };

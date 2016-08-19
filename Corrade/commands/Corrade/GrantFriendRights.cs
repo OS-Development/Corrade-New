@@ -58,7 +58,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
                     }
-                    var rights = 0;
+                    var rights = FriendRights.None;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RIGHTS)),
@@ -68,11 +68,11 @@ namespace Corrade
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
                             o => typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => string.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
-                                    q => { rights |= (int) q.GetValue(null); }));
+                                .AsParallel().Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                                    q => { BitTwiddling.SetMaskFlag(ref rights, (FriendRights) q.GetValue(null)); }));
                     lock (Locks.ClientInstanceFriendsLock)
                     {
-                        Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
+                        Client.Friends.GrantRights(agentUUID, rights);
                     }
                 };
         }

@@ -213,7 +213,7 @@ namespace Configurator
             {
                 mainForm.HordePeers.Items.Add(new ListViewItem
                 {
-                    Text = cachePeer.URL.TrimEnd('/') + @"/",
+                    Text = cachePeer.Name,
                     Tag = cachePeer
                 });
             }
@@ -827,13 +827,8 @@ namespace Configurator
                 // Permissions
                 for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
-                    switch (
-                        !(group.PermissionMask &
-                          (ulong)
-                              Reflection.GetEnumValueFromName<Configuration.Permissions>(
-                                  (string) GroupPermissions.Items[i]))
-                            .Equals
-                            (0))
+                    switch (@group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                                  (string)GroupPermissions.Items[i])))
                     {
                         case true:
                             GroupPermissions.SetItemChecked(i, true);
@@ -847,12 +842,13 @@ namespace Configurator
                 // Notifications
                 for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
-                    switch (
-                        !(group.NotificationMask &
+                    switch (@group.NotificationMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                  (string)GroupNotifications.Items[i]))
+                        /*!(group.NotificationMask &
                           (ulong)
                               Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                   (string) GroupNotifications.Items[i]))
-                            .Equals(0))
+                            .Equals(0)*/)
                     {
                         case true:
                             GroupNotifications.SetItemChecked(i, true);
@@ -3026,6 +3022,7 @@ namespace Configurator
                 }
 
                 HordePeerURL.Text = hordePeer.URL;
+                HordePeerName.Text = hordePeer.Name;
                 HordePeerUsername.Text = hordePeer.Username;
                 HordePeerPassword.Text = hordePeer.Password;
                 HordePeerSharedSecret.Text = hordePeer.SharedSecret;
@@ -3043,7 +3040,9 @@ namespace Configurator
                 var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
                 if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
-                    string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                    string.IsNullOrEmpty(HordePeerURL.Text) || 
+                    string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                    string.IsNullOrEmpty(HordePeerName.Text) ||
                     corradeConfiguration.HordePeers.AsParallel().Where(o => !o.Equals(hordePeer))
                         .Any(
                             o =>
@@ -3053,6 +3052,7 @@ namespace Configurator
                     HordePeerUsername.BackColor = Color.MistyRose;
                     HordePeerPassword.BackColor = Color.MistyRose;
                     HordePeerURL.BackColor = Color.MistyRose;
+                    HordePeerName.BackColor = Color.MistyRose;
                     HordePeerSharedSecret.BackColor = Color.MistyRose;
                     return;
                 }
@@ -3060,6 +3060,7 @@ namespace Configurator
                 HordePeerUsername.BackColor = Color.Empty;
                 HordePeerPassword.BackColor = Color.Empty;
                 HordePeerURL.BackColor = Color.Empty;
+                HordePeerName.BackColor = Color.Empty;
                 HordePeerSharedSecret.BackColor = Color.Empty;
 
                 // Synchronization
@@ -3111,6 +3112,7 @@ namespace Configurator
                 hordePeer = new Configuration.HordePeer
                 {
                     URL = HordePeerURL.Text,
+                    Name = HordePeerName.Text,
                     Username = HordePeerUsername.Text,
                     Password = HordePeerPassword.Text,
                     DataSynchronization = synchronization,
@@ -3119,7 +3121,7 @@ namespace Configurator
                 corradeConfiguration.HordePeers.Add(hordePeer);
                 HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem
                 {
-                    Text = HordePeerURL.Text,
+                    Text = HordePeerName.Text,
                     Tag = hordePeer
                 };
             }));
@@ -3132,6 +3134,7 @@ namespace Configurator
                 if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
                     string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                    string.IsNullOrEmpty(HordePeerName.Text) ||
                     corradeConfiguration.HordePeers.AsParallel()
                         .Any(
                             o =>
@@ -3141,6 +3144,7 @@ namespace Configurator
                     HordePeerUsername.BackColor = Color.MistyRose;
                     HordePeerPassword.BackColor = Color.MistyRose;
                     HordePeerURL.BackColor = Color.MistyRose;
+                    HordePeerName.BackColor = Color.MistyRose;
                     HordePeerSharedSecret.BackColor = Color.MistyRose;
                     return;
                 }
@@ -3148,6 +3152,7 @@ namespace Configurator
                 HordePeerUsername.BackColor = Color.Empty;
                 HordePeerPassword.BackColor = Color.Empty;
                 HordePeerURL.BackColor = Color.Empty;
+                HordePeerName.BackColor = Color.Empty;
                 HordePeerSharedSecret.BackColor = Color.Empty;
 
                 // Synchronization
@@ -3200,6 +3205,7 @@ namespace Configurator
                 var hordePeer = new Configuration.HordePeer
                 {
                     URL = HordePeerURL.Text,
+                    Name = HordePeerName.Text,
                     Username = HordePeerUsername.Text,
                     Password = HordePeerPassword.Text,
                     DataSynchronization = synchronization,
@@ -3208,7 +3214,7 @@ namespace Configurator
 
                 HordePeers.Items.Add(new ListViewItem
                 {
-                    Text = HordePeerURL.Text,
+                    Text = HordePeerName.Text,
                     Tag = hordePeer
                 });
                 corradeConfiguration.HordePeers.Add(hordePeer);
@@ -3258,6 +3264,7 @@ namespace Configurator
                 HordePeerUsername.Text = string.Empty;
                 HordePeerPassword.Text = string.Empty;
                 HordePeerURL.Text = string.Empty;
+                HordePeerName.Text = string.Empty;
                 HordePeerSharedSecret.Text = string.Empty;
 
                 // Synchronization
@@ -3371,7 +3378,7 @@ namespace Configurator
                 }
 
                 corradeConfiguration.HordePeers.Add(hordePeer);
-                HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem {Text = hordePeer.URL, Tag = hordePeer};
+                HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem {Text = hordePeer.Name, Tag = hordePeer};
             }));
         }
 

@@ -150,7 +150,7 @@ namespace Corrade
                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
-                                    string.Equals(o.Name, format, StringComparison.Ordinal));
+                                    Strings.Equals(o.Name, format, StringComparison.Ordinal));
                         if (formatProperty == null)
                         {
                             throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
@@ -192,7 +192,8 @@ namespace Corrade
                                     Client.Assets.Cache.SaveAssetToCache(o, assetData);
                                 }
                                 if (corradeConfiguration.EnableHorde)
-                                    HordeDistributeCacheAsset(o, assetData, Configuration.HordeDataSynchronizationOption.Add);
+                                    HordeDistributeCacheAsset(o, assetData,
+                                        Configuration.HordeDataSynchronizationOption.Add);
                                 break;
                             default:
                                 lock (Locks.ClientInstanceAssetsLock)

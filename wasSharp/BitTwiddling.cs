@@ -4,6 +4,9 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System.Collections.Generic;
+using System.Linq;
+
 namespace wasSharp
 {
     public static class BitTwiddling
@@ -29,13 +32,14 @@ namespace wasSharp
         /// <summary>
         ///     Checks whether a flag is set for a bitmask.
         /// </summary>
-        /// <typeparam name="T">the data type</typeparam>
+        /// <typeparam name="T">a data type</typeparam>
+        /// <typeparam name="U">a data type</typeparam>
         /// <param name="mask">the mask to check the flag for</param>
         /// <param name="flag">the flag to check</param>
         /// <returns>true in case the flag is set</returns>
-        public static bool IsMaskFlagSet<T>(T mask, T flag) where T : struct
+        public static bool IsMaskFlagSet<T, U>(this T mask, U flag) where T : struct where U : struct
         {
-            return ((ulong) (object) mask & (ulong) (object) flag) != 0;
+            return unchecked(mask as dynamic & flag as dynamic) != 0;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -44,12 +48,27 @@ namespace wasSharp
         /// <summary>
         ///     Sets a flag for a bitmask.
         /// </summary>
-        /// <typeparam name="T">the data type</typeparam>
+        /// <typeparam name="T">a data type</typeparam>
+        /// <typeparam name="U">a data type</typeparam>
         /// <param name="mask">the mask to set the flag on</param>
         /// <param name="flag">the flag to set</param>
-        public static void SetMaskFlag<T>(ref T mask, T flag) where T : struct
+        public static void SetMaskFlag<T, U>(ref T mask, U flag) where T : struct where U : struct
         {
-            mask = (T) (object) ((ulong) (object) mask | (ulong) (object) flag);
+            mask = unchecked(mask as dynamic | flag as dynamic);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Create a bitmask from multiple flags.
+        /// </summary>
+        /// <typeparam name="T">a data type</typeparam>
+        /// <param name="flag">the flags to set</param>
+        /// <returns>a bitmask</returns>
+        public static T CreateMask<T>(this IEnumerable<T> flag) where T : struct
+        {
+            return flag.Aggregate((o, p) => unchecked(o as dynamic | p as dynamic));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -58,12 +77,13 @@ namespace wasSharp
         /// <summary>
         ///     Unset a flag for a bitmask.
         /// </summary>
-        /// <typeparam name="T">the data type</typeparam>
+        /// <typeparam name="T">a data type</typeparam>
+        /// <typeparam name="U">a data type</typeparam>
         /// <param name="mask">the mask to unset the flag on</param>
         /// <param name="flag">the flag to unset</param>
-        public static void UnsetMaskFlag<T>(ref T mask, T flag) where T : struct
+        public static void UnsetMaskFlag<T, U>(ref T mask, U flag)
         {
-            mask = (T) (object) ((ulong) (object) mask & ~(ulong) (object) flag);
+            mask = unchecked(mask as dynamic & ~(flag as dynamic));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -72,12 +92,13 @@ namespace wasSharp
         /// <summary>
         ///     Toggle a flag for a bitmask.
         /// </summary>
-        /// <typeparam name="T">the data type</typeparam>
+        /// <typeparam name="T">a data type</typeparam>
+        /// <typeparam name="U">a data type</typeparam>
         /// <param name="mask">the mask to toggle the flag on</param>
         /// <param name="flag">the flag to toggle</param>
-        public static void ToggleMaskFlag<T>(ref T mask, T flag) where T : struct
+        public static void ToggleMaskFlag<T, U>(ref T mask, U flag)
         {
-            mask = (T) (object) ((ulong) (object) mask ^ (ulong) (object) flag);
+            mask = unchecked(mask as dynamic ^ flag as dynamic);
         }
     }
 }

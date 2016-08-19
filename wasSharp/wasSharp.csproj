@@ -43,6 +43,7 @@
     <Compile Include="KeyValue.cs" />
     <Compile Include="Numerics.cs" />
     <Compile Include="Reflection.cs" />
+    <Compile Include="Strings.cs" />
     <Compile Include="Time.cs" />
     <Compile Include="wasSharp.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

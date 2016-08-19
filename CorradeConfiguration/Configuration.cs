@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
@@ -240,6 +241,19 @@ namespace CorradeConfiguration
         private bool _useExpect100Continue;
         private bool _useNaggle;
         private string _vigenereSecret = string.Empty;
+        private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+        public string Version
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _version;
+                }
+            }
+            set { }
+        }
 
         public string FirstName
         {
@@ -1942,27 +1956,13 @@ namespace CorradeConfiguration
             public UUID UUID;
             public uint Workers;
 
-            public ulong NotificationMask
-            {
-                get
-                {
-                    return Notifications != null && Notifications.Any()
-                        ? Notifications.Cast<ulong>()
-                            .Aggregate((p, q) => p |= q)
-                        : 0;
-                }
-            }
+            public Notifications NotificationMask => Notifications != null &&  Notifications.Any()
+                ? Notifications.CreateMask()
+                : Configuration.Notifications.NONE;
 
-            public ulong PermissionMask
-            {
-                get
-                {
-                    return Permissions != null && Permissions.Any()
-                        ? Permissions.Cast<ulong>()
-                            .Aggregate((p, q) => p |= q)
-                        : 0;
-                }
-            }
+            public Permissions PermissionMask => Permissions != null && Permissions.Any()
+                ? Permissions.CreateMask()
+                : Configuration.Permissions.None;
         }
 
         /// <summary>
@@ -1989,6 +1989,7 @@ namespace CorradeConfiguration
         /// </summary>
         public class HordePeer
         {
+            public string Name;
             public string URL;
             public string Username;
             public string Password;
@@ -1998,20 +1999,13 @@ namespace CorradeConfiguration
                 DataSynchronization =
                     new Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>();
 
-            public ulong SynchronizationMask
-            {
-                get
-                {
-                    return DataSynchronization != null && DataSynchronization.Any()
-                        ? DataSynchronization.Keys.Cast<ulong>()
-                            .Aggregate((p, q) => p |= q)
-                        : 0;
-                }
-            }
+            public HordeDataSynchronization SynchronizationMask => DataSynchronization != null && DataSynchronization.Any()
+                ? DataSynchronization.Keys.CreateMask()
+                : HordeDataSynchronization.None;
 
             public bool HasDataSynchronizationOption(HordeDataSynchronization sync, HordeDataSynchronizationOption option)
             {
-                return DataSynchronization.ContainsKey(sync) && BitTwiddling.IsMaskFlagSet(DataSynchronization[sync], option);
+                return DataSynchronization.ContainsKey(sync) && DataSynchronization[sync].IsMaskFlagSet(option);
             }
         }
     }

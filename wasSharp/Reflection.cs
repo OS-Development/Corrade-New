@@ -121,8 +121,8 @@ namespace wasSharp
             var field = typeof (T).GetRuntimeFields().ToArray()
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(
                     typeof (NameAttribute), false), (
-                        f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((NameAttribute) a.Att)
-                            .Name.Equals(name, StringComparison.Ordinal));
+                        f, a) => new {Field = f, Att = a}).SingleOrDefault(a => Strings.Equals(((NameAttribute) a.Att)
+                            .Name, name, StringComparison.Ordinal));
             return field != null ? (T) field.Field.GetValue(Activator.CreateInstance<T>()) : default(T);
         }
 
