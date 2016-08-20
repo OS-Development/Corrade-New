@@ -160,7 +160,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.ADD:
+                        case Action.MUTE:
 
                             // check that the mute entry does not already exist
                             if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(targetUUID) && o.Name.Equals(name)))
@@ -201,7 +201,7 @@ namespace Corrade
                             // add the mute to the cache
                             Cache.AddMute(muteFlags, targetUUID, name, muteType);
                             break;
-                        case Action.REMOVE:
+                        case Action.UNMUTE:
 
                             // find the mute either by name or by target
                             var mute =

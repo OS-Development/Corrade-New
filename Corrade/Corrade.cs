@@ -10139,8 +10139,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("autopilot")] [Reflection.NameAttribute("autopilot")] AUTOPILOT,
 
             [CommandInputSyntax(
-                "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<mute|unmute>>&action=mute:<name=<STRING>&target=<UUID>>&action=unmute:<name=<STRING>|target=<UUID>>&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
+                "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<MuteType>>&type=Resident:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=Group:<target=<UUID|STRING>>&type=ByName:<name=<STRING>>&type=Object:<name=<STRING>>&type=Object:<target=<UUID>>&type=External:<name=<STRING>>&type=External:<target=<UUID>>&action=mute:[flags=MuteFlags]&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
 
             [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("getmutes")] [Reflection.NameAttribute("getmutes")] GETMUTES,
 
