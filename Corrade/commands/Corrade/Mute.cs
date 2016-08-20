@@ -32,21 +32,100 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var MuteListUpdatedEvent = new ManualResetEvent(false);
-                    EventHandler<EventArgs> MuteListUpdatedEventHandler =
-                        (sender, args) => MuteListUpdatedEvent.Set();
-                    UUID targetUUID;
-                    string name;
+
                     var mutes = Enumerable.Empty<MuteEntry>();
-                    switch (
-                        Reflection.GetEnumValueFromName<Action>(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
-                                    corradeCommandParameters.Message)).ToLowerInvariant()))
+                    // retrieve the current mute list
+                    switch (Cache.MuteCache.IsVirgin)
                     {
-                        case Action.MUTE:
-                            // we need an UUID and a name to create a mute
+                        case true:
+                            if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
+                            {
+                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                            }
+                            break;
+                        default:
+                            mutes = Cache.MuteCache.AsEnumerable();
+                            break;
+                    }
+
+                    // Get the mute type
+                    var muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
+                                                                   BindingFlags.Static)
+                        .AsParallel().FirstOrDefault(
+                            o =>
+                                o.Name.Equals(
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                            corradeCommandParameters.Message)),
+                                    StringComparison.Ordinal));
+
+                    if (muteTypeInfo == null)
+                        throw new ScriptException(ScriptError.UNKNOWN_MUTE_TYPE);
+
+                    var muteType = (MuteType) muteTypeInfo.GetValue(null);
+
+                    // Get the UUID and name to mute from the mute type.
+                    UUID targetUUID;
+                    var name = string.Empty;
+                    switch (muteType)
+                    {
+                        case MuteType.Resident:
+                            if (
+                                !UUID.TryParse(
+                                    wasInput(KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                        corradeCommandParameters.Message)),
+                                    out targetUUID) && !Resolvers.AgentNameToUUID(Client,
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                corradeCommandParameters.Message)),
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                corradeCommandParameters.Message)),
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                        ref targetUUID))
+                            {
+                                throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                            }
+                            if (!Resolvers.AgentUUIDToName(Client, targetUUID,
+                                corradeConfiguration.ServicesTimeout, ref name))
+                                throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                            break;
+                        case MuteType.Group:
+                            var target = wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                                    corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(target))
+                                throw new ScriptException(ScriptError.NO_TARGET_SPECIFIED);
+
+                            if (!UUID.TryParse(target, out targetUUID) &&
+                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref targetUUID))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            if (!Resolvers.GroupUUIDToName(Client, targetUUID,
+                                corradeConfiguration.ServicesTimeout, ref name))
+                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            break;
+                        case MuteType.ByName:
+                            name =
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                        corradeCommandParameters.Message));
+
+                            if (string.IsNullOrEmpty(name))
+                                throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                            targetUUID = UUID.Zero;
+
+                            break;
+                        case MuteType.Object:
+                        case MuteType.External:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
@@ -57,7 +136,6 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.INVALID_MUTE_TARGET);
                             }
-
                             name =
                                 wasInput(
                                     KeyValue.Get(
@@ -66,31 +144,28 @@ namespace Corrade
 
                             if (string.IsNullOrEmpty(name))
                                 throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                            break;
+                        default:
+                            throw new ScriptException(ScriptError.UNKNOWN_MUTE_TYPE);
+                    }
 
-                            // retrieve the current mute list
-                            Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
+                    var MuteListUpdatedEvent = new ManualResetEvent(false);
+                    EventHandler<EventArgs> MuteListUpdatedEventHandler =
+                        (sender, args) => MuteListUpdatedEvent.Set();
+
+                    switch (
+                        Reflection.GetEnumValueFromName<Action>(
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
+                    {
+                        case Action.ADD:
 
                             // check that the mute entry does not already exist
                             if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(targetUUID) && o.Name.Equals(name)))
                                 throw new ScriptException(ScriptError.MUTE_ENTRY_ALREADY_EXISTS);
 
-                            // Get the mute type
-                            var muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.Static)
-                                .AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Name.Equals(
-                                            wasInput(
-                                                KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
-                                                    corradeCommandParameters.Message)),
-                                            StringComparison.Ordinal));
-                            // ...or assume "Default" mute type from MuteType
-                            var muteType = muteTypeInfo != null
-                                ? (MuteType)
-                                    muteTypeInfo
-                                        .GetValue(null)
-                                : MuteType.ByName;
                             // Get the mute flags - default is "Default" equivalent to 0
                             var muteFlags = MuteFlags.Default;
                             CSV.ToEnumerable(
@@ -110,8 +185,10 @@ namespace Corrade
                                             {
                                                 BitTwiddling.SetMaskFlag(ref muteFlags, (MuteFlags) q.GetValue(null));
                                             }));
+
                             lock (Locks.ClientInstanceSelfLock)
                             {
+                                // add mute
                                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                                 Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, muteFlags);
                                 if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
@@ -124,21 +201,7 @@ namespace Corrade
                             // add the mute to the cache
                             Cache.AddMute(muteFlags, targetUUID, name, muteType);
                             break;
-                        case Action.UNMUTE:
-                            UUID.TryParse(
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
-                                    corradeCommandParameters.Message)),
-                                out targetUUID);
-                            name = wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
-                                    corradeCommandParameters.Message));
-
-                            if (string.IsNullOrEmpty(name) && targetUUID.Equals(UUID.Zero))
-                                throw new ScriptException(ScriptError.NO_NAME_OR_UUID_PROVIDED);
-
-                            // retrieve the current mute list
-                            Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
+                        case Action.REMOVE:
 
                             // find the mute either by name or by target
                             var mute =
@@ -153,7 +216,7 @@ namespace Corrade
 
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                // remove the mute list
+                                // remove the mute
                                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                                 Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
                                 if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))

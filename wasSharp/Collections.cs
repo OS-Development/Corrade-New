@@ -28,6 +28,7 @@ namespace wasSharp
         public class ObservableHashSet<T> : ICollection<T>, INotifyCollectionChanged
         {
             private readonly HashSet<T> store = new HashSet<T>();
+            public bool IsVirgin { get; private set; } = true;
 
             public IEnumerator<T> GetEnumerator()
             {
@@ -89,6 +90,8 @@ namespace wasSharp
 
             private void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
             {
+                if(IsVirgin)
+                    IsVirgin = false;
                 CollectionChanged?.Invoke(this, args);
             }
         }

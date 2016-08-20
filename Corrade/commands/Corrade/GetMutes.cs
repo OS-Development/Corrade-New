@@ -26,9 +26,18 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var mutes = Enumerable.Empty<MuteEntry>();
-                    if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
+                    // retrieve the current mute list
+                    switch (Cache.MuteCache.IsVirgin)
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                        case true:
+                            if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
+                            {
+                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                            }
+                            break;
+                        default:
+                            mutes = Cache.MuteCache.AsEnumerable();
+                            break;
                     }
                     var data = mutes.AsParallel().Select(o => new[]
                     {

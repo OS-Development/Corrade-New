@@ -330,6 +330,12 @@ namespace Configurator
                     corradeConfiguration.Password = mainForm.Password.Text;
                     break;
                 default:
+                    if (mainForm.Password.Text.Length > 16)
+                    {
+                        corradeConfiguration.Password = "$1$" +
+                                                        CalculateMD5Hash(mainForm.Password.Text.Substring(0, 16));
+                        break;
+                    }
                     corradeConfiguration.Password = "$1$" + CalculateMD5Hash(mainForm.Password.Text);
                     break;
             }
@@ -827,8 +833,9 @@ namespace Configurator
                 // Permissions
                 for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
-                    switch (@group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
-                                  (string)GroupPermissions.Items[i])))
+                    switch (
+                        @group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                            (string) GroupPermissions.Items[i])))
                     {
                         case true:
                             GroupPermissions.SetItemChecked(i, true);
@@ -842,8 +849,10 @@ namespace Configurator
                 // Notifications
                 for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
-                    switch (@group.NotificationMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                  (string)GroupNotifications.Items[i]))
+                    switch (
+                        @group.NotificationMask.IsMaskFlagSet(Reflection
+                            .GetEnumValueFromName<Configuration.Notifications>(
+                                (string) GroupNotifications.Items[i]))
                         /*!(group.NotificationMask &
                           (ulong)
                               Reflection.GetEnumValueFromName<Configuration.Notifications>(
@@ -3040,7 +3049,7 @@ namespace Configurator
                 var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
                 if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
                     string.IsNullOrEmpty(HordePeerPassword.Text) ||
-                    string.IsNullOrEmpty(HordePeerURL.Text) || 
+                    string.IsNullOrEmpty(HordePeerURL.Text) ||
                     string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
                     string.IsNullOrEmpty(HordePeerName.Text) ||
                     corradeConfiguration.HordePeers.AsParallel().Where(o => !o.Equals(hordePeer))

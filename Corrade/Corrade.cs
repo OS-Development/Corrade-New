@@ -403,7 +403,8 @@ namespace Corrade
             [Status(41969)] [Reflection.DescriptionAttribute("unable to start conference")] UNABLE_TO_START_CONFERENCE,
             [Status(43898)] [Reflection.DescriptionAttribute("session not found")] SESSION_NOT_FOUND,
             [Status(22786)] [Reflection.DescriptionAttribute("conference member not found")] CONFERENCE_MEMBER_NOT_FOUND,
-            [Status(46804)] [Reflection.DescriptionAttribute("could not send message")] COULD_NOT_SEND_MESSAGE
+            [Status(46804)] [Reflection.DescriptionAttribute("could not send message")] COULD_NOT_SEND_MESSAGE,
+            [Status(55110)] [Reflection.DescriptionAttribute("unknown mute type")] UNKNOWN_MUTE_TYPE
         }
 
         /// <summary>
@@ -4226,8 +4227,21 @@ namespace Corrade
 
                             // The currently active mutes.
                             var mutes = Enumerable.Empty<MuteEntry>();
-                            // Retrieve the current mute list
-                            Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes);
+                            bool mutesRetrieved;
+                            switch (Cache.MuteCache.IsVirgin)
+                            {
+                                case true:
+                                    mutesRetrieved = Services.GetMutes(Client, corradeConfiguration.ServicesTimeout,
+                                        ref mutes);
+                                    break;
+                                default:
+                                    mutes = Cache.MuteCache.AsEnumerable();
+                                    mutesRetrieved = true;
+                                    break;
+                            }
+
+                            if (!mutesRetrieved)
+                                break;
 
                             var muteExists =
                                 mutes.ToList().AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name));

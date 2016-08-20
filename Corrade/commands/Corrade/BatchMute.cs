@@ -28,6 +28,21 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    var mutes = Enumerable.Empty<MuteEntry>();
+                    // retrieve the current mute list
+                    switch (Cache.MuteCache.IsVirgin)
+                    {
+                        case true:
+                            if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
+                            {
+                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                            }
+                            break;
+                        default:
+                            mutes = Cache.MuteCache.AsEnumerable();
+                            break;
+                    }
+
                     var data = new HashSet<string>();
                     var LockObject = new object();
                     var MuteListUpdatedEvent = new ManualResetEvent(false);
@@ -39,7 +54,6 @@ namespace Corrade
                             wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MUTES)),
                             corradeCommandParameters.Message))).AsParallel().ForAll(o =>
                             {
-                                var mutes = Enumerable.Empty<MuteEntry>();
                                 UUID targetUUID;
                                 bool succeeded;
                                 switch (
@@ -51,7 +65,6 @@ namespace Corrade
                                 {
                                     case Action.MUTE:
 
-                                        // retrieve the current mute list
                                         if (!UUID.TryParse(o.Value, out targetUUID) ||
                                             !Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                                         {
@@ -176,7 +189,7 @@ namespace Corrade
                                         succeeded = true;
                                         lock (Locks.ClientInstanceSelfLock)
                                         {
-                                            // remove the mute list
+                                            // remove the mute
                                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                                             MuteListUpdatedEvent.Reset();
                                             Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
