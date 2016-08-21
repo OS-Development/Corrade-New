@@ -150,6 +150,14 @@ namespace Corrade
                     }
                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
 
+                    // Get the group ban list.
+                    Dictionary<UUID, DateTime> bannedAgents = null;
+                    if (
+                        !Services.GetGroupBans(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref bannedAgents))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
+                    }
+
                     var data = new HashSet<string>();
                     var LockObject = new object();
                     CSV.ToEnumerable(
@@ -189,6 +197,44 @@ namespace Corrade
                                     }
                                     break;
                                 default:
+                                    // Check that the agent has not been banned and we have permissions to unban.
+                                    if (bannedAgents.ContainsKey(agentUUID) &&
+                                        !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
+                                            GroupPowers.GroupBanAccess, corradeConfiguration.ServicesTimeout,
+                                            corradeConfiguration.DataTimeout,
+                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            data.Add(o);
+                                        }
+                                        return;
+                                    }
+                                    // Check if the avatar is soft-banned.
+                                    lock (GroupSoftBansLock)
+                                    {
+                                        switch (GroupSoftBans.ContainsKey(groupUUID) && GroupSoftBans[groupUUID].Contains(agentUUID))
+                                        {
+                                            case true:
+                                                // If the avatar is banned and soft is not true then do not invite the avatar.
+                                                bool soft;
+                                                if (!bool.TryParse(wasInput(
+                                                    KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOFT)),
+                                                        corradeCommandParameters.Message)), out soft) || !soft)
+                                                {
+                                                    lock (LockObject)
+                                                    {
+                                                        data.Add(o);
+                                                    }
+                                                    return;
+                                                }
+                                                // If soft is true then soft-unban the agent before inviting the avatar.
+                                                GroupSoftBans[groupUUID].Remove(agentUUID);
+                                                SaveGroupSoftBansState.Invoke();
+                                                break;
+                                        }
+                                    }
                                     lock (Locks.ClientInstanceGroupsLock)
                                     {
                                         Client.Groups.Invite(groupUUID, roleUUIDs.ToList(),

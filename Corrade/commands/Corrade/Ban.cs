@@ -185,6 +185,7 @@ namespace Corrade
                             }
 
                             // also soft ban if requested
+                            var groupSoftBansModified = false;
                             bool soft;
                             switch (bool.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOFT)),
@@ -204,10 +205,15 @@ namespace Corrade
                                                             if (GroupSoftBans[groupUUID].Contains(o))
                                                                 return;
                                                             GroupSoftBans[groupUUID].Add(o);
+                                                            groupSoftBansModified = true;
                                                             break;
                                                         default:
                                                             GroupSoftBans.Add(groupUUID,
-                                                                new Collections.ObservableHashSet<UUID>(o));
+                                                                new Collections.ObservableHashSet<UUID>());
+                                                            GroupSoftBans[groupUUID].CollectionChanged +=
+                                                                HandleGroupSoftBansChanged;
+                                                            GroupSoftBans[groupUUID].Add(o);
+                                                            groupSoftBansModified = true;
                                                             break;
                                                     }
                                                 }
@@ -224,12 +230,15 @@ namespace Corrade
                                                             if (!GroupSoftBans[groupUUID].Contains(o))
                                                                 return;
                                                             GroupSoftBans[groupUUID].Remove(o);
+                                                            groupSoftBansModified = true;
                                                             break;
                                                     }
                                                 }
                                             });
                                             break;
                                     }
+                                    if (groupSoftBansModified)
+                                        SaveGroupSoftBansState.Invoke();
                                     break;
                             }
 

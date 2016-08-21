@@ -66,7 +66,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    var targetUUID = UUID.Zero;
+                    UUID targetUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(

@@ -5,9 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -51,7 +49,7 @@ namespace wasOpenMetaverse
             {
                 lock (RegionCacheLock)
                 {
-                    ObservableRegionCache.AddRange(value);
+                    ObservableRegionCache.UnionWith(value);
                 }
             }
         }
@@ -69,7 +67,7 @@ namespace wasOpenMetaverse
             {
                 lock (AgentCacheLock)
                 {
-                    ObservableAgentCache.AddRange(value);
+                    ObservableAgentCache.UnionWith(value);
                 }
             }
         }
@@ -87,7 +85,7 @@ namespace wasOpenMetaverse
             {
                 lock (AgentCacheLock)
                 {
-                    ObservableGroupCache.AddRange(value);
+                    ObservableGroupCache.UnionWith(value);
                 }
             }
         }
@@ -123,7 +121,7 @@ namespace wasOpenMetaverse
             {
                 lock (AgentCacheLock)
                 {
-                    ObservableMuteCache.AddRange(value);
+                    ObservableMuteCache.UnionWith(value);
                 }
             }
         }
@@ -178,7 +176,10 @@ namespace wasOpenMetaverse
             {
                 region =
                     ObservableRegionCache.AsParallel()
-                        .FirstOrDefault(o => Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && handle.Equals(o.Handle));
+                        .FirstOrDefault(
+                            o =>
+                                Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                                handle.Equals(o.Handle));
             }
             if (region.Equals(default(Region)))
                 return false;
@@ -228,7 +229,8 @@ namespace wasOpenMetaverse
                     ObservableMuteCache.AsParallel()
                         .FirstOrDefault(
                             o =>
-                                muteUUID.Equals(o.ID) && flags.Equals(o.Flags) && type.Equals(o.Type) && Strings.Equals(name, o.Name, StringComparison.Ordinal));
+                                muteUUID.Equals(o.ID) && flags.Equals(o.Flags) && type.Equals(o.Type) &&
+                                Strings.Equals(name, o.Name, StringComparison.Ordinal));
             }
             if (mute == null || mute.Equals(default(MuteEntry)))
                 return false;
@@ -336,7 +338,10 @@ namespace wasOpenMetaverse
             {
                 group =
                     ObservableGroupCache.AsParallel()
-                        .FirstOrDefault(o => Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID));
+                        .FirstOrDefault(
+                            o =>
+                                Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                                groupUUID.Equals(o.UUID));
             }
             if (group.Equals(default(Group)))
                 return false;

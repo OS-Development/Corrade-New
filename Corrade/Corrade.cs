@@ -405,7 +405,8 @@ namespace Corrade
             [Status(22786)] [Reflection.DescriptionAttribute("conference member not found")] CONFERENCE_MEMBER_NOT_FOUND,
             [Status(46804)] [Reflection.DescriptionAttribute("could not send message")] COULD_NOT_SEND_MESSAGE,
             [Status(55110)] [Reflection.DescriptionAttribute("unknown mute type")] UNKNOWN_MUTE_TYPE,
-            [Status(13491)] [Reflection.DescriptionAttribute("ban would exceed maximum ban list length")] BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH
+            [Status(13491)] [Reflection.DescriptionAttribute("ban would exceed maximum ban list length")] BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH,
+            [Status(32528)] [Reflection.DescriptionAttribute("agent is soft banned")] AGENT_IS_SOFT_BANNED
         }
 
         /// <summary>
@@ -1054,8 +1055,9 @@ namespace Corrade
                                         switch (!GroupMembers.ContainsKey(o.Key))
                                         {
                                             case true:
-                                                GroupMembers.Add(o.Key, o.Value);
+                                                GroupMembers.Add(o.Key, new Collections.ObservableHashSet<UUID>());
                                                 GroupMembers[o.Key].CollectionChanged += HandleGroupMemberJoinPart;
+                                                GroupMembers[o.Key].UnionWith(o.Value);
                                                 break;
                                             default:
                                                 GroupMembers[o.Key].UnionWith(o.Value);
@@ -1144,7 +1146,9 @@ namespace Corrade
                                         {
                                             case true:
                                                 GroupSoftBans.Add(o.Key,
-                                                    new Collections.ObservableHashSet<UUID>(o.Value));
+                                                    new Collections.ObservableHashSet<UUID>());
+                                                GroupSoftBans[o.Key].CollectionChanged += HandleGroupSoftBansChanged;
+                                                GroupSoftBans[o.Key].UnionWith(o.Value);
                                                 break;
                                             default:
                                                 GroupSoftBans[o.Key].UnionWith(o.Value);
@@ -3393,38 +3397,6 @@ namespace Corrade
             // Start the group membership thread.
             var GroupMembershipThread = new Thread(() =>
             {
-                // The queue of groups to scan.
-                var groupUUIDs = new Queue<UUID>();
-                // The total list of members.
-                var groupMembers = new HashSet<UUID>();
-                // New members that have joined the group.
-                var joinedMembers = new HashSet<UUID>();
-                // Members that have parted the group.
-                var partedMembers = new HashSet<UUID>();
-                // Stores the request UUID.
-                var groupMembersRequestUUID = UUID.Zero;
-
-                var GroupMembersReplyEvent = new ManualResetEvent(false);
-                EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-                {
-                    if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
-
-                    lock (GroupMembersLock)
-                    {
-                        if (GroupMembers.ContainsKey(args.GroupID))
-                        {
-                            joinedMembers.UnionWith(
-                                args.Members.Values.AsParallel()
-                                    .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
-                                    .Select(o => o.ID));
-                            partedMembers.UnionWith(GroupMembers[args.GroupID].AsParallel()
-                                .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
-                        }
-                    }
-                    groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
-                    GroupMembersReplyEvent.Set();
-                };
-
                 do
                 {
                     Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
@@ -3475,78 +3447,57 @@ namespace Corrade
                         }
                     });
 
-                    // Enqueue group UUIDs
-                    groupUUIDs.Clear();
-                    var LockObject = new object();
-                    currentGroups.AsParallel().ForAll(o =>
+                    object LockObject = new object();
+                    HashSet<UUID> groupMembersRequestUUIDs = new HashSet<UUID>();
+                    var GroupMembersReplyEvent = new AutoResetEvent(false);
+                    EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
                         lock (LockObject)
                         {
-                            groupUUIDs.Enqueue(o);
+                            switch (groupMembersRequestUUIDs.Contains(args.RequestID))
+                            {
+                                case true:
+                                    groupMembersRequestUUIDs.Remove(args.RequestID);
+                                    break;
+                                default:
+                                    return;
+                            }
                         }
-                    });
-                    currentGroups.Clear();
-
-                    do
-                    {
-                        // Pause between group sweeps.
-                        Thread.Yield();
-                        // Dequeue the first group.
-                        var groupUUID = groupUUIDs.Dequeue();
-                        // Clear the total list of members.
-                        groupMembers.Clear();
-                        // Clear the members that have joined the group.
-                        joinedMembers.Clear();
-                        // Clear the members that have left the group.
-                        partedMembers.Clear();
-
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        GroupMembersReplyEvent.Reset();
-                        groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                            continue;
-                        }
-                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
 
                         lock (GroupMembersLock)
                         {
-                            if (!GroupMembers[groupUUID].Any())
+                            if (GroupMembers.ContainsKey(args.GroupID))
                             {
-                                GroupMembers[groupUUID].AddRange(groupMembers);
-                                continue;
-                            }
-                        }
-
-                        var groupMembersChanged = false;
-                        if (partedMembers.Any())
-                        {
-                            groupMembersChanged = true;
-                            lock (GroupMembersLock)
-                            {
-                                foreach (var member in partedMembers)
+                                switch (!GroupMembers[args.GroupID].Any())
                                 {
-                                    GroupMembers[groupUUID].Remove(member);
+                                    case true:
+                                        GroupMembers[args.GroupID].UnionWith(args.Members.Values.Select(o => o.ID));
+                                        break;
+                                    default:
+                                        GroupMembers[args.GroupID].ExceptWith(GroupMembers[args.GroupID].AsParallel()
+                                                .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
+                                        GroupMembers[args.GroupID].UnionWith(args.Members.Values.AsParallel()
+                                                .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
+                                                .Select(o => o.ID));
+                                        break;
                                 }
+
                             }
                         }
-
-                        if (joinedMembers.Any())
+                        GroupMembersReplyEvent.Set();
+                    };
+                    
+                    currentGroups.AsParallel().ForAll(o =>
+                    {
+                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                        lock (LockObject)
                         {
-                            groupMembersChanged = true;
-                            lock (GroupMembersLock)
-                            {
-                                foreach (var member in joinedMembers)
-                                {
-                                    GroupMembers[groupUUID].Add(member);
-                                }
-                            }
+                            groupMembersRequestUUIDs.Add(Client.Groups.RequestGroupMembers(o));
                         }
+                        GroupMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                    });
 
-                        if (groupMembersChanged)
-                            SaveGroupMembersState.Invoke();
-                    } while (groupUUIDs.Any() && runGroupMembershipThread);
                 } while (runGroupMembershipThread);
             })
             {IsBackground = true};
@@ -4047,7 +3998,7 @@ namespace Corrade
 
             switch (httpRequest.HttpMethod)
             {
-                case WebRequestMethods.Http.Put: // Receive cache pushes.
+                case WebRequestMethods.Http.Put: // Receive data sync pushes.
 
                     // Do not proceed if horde synchronization is not enabled.
                     if (!corradeConfiguration.EnableHorde)
@@ -4400,6 +4351,113 @@ namespace Corrade
                                     Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
                                     break;
                             }
+
+                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                Reflection.GetDescriptionFromEnumValue(
+                                    ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
+                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
+
+                            break;
+                        case WebResource.SOFTBAN: /* /softban/add/<Group UUID> /softban/remove/<Group UUID> */
+
+                            // Break if the mute request is incompatible with the mute web resource.
+                            if (urlPath.Count < 3)
+                                break;
+
+                            dataSynchronizationType =
+                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                                    urlPath[0].ToLowerInvariant());
+
+                            // Log the attempt to put cache objects.
+                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                Reflection.GetDescriptionFromEnumValue(ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
+                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
+
+                            // If this synchronization is not allowed with this peer, then break.
+                            if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
+                                break;
+
+                            // Get the synchronization option.
+                            dataSynchronizationOption =
+                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
+                                    urlPath[1].ToLowerInvariant());
+
+                            // If this synchronization option is not allowed with this peer, then break.
+                            if (
+                                !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
+                                    dataSynchronizationOption))
+                                break;
+
+                            // Invalid group UUID or group is not a configured group.
+                            UUID groupUUID;
+                            if (!UUID.TryParse(urlPath[2], out groupUUID) ||
+                                !corradeConfiguration.Groups.AsParallel().Any(o => o.UUID.Equals(groupUUID)))
+                                break;
+
+                            UUID softBanUUID;
+                            try
+                            {
+                                using (
+                                    var stringReader =
+                                        new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
+                                {
+                                    softBanUUID = (UUID)
+                                        new XmlSerializer(typeof(UUID)).Deserialize(stringReader);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
+                                    Reflection.GetNameFromEnumValue(dataSynchronizationType),
+                                    ex.Message);
+                                break;
+                            }
+
+                            // Invalid soft ban UUID.
+                            if (softBanUUID.Equals(UUID.Zero))
+                                break;
+
+                            var groupSoftBansModified = false;
+                            switch (dataSynchronizationOption)
+                            {
+                                case Configuration.HordeDataSynchronizationOption.Add:
+                                    lock (GroupSoftBansLock)
+                                    {
+                                        switch (!GroupSoftBans.ContainsKey(groupUUID))
+                                        {
+                                            case true:
+                                                GroupSoftBans.Add(groupUUID,
+                                                    new Collections.ObservableHashSet<UUID>());
+                                                GroupSoftBans[groupUUID].CollectionChanged += HandleGroupSoftBansChanged;
+                                                GroupSoftBans[groupUUID].Add(softBanUUID);
+                                                groupSoftBansModified = true;
+                                                break;
+                                            default:
+                                                if (GroupSoftBans[groupUUID].Contains(softBanUUID))
+                                                    break;
+                                                GroupSoftBans[groupUUID].Add(softBanUUID);
+                                                groupSoftBansModified = true;
+                                                break;
+                                        }
+                                    }
+                                    break;
+                                case Configuration.HordeDataSynchronizationOption.Remove:
+                                    lock (GroupSoftBansLock)
+                                    {
+                                        if (GroupSoftBans.ContainsKey(groupUUID) &&
+                                            GroupSoftBans[groupUUID].Contains(softBanUUID))
+                                        {
+                                            GroupSoftBans[groupUUID].Remove(softBanUUID);
+                                            groupSoftBansModified = true;
+                                        }    
+                                    }
+                                    break;
+                            }
+
+                            if (groupSoftBansModified)
+                                SaveGroupSoftBansState.Invoke();
 
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
                                 Reflection.GetDescriptionFromEnumValue(
@@ -7267,9 +7325,12 @@ namespace Corrade
                         HordeHTTPClients.AsParallel()
                             .Where(
                                 p =>
-                                    corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
-                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Asset))
+                                {
+                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                        q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase));
+                                    return peer != null && peer
+                                            .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Asset);
+                                })
                             .ForAll(async p =>
                             {
                                 await
@@ -7300,9 +7361,13 @@ namespace Corrade
                     lock (HordeHTTPClientsLock)
                     {
                         HordeHTTPClients.AsParallel().Where(
-                            p => corradeConfiguration.HordePeers.SingleOrDefault(
-                                q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
-                                .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Group))
+                            p =>
+                            {
+                                var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase));
+                                return peer != null && peer
+                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Group);
+                            })
                             .ForAll(async p =>
                             {
                                 using (var writer = new StringWriter())
@@ -7340,9 +7405,12 @@ namespace Corrade
                     {
                         HordeHTTPClients.AsParallel().Where(
                             p =>
-                                corradeConfiguration.HordePeers.SingleOrDefault(
-                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
-                                    .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Region))
+                            {
+                                var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase));
+                                return peer != null && peer
+                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Region);
+                            })
                             .ForAll(async p =>
                             {
                                 using (var writer = new StringWriter())
@@ -7379,9 +7447,12 @@ namespace Corrade
                     {
                         HordeHTTPClients.AsParallel().Where(
                             p =>
-                                corradeConfiguration.HordePeers.SingleOrDefault(
-                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
-                                    .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Agent))
+                            {
+                                var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase));
+                                return peer != null && peer
+                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Agent);
+                            })
                             .ForAll(async p =>
                             {
                                 using (var writer = new StringWriter())
@@ -7418,9 +7489,12 @@ namespace Corrade
                     {
                         HordeHTTPClients.AsParallel().Where(
                             p =>
-                                corradeConfiguration.HordePeers.SingleOrDefault(
-                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase))
-                                    .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Mute))
+                            {
+                                var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase));
+                                return peer != null && peer
+                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Mute);
+                            })
                             .ForAll(async p =>
                             {
                                 using (var writer = new StringWriter())
@@ -7447,18 +7521,60 @@ namespace Corrade
             {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
+        private static void HordeDistributeGroupSoftBan(UUID groupUUID, UUID agentUUID, Configuration.HordeDataSynchronizationOption option)
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    lock (HordeHTTPClientsLock)
+                    {
+                        HordeHTTPClients.AsParallel().Where(
+                            p =>
+                            {
+                                var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                    q => p.Key.Equals(q.URL, StringComparison.OrdinalIgnoreCase));
+                                return peer != null && peer
+                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.SoftBan);
+                            })
+                            .ForAll(async p =>
+                            {
+                                using (var writer = new StringWriter())
+                                {
+                                    var serializer = new XmlSerializer(typeof(UUID));
+                                    serializer.Serialize(writer, agentUUID);
+                                    await
+                                        p.Value.PUT(
+                                            $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan)}/{Reflection.GetNameFromEnumValue(option)}/{groupUUID.ToString()}",
+                                            writer.ToString());
+                                }
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
+                        Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan),
+                        ex.Message);
+                }
+            })
+            { IsBackground = true, Priority = ThreadPriority.Lowest }.Start();
+        }
+
         private static void HandleGroupCacheChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    e.NewItems?.Cast<Cache.Group>()
+                    e.NewItems?.OfType<Cache.Group>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheGroup(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
                 case NotifyCollectionChangedAction.Remove:
-                    e.OldItems?.Cast<Cache.Group>()
+                    e.OldItems?.OfType<Cache.Group>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheGroup(o, Configuration.HordeDataSynchronizationOption.Remove));
@@ -7471,13 +7587,13 @@ namespace Corrade
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    e.NewItems?.Cast<Cache.Region>()
+                    e.NewItems?.OfType<Cache.Region>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheRegion(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
                 case NotifyCollectionChangedAction.Remove:
-                    e.OldItems?.Cast<Cache.Region>()
+                    e.OldItems?.OfType<Cache.Region>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheRegion(o, Configuration.HordeDataSynchronizationOption.Remove));
@@ -7490,13 +7606,13 @@ namespace Corrade
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    e.NewItems?.Cast<Cache.Agent>()
+                    e.NewItems?.OfType<Cache.Agent>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheAgent(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
                 case NotifyCollectionChangedAction.Remove:
-                    e.OldItems?.Cast<Cache.Agent>()
+                    e.OldItems?.OfType<Cache.Agent>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheAgent(o, Configuration.HordeDataSynchronizationOption.Remove));
@@ -7509,13 +7625,13 @@ namespace Corrade
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    e.NewItems?.Cast<MuteEntry>()
+                    e.NewItems?.OfType<MuteEntry>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheMute(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
                 case NotifyCollectionChangedAction.Remove:
-                    e.OldItems?.Cast<MuteEntry>()
+                    e.OldItems?.OfType<MuteEntry>()
                         .ToList()
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheMute(o, Configuration.HordeDataSynchronizationOption.Remove));
@@ -7532,8 +7648,9 @@ namespace Corrade
                 return;
             switch (e.Action)
             {
+                case NotifyCollectionChangedAction.Remove:
                 case NotifyCollectionChangedAction.Add:
-                    e.NewItems?.Cast<UUID>().ToList().AsParallel().ForAll(o =>
+                    e.NewItems?.OfType<UUID>().ToList().AsParallel().ForAll(o =>
                     {
                         // Send membership notification if enabled.
                         if (corradeConfiguration.Groups.AsParallel()
@@ -7679,9 +7796,7 @@ namespace Corrade
                             {IsBackground = true}.Start();
                         }
                     });
-                    break;
-                case NotifyCollectionChangedAction.Remove:
-                    e.OldItems?.Cast<UUID>().ToList().AsParallel().ForAll(o =>
+                    e.OldItems?.OfType<UUID>().ToList().AsParallel().ForAll(o =>
                     {
                         // Send membership notification if enabled.
                         if (corradeConfiguration.Groups.AsParallel()
@@ -7716,9 +7831,43 @@ namespace Corrade
                                         corradeConfiguration.MaximumNotificationThreads);
                                 }
                             })
-                            {IsBackground = true}.Start();
+                            { IsBackground = true }.Start();
                         }
                     });
+                    break;
+            }
+        }
+
+        private static void HandleGroupSoftBansChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            var group =
+                GroupSoftBans.FirstOrDefault(
+                    o => ReferenceEquals(o.Value, sender as Collections.ObservableHashSet<UUID>));
+            if (group.Equals(default(KeyValuePair<UUID, Collections.ObservableHashSet<UUID>>)))
+                return;
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Remove:
+                case NotifyCollectionChangedAction.Add:
+                case NotifyCollectionChangedAction.Reset:
+                    e.NewItems?.OfType<UUID>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o =>
+                        {
+                            if (corradeConfiguration.EnableHorde)
+                                HordeDistributeGroupSoftBan(group.Key, o,
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                        });
+                    e.OldItems?.OfType<UUID>()
+                        .ToList()
+                        .AsParallel()
+                        .ForAll(o =>
+                        {
+                            if (corradeConfiguration.EnableHorde)
+                                HordeDistributeGroupSoftBan(group.Key, o,
+                                    Configuration.HordeDataSynchronizationOption.Remove);
+                        });
                     break;
             }
         }
@@ -7845,7 +7994,9 @@ namespace Corrade
             [Reflection.NameAttribute("propose")] PROPOSE,
             [Reflection.NameAttribute("append")] APPEND,
             [Reflection.NameAttribute("create")] CREATE,
-            [Reflection.NameAttribute("detail")] DETAIL
+            [Reflection.NameAttribute("detail")] DETAIL,
+            [Reflection.NameAttribute("import")] IMPORT,
+            [Reflection.NameAttribute("export")] EXPORT
         }
 
         /// <summary>
@@ -7854,7 +8005,8 @@ namespace Corrade
         private enum WebResource : uint
         {
             [Reflection.NameAttribute("cache")] CACHE,
-            [Reflection.NameAttribute("mute")] MUTE
+            [Reflection.NameAttribute("mute")] MUTE,
+            [Reflection.NameAttribute("softban")] SOFTBAN
         }
 
         /// <summary>
@@ -8934,7 +9086,8 @@ namespace Corrade
             [Reflection.NameAttribute("world")] WORLD,
             [Reflection.NameAttribute("statistics")] STATISTICS,
             [Reflection.NameAttribute("lindex")] LINDEX,
-            [Reflection.NameAttribute("conference")] CONFERENCE
+            [Reflection.NameAttribute("conference")] CONFERENCE,
+            [Reflection.NameAttribute("mute")] MUTE
         }
 
         /// <summary>
@@ -9367,8 +9520,8 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
-                "<command=softban>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("softban")] [Reflection.NameAttribute("softban")] SOFTBAN,
+                "<command=softban>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<action=<ban|unban|list|import|export>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&action=import,export:<entity=<group|mute>>&entity=mute:[flags=MuteFlags]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group | (ulong)Configuration.Permissions.Mute)] [CorradeCommand("softban")] [Reflection.NameAttribute("softban")] SOFTBAN,
 
             [Reflection.NameAttribute("soft")] SOFT,
             [Reflection.NameAttribute("restored")] RESTORED,

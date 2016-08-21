@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
@@ -46,6 +47,11 @@ namespace wasSharp
             public ObservableHashSet(ObservableHashSet<T> other)
             {
                 UnionWith(other);
+            }
+
+            public ObservableHashSet(IEnumerable<T> list)
+            {
+                UnionWith(list);
             }
 
             public bool IsVirgin { get; private set; } = true;
@@ -89,7 +95,8 @@ namespace wasSharp
             {
                 var removed = store.Remove(item);
                 IsVirgin = false;
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                if (removed)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
                 return removed;
             }
 
@@ -99,20 +106,12 @@ namespace wasSharp
 
             public event NotifyCollectionChangedEventHandler CollectionChanged;
 
-            public void AddRange(IEnumerable<T> list)
-            {
-                foreach (var item in list)
-                    store.Add(item);
-                if (!IsVirgin)
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-                IsVirgin = false;
-            }
-
             public void UnionWith(IEnumerable<T> list)
             {
-                store.UnionWith(list);
-                if (!IsVirgin)
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                var added = new List<T>(list.Except(store));
+                store.UnionWith(added);
+                if (!IsVirgin && added.Any())
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, added));
                 IsVirgin = false;
             }
 
@@ -121,11 +120,23 @@ namespace wasSharp
                 CollectionChanged?.Invoke(this, args);
             }
 
-            public void ExceptWith(HashSet<T> other)
+            public void ExceptWith(IEnumerable<T> list)
             {
-                store.ExceptWith(other);
-                if (!IsVirgin)
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                var removed = new List<T>(list.Intersect(store));
+                store.ExceptWith(removed);
+                if (!IsVirgin && removed.Any())
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove,
+                        removed));
+                IsVirgin = false;
+            }
+
+            public void RemoveWhere(Func<T, bool> func)
+            {
+                var removed = new List<T>(store.Where(func));
+                store.ExceptWith(removed);
+                if (!IsVirgin && removed.Any())
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove,
+                        removed));
                 IsVirgin = false;
             }
         }

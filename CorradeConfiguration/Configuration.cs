@@ -46,7 +46,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "group")] [Reflection.NameAttribute("group")] Group = 2uL,
             [XmlEnum(Name = "region")] [Reflection.NameAttribute("region")] Region = 4uL,
             [XmlEnum(Name = "asset")] [Reflection.NameAttribute("asset")] Asset = 8uL,
-            [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 16uL
+            [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 16uL,
+            [XmlEnum(Name = "softban")] [Reflection.NameAttribute("softban")] SoftBan = 32uL
         }
 
         /// <summary>
