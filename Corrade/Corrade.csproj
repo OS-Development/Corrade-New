@@ -842,6 +842,9 @@
     <Compile Include="commands\Corrade\Sit.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\SoftBan.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Stand.cs">
       <SubType>Component</SubType>
     </Compile>

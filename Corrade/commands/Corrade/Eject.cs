@@ -76,22 +76,22 @@ namespace Corrade
                     }
                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
+                    var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
+                        if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                         rolesMembers = args.RolesMembers;
                         GroupRoleMembersReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                    Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                    groupRolesMembersRequestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
-                        }
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                     }
+                    Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                     lock (Locks.ClientInstanceGroupsLock)
                     {
                         switch (

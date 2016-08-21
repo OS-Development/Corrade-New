@@ -72,22 +72,22 @@ namespace Corrade
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
                     var groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
+                        if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
                         groupMembers = args.Members;
                         groupMembersReceivedEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                    if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                        }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                     }
+                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
                     var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, groupUUID,
@@ -99,22 +99,22 @@ namespace Corrade
                     // Get roles members.
                     List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
+                        if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                         groupRolesMembers = args.RolesMembers;
                         GroupRoleMembersReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                    groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                        Client.Groups.RequestGroupRolesMembers(groupUUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
-                        }
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                     }
+                    Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+
                     var data = new HashSet<string>();
                     var LockObject = new object();
                     CSV.ToEnumerable(

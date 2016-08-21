@@ -59,23 +59,22 @@ namespace Corrade
                     }
                     var groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                         (sender, args) =>
                         {
+                            if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                             groupRolesMembers.UnionWith(args.RolesMembers);
                             GroupRoleMembersReplyEvent.Set();
                         };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                    groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                        Client.Groups.RequestGroupRolesMembers(groupUUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
-                        }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
                     }
+                    Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                     // First resolve the all the role names to role UUIDs
                     var roleUUIDNames = new Hashtable(groupRolesMembers.Count);
                     var LockObject = new object();

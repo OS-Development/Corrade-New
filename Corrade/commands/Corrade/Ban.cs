@@ -71,8 +71,9 @@ namespace Corrade
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
-                    var LockObject = new object();
                     var succeeded = false;
+                    var LockObject = new object();
+                    Dictionary<UUID, DateTime> bannedAgents = null;
                     switch (action)
                     {
                         case Action.BAN:
@@ -103,18 +104,63 @@ namespace Corrade
                                             // Add all the unrecognized agents to the returned list.
                                             lock (LockObject)
                                             {
-                                                data.Add(o);
+                                                if (!data.Contains(o))
+                                                {
+                                                    data.Add(o);
+                                                }
                                             }
                                             return;
                                         }
                                     }
                                     lock (AvatarsLock)
                                     {
-                                        avatars.Add(agentUUID, o);
+                                        if (!avatars.ContainsKey(agentUUID))
+                                        {
+                                            avatars.Add(agentUUID, o);
+                                        }
                                     }
                                 });
                             if (!avatars.Any())
                                 throw new ScriptException(ScriptError.NO_AVATARS_TO_BAN_OR_UNBAN);
+
+                            // request current banned agents
+                            if (
+                                !Services.GetGroupBans(Client, groupUUID, corradeConfiguration.ServicesTimeout,
+                                    ref bannedAgents))
+                            {
+                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
+                            }
+
+                            // clean ban list
+                            switch (action)
+                            {
+                                case Action.BAN:
+                                    // only ban avatars that are not already banned
+                                    lock (AvatarsLock)
+                                    {
+                                        avatars =
+                                            avatars.AsParallel()
+                                                .Where(o => !bannedAgents.ContainsKey(o.Key))
+                                                .ToDictionary(o => o.Key, o => o.Value);
+                                    }
+                                    break;
+                                case Action.UNBAN:
+                                    // only unban avatars that are already banned
+                                    lock (AvatarsLock)
+                                    {
+                                        avatars =
+                                            avatars.AsParallel()
+                                                .Where(o => bannedAgents.ContainsKey(o.Key))
+                                                .ToDictionary(o => o.Key, o => o.Value);
+                                    }
+                                    break;
+                            }
+
+                            // check whether added bans would not exceed the maximum ban list in Second Life
+                            if (action.Equals(Action.BAN) && Helpers.IsSecondLife(Client) &&
+                                bannedAgents.Count + avatars.Count > Constants.GROUPS.MAXIMUM_GROUP_BANS)
+                                throw new ScriptException(ScriptError.BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH);
+
                             // ban or unban the avatars
                             lock (Locks.ClientInstanceGroupsLock)
                             {
@@ -137,6 +183,56 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);
                                 }
                             }
+
+                            // also soft ban if requested
+                            bool soft;
+                            switch (bool.TryParse(wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOFT)),
+                                    corradeCommandParameters.Message)), out soft) && soft)
+                            {
+                                case true:
+                                    switch (action)
+                                    {
+                                        case Action.BAN:
+                                            avatars.Keys.AsParallel().ForAll(o =>
+                                            {
+                                                lock (GroupSoftBansLock)
+                                                {
+                                                    switch (GroupSoftBans.ContainsKey(groupUUID))
+                                                    {
+                                                        case true:
+                                                            if (GroupSoftBans[groupUUID].Contains(o))
+                                                                return;
+                                                            GroupSoftBans[groupUUID].Add(o);
+                                                            break;
+                                                        default:
+                                                            GroupSoftBans.Add(groupUUID,
+                                                                new Collections.ObservableHashSet<UUID>(o));
+                                                            break;
+                                                    }
+                                                }
+                                            });
+                                            break;
+                                        case Action.UNBAN:
+                                            avatars.Keys.AsParallel().ForAll(o =>
+                                            {
+                                                lock (GroupSoftBansLock)
+                                                {
+                                                    switch (GroupSoftBans.ContainsKey(groupUUID))
+                                                    {
+                                                        case true:
+                                                            if (!GroupSoftBans[groupUUID].Contains(o))
+                                                                return;
+                                                            GroupSoftBans[groupUUID].Remove(o);
+                                                            break;
+                                                    }
+                                                }
+                                            });
+                                            break;
+                                    }
+                                    break;
+                            }
+
                             // if this is a ban request and eject was requested as well, then eject the agents.
                             switch (action)
                             {
@@ -152,25 +248,27 @@ namespace Corrade
                                         // Get the group members.
                                         Dictionary<UUID, GroupMember> groupMembers = null;
                                         var groupMembersReceivedEvent = new ManualResetEvent(false);
+                                        var groupMembersRequestUUID = UUID.Zero;
                                         EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate =
                                             (sender, args) =>
                                             {
+                                                if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
+
                                                 groupMembers = args.Members;
                                                 groupMembersReceivedEvent.Set();
                                             };
-                                        lock (Locks.ClientInstanceGroupsLock)
+
+                                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                                        groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                                        if (
+                                            !groupMembersReceivedEvent.WaitOne(
+                                                (int) corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                                            Client.Groups.RequestGroupMembers(groupUUID);
-                                            if (
-                                                !groupMembersReceivedEvent.WaitOne(
-                                                    (int) corradeConfiguration.ServicesTimeout, false))
-                                            {
-                                                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                                                throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                                            }
                                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                                         }
+                                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
                                         var targetGroup = new Group();
                                         if (
                                             !Services.RequestGroup(Client, groupUUID,
@@ -182,26 +280,25 @@ namespace Corrade
                                         // Get roles members.
                                         List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
                                         var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                                        var groupRolesMembersRequestUUID = UUID.Zero;
                                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
                                             (sender, args) =>
                                             {
+                                                if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                                                 groupRolesMembers = args.RolesMembers;
                                                 GroupRoleMembersReplyEvent.Set();
                                             };
-                                        lock (Locks.ClientInstanceGroupsLock)
+                                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                                        groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                                        if (
+                                            !GroupRoleMembersReplyEvent.WaitOne(
+                                                (int) corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                                            if (
-                                                !GroupRoleMembersReplyEvent.WaitOne(
-                                                    (int) corradeConfiguration.ServicesTimeout, false))
-                                            {
-                                                Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                                throw new ScriptException(
-                                                    ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
-                                            }
                                             Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                            throw new ScriptException(
+                                                ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                                         }
+                                        Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                         groupMembers
                                             .AsParallel()
                                             .Where(o => avatars.ContainsKey(o.Value.ID))
@@ -220,7 +317,10 @@ namespace Corrade
                                                         case false: // cannot demote owners
                                                             lock (LockObject)
                                                             {
-                                                                data.Add(avatars[o.Value.ID]);
+                                                                if (!data.Contains(avatars[o.Value.ID]))
+                                                                {
+                                                                    data.Add(avatars[o.Value.ID]);
+                                                                }
                                                             }
                                                             return;
                                                     }
@@ -253,7 +353,10 @@ namespace Corrade
                                                         case false:
                                                             lock (LockObject)
                                                             {
-                                                                data.Add(avatars[o.Value.ID]);
+                                                                if (!data.Contains(avatars[o.Value.ID]))
+                                                                {
+                                                                    data.Add(avatars[o.Value.ID]);
+                                                                }
                                                             }
                                                             break;
                                                     }
@@ -268,27 +371,14 @@ namespace Corrade
                             }
                             break;
                         case Action.LIST:
-                            var BannedAgentsEvent = new ManualResetEvent(false);
-                            Dictionary<UUID, DateTime> bannedAgents = null;
-                            EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
+                            if (
+                                !Services.GetGroupBans(Client, groupUUID, corradeConfiguration.ServicesTimeout,
+                                    ref bannedAgents))
                             {
-                                succeeded = args.Success;
-                                bannedAgents = args.BannedAgents;
-                                BannedAgentsEvent.Set();
-                            };
-                            lock (Locks.ClientInstanceGroupsLock)
-                            {
-                                Client.Groups.BannedAgents += BannedAgentsEventHandler;
-                                Client.Groups.RequestBannedAgents(groupUUID);
-                                if (!BannedAgentsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Groups.BannedAgents -= BannedAgentsEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);
-                                }
-                                Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
                             }
                             var csv = new List<string>();
-                            switch (succeeded && bannedAgents != null)
+                            switch (bannedAgents != null)
                             {
                                 case true:
                                     bannedAgents.AsParallel().ForAll(o =>

@@ -79,8 +79,10 @@ namespace Corrade
                     }
                     // remove members from role
                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
+                        if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                         args.RolesMembers
                             .AsParallel()
                             .Where(o => o.Key.Equals(roleUUID))
@@ -89,17 +91,15 @@ namespace Corrade
                                     Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, roleUUID, o.Value));
                         GroupRoleMembersReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                    Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                    groupRolesMembersRequestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_EJECTING_AGENT);
-                        }
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    {
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                        throw new ScriptException(ScriptError.TIMEOUT_EJECTING_AGENT);
                     }
+                    Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                     lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.DeleteRole(corradeCommandParameters.Group.UUID, roleUUID);

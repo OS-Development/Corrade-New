@@ -69,24 +69,24 @@ namespace Corrade
                     }
                     Dictionary<UUID, GroupMember> groupMembers = null;
                     var groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupMembersReplyEventArgs> GroupMembersReplyEventHandler = (sender, args) =>
                     {
+                        if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
                         groupMembers = args.Members;
                         groupMembersReceivedEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupMembersReply += GroupMembersReplyEventHandler;
+                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                    if (
+                        !groupMembersReceivedEvent.WaitOne(
+                            (int) corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupMembersReply += GroupMembersReplyEventHandler;
-                        Client.Groups.RequestGroupMembers(groupUUID);
-                        if (
-                            !groupMembersReceivedEvent.WaitOne(
-                                (int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                        }
                         Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                     }
+                    Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
+
                     GroupMember groupMember;
                     if (!groupMembers.TryGetValue(agentUUID, out groupMember))
                     {

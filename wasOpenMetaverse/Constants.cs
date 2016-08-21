@@ -139,6 +139,7 @@ namespace wasOpenMetaverse
             public const string EVERYONE_ROLE_NAME = @"Everyone";
             public const uint MAXIMUM_GROUP_NAME_LENGTH = 35;
             public const uint MAXIMUM_GROUP_TITLE_LENGTH = 20;
+            public const uint MAXIMUM_GROUP_BANS = 500;
         }
 
         public struct NOTICES

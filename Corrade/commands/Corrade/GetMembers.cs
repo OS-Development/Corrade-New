@@ -59,22 +59,22 @@ namespace Corrade
                     var agentInGroupEvent = new ManualResetEvent(false);
                     var csv = new List<string>();
                     var groupMembers = new Dictionary<UUID, GroupMember>();
+                    var groupMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
+                        if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
                         groupMembers = args.Members;
                         agentInGroupEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                    if (!agentInGroupEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!agentInGroupEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                        }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                     }
+                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
                     var LockObject = new object();
                     groupMembers.AsParallel().ForAll(o =>
                     {

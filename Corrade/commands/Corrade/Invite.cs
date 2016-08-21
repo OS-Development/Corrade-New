@@ -91,30 +91,13 @@ namespace Corrade
                     }
 
                     // check that the agent has not been banned.
-                    var BannedAgentsEvent = new ManualResetEvent(false);
                     Dictionary<UUID, DateTime> bannedAgents = null;
-                    var succeeded = false;
-                    EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
-                    {
-                        succeeded = args.Success;
-                        bannedAgents = args.BannedAgents;
-                        BannedAgentsEvent.Set();
-                    };
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.BannedAgents += BannedAgentsEventHandler;
-                        Client.Groups.RequestBannedAgents(groupUUID);
-                        if (!BannedAgentsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.BannedAgents -= BannedAgentsEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);
-                        }
-                        Client.Groups.BannedAgents -= BannedAgentsEventHandler;
-                    }
-                    if (!succeeded || bannedAgents == null)
+                    if (
+                        !Services.GetGroupBans(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref bannedAgents))
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
                     }
+
                     if (bannedAgents.ContainsKey(agentUUID) &&
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.GroupBanAccess,
@@ -160,8 +143,10 @@ namespace Corrade
                         // get our current roles.
                         var selfRoles = new HashSet<UUID>();
                         var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        var groupRolesMembersRequestUUID = UUID.Zero;
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
+                            if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                             selfRoles.UnionWith(
                                 args.RolesMembers
                                     .AsParallel()
@@ -169,17 +154,14 @@ namespace Corrade
                                     .Select(o => o.Key));
                             GroupRoleMembersReplyEvent.Set();
                         };
-                        lock (Locks.ClientInstanceGroupsLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         if (!Services.HasGroupPowers(Client, Client.Self.AgentID,
                             groupUUID,
                             roleUUIDs.All(o => selfRoles.Contains(o))

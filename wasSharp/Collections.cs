@@ -28,6 +28,26 @@ namespace wasSharp
         public class ObservableHashSet<T> : ICollection<T>, INotifyCollectionChanged
         {
             private readonly HashSet<T> store = new HashSet<T>();
+
+            public ObservableHashSet(HashSet<T> set)
+            {
+                UnionWith(set);
+            }
+
+            public ObservableHashSet()
+            {
+            }
+
+            public ObservableHashSet(T item)
+            {
+                Add(item);
+            }
+
+            public ObservableHashSet(ObservableHashSet<T> other)
+            {
+                UnionWith(other);
+            }
+
             public bool IsVirgin { get; private set; } = true;
 
             public IEnumerator<T> GetEnumerator()
@@ -43,13 +63,16 @@ namespace wasSharp
             public void Add(T item)
             {
                 store.Add(item);
+                IsVirgin = false;
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
             }
 
             public void Clear()
             {
                 store.Clear();
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                if (!IsVirgin)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                IsVirgin = false;
             }
 
             public bool Contains(T item)
@@ -59,12 +82,13 @@ namespace wasSharp
 
             public void CopyTo(T[] array, int arrayIndex)
             {
-                store.CopyTo(array);
+                store.CopyTo(array, arrayIndex);
             }
 
             public bool Remove(T item)
             {
                 var removed = store.Remove(item);
+                IsVirgin = false;
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
                 return removed;
             }
@@ -79,20 +103,30 @@ namespace wasSharp
             {
                 foreach (var item in list)
                     store.Add(item);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                if (!IsVirgin)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                IsVirgin = false;
             }
 
             public void UnionWith(IEnumerable<T> list)
             {
                 store.UnionWith(list);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                if (!IsVirgin)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                IsVirgin = false;
             }
 
             private void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
             {
-                if(IsVirgin)
-                    IsVirgin = false;
                 CollectionChanged?.Invoke(this, args);
+            }
+
+            public void ExceptWith(HashSet<T> other)
+            {
+                store.ExceptWith(other);
+                if (!IsVirgin)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                IsVirgin = false;
             }
         }
 

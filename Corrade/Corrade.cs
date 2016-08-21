@@ -404,7 +404,8 @@ namespace Corrade
             [Status(43898)] [Reflection.DescriptionAttribute("session not found")] SESSION_NOT_FOUND,
             [Status(22786)] [Reflection.DescriptionAttribute("conference member not found")] CONFERENCE_MEMBER_NOT_FOUND,
             [Status(46804)] [Reflection.DescriptionAttribute("could not send message")] COULD_NOT_SEND_MESSAGE,
-            [Status(55110)] [Reflection.DescriptionAttribute("unknown mute type")] UNKNOWN_MUTE_TYPE
+            [Status(55110)] [Reflection.DescriptionAttribute("unknown mute type")] UNKNOWN_MUTE_TYPE,
+            [Status(13491)] [Reflection.DescriptionAttribute("ban would exceed maximum ban list length")] BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH
         }
 
         /// <summary>
@@ -439,6 +440,7 @@ namespace Corrade
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher SchedulesWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher GroupFeedWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher GroupSoftBansWatcher = new FileSystemWatcher();
         private static readonly object SIMLBotLock = new object();
         private static readonly object ConfigurationFileLock = new object();
         private static readonly object ClientLogFileLock = new object();
@@ -499,10 +501,18 @@ namespace Corrade
 
         private static readonly object CurrentAnimationsLock = new object();
 
-        private static readonly Collections.SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
-            new Collections.SerializableDictionary<UUID, HashSet<UUID>>();
+        private static readonly Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>
+            GroupMembers =
+                new Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>();
 
         private static readonly object GroupMembersLock = new object();
+
+        public static readonly Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>
+            GroupSoftBans =
+                new Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>();
+
+        private static readonly object GroupSoftBansLock = new object();
+
         private static readonly Hashtable GroupWorkers = new Hashtable();
         private static readonly object GroupWorkersLock = new object();
         private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
@@ -589,11 +599,6 @@ namespace Corrade
             };
 
         /// <summary>
-        ///     Group membership sweep thread.
-        /// </summary>
-        private static Thread GroupMembershipSweepThread;
-
-        /// <summary>
         ///     Group feed thread.
         /// </summary>
         private static Thread GroupFeedThread;
@@ -638,46 +643,6 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Group membership sweep thread starter.
-        /// </summary>
-        private static readonly System.Action StartGroupMembershipSweepThread = () =>
-        {
-            if (GroupMembershipSweepThread != null &&
-                (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
-                 GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                return;
-            runGroupMembershipSweepThread = true;
-            GroupMembershipSweepThread = new Thread(GroupMembershipSweep)
-            {
-                IsBackground = true,
-                Priority = ThreadPriority.Lowest
-            };
-            GroupMembershipSweepThread.Start();
-        };
-
-        /// <summary>
-        ///     Group membership sweep thread stopper.
-        /// </summary>
-        private static readonly System.Action StopGroupMembershipSweepThread = () =>
-        {
-            // Stop the notification thread.
-            runGroupMembershipSweepThread = false;
-            if (GroupMembershipSweepThread == null ||
-                (!GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) &&
-                 !GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                return;
-            if (GroupMembershipSweepThread.Join(1000)) return;
-            try
-            {
-                GroupMembershipSweepThread.Abort();
-                GroupMembershipSweepThread.Join();
-            }
-            catch (ThreadStateException)
-            {
-            }
-        };
-
-        /// <summary>
         ///     Schedules a load of the configuration file.
         /// </summary>
         private static readonly Time.Timer ConfigurationChangedTimer =
@@ -704,10 +669,13 @@ namespace Corrade
                     Version minimalConfig;
                     Version versionConfig;
                     if (
-                        !Version.TryParse(CORRADE_CONSTANTS.ASSEMBLY_CUSTOM_ATTRIBUTES["configuration"], out minimalConfig) ||
+                        !Version.TryParse(CORRADE_CONSTANTS.ASSEMBLY_CUSTOM_ATTRIBUTES["configuration"],
+                            out minimalConfig) ||
                         !Version.TryParse(corradeConfiguration.Version, out versionConfig) ||
-                        !minimalConfig.Major.Equals(versionConfig.Major) || !minimalConfig.Minor.Equals(versionConfig.Minor))
-                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.CONFIGURATION_FILE_VERSION_MISMATCH));
+                        !minimalConfig.Major.Equals(versionConfig.Major) ||
+                        !minimalConfig.Minor.Equals(versionConfig.Minor))
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(ConsoleMessage.CONFIGURATION_FILE_VERSION_MISMATCH));
 
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.READ_CORRADE_CONFIGURATION));
                 }
@@ -763,6 +731,16 @@ namespace Corrade
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.GROUP_FEEDS_FILE_MODIFIED));
                 LoadGroupFeedState.Invoke();
+            });
+
+        /// <summary>
+        ///     Schedules a load of the group soft bans file.
+        /// </summary>
+        private static readonly Time.Timer GroupSoftBansChangedTimer =
+            new Time.Timer(GroupSoftBansChanged =>
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.GROUP_SOFT_BANS_FILE_MODIFIED));
+                LoadGroupSoftBansState.Invoke();
             });
 
         /// <summary>
@@ -1027,7 +1005,9 @@ namespace Corrade
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
                             var serializer =
-                                new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
+                                new XmlSerializer(
+                                    typeof (
+                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>));
                             serializer.Serialize(writer, GroupMembers);
                             writer.Flush();
                         }
@@ -1059,8 +1039,10 @@ namespace Corrade
                         using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
                             var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                            ((Collections.SerializableDictionary<UUID, HashSet<UUID>>)
-                                new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>))
+                            ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
+                                new XmlSerializer(
+                                    typeof (
+                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>))
                                     .Deserialize(streamReader))
                                 .AsParallel()
                                 .Where(
@@ -1069,9 +1051,15 @@ namespace Corrade
                                 {
                                     lock (GroupMembersLock)
                                     {
-                                        if (!GroupMembers.ContainsKey(o.Key))
+                                        switch (!GroupMembers.ContainsKey(o.Key))
                                         {
-                                            GroupMembers.Add(o.Key, o.Value);
+                                            case true:
+                                                GroupMembers.Add(o.Key, o.Value);
+                                                GroupMembers[o.Key].CollectionChanged += HandleGroupMemberJoinPart;
+                                                break;
+                                            default:
+                                                GroupMembers[o.Key].UnionWith(o.Value);
+                                                break;
                                         }
                                     }
                                 });
@@ -1082,6 +1070,95 @@ namespace Corrade
                 {
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(ConsoleMessage.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade group soft bans.
+        /// </summary>
+        private static readonly System.Action SaveGroupSoftBansState = () =>
+        {
+            GroupSoftBansWatcher.EnableRaisingEvents = false;
+            try
+            {
+                lock (GroupSoftBansLock)
+                {
+                    using (
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
+                    {
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                        {
+                            var serializer =
+                                new XmlSerializer(
+                                    typeof (
+                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>));
+                            serializer.Serialize(writer, GroupSoftBans);
+                            writer.Flush();
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.UNABLE_TO_SAVE_GROUP_SOFT_BAN_STATE),
+                    e.Message);
+            }
+            GroupSoftBansWatcher.EnableRaisingEvents = true;
+        };
+
+        /// <summary>
+        ///     Loads Corrade group soft bans.
+        /// </summary>
+        private static readonly System.Action LoadGroupSoftBansState = () =>
+        {
+            var groupSoftBansStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE);
+            if (File.Exists(groupSoftBansStateFile))
+            {
+                try
+                {
+                    using (
+                        var fileStream = File.Open(groupSoftBansStateFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read))
+                    {
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                            ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
+                                new XmlSerializer(
+                                    typeof (
+                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>))
+                                    .Deserialize(streamReader))
+                                .AsParallel()
+                                .Where(
+                                    o => groups.Contains(o.Key))
+                                .ForAll(o =>
+                                {
+                                    lock (GroupSoftBansLock)
+                                    {
+                                        switch (!GroupSoftBans.ContainsKey(o.Key))
+                                        {
+                                            case true:
+                                                GroupSoftBans.Add(o.Key,
+                                                    new Collections.ObservableHashSet<UUID>(o.Value));
+                                                break;
+                                            default:
+                                                GroupSoftBans[o.Key].UnionWith(o.Value);
+                                                break;
+                                        }
+                                    }
+                                });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(ConsoleMessage.UNABLE_TO_LOAD_GROUP_SOFT_BAN_STATE),
                         ex.Message);
                 }
             }
@@ -1703,7 +1780,7 @@ namespace Corrade
         private static volatile bool runCallbackThread = true;
         private static volatile bool runNotificationThread = true;
         private static volatile bool runGroupSchedulesThread;
-        private static volatile bool runGroupMembershipSweepThread;
+        private static volatile bool runGroupMembershipThread = true;
         private static volatile bool runEffectsExpirationThread;
         private static volatile bool runGroupFeedThread;
 
@@ -1793,180 +1870,6 @@ namespace Corrade
                     });
                 }
             } while (runGroupFeedThread);
-        }
-
-        /// <summary>
-        ///     Sweep for group members.
-        /// </summary>
-        private static void GroupMembershipSweep()
-        {
-            // The queue of groups to scan.
-            var groupUUIDs = new Queue<UUID>();
-            // The total list of members.
-            var groupMembers = new HashSet<UUID>();
-            // New members that have joined the group.
-            var joinedMembers = new HashSet<UUID>();
-            // Members that have parted the group.
-            var partedMembers = new HashSet<UUID>();
-
-            var GroupMembersReplyEvent = new ManualResetEvent(false);
-            EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-            {
-                lock (GroupMembersLock)
-                {
-                    if (GroupMembers.ContainsKey(args.GroupID))
-                    {
-                        joinedMembers.UnionWith(
-                            args.Members.Values.AsParallel()
-                                .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
-                                .Select(o => o.ID));
-                        partedMembers.UnionWith(GroupMembers[args.GroupID].AsParallel()
-                            .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
-                    }
-                }
-                groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
-                GroupMembersReplyEvent.Set();
-            };
-
-            do
-            {
-                Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
-                if (!Client.Network.Connected) continue;
-
-                var groups = Enumerable.Empty<UUID>();
-                if (!Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout, ref groups))
-                    continue;
-
-                // Enqueue configured groups that are currently joined groups.
-                groupUUIDs.Clear();
-                var LockObject = new object();
-                var currentGroups = new HashSet<UUID>(groups);
-                corradeConfiguration.Groups.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
-                    .Where(p => currentGroups.Contains(p.groupUUID))
-                    .Select(o => o.group).ForAll(o =>
-                    {
-                        lock (LockObject)
-                        {
-                            groupUUIDs.Enqueue(o.UUID);
-                        }
-                    });
-                currentGroups.Clear();
-
-                // Bail if no configured groups are also joined.
-                if (!groupUUIDs.Any()) continue;
-
-                do
-                {
-                    // Pause between group sweeps.
-                    Thread.Yield();
-                    // Dequeue the first group.
-                    var groupUUID = groupUUIDs.Dequeue();
-                    // Clear the total list of members.
-                    groupMembers.Clear();
-                    // Clear the members that have joined the group.
-                    joinedMembers.Clear();
-                    // Clear the members that have left the group.
-                    partedMembers.Clear();
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        GroupMembersReplyEvent.Reset();
-                        Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                            continue;
-                        }
-                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                    }
-
-                    lock (GroupMembersLock)
-                    {
-                        if (!GroupMembers.ContainsKey(groupUUID))
-                        {
-                            GroupMembers.Add(groupUUID, new HashSet<UUID>(groupMembers));
-                            continue;
-                        }
-                    }
-
-                    var groupMembersChanged = false;
-                    if (joinedMembers.Any())
-                    {
-                        groupMembersChanged = true;
-                        joinedMembers.AsParallel().ForAll(
-                            o =>
-                            {
-                                var agentName = string.Empty;
-                                var groupName = string.Empty;
-                                if (Resolvers.AgentUUIDToName(Client,
-                                    o,
-                                    corradeConfiguration.ServicesTimeout,
-                                    ref agentName) &&
-                                    Resolvers.GroupUUIDToName(Client, groupUUID,
-                                        corradeConfiguration.ServicesTimeout,
-                                        ref groupName))
-                                {
-                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                        () => SendNotification(
-                                            Configuration.Notifications.GroupMembership,
-                                            new GroupMembershipEventArgs
-                                            {
-                                                AgentName = agentName,
-                                                AgentUUID = o,
-                                                Action = Action.JOINED,
-                                                GroupName = groupName,
-                                                GroupUUID = groupUUID
-                                            }),
-                                        corradeConfiguration.MaximumNotificationThreads);
-                                }
-                            });
-                    }
-                    if (partedMembers.Any())
-                    {
-                        groupMembersChanged = true;
-                        partedMembers.AsParallel().ForAll(
-                            o =>
-                            {
-                                var agentName = string.Empty;
-                                var groupName = string.Empty;
-                                if (Resolvers.AgentUUIDToName(Client,
-                                    o,
-                                    corradeConfiguration.ServicesTimeout,
-                                    ref agentName) &&
-                                    Resolvers.GroupUUIDToName(Client, groupUUID,
-                                        corradeConfiguration.ServicesTimeout,
-                                        ref groupName))
-                                {
-                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                        () => SendNotification(
-                                            Configuration.Notifications.GroupMembership,
-                                            new GroupMembershipEventArgs
-                                            {
-                                                AgentName = agentName,
-                                                AgentUUID = o,
-                                                Action = Action.PARTED,
-                                                GroupName = groupName,
-                                                GroupUUID = groupUUID
-                                            }),
-                                        corradeConfiguration.MaximumNotificationThreads);
-                                }
-                            });
-                    }
-
-                    // If no new members joined or old members left then continue.
-                    if (!groupMembersChanged) continue;
-
-                    lock (GroupMembersLock)
-                    {
-                        // Remove parted members.
-                        GroupMembers[groupUUID].ExceptWith(partedMembers);
-                        // Add joined members.
-                        GroupMembers[groupUUID].UnionWith(joinedMembers);
-                    }
-
-                    SaveGroupMembersState.Invoke();
-                } while (groupUUIDs.Any() && runGroupMembershipSweepThread);
-            } while (runGroupMembershipSweepThread);
         }
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
@@ -3281,6 +3184,24 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+            // Set-up watcher for dynamically reading the group soft bans file.
+            FileSystemEventHandler HandleGroupSoftBansFileChanged = null;
+            try
+            {
+                GroupSoftBansWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                GroupSoftBansWatcher.Filter = CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE;
+                GroupSoftBansWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                HandleGroupSoftBansFileChanged = (sender, args) => GroupSoftBansChangedTimer.Change(1000, 0);
+                GroupSoftBansWatcher.Changed += HandleGroupSoftBansFileChanged;
+                GroupSoftBansWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_SETTING_UP_SOFT_BANS_WATCHER),
+                    ex.Message);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+            }
             // Set-up the SIML bot in case it has been enabled.
             FileSystemEventHandler HandleSIMLBotConfigurationChanged = null;
             try
@@ -3395,6 +3316,8 @@ namespace Corrade
             LoadGroupSchedulesState.Invoke();
             // Load feeds state.
             LoadGroupFeedState.Invoke();
+            // Load group soft bans state.
+            LoadGroupSoftBansState.Invoke();
             // Start the callback thread to send callbacks.
             var CallbackThread = new Thread(() =>
             {
@@ -3467,6 +3390,167 @@ namespace Corrade
             })
             {IsBackground = true};
             NotificationThread.Start();
+            // Start the group membership thread.
+            var GroupMembershipThread = new Thread(() =>
+            {
+                // The queue of groups to scan.
+                var groupUUIDs = new Queue<UUID>();
+                // The total list of members.
+                var groupMembers = new HashSet<UUID>();
+                // New members that have joined the group.
+                var joinedMembers = new HashSet<UUID>();
+                // Members that have parted the group.
+                var partedMembers = new HashSet<UUID>();
+                // Stores the request UUID.
+                var groupMembersRequestUUID = UUID.Zero;
+
+                var GroupMembersReplyEvent = new ManualResetEvent(false);
+                EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+                {
+                    if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
+
+                    lock (GroupMembersLock)
+                    {
+                        if (GroupMembers.ContainsKey(args.GroupID))
+                        {
+                            joinedMembers.UnionWith(
+                                args.Members.Values.AsParallel()
+                                    .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
+                                    .Select(o => o.ID));
+                            partedMembers.UnionWith(GroupMembers[args.GroupID].AsParallel()
+                                .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
+                        }
+                    }
+                    groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
+                    GroupMembersReplyEvent.Set();
+                };
+
+                do
+                {
+                    Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
+
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        if (!Client.Network.Connected) continue;
+                    }
+
+                    // Get current groups.
+                    var groups = Enumerable.Empty<UUID>();
+                    if (!Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout, ref groups))
+                        continue;
+                    var currentGroups = new HashSet<UUID>(groups);
+                    // Remove groups that are not configured.
+                    currentGroups.RemoveWhere(o => !corradeConfiguration.Groups.Any(p => p.UUID.Equals(o)));
+
+                    // Bail if no configured groups are also joined.
+                    if (!currentGroups.Any()) continue;
+
+                    var membersGroups = new HashSet<UUID>();
+                    lock (GroupMembersLock)
+                    {
+                        membersGroups.UnionWith(GroupMembers.Keys);
+                    }
+                    // Remove groups no longer handled.
+                    membersGroups.AsParallel().ForAll(o =>
+                    {
+                        if (!currentGroups.Contains(o))
+                        {
+                            lock (GroupMembersLock)
+                            {
+                                GroupMembers[o].CollectionChanged -= HandleGroupMemberJoinPart;
+                                GroupMembers.Remove(o);
+                            }
+                        }
+                    });
+                    // Add new groups to be handled.
+                    currentGroups.AsParallel().ForAll(o =>
+                    {
+                        lock (GroupMembersLock)
+                        {
+                            if (!GroupMembers.ContainsKey(o))
+                            {
+                                GroupMembers.Add(o, new Collections.ObservableHashSet<UUID>());
+                                GroupMembers[o].CollectionChanged += HandleGroupMemberJoinPart;
+                            }
+                        }
+                    });
+
+                    // Enqueue group UUIDs
+                    groupUUIDs.Clear();
+                    var LockObject = new object();
+                    currentGroups.AsParallel().ForAll(o =>
+                    {
+                        lock (LockObject)
+                        {
+                            groupUUIDs.Enqueue(o);
+                        }
+                    });
+                    currentGroups.Clear();
+
+                    do
+                    {
+                        // Pause between group sweeps.
+                        Thread.Yield();
+                        // Dequeue the first group.
+                        var groupUUID = groupUUIDs.Dequeue();
+                        // Clear the total list of members.
+                        groupMembers.Clear();
+                        // Clear the members that have joined the group.
+                        joinedMembers.Clear();
+                        // Clear the members that have left the group.
+                        partedMembers.Clear();
+
+                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                        GroupMembersReplyEvent.Reset();
+                        groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                        if (!GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        {
+                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                            continue;
+                        }
+                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
+                        lock (GroupMembersLock)
+                        {
+                            if (!GroupMembers[groupUUID].Any())
+                            {
+                                GroupMembers[groupUUID].AddRange(groupMembers);
+                                continue;
+                            }
+                        }
+
+                        var groupMembersChanged = false;
+                        if (partedMembers.Any())
+                        {
+                            groupMembersChanged = true;
+                            lock (GroupMembersLock)
+                            {
+                                foreach (var member in partedMembers)
+                                {
+                                    GroupMembers[groupUUID].Remove(member);
+                                }
+                            }
+                        }
+
+                        if (joinedMembers.Any())
+                        {
+                            groupMembersChanged = true;
+                            lock (GroupMembersLock)
+                            {
+                                foreach (var member in joinedMembers)
+                                {
+                                    GroupMembers[groupUUID].Add(member);
+                                }
+                            }
+                        }
+
+                        if (groupMembersChanged)
+                            SaveGroupMembersState.Invoke();
+                    } while (groupUUIDs.Any() && runGroupMembershipThread);
+                } while (runGroupMembershipThread);
+            })
+            {IsBackground = true};
+            GroupMembershipThread.Start();
             // Install non-dynamic global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
             Client.Network.LoginProgress += HandleLoginProgress;
@@ -3545,6 +3629,16 @@ namespace Corrade
             {
                 /* We are going down and we do not care. */
             }
+            // Disable the group soft bans watcher.
+            try
+            {
+                GroupSoftBansWatcher.EnableRaisingEvents = false;
+                GroupSoftBansWatcher.Changed -= HandleGroupSoftBansFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
 
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
@@ -3582,6 +3676,8 @@ namespace Corrade
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+            // Save group soft bans state.
+            SaveGroupSoftBansState.Invoke();
             // Save conferences state.
             SaveConferenceState.Invoke();
             // Save feeds state.
@@ -3622,8 +3718,6 @@ namespace Corrade
                     EffectsExpirationThread = null;
                 }
             }
-            // Stop the group member sweep thread.
-            StopGroupMembershipSweepThread.Invoke();
 
             // Stop the group feed thread.
             StopGroupFeedThread.Invoke();
@@ -3674,6 +3768,30 @@ namespace Corrade
             finally
             {
                 NotificationThread = null;
+            }
+
+            // Stop the group membership thread.
+            try
+            {
+                runGroupMembershipThread = false;
+                if (
+                    GroupMembershipThread.ThreadState.Equals(ThreadState.Running) ||
+                    GroupMembershipThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
+                {
+                    if (!GroupMembershipThread.Join(1000))
+                    {
+                        GroupMembershipThread.Abort();
+                        GroupMembershipThread.Join();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            finally
+            {
+                GroupMembershipThread = null;
             }
 
             // Save group cookies.
@@ -6412,25 +6530,12 @@ namespace Corrade
                         switch (enabled)
                         {
                             case true:
-                                // Start the group membership thread.
+                                // Start the group feed thread.
                                 StartGroupFeedThread.Invoke();
                                 break;
                             default:
-                                // Stop the group sweep thread.
+                                // Stop the group feed thread.
                                 StopGroupFeedThread.Invoke();
-                                break;
-                        }
-                        break;
-                    case Configuration.Notifications.GroupMembership:
-                        switch (enabled)
-                        {
-                            case true:
-                                // Start the group membership thread.
-                                StartGroupMembershipSweepThread.Invoke();
-                                break;
-                            default:
-                                // Stop the group sweep thread.
-                                StopGroupMembershipSweepThread.Invoke();
                                 break;
                         }
                         break;
@@ -7418,6 +7523,206 @@ namespace Corrade
             }
         }
 
+        private static void HandleGroupMemberJoinPart(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            var group =
+                GroupMembers.FirstOrDefault(
+                    o => ReferenceEquals(o.Value, sender as Collections.ObservableHashSet<UUID>));
+            if (group.Equals(default(KeyValuePair<UUID, Collections.ObservableHashSet<UUID>>)))
+                return;
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    e.NewItems?.Cast<UUID>().ToList().AsParallel().ForAll(o =>
+                    {
+                        // Send membership notification if enabled.
+                        if (corradeConfiguration.Groups.AsParallel()
+                            .Any(
+                                p =>
+                                    p.UUID.Equals(group.Key) &&
+                                    p.NotificationMask.IsMaskFlagSet(Configuration.Notifications.GroupMembership)))
+                        {
+                            new Thread(p =>
+                            {
+                                var agentName = string.Empty;
+                                var groupName = string.Empty;
+                                if (Resolvers.AgentUUIDToName(Client,
+                                    o,
+                                    corradeConfiguration.ServicesTimeout,
+                                    ref agentName) &&
+                                    Resolvers.GroupUUIDToName(Client, group.Key,
+                                        corradeConfiguration.ServicesTimeout,
+                                        ref groupName))
+                                {
+                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        () => SendNotification(
+                                            Configuration.Notifications.GroupMembership,
+                                            new GroupMembershipEventArgs
+                                            {
+                                                AgentName = agentName,
+                                                AgentUUID = o,
+                                                Action = Action.JOINED,
+                                                GroupName = groupName,
+                                                GroupUUID = group.Key
+                                            }),
+                                        corradeConfiguration.MaximumNotificationThreads);
+                                }
+                            })
+                            {IsBackground = true}.Start();
+                        }
+
+                        // if the agent has been soft banned, eject them.
+                        if (GroupSoftBans.ContainsKey(group.Key) && GroupSoftBans[group.Key].Contains(o))
+                        {
+                            new Thread(() =>
+                            {
+                                if (
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        group.Key,
+                                        GroupPowers.Eject,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        group.Key,
+                                        GroupPowers.RemoveMember,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                        Reflection.GetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    return;
+                                }
+                                var targetGroup = new Group();
+                                if (
+                                    !Services.RequestGroup(Client, group.Key,
+                                        corradeConfiguration.ServicesTimeout,
+                                        ref targetGroup))
+                                    return;
+                                var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                                var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
+                                var groupRolesMembersRequestUUID = UUID.Zero;
+                                EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
+                                    (s, args) =>
+                                    {
+                                        if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
+                                        rolesMembers = args.RolesMembers;
+                                        GroupRoleMembersReplyEvent.Set();
+                                    };
+                                Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                                groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(group.Key);
+                                if (
+                                    !GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                        false))
+                                {
+                                    Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
+                                    return;
+                                }
+                                Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                lock (Locks.ClientInstanceGroupsLock)
+                                {
+                                    switch (
+                                        !rolesMembers.AsParallel()
+                                            .Any(p => p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(o)))
+                                    {
+                                        case true:
+                                            rolesMembers.AsParallel().Where(
+                                                p => p.Value.Equals(o))
+                                                .ForAll(
+                                                    p => Client.Groups.RemoveFromRole(group.Key, p.Key,
+                                                        o));
+                                            break;
+                                        default:
+                                            Feedback(
+                                                Reflection.GetDescriptionFromEnumValue(
+                                                    ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                                Reflection.GetDescriptionFromEnumValue(ScriptError.CANNOT_EJECT_OWNERS));
+                                            return;
+                                    }
+                                }
+                                var GroupEjectEvent = new ManualResetEvent(false);
+                                var succeeded = false;
+                                EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (s, args) =>
+                                {
+                                    succeeded = args.Success;
+                                    GroupEjectEvent.Set();
+                                };
+                                lock (Locks.ClientInstanceGroupsLock)
+                                {
+                                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                    Client.Groups.EjectUser(group.Key, o);
+                                    if (!GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                        Feedback(
+                                            Reflection.GetDescriptionFromEnumValue(
+                                                ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                            Reflection.GetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
+                                        return;
+                                    }
+                                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                }
+                                if (!succeeded)
+                                {
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                        Reflection.GetDescriptionFromEnumValue(ScriptError.COULD_NOT_EJECT_AGENT));
+                                }
+                            })
+                            {IsBackground = true}.Start();
+                        }
+                    });
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    e.OldItems?.Cast<UUID>().ToList().AsParallel().ForAll(o =>
+                    {
+                        // Send membership notification if enabled.
+                        if (corradeConfiguration.Groups.AsParallel()
+                            .Any(
+                                p =>
+                                    p.UUID.Equals(group.Key) &&
+                                    p.NotificationMask.IsMaskFlagSet(Configuration.Notifications.GroupMembership)))
+                        {
+                            new Thread(p =>
+                            {
+                                var agentName = string.Empty;
+                                var groupName = string.Empty;
+                                if (Resolvers.AgentUUIDToName(Client,
+                                    o,
+                                    corradeConfiguration.ServicesTimeout,
+                                    ref agentName) &&
+                                    Resolvers.GroupUUIDToName(Client, group.Key,
+                                        corradeConfiguration.ServicesTimeout,
+                                        ref groupName))
+                                {
+                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        () => SendNotification(
+                                            Configuration.Notifications.GroupMembership,
+                                            new GroupMembershipEventArgs
+                                            {
+                                                AgentName = agentName,
+                                                AgentUUID = o,
+                                                Action = Action.PARTED,
+                                                GroupName = groupName,
+                                                GroupUUID = group.Key
+                                            }),
+                                        corradeConfiguration.MaximumNotificationThreads);
+                                }
+                            })
+                            {IsBackground = true}.Start();
+                        }
+                    });
+                    break;
+            }
+        }
+
         private static void HandleSynBotLearning(object sender, LearningEventArgs e)
         {
             try
@@ -7636,6 +7941,7 @@ namespace Corrade
             public const string MOVEMENT_STATE_FILE = @"Movement.state";
             public const string FEEDS_STATE_FILE = @"Feeds.state";
             public const string CONFERENCE_STATE_FILE = @"Conferences.state";
+            public const string GROUP_SOFT_BAN_STATE_FILE = @"GroupSoftBans.state";
             public const string LIBS_DIRECTORY = @"libs";
             public const string LANGUAGE_PROFILE_FILE = @"Core14.profile.xml";
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
@@ -8179,7 +8485,12 @@ namespace Corrade
             [Reflection.DescriptionAttribute("peer synchronization successful")] PEER_SYNCHRONIZATION_SUCCESSFUL,
             [Reflection.DescriptionAttribute("peer attempting synchronization")] PEER_ATTEMPTING_SYNCHRONIZATION,
             [Reflection.DescriptionAttribute("unable to read distributed resource")] UNABLE_TO_READ_DISTRIBUTED_RESOURCE,
-            [Reflection.DescriptionAttribute("configuration file mismatch")] CONFIGURATION_FILE_VERSION_MISMATCH
+            [Reflection.DescriptionAttribute("configuration file mismatch")] CONFIGURATION_FILE_VERSION_MISMATCH,
+            [Reflection.DescriptionAttribute("unable to save group soft ban state")] UNABLE_TO_SAVE_GROUP_SOFT_BAN_STATE,
+            [Reflection.DescriptionAttribute("unable to load group soft ban state")] UNABLE_TO_LOAD_GROUP_SOFT_BAN_STATE,
+            [Reflection.DescriptionAttribute("group soft bans file modified")] GROUP_SOFT_BANS_FILE_MODIFIED,
+            [Reflection.DescriptionAttribute("error setting up soft bans watcher")] ERROR_SETTING_UP_SOFT_BANS_WATCHER,
+            [Reflection.DescriptionAttribute("unable to apply soft ban")] UNABLE_TO_APPLY_SOFT_BAN
         }
 
         /// <summary>
@@ -9055,6 +9366,11 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=softban>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("softban")] [Reflection.NameAttribute("softban")] SOFTBAN,
+
+            [Reflection.NameAttribute("soft")] SOFT,
             [Reflection.NameAttribute("restored")] RESTORED,
 
             [CommandInputSyntax(
@@ -10139,7 +10455,8 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Movement)] [CorradeCommand("autopilot")] [Reflection.NameAttribute("autopilot")] AUTOPILOT,
 
             [CommandInputSyntax(
-                "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<MuteType>>&type=Resident:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=Group:<target=<UUID|STRING>>&type=ByName:<name=<STRING>>&type=Object:<name=<STRING>>&type=Object:<target=<UUID>>&type=External:<name=<STRING>>&type=External:<target=<UUID>>&action=mute:[flags=MuteFlags]&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
+                "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<MuteType>>&type=Resident:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=Group:<target=<UUID|STRING>>&type=ByName:<name=<STRING>>&type=Object:<name=<STRING>>&type=Object:<target=<UUID>>&type=External:<name=<STRING>>&type=External:<target=<UUID>>&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
 
             [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Mute)] [CorradeCommand("getmutes")] [Reflection.NameAttribute("getmutes")] GETMUTES,
 

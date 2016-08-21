@@ -38,16 +38,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CHANNEL_SPECIFIED);
                     }
-                    int index;
-                    if (
-                        !int.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INDEX)),
-                                corradeCommandParameters.Message)),
-                            out index))
-                    {
-                        throw new ScriptException(ScriptError.NO_BUTTON_INDEX_SPECIFIED);
-                    }
                     var label =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BUTTON)),
@@ -66,22 +56,32 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
+
+                    ScriptDialog scriptDialog;
                     lock (ScriptDialogLock)
                     {
-                        var scriptDialog =
+                        scriptDialog =
                             ScriptDialogs.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Item.Equals(itemUUID) && o.Channel.Equals(channel) &&
-                                    !o.Button.IndexOf(label).Equals(-1));
-                        switch (!scriptDialog.Equals(default(ScriptDialog)))
-                        {
-                            case true:
-                                ScriptDialogs.Remove(scriptDialog);
-                                break;
-                            default:
-                                throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
-                        }
+                                o => o.Item.Equals(itemUUID) && o.Channel.Equals(channel));
                     }
+                    if (scriptDialog.Equals(default(ScriptDialog)))
+                        throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
+
+                    int index;
+                    if (
+                        !int.TryParse(
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INDEX)),
+                                corradeCommandParameters.Message)),
+                            out index))
+                    {
+                        index = scriptDialog.Button.IndexOf(label);
+                        if (index.Equals(-1))
+                            throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
+                    }
+
+                    ScriptDialogs.Remove(scriptDialog);
+
                     switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
                             KeyValue.Get(

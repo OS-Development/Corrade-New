@@ -103,8 +103,10 @@ namespace Corrade
                         // get our current roles.
                         var selfRoles = new HashSet<UUID>();
                         var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        var groupRolesMembersRequestUUID = UUID.Zero;
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
+                            if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
                             selfRoles.UnionWith(
                                 args.RolesMembers
                                     .AsParallel()
@@ -112,17 +114,14 @@ namespace Corrade
                                     .Select(o => o.Key));
                             GroupRoleMembersReplyEvent.Set();
                         };
-                        lock (Locks.ClientInstanceGroupsLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         if (!Services.HasGroupPowers(Client, Client.Self.AgentID,
                             groupUUID,
                             roleUUIDs.All(o => selfRoles.Contains(o))
@@ -135,22 +134,22 @@ namespace Corrade
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
                     var groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
+                        if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
                         groupMembers = args.Members;
                         groupMembersReceivedEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                    if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                        }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                     }
+                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
                     var data = new HashSet<string>();
                     var LockObject = new object();
                     CSV.ToEnumerable(

@@ -107,6 +107,45 @@ namespace wasOpenMetaverse
         /// </summary>
         /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="groupUUID">the UUID of the group</param>
+        /// <param name="bans">a dictionary to store group bans</param>
+        /// <returns>true if the current groups could be fetched</returns>
+        public static bool GetGroupBans(GridClient Client, UUID groupUUID, uint millisecondsTimeout, ref Dictionary<UUID, DateTime> bans)
+        {
+            Dictionary<UUID, DateTime> bannedAgents = null;
+            var BannedAgentsEvent = new ManualResetEvent(false);
+            bool succeeded = false;
+            EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
+            {
+                succeeded = args.Success;
+                bannedAgents = args.BannedAgents;
+                BannedAgentsEvent.Set();
+            };
+            lock (Locks.ClientInstanceGroupsLock)
+            {
+                Client.Groups.BannedAgents += BannedAgentsEventHandler;
+                Client.Groups.RequestBannedAgents(groupUUID);
+                if(!BannedAgentsEvent.WaitOne((int) millisecondsTimeout, false))
+                {
+                    Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                    return false;
+                }
+                Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+            }
+            if (!succeeded)
+                return false;
+            bans = bannedAgents;
+            return true;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Requests the UUIDs of all the current groups.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="groups">a hashset where to store the UUIDs</param>
         /// <returns>true if the current groups could be fetched</returns>
         private static bool directGetCurrentGroups(GridClient Client, uint millisecondsTimeout,
