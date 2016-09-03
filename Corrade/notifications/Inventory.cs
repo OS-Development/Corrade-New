@@ -25,7 +25,7 @@ namespace Corrade
                     var inventoryOfferedType = corradeNotificationParameters.Event.GetType();
                     if (inventoryOfferedType == typeof (InstantMessageEventArgs))
                     {
-                        var inventoryOfferEventArgs =
+                        var instantMessageEventArgs =
                             (InstantMessageEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
@@ -33,19 +33,19 @@ namespace Corrade
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                 CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(
-                                    inventoryOfferEventArgs,
+                                    instantMessageEventArgs,
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
 
                         var objects = new List<object>
                         {
-                            inventoryOfferEventArgs
+                            instantMessageEventArgs
                         };
 
                         var inventoryObjectOfferedEventArgs =
                             new KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>();
-                        switch (inventoryOfferEventArgs.IM.Dialog)
+                        switch (instantMessageEventArgs.IM.Dialog)
                         {
                             case InstantMessageDialog.TaskInventoryOffered:
                             case InstantMessageDialog.InventoryOffered:
@@ -54,20 +54,20 @@ namespace Corrade
                                     inventoryObjectOfferedEventArgs =
                                         InventoryOffers.AsParallel().FirstOrDefault(p =>
                                             p.Key.Offer.IMSessionID.Equals(
-                                                inventoryOfferEventArgs.IM.IMSessionID));
+                                                instantMessageEventArgs.IM.IMSessionID));
                                     if (
                                         !inventoryObjectOfferedEventArgs.Equals(
                                             default(
                                                 KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
                                     {
                                         objects.Add(inventoryObjectOfferedEventArgs.Key);
-                                    }
-                                    var groups =
-                                        CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                            inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
-                                    if (groups.Count > 1)
-                                    {
-                                        objects.Add(groups[1]);
+                                        var groups =
+                                            CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
+                                                inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
+                                        if (groups.Count > 1)
+                                        {
+                                            objects.Add(groups[1]);
+                                        }
                                     }
                                 }
                                 break;
@@ -76,6 +76,7 @@ namespace Corrade
                         var LockObject = new object();
                         Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
+                            .Where(o => o.Key.Equals(typeof (InstantMessageEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
@@ -83,7 +84,7 @@ namespace Corrade
                                     notificationData, LockObject, rankedLanguageIdentifier);
                             }));
 
-                        switch (inventoryOfferEventArgs.IM.Dialog)
+                        switch (instantMessageEventArgs.IM.Dialog)
                         {
                             case InstantMessageDialog.TaskInventoryOffered:
                             case InstantMessageDialog.InventoryOffered:
@@ -132,6 +133,7 @@ namespace Corrade
                         var LockObject = new object();
                         Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
+                            .Where(o => o.Key.Equals(typeof (InventoryObjectOfferedEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,

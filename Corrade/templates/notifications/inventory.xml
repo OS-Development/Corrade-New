@@ -57,7 +57,7 @@
           <Parameter>
             <Path>Value</Path>
             <Name>item</Name>
-            <Type>System.Text.RegularExpressions.Capture</Type>
+            <Type>System.Text.RegularExpressions.Group</Type>
           </Parameter>
         </ArrayOfParameter>
       </Value>
@@ -89,7 +89,7 @@
           <Parameter>
             <Path>Value</Path>
             <Name>item</Name>
-            <Type>System.Text.RegularExpressions.Capture</Type>
+            <Type>System.Text.RegularExpressions.Group</Type>
           </Parameter>
           <Parameter>
             <Path>Offer.IMSessionID</Path>
