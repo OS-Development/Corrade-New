@@ -18,7 +18,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getfriendlist =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getfriendslist =
                 (corradeCommandParameters, result) =>
                 {
                     if (
