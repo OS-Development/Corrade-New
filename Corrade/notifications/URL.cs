@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> url =
+            public static Action<NotificationParameters, Dictionary<string, string>> url =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var loadURLEventArgs = (LoadUrlEventArgs) corradeNotificationParameters.Event;
@@ -24,23 +25,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(loadURLEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(loadURLEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                        loadURLEventArgs.ObjectName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        loadURLEventArgs.ObjectID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                        loadURLEventArgs.OwnerID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                        loadURLEventArgs.OwnerIsGroup.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        loadURLEventArgs.Message);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.URL),
-                        loadURLEventArgs.URL);
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {loadURLEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

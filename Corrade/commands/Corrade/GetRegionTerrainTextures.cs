@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,16 +19,17 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getregionterraintextures =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getregionterraintextures
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     switch (!string.IsNullOrEmpty(region))
@@ -44,7 +46,7 @@ namespace Corrade
                             }
                             if (simulator == null)
                             {
-                                throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                             }
                             break;
                         default:
@@ -62,7 +64,7 @@ namespace Corrade
                             simulator.TerrainDetail3
                         };
                     }
-                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                         CSV.FromEnumerable(data.Select(o => o.ToString())));
                 };
         }

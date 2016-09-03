@@ -11,7 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,20 +19,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setprimitivescale =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setprimitivescale =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -42,7 +42,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.UNIFORM)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.UNIFORM)),
                                 corradeCommandParameters.Message)),
                             out uniform))
                     {
@@ -50,11 +50,11 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -67,7 +67,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
                         default:
@@ -78,7 +78,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
                     }
@@ -89,26 +89,27 @@ namespace Corrade
                             .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
                     }
                     if (simulator == null)
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     Vector3 scale;
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SCALE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCALE)),
                                     corradeCommandParameters.Message)),
                             out scale))
                     {
-                        throw new ScriptException(ScriptError.INVALID_SCALE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_SCALE);
                     }
-                    if (Helpers.IsSecondLife(Client) &&
-                        (scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
-                         scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
-                         scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
-                         scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
-                         scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
-                         scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        (scale.X < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_X ||
+                         scale.Y < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
+                         scale.Z < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
+                         scale.X > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
+                         scale.Y > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                         scale.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
                     {
-                        throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
                     lock (Locks.ClientInstanceObjectsLock)
                     {

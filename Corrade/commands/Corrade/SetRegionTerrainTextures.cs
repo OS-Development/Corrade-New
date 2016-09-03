@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,16 +20,17 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setregionterraintextures =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setregionterraintextures
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                     }
                     List<UUID> simTextures;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -43,7 +45,7 @@ namespace Corrade
                     }
                     var setTextures = new UUID[4];
                     var data = CSV.ToEnumerable(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     Enumerable.Range(0, 4).AsParallel().ForAll(
                         o =>

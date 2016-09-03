@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteitem =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> deleteitem =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     var items =
                         new HashSet<InventoryItem>();
@@ -61,7 +62,7 @@ namespace Corrade
                     }
                     if (!items.Any())
                     {
-                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
                     items.AsParallel().ForAll(o =>
                     {

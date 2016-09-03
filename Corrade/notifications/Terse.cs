@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> terse =
+            public static Action<NotificationParameters, Dictionary<string, string>> terse =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var terseObjectUpdateEventArgs =
@@ -25,19 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(terseObjectUpdateEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(terseObjectUpdateEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                        terseObjectUpdateEventArgs.Prim.ID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                        terseObjectUpdateEventArgs.Prim.Position.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                        terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                        terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {terseObjectUpdateEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

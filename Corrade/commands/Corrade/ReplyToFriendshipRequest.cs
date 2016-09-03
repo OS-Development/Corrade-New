@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,35 +18,36 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytofriendshiprequest =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> replytofriendshiprequest
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Friendship))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
-                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
                     var session = UUID.Zero;
                     lock (Locks.ClientInstanceFriendsLock)
@@ -60,29 +62,29 @@ namespace Corrade
                     }
                     if (session.Equals(UUID.Zero))
                     {
-                        throw new ScriptException(ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.ACCEPT:
+                        case Enumerations.Action.ACCEPT:
                             lock (Locks.ClientInstanceFriendsLock)
                             {
                                 Client.Friends.AcceptFriendship(agentUUID, session);
                             }
                             break;
-                        case Action.DECLINE:
+                        case Enumerations.Action.DECLINE:
                             lock (Locks.ClientInstanceFriendsLock)
                             {
                                 Client.Friends.DeclineFriendship(agentUUID, session);
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

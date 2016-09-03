@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>invite</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>OpenMetaverse.InstantMessageEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>IM.FromAgentName</Path>
+            <Processing>
+              <NameSplit>
+                <First>firstname</First>
+                <Last>lastname</Last>
+              </NameSplit>
+            </Processing>
+          </Parameter>
+          <Parameter>
+            <Path>IM.FromAgentName</Path>
+            <Name>agent</Name>
+            <Processing>
+              <Resolve>
+                <ResolveType>AGENT</ResolveType>
+                <Type>UUID</Type>
+              </Resolve>
+            </Processing>
+          </Parameter>
+          <Parameter>
+            <Path>IM.FromAgentID</Path>
+            <Name>group</Name>
+          </Parameter>
+          <Parameter>
+            <Path>IM.IMSessionID</Path>
+            <Name>session</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Group</Path>
+            <Name>name</Name>
+            <Type>Corrade.Structures.GroupInvite</Type>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

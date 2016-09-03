@@ -21,6 +21,7 @@ using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -28,20 +29,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> download =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> download =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     var assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                      BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -49,13 +50,13 @@ namespace Corrade
                                 o.Name.Equals(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     switch (assetTypeInfo != null)
                     {
                         case false:
-                            throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
                     var assetType = (AssetType) assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
@@ -70,7 +71,7 @@ namespace Corrade
                                 .FirstOrDefault() as InventoryItem;
                         if (inventoryItem == null)
                         {
-                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                         }
                         itemUUID = inventoryItem.AssetUUID;
                     }
@@ -104,7 +105,8 @@ namespace Corrade
                                         if (
                                             !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
                                     }
                                     break;
@@ -115,7 +117,8 @@ namespace Corrade
                                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                                             (int) Configuration.Permissions.Inventory))
                                     {
-                                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                                     }
                                     if (inventoryItem == null)
                                     {
@@ -125,7 +128,8 @@ namespace Corrade
                                                 corradeConfiguration.ServicesTimeout).FirstOrDefault() as InventoryItem;
                                         if (inventoryItem == null)
                                         {
-                                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                                         }
                                     }
                                     lock (Locks.ClientInstanceAssetsLock)
@@ -143,7 +147,8 @@ namespace Corrade
                                         if (
                                             !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
                                     }
                                     break;
@@ -163,7 +168,8 @@ namespace Corrade
                                         if (
                                             !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
                                     }
                                     break;
@@ -190,16 +196,17 @@ namespace Corrade
                                         if (
                                             !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
                                     }
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                             }
                             if (!succeeded)
                             {
-                                throw new ScriptException(ScriptError.FAILED_TO_DOWNLOAD_ASSET);
+                                throw new Command.ScriptException(Enumerations.ScriptError.FAILED_TO_DOWNLOAD_ASSET);
                             }
                             lock (Locks.ClientInstanceAssetsLock)
                             {
@@ -222,7 +229,7 @@ namespace Corrade
                         case true:
                             var format =
                                 wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORMAT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(format))
                             {
@@ -238,15 +245,17 @@ namespace Corrade
                                             .Select(i => new {i, name = Enum.GetName(typeof (MagickFormat), i)})
                                             .Where(
                                                 @t =>
-                                                    @t.name != null && @t.name.Equals(format, StringComparison.Ordinal))
-                                            .Select(@t => @t.i).FirstOrDefault();
+                                                    t.name != null && t.name.Equals(format, StringComparison.Ordinal))
+                                            .Select(@t => t.i).FirstOrDefault();
                                         if (magickFormat.Equals(MagickFormat.Unknown))
                                         {
-                                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
                                         }
                                         if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                         {
-                                            throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                         }
                                         try
                                         {
@@ -266,7 +275,8 @@ namespace Corrade
                                         catch (Exception ex)
                                         {
                                             Feedback(ex.Message + ex.StackTrace);
-                                            throw new ScriptException(ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
                                         }
                                         break;
                                     default:
@@ -278,11 +288,13 @@ namespace Corrade
                                                     Strings.Equals(o.Name, format, StringComparison.Ordinal));
                                         if (formatProperty == null)
                                         {
-                                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
                                         }
                                         if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                         {
-                                            throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                         }
                                         using (var imageStream = new MemoryStream())
                                         {
@@ -307,8 +319,8 @@ namespace Corrade
                                             }
                                             catch (Exception)
                                             {
-                                                throw new ScriptException(
-                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
+                                                throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
                                             }
                                             assetData = imageStream.ToArray();
                                         }
@@ -320,11 +332,11 @@ namespace Corrade
                     // If no path was specificed, then send the data.
                     var path =
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
                     {
-                        result.Add(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             Convert.ToBase64String(assetData));
                         return;
                     }
@@ -332,7 +344,7 @@ namespace Corrade
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     // Otherwise, save it to the specified file.
                     using (var fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))

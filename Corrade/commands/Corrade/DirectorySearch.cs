@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,42 +19,47 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> directorysearch =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> directorysearch =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Directory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var DirectorySearchResultsAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     var name =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     var fields =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     var LockObject = new object();
                     var csv = new List<string>();
                     var handledEvents = 0;
                     var counter = 1;
                     switch (
-                        Reflection.GetEnumValueFromName<Type>(
+                        Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
-                        case Type.CLASSIFIED:
+                        case Enumerations.Type.CLASSIFIED:
                             var searchClassified = new DirectoryManager.Classified();
-                            wasCSVToStructure(
+                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
-                                ref searchClassified);
+                                ref searchClassified);*/
+                            searchClassified.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                             var classifieds =
                                 new Dictionary<DirectoryManager.Classified, int>();
                             EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
@@ -61,15 +67,15 @@ namespace Corrade
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     var score = !string.IsNullOrEmpty(fields)
-                                        ? wasGetFields(searchClassified, searchClassified.GetType().Name)
+                                        ? wasSharpNET.Reflection.wasGetFields(searchClassified,
+                                            searchClassified.GetType().Name)
                                             .Sum(
                                                 p =>
-                                                    (from q in
-                                                        wasGetFields(o,
-                                                            o.GetType().Name)
-                                                        let r = wasGetInfoValue(p.Key, p.Value)
+                                                    (from q in wasSharpNET.Reflection.wasGetFields(o,
+                                                        o.GetType().Name)
+                                                        let r = wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
                                                         where r != null
-                                                        let s = wasGetInfoValue(q.Key, q.Value)
+                                                        let s = wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
                                                         where s != null
                                                         where r.Equals(s)
                                                         select r).Count())
@@ -99,23 +105,33 @@ namespace Corrade
                                         .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeClassifieds.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
-                                {
-                                    lock (LockObject)
-                                    {
-                                        csv.Add(p.Key.Name);
-                                        csv.AddRange(wasGetInfo(p.Key, p.Value));
-                                    }
-                                }));
+                                o =>
+                                    wasSharpNET.Reflection.wasGetFields(o.Key, o.Key.GetType().Name)
+                                        .AsParallel()
+                                        .ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(p.Key.Name);
+                                                csv.AddRange(
+                                                    wasOpenMetaverse.Reflection.wasSerializeObject(
+                                                        wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)));
+                                            }
+                                        }));
                             break;
-                        case Type.EVENT:
+                        case Enumerations.Type.EVENT:
                             var searchEvent = new DirectoryManager.EventsSearchData();
-                            wasCSVToStructure(
+                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
-                                ref searchEvent);
+                                ref searchEvent);*/
+                            searchEvent.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                             var events =
                                 new Dictionary<DirectoryManager.EventsSearchData, int>();
                             EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
@@ -126,14 +142,17 @@ namespace Corrade
                                     args.MatchedEvents.AsParallel().ForAll(o =>
                                     {
                                         var score = !string.IsNullOrEmpty(fields)
-                                            ? wasGetFields(searchEvent, searchEvent.GetType().Name)
+                                            ? wasSharpNET.Reflection.wasGetFields(searchEvent,
+                                                searchEvent.GetType().Name)
                                                 .Sum(
                                                     p =>
                                                         (from q in
-                                                            wasGetFields(o, o.GetType().Name)
-                                                            let r = wasGetInfoValue(p.Key, p.Value)
+                                                            wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
+                                                            let r =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
                                                             where r != null
-                                                            let s = wasGetInfoValue(q.Key, q.Value)
+                                                            let s =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
                                                             where s != null
                                                             where r.Equals(s)
                                                             select r).Count())
@@ -146,9 +165,9 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
+                                         wasOpenMetaverse.Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartEventsSearch(name, (uint) handledEvents);
@@ -171,27 +190,37 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeEvents.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
-                                {
-                                    lock (LockObject)
-                                    {
-                                        csv.Add(p.Key.Name);
-                                        csv.AddRange(wasGetInfo(p.Key, p.Value));
-                                    }
-                                }));
+                                o =>
+                                    wasSharpNET.Reflection.wasGetFields(o.Key, o.Key.GetType().Name)
+                                        .AsParallel()
+                                        .ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(p.Key.Name);
+                                                csv.AddRange(
+                                                    wasOpenMetaverse.Reflection.wasSerializeObject(
+                                                        wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)));
+                                            }
+                                        }));
                             break;
-                        case Type.GROUP:
+                        case Enumerations.Type.GROUP:
                             if (string.IsNullOrEmpty(name))
                             {
-                                throw new ScriptException(ScriptError.NO_SEARCH_TEXT_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
                             var searchGroup = new DirectoryManager.GroupSearchData();
-                            wasCSVToStructure(
+                            /* wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
-                                ref searchGroup);
+                                ref searchGroup);*/
+                            searchGroup.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                             var groups =
                                 new Dictionary<DirectoryManager.GroupSearchData, int>();
                             EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
@@ -202,14 +231,17 @@ namespace Corrade
                                     args.MatchedGroups.AsParallel().ForAll(o =>
                                     {
                                         var score = !string.IsNullOrEmpty(fields)
-                                            ? wasGetFields(searchGroup, searchGroup.GetType().Name)
+                                            ? wasSharpNET.Reflection.wasGetFields(searchGroup,
+                                                searchGroup.GetType().Name)
                                                 .Sum(
                                                     p =>
                                                         (from q in
-                                                            wasGetFields(o, o.GetType().Name)
-                                                            let r = wasGetInfoValue(p.Key, p.Value)
+                                                            wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
+                                                            let r =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
                                                             where r != null
-                                                            let s = wasGetInfoValue(q.Key, q.Value)
+                                                            let s =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
                                                             where s != null
                                                             where r.Equals(s)
                                                             select r).Count())
@@ -222,9 +254,9 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
+                                         wasOpenMetaverse.Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartGroupSearch(name, handledEvents);
@@ -246,23 +278,33 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeGroups.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
-                                {
-                                    lock (LockObject)
-                                    {
-                                        csv.Add(p.Key.Name);
-                                        csv.AddRange(wasGetInfo(p.Key, p.Value));
-                                    }
-                                }));
+                                o =>
+                                    wasSharpNET.Reflection.wasGetFields(o.Key, o.Key.GetType().Name)
+                                        .AsParallel()
+                                        .ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(p.Key.Name);
+                                                csv.AddRange(
+                                                    wasOpenMetaverse.Reflection.wasSerializeObject(
+                                                        wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)));
+                                            }
+                                        }));
                             break;
-                        case Type.LAND:
+                        case Enumerations.Type.LAND:
                             var searchLand = new DirectoryManager.DirectoryParcel();
-                            wasCSVToStructure(
+                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
-                                ref searchLand);
+                                ref searchLand);*/
+                            searchLand.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                             var lands =
                                 new Dictionary<DirectoryManager.DirectoryParcel, int>();
                             EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
@@ -273,14 +315,16 @@ namespace Corrade
                                     args.DirParcels.AsParallel().ForAll(o =>
                                     {
                                         var score = !string.IsNullOrEmpty(fields)
-                                            ? wasGetFields(searchLand, searchLand.GetType().Name)
+                                            ? wasSharpNET.Reflection.wasGetFields(searchLand, searchLand.GetType().Name)
                                                 .Sum(
                                                     p =>
                                                         (from q in
-                                                            wasGetFields(o, o.GetType().Name)
-                                                            let r = wasGetInfoValue(p.Key, p.Value)
+                                                            wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
+                                                            let r =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
                                                             where r != null
-                                                            let s = wasGetInfoValue(q.Key, q.Value)
+                                                            let s =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
                                                             where s != null
                                                             where r.Equals(s)
                                                             select r).Count())
@@ -293,9 +337,9 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
+                                         wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -320,19 +364,24 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeLands.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
-                                {
-                                    lock (LockObject)
-                                    {
-                                        csv.Add(p.Key.Name);
-                                        csv.AddRange(wasGetInfo(p.Key, p.Value));
-                                    }
-                                }));
+                                o =>
+                                    wasSharpNET.Reflection.wasGetFields(o.Key, o.Key.GetType().Name)
+                                        .AsParallel()
+                                        .ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(p.Key.Name);
+                                                csv.AddRange(
+                                                    wasOpenMetaverse.Reflection.wasSerializeObject(
+                                                        wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)));
+                                            }
+                                        }));
                             break;
-                        case Type.PEOPLE:
+                        case Enumerations.Type.PEOPLE:
                             if (string.IsNullOrEmpty(name))
                             {
-                                throw new ScriptException(ScriptError.NO_SEARCH_TEXT_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
                             var searchAgent = new DirectoryManager.AgentSearchData();
                             var agents =
@@ -345,14 +394,17 @@ namespace Corrade
                                     args.MatchedPeople.AsParallel().ForAll(o =>
                                     {
                                         var score = !string.IsNullOrEmpty(fields)
-                                            ? wasGetFields(searchAgent, searchAgent.GetType().Name)
+                                            ? wasSharpNET.Reflection.wasGetFields(searchAgent,
+                                                searchAgent.GetType().Name)
                                                 .Sum(
                                                     p =>
                                                         (from q in
-                                                            wasGetFields(o, o.GetType().Name)
-                                                            let r = wasGetInfoValue(p.Key, p.Value)
+                                                            wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
+                                                            let r =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
                                                             where r != null
-                                                            let s = wasGetInfoValue(q.Key, q.Value)
+                                                            let s =
+                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
                                                             where s != null
                                                             where r.Equals(s)
                                                             select r).Count())
@@ -365,9 +417,9 @@ namespace Corrade
                                             }
                                         }
                                     });
-                                    if (handledEvents > Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT &&
+                                    if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT &&
                                         ((handledEvents - counter)%
-                                         Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
+                                         wasOpenMetaverse.Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
                                         Client.Directory.StartPeopleSearch(name, handledEvents);
@@ -389,27 +441,37 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safeAgents.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
-                                {
-                                    lock (LockObject)
-                                    {
-                                        csv.Add(p.Key.Name);
-                                        csv.AddRange(wasGetInfo(p.Key, p.Value));
-                                    }
-                                }));
+                                o =>
+                                    wasSharpNET.Reflection.wasGetFields(o.Key, o.Key.GetType().Name)
+                                        .AsParallel()
+                                        .ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(p.Key.Name);
+                                                csv.AddRange(
+                                                    wasOpenMetaverse.Reflection.wasSerializeObject(
+                                                        wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)));
+                                            }
+                                        }));
                             break;
-                        case Type.PLACE:
+                        case Enumerations.Type.PLACE:
                             if (string.IsNullOrEmpty(name))
                             {
-                                throw new ScriptException(ScriptError.NO_SEARCH_TEXT_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
                             var searchPlaces = new DirectoryManager.PlacesSearchData();
-                            wasCSVToStructure(
+                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
-                                ref searchPlaces);
+                                ref searchPlaces);*/
+                            searchPlaces.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                             var places =
                                 new Dictionary<DirectoryManager.PlacesSearchData, int>();
                             EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =
@@ -417,14 +479,13 @@ namespace Corrade
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     var score = !string.IsNullOrEmpty(fields)
-                                        ? wasGetFields(searchPlaces, searchPlaces.GetType().Name)
+                                        ? wasSharpNET.Reflection.wasGetFields(searchPlaces, searchPlaces.GetType().Name)
                                             .Sum(
                                                 p =>
-                                                    (from q in
-                                                        wasGetFields(o, o.GetType().Name)
-                                                        let r = wasGetInfoValue(p.Key, p.Value)
+                                                    (from q in wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
+                                                        let r = wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
                                                         where r != null
-                                                        let s = wasGetInfoValue(q.Key, q.Value)
+                                                        let s = wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
                                                         where s != null
                                                         where r.Equals(s)
                                                         select r).Count())
@@ -453,21 +514,26 @@ namespace Corrade
                                     .ToDictionary(o => o.Key, p => p.Value);
                             }
                             safePlaces.AsParallel().ForAll(
-                                o => wasGetFields(o.Key, o.Key.GetType().Name).AsParallel().ForAll(p =>
-                                {
-                                    lock (LockObject)
-                                    {
-                                        csv.Add(p.Key.Name);
-                                        csv.AddRange(wasGetInfo(p.Key, p.Value));
-                                    }
-                                }));
+                                o =>
+                                    wasSharpNET.Reflection.wasGetFields(o.Key, o.Key.GetType().Name)
+                                        .AsParallel()
+                                        .ForAll(p =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(p.Key.Name);
+                                                csv.AddRange(
+                                                    wasOpenMetaverse.Reflection.wasSerializeObject(
+                                                        wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)));
+                                            }
+                                        }));
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_DIRECTORY_SEARCH_TYPE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DIRECTORY_SEARCH_TYPE);
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

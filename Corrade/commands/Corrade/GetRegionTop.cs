@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,26 +20,26 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getregiontop =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getregiontop =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                     }
                     var topTasks = new Dictionary<UUID, EstateTask>();
                     switch (
-                        Reflection.GetEnumValueFromName<Type>(
+                        Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
-                        case Type.SCRIPTS:
+                        case Enumerations.Type.SCRIPTS:
                             var TopScriptsReplyEvent = new ManualResetEvent(false);
                             EventHandler<TopScriptsReplyEventArgs> TopScriptsReplyEventHandler = (sender, args) =>
                             {
@@ -54,12 +55,13 @@ namespace Corrade
                                 if (!TopScriptsReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
                                 }
                                 Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                             }
                             break;
-                        case Type.COLLIDERS:
+                        case Enumerations.Type.COLLIDERS:
                             var TopCollidersReplyEvent = new ManualResetEvent(false);
                             EventHandler<TopCollidersReplyEventArgs> TopCollidersReplyEventHandler =
                                 (sender, args) =>
@@ -78,20 +80,21 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_GETTING_TOP_COLLIDERS);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_TOP_COLLIDERS);
                                 }
                                 Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_TOP_TYPE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_TOP_TYPE);
                     }
                     int amount;
                     if (
                         !int.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
                                     corradeCommandParameters.Message)),
                             out amount))
                     {
@@ -107,7 +110,7 @@ namespace Corrade
                     }).SelectMany(o => o));
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

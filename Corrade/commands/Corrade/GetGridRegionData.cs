@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,16 +20,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getgridregiondata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getgridregiondata =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
@@ -53,21 +54,22 @@ namespace Corrade
                         if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Grid.GridRegion -= GridRegionEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_REGION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_REGION);
                         }
                         Client.Grid.GridRegion -= GridRegionEventHandler;
                     }
                     switch (!gridRegion.Equals(default(GridRegion)))
                     {
                         case false:
-                            throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
-                    var data = GetStructuredData(gridRegion,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))).ToList();
+                    var data =
+                        gridRegion.GetStructuredData(
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteclassified =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> deleteclassified =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var name =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_CLASSIFIED_NAME);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_CLASSIFIED_NAME);
                     }
                     var AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                     var classifiedUUID = UUID.Zero;
@@ -53,13 +54,13 @@ namespace Corrade
                         if (!AvatarClassifiedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
                         }
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                     }
                     if (classifiedUUID.Equals(UUID.Zero))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_CLASSIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_CLASSIFIED);
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {

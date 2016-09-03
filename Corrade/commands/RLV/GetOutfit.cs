@@ -19,7 +19,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getoutfit = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getoutfit = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -32,40 +32,41 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        var RLVwearable = RLVWearables.AsParallel()
+                        var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel()
                             .FirstOrDefault(
                                 o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        switch (!RLVwearable.Equals(default(RLVWearable)))
+                        switch (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                         {
                             case true:
                                 if (
                                     wearables.AsParallel()
                                         .Any(o => (o as InventoryWearable).WearableType.Equals(RLVwearable.WearableType)))
                                 {
-                                    response.Append(RLV_CONSTANTS.TRUE_MARKER);
+                                    response.Append(wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER);
                                     break;
                                 }
                                 goto default;
                             default:
-                                response.Append(RLV_CONSTANTS.FALSE_MARKER);
+                                response.Append(wasOpenMetaverse.RLV.RLV_CONSTANTS.FALSE_MARKER);
                                 break;
                         }
                         break;
                     default:
-                        var data = new string[RLVWearables.Count];
-                        Enumerable.Range(0, RLVWearables.Count).AsParallel().ForAll(o =>
+                        var data = new string[wasOpenMetaverse.RLV.RLVWearables.Count];
+                        Enumerable.Range(0, wasOpenMetaverse.RLV.RLVWearables.Count).AsParallel().ForAll(o =>
                         {
                             if (
                                 !wearables.AsParallel()
                                     .Any(
                                         p =>
                                             p is InventoryWearable &&
-                                            (p as InventoryWearable).WearableType.Equals(RLVWearables[o].WearableType)))
+                                            (p as InventoryWearable).WearableType.Equals(
+                                                wasOpenMetaverse.RLV.RLVWearables[o].WearableType)))
                             {
-                                data[o] = RLV_CONSTANTS.FALSE_MARKER;
+                                data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.FALSE_MARKER;
                                 return;
                             }
-                            data[o] = RLV_CONSTANTS.TRUE_MARKER;
+                            data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER;
                         });
                         response.Append(string.Join("", data.ToArray()));
                         break;

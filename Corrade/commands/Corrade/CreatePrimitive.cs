@@ -8,11 +8,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,37 +21,38 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> createprimitive =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> createprimitive =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
-                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                     }
-                    if (Helpers.IsSecondLife(Client) &&
-                        position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        position.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
-                        throw new ScriptException(ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
                     }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROTATION)),
                                     corradeCommandParameters.Message)),
                             out rotation))
                     {
@@ -58,7 +60,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -72,14 +74,14 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
                         !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
                     {
@@ -89,7 +91,8 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                                 {
-                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -98,7 +101,8 @@ namespace Corrade
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
-                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                             }
                         }
@@ -107,21 +111,22 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SCALE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCALE)),
                                     corradeCommandParameters.Message)),
                             out scale))
                     {
-                        scale = Constants.PRIMITIVES.DEFAULT_NEW_PRIMITIVE_SCALE;
+                        scale = wasOpenMetaverse.Constants.PRIMITIVES.DEFAULT_NEW_PRIMITIVE_SCALE;
                     }
-                    if (Helpers.IsSecondLife(Client) &&
-                        (scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
-                         scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
-                         scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
-                         scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
-                         scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
-                         scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        (scale.X < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_X ||
+                         scale.Y < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
+                         scale.Z < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
+                         scale.X > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
+                         scale.Y > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                         scale.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
                     {
-                        throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
                     // build the primitive shape from presets by supplying "type" (or not)...
                     var primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
@@ -132,7 +137,7 @@ namespace Corrade
                                 o.Name.Equals(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.OrdinalIgnoreCase));
                     Primitive.ConstructionData constructionData;
@@ -147,15 +152,18 @@ namespace Corrade
                             break;
                     }
                     // ... and overwrite with manual data settings.
-                    wasCSVToStructure(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                    /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
-                        ref constructionData);
+                        ref constructionData);*/
+                    constructionData.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message)));
                     // Get any primitive flags.
                     PrimFlags primFlags = 0;
                     CSV.ToEnumerable(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
                                 corradeCommandParameters.Message)))
                         .ToArray()
                         .AsParallel()

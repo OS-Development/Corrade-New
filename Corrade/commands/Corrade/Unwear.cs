@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -18,22 +19,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> unwear =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> unwear =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var wearables =
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WEARABLES)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WEARABLES)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(wearables))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_WEARABLES);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_WEARABLES);
                     }
                     CSV.ToEnumerable(
                         wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
@@ -59,12 +60,12 @@ namespace Corrade
 
                             if (inventoryItem is InventoryWearable)
                             {
-                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                     () => SendNotification(
                                         Configuration.Notifications.OutfitChanged,
                                         new OutfitEventArgs
                                         {
-                                            Action = Action.UNWEAR,
+                                            Action = Enumerations.Action.UNWEAR,
                                             Name = inventoryItem.Name,
                                             Description = inventoryItem.Description,
                                             Item = inventoryItem.UUID,

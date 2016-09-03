@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -20,15 +21,15 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> detach = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> detach = (message, rule, senderUUID) =>
             {
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE))
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE))
                 {
                     return;
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -39,10 +40,9 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        var RLVattachment =
-                            RLVAttachments.AsParallel().FirstOrDefault(
-                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        switch (!RLVattachment.Equals(default(RLVAttachment)))
+                        var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
+                            o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                        switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                         {
                             case true: // detach by attachment point
                                 Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
@@ -72,12 +72,12 @@ namespace Corrade
                                                         o.UUID))
                                             .Select(p => p.Value.ToString())
                                             .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
-                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.OutfitChanged,
                                                 new OutfitEventArgs
                                                 {
-                                                    Action = Action.DETACH,
+                                                    Action = Enumerations.Action.DETACH,
                                                     Name = o.Name,
                                                     Description = o.Description,
                                                     Item = o.UUID,
@@ -98,7 +98,8 @@ namespace Corrade
                             default: // detach by folder(s) name
                                 if (string.IsNullOrEmpty(rule.Option)) break;
                                 var attachmentInventoryBases =
-                                    new List<InventoryBase>(rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
+                                    new List<InventoryBase>(rule.Option.Split(
+                                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR[0])
                                         .AsParallel().Select(
                                             p =>
                                                 Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
@@ -122,12 +123,12 @@ namespace Corrade
                                     var inventoryItem = o as InventoryItem;
                                     if (inventoryItem is InventoryWearable)
                                     {
-                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.OutfitChanged,
                                                 new OutfitEventArgs
                                                 {
-                                                    Action = Action.DETACH,
+                                                    Action = Enumerations.Action.DETACH,
                                                     Name = inventoryItem.Name,
                                                     Description = inventoryItem.Description,
                                                     Item = inventoryItem.UUID,
@@ -161,12 +162,12 @@ namespace Corrade
                                             .Select(p => p.Value.ToString())
                                             .FirstOrDefault() ??
                                                    AttachmentPoint.Default.ToString();
-                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.OutfitChanged,
                                                 new OutfitEventArgs
                                                 {
-                                                    Action = Action.DETACH,
+                                                    Action = Enumerations.Action.DETACH,
                                                     Name = inventoryItem.Name,
                                                     Description = inventoryItem.Description,
                                                     Item = inventoryItem.UUID,
@@ -192,7 +193,7 @@ namespace Corrade
                         Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                             .ToArray()
                             .AsParallel()
-                            .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value)))
+                            .Where(o => wasOpenMetaverse.RLV.RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value)))
                             .SelectMany(
                                 o =>
                                     o.Key.NameValues.AsParallel()
@@ -216,12 +217,12 @@ namespace Corrade
                                                         inventoryItem.UUID))
                                             .Select(p => p.Value.ToString())
                                             .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
-                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.OutfitChanged,
                                                 new OutfitEventArgs
                                                 {
-                                                    Action = Action.DETACH,
+                                                    Action = Enumerations.Action.DETACH,
                                                     Name = inventoryItem.Name,
                                                     Description = inventoryItem.Description,
                                                     Item = inventoryItem.UUID,

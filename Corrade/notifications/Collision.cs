@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> collision =
+            public static Action<NotificationParameters, Dictionary<string, string>> collision =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var meanCollisionEventArgs =
@@ -25,21 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(meanCollisionEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(meanCollisionEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGGRESSOR),
-                        meanCollisionEventArgs.Aggressor.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MAGNITUDE),
-                        meanCollisionEventArgs.Magnitude.ToString(Utils.EnUsCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                        meanCollisionEventArgs.Time.ToLongDateString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                        meanCollisionEventArgs.Type.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.VICTIM),
-                        meanCollisionEventArgs.Victim.ToString());
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {meanCollisionEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

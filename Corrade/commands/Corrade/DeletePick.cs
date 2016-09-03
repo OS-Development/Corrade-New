@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,22 +20,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> deletepick =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> deletepick =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var AvatarPicksReplyEvent = new ManualResetEvent(false);
                     var input =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(input))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_PICK_NAME);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_PICK_NAME);
                     }
                     var pickUUID = UUID.Zero;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
@@ -52,7 +53,7 @@ namespace Corrade
                         if (!AvatarPicksReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PICKS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PICKS);
                         }
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                     }

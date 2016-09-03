@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
 
@@ -14,7 +15,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> version = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> version = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -24,7 +25,7 @@ namespace Corrade
                 lock (Locks.ClientInstanceSelfLock)
                 {
                     Client.Self.Chat(
-                        $"{RLV_CONSTANTS.VIEWER} v{RLV_CONSTANTS.SHORT_VERSION} (Corrade Version: {CORRADE_CONSTANTS.CORRADE_VERSION} Compiled: {CORRADE_CONSTANTS.CORRADE_COMPILE_DATE})",
+                        $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.VIEWER} v{wasOpenMetaverse.RLV.RLV_CONSTANTS.SHORT_VERSION} (Corrade Version: {CORRADE_CONSTANTS.CORRADE_VERSION} Compiled: {CORRADE_CONSTANTS.CORRADE_COMPILE_DATE})",
                         channel,
                         ChatType.Normal);
                 }

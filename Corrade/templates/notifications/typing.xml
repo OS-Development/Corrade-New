@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>typing</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>Corrade.Events.TypingEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>AgentUUID</Path>
+            <Name>agent</Name>
+          </Parameter>
+          <Parameter>
+            <Path>FirstName</Path>
+            <Name>firstname</Name>
+          </Parameter>
+          <Parameter>
+            <Path>LastName</Path>
+            <Name>lastname</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Action</Path>
+            <Name>action</Name>
+            <Processing>
+              <ToLower>
+                <Culture />
+              </ToLower>
+            </Processing>
+          </Parameter>
+          <Parameter>
+            <Path>Entity</Path>
+            <Name>entity</Name>
+            <Processing>
+              <ToLower>
+                <Culture />
+              </ToLower>
+            </Processing>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

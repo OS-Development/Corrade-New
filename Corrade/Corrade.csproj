@@ -91,6 +91,7 @@
       <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.2.600\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="Mono.Data.Sqlite, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <HintPath>..\packages\Mono.Data.Sqlite.Portable.1.0.3.5\lib\net4\Mono.Data.Sqlite.dll</HintPath>
       <Private>True</Private>
@@ -171,8 +172,47 @@
       <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\TweetSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="wasSharpNET">
+      <HintPath>..\wasSharpNET\bin\Release\wasSharpNET.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Source\Attributes.cs" />
+    <Compile Include="Source\Command.cs" />
+    <Compile Include="Source\Constants\CORRADE_CONSTANTS.cs" />
+    <Compile Include="Source\Constants\SIML_BOT_CONSTANTS.cs" />
+    <Compile Include="Source\Enumerations.cs" />
+    <Compile Include="Source\Events\FeedEventArgs.cs" />
+    <Compile Include="Source\Events\GroupMembershipEventArgs.cs" />
+    <Compile Include="Source\Events\GroupMessageEventArgs.cs" />
+    <Compile Include="Source\Events\OutfitEventArgs.cs" />
+    <Compile Include="Source\Events\TypingEventArgs.cs" />
+    <Compile Include="Source\Helpers\Utilities.cs" />
+    <Compile Include="Source\Notification.cs" />
+    <Compile Include="Source\RLV.cs" />
+    <Compile Include="Source\Structures\Agent.cs" />
+    <Compile Include="Source\Structures\AgentMovement.cs" />
+    <Compile Include="Source\Structures\Effects\BeamEffect.cs" />
+    <Compile Include="Source\Structures\CallbackQueueElement.cs" />
+    <Compile Include="Source\Structures\Conference.cs" />
+    <Compile Include="Source\Structures\DirItem.cs" />
+    <Compile Include="Source\Structures\GroupInvite.cs" />
+    <Compile Include="Source\Structures\GroupMessage.cs" />
+    <Compile Include="Source\Structures\GroupNotice.cs" />
+    <Compile Include="Source\Structures\InstantMessage.cs" />
+    <Compile Include="Source\Structures\LocalMessage.cs" />
+    <Compile Include="Source\Structures\Effects\LookAtEffect.cs" />
+    <Compile Include="Source\Structures\Effects\PointAtEffect.cs" />
+    <Compile Include="Source\Structures\RegionMessage.cs" />
+    <Compile Include="Source\Structures\ScriptDialog.cs" />
+    <Compile Include="Source\Structures\ScriptPermissionRequest.cs" />
+    <Compile Include="Source\Structures\Effects\SphereEffect.cs" />
+    <Compile Include="Source\Structures\TeleportLure.cs" />
+    <Compile Include="Source\Threading\Enumerations.cs" />
+    <Compile Include="Source\Threading\Thread.cs" />
+    <Compile Include="Source\WebForms\SecondLife\EventFormData.cs" />
+    <Compile Include="Source\WebForms\SecondLife\Transaction.cs" />
+    <Compile Include="Source\WebForms\SecondLife\Transactions.cs" />
     <Compile Include="commands\Corrade\AddEvent.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -992,6 +1032,7 @@
     <Compile Include="Corrade.Designer.cs">
       <DependentUpon>Corrade.cs</DependentUpon>
     </Compile>
+    <Compile Include="Source\Helpers\Notifications.cs" />
     <Compile Include="notifications\Alert.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -1494,6 +1535,111 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="templates\notifications\alert.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\animation.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\avatars.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\balance.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\collision.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\conference.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\control.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\crossing.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\debug.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\dialog.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\economy.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\effect.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\feed.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\friendship.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\group.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\inventory.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\invite.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\local.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\lure.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\membership.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\message.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\notice.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\objectim.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\outfit.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\ownersay.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\permission.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\primitives.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\region.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\regionsayto.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\rlv.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\sit.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\sound.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\terse.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\typing.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\url.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="..\Configurator\bin\Release\Configurator.exe">
       <Link>Configurator.exe</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

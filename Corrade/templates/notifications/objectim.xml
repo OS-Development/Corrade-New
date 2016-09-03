@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>objectim</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>OpenMetaverse.InstantMessageEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>IM.FromAgentID</Path>
+            <Name>owner</Name>
+          </Parameter>
+          <Parameter>
+            <Path>IM.IMSessionID</Path>
+            <Name>item</Name>
+          </Parameter>
+          <Parameter>
+            <Path>IM.FromAgentName</Path>
+            <Name>name</Name>
+          </Parameter>
+          <Parameter>
+            <Path>IM.Message</Path>
+            <Name>message</Name>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

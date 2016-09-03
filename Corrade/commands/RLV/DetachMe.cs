@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -17,9 +18,9 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> detachme = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> detachme = (message, rule, senderUUID) =>
             {
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE))
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE))
                 {
                     return;
                 }
@@ -52,12 +53,12 @@ namespace Corrade
                                             inventoryItem.UUID))
                                 .Select(p => p.Value.ToString())
                                 .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
-                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                 () => SendNotification(
                                     Configuration.Notifications.OutfitChanged,
                                     new OutfitEventArgs
                                     {
-                                        Action = Action.DETACH,
+                                        Action = Enumerations.Action.DETACH,
                                         Name = inventoryItem.Name,
                                         Description = inventoryItem.Description,
                                         Item = inventoryItem.UUID,

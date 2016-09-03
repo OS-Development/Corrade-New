@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,25 +21,25 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytoinventoryoffer =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> replytoinventoryoffer =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID session;
                     if (
                         !UUID.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)),
                             out session))
                     {
-                        throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                     }
                     KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent> offer;
                     lock (InventoryOffersLock)
@@ -49,11 +50,11 @@ namespace Corrade
                     }
                     if (offer.Equals(default(KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
                     {
-                        throw new ScriptException(ScriptError.INVENTORY_OFFER_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_OFFER_NOT_FOUND);
                     }
                     var folder = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                             corradeCommandParameters.Message));
                     InventoryFolder inventoryFolder;
                     switch (!string.IsNullOrEmpty(folder))
@@ -77,7 +78,7 @@ namespace Corrade
                             }
                             if (inventoryFolder == null)
                             {
-                                throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
                             }
                             break;
                         default:
@@ -90,13 +91,13 @@ namespace Corrade
                             break;
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.ACCEPT:
+                        case Enumerations.Action.ACCEPT:
                             lock (InventoryOffersLock)
                             {
                                 if (!inventoryFolder.UUID.Equals(UUID.Zero))
@@ -107,7 +108,7 @@ namespace Corrade
                                 offer.Value.Set();
                             }
                             break;
-                        case Action.DECLINE:
+                        case Enumerations.Action.DECLINE:
                             lock (InventoryOffersLock)
                             {
                                 offer.Key.Accept = false;
@@ -115,7 +116,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                     // remove inventory offer
                     lock (InventoryOffersLock)

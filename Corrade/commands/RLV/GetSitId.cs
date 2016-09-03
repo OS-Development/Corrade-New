@@ -14,7 +14,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getsitid = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getsitid = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)

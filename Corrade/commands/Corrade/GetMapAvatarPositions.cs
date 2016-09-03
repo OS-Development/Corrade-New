@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,18 +19,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getmapavatarpositions =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getmapavatarpositions =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
@@ -43,7 +44,7 @@ namespace Corrade
                         !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
                             ref regionHandle))
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     var mapItems = new HashSet<MapItem>();
                     lock (Locks.ClientInstanceGridLock)
@@ -53,7 +54,7 @@ namespace Corrade
                     }
                     if (!mapItems.Any())
                     {
-                        throw new ScriptException(ScriptError.NO_MAP_ITEMS_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_MAP_ITEMS_FOUND);
                     }
                     var data =
                         mapItems.AsParallel()
@@ -65,7 +66,7 @@ namespace Corrade
                             }).SelectMany(o => o).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

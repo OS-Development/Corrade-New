@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,29 +19,29 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getestatelist =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getestatelist =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                     }
                     var estateList = new List<UUID>();
                     var EstateListReceivedAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     var type =
-                        Reflection.GetEnumValueFromName<Type>(
+                        Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     switch (type)
                     {
-                        case Type.BAN:
+                        case Enumerations.Type.BAN:
                             EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
                             {
                                 EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
@@ -64,12 +65,13 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                 }
                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                             }
                             break;
-                        case Type.GROUP:
+                        case Enumerations.Type.GROUP:
                             EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                 (sender, args) =>
                                 {
@@ -94,12 +96,13 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                 }
                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                             }
                             break;
-                        case Type.MANAGER:
+                        case Enumerations.Type.MANAGER:
                             EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                 (sender, args) =>
                                 {
@@ -124,12 +127,13 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                 }
                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                             }
                             break;
-                        case Type.USER:
+                        case Enumerations.Type.USER:
                             EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                 (sender, args) =>
                                 {
@@ -154,22 +158,23 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                 }
                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ESTATE_LIST);
                     }
                     // resolve UUIDs to names
                     var LockObject = new object();
                     var csv = new List<string>();
                     switch (type)
                     {
-                        case Type.BAN:
-                        case Type.MANAGER:
-                        case Type.USER:
+                        case Enumerations.Type.BAN:
+                        case Enumerations.Type.MANAGER:
+                        case Enumerations.Type.USER:
                             estateList.AsParallel().ForAll(o =>
                             {
                                 var agentName = string.Empty;
@@ -184,7 +189,7 @@ namespace Corrade
                                 }
                             });
                             break;
-                        case Type.GROUP:
+                        case Enumerations.Type.GROUP:
                             estateList.AsParallel().ForAll(o =>
                             {
                                 var groupName = string.Empty;
@@ -202,7 +207,7 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

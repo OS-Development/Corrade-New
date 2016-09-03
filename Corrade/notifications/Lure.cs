@@ -7,9 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -17,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> lure =
+            public static Action<NotificationParameters, Dictionary<string, string>> lure =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var teleportLureEventArgs =
@@ -26,27 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(teleportLureEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(teleportLureEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    var name = Helpers.GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
-                    if (name != null)
-                    {
-                        var fullName = new List<string>(name);
-                        if (fullName.Count.Equals(2))
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                fullName.First());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                fullName.Last());
-                        }
-                    }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        teleportLureEventArgs.IM.FromAgentID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                        teleportLureEventArgs.IM.IMSessionID.ToString());
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {teleportLureEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

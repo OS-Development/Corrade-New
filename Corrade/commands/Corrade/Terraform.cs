@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,46 +20,46 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> terraform =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> terraform =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     int amount;
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
                             corradeCommandParameters.Message)), out amount))
                     {
-                        throw new ScriptException(ScriptError.INVALID_AMOUNT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
                     }
                     float width;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WIDTH)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WIDTH)),
                             corradeCommandParameters.Message)), out width))
                     {
-                        throw new ScriptException(ScriptError.INVALID_WIDTH);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_WIDTH);
                     }
                     float height;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HEIGHT)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.HEIGHT)),
                             corradeCommandParameters.Message)), out height))
                     {
-                        throw new ScriptException(ScriptError.INVALID_HEIGHT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_HEIGHT);
                     }
                     var action = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(action))
                     {
-                        throw new ScriptException(ScriptError.NO_TERRAFORM_ACTION_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_TERRAFORM_ACTION_SPECIFIED);
                     }
                     var terraformActionFieldInfo = typeof (TerraformAction).GetFields(
                         BindingFlags.Public |
@@ -69,16 +70,16 @@ namespace Corrade
                                     StringComparison.OrdinalIgnoreCase));
                     if (terraformActionFieldInfo == null)
                     {
-                        throw new ScriptException(ScriptError.INVALID_TERRAFORM_ACTION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_TERRAFORM_ACTION);
                     }
                     var terraformAction = (TerraformAction) terraformActionFieldInfo.GetValue(null);
                     var brush = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BRUSH)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BRUSH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(brush))
                     {
-                        throw new ScriptException(ScriptError.NO_TERRAFORM_BRUSH_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_TERRAFORM_BRUSH_SPECIFIED);
                     }
                     var terraformBrushFieldInfo = typeof (TerraformBrushSize).GetFields(
                         BindingFlags.Public |
@@ -89,7 +90,7 @@ namespace Corrade
                                     StringComparison.OrdinalIgnoreCase));
                     if (terraformBrushFieldInfo == null)
                     {
-                        throw new ScriptException(ScriptError.INVALID_TERRAFORM_BRUSH);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_TERRAFORM_BRUSH);
                     }
                     var terraformBrush = (TerraformBrushSize) terraformBrushFieldInfo.GetValue(null);
                     Vector3 position;
@@ -97,7 +98,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -105,7 +106,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -119,14 +120,14 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
                         !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     if (!simulator.IsEstateManager)
                     {
@@ -135,7 +136,7 @@ namespace Corrade
                         {
                             if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                             {
-                                throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
                             if (
                                 !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -144,7 +145,7 @@ namespace Corrade
                                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                             {
-                                throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
                         }
                     }
@@ -155,7 +156,7 @@ namespace Corrade
                                 position.X + width,
                                 position.Y + height, terraformAction, terraformBrush, amount))
                         {
-                            throw new ScriptException(ScriptError.COULD_NOT_TERRAFORM);
+                            throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_TERRAFORM);
                         }
                     }
                 };

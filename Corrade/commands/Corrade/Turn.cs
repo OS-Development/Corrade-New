@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,30 +18,30 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> turn =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> turn =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float degrees;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEGREES)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEGREES)),
                             corradeCommandParameters.Message)), out degrees))
                     {
-                        throw new ScriptException(ScriptError.INVALID_ANGLE_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ANGLE_PROVIDED);
                     }
-                    switch (Reflection.GetEnumValueFromName<Direction>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Direction>(
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIRECTION)),
                             corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Direction.LEFT:
+                        case Enumerations.Direction.LEFT:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
@@ -59,7 +60,7 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
-                        case Direction.RIGHT:
+                        case Enumerations.Direction.RIGHT:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
@@ -79,7 +80,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_DIRECTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DIRECTION);
                     }
                     // Set the camera on the avatar.
                     lock (Locks.ClientInstanceSelfLock)

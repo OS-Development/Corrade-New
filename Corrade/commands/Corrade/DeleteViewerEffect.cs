@@ -7,10 +7,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Structures.Effects;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,30 +20,31 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteviewereffect =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> deleteviewereffect =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID effectUUID;
                     if (!UUID.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
+                        corradeCommandParameters.Message)),
                         out effectUUID))
                     {
-                        throw new ScriptException(ScriptError.NO_EFFECT_UUID_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_EFFECT_UUID_PROVIDED);
                     }
-                    var viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
+                    var viewerEffectType = Reflection.GetEnumValueFromName<Enumerations.ViewerEffectType>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)
                     {
-                        case ViewerEffectType.LOOK:
+                        case Enumerations.ViewerEffectType.LOOK:
                             LookAtEffect lookAtEffect;
                             lock (LookAtEffectsLock)
                             {
@@ -53,7 +56,7 @@ namespace Corrade
                             switch (!lookAtEffect.Equals(default(LookAtEffect)))
                             {
                                 case false:
-                                    throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
@@ -62,7 +65,7 @@ namespace Corrade
                                     LookAtType.Idle, effectUUID);
                             }
                             break;
-                        case ViewerEffectType.POINT:
+                        case Enumerations.ViewerEffectType.POINT:
                             PointAtEffect pointAtEffect;
                             lock (PointAtEffectsLock)
                             {
@@ -74,7 +77,7 @@ namespace Corrade
                             switch (!pointAtEffect.Equals(default(PointAtEffect)))
                             {
                                 case false:
-                                    throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
@@ -87,7 +90,7 @@ namespace Corrade
                                 PointAtEffects.Remove(pointAtEffect);
                             }
                             break;
-                        case ViewerEffectType.BEAM:
+                        case Enumerations.ViewerEffectType.BEAM:
                             BeamEffect beamEffect;
                             lock (BeamEffectsLock)
                             {
@@ -97,7 +100,7 @@ namespace Corrade
                             switch (!beamEffect.Equals(default(BeamEffect)))
                             {
                                 case false:
-                                    throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
@@ -111,7 +114,7 @@ namespace Corrade
                                 BeamEffects.Remove(beamEffect);
                             }
                             break;
-                        case ViewerEffectType.SPHERE:
+                        case Enumerations.ViewerEffectType.SPHERE:
                             SphereEffect sphereEffect;
                             lock (SphereEffectsLock)
                             {
@@ -123,7 +126,7 @@ namespace Corrade
                             switch (!sphereEffect.Equals(default(SphereEffect)))
                             {
                                 case false:
-                                    throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
@@ -137,7 +140,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.INVALID_VIEWER_EFFECT);
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVALID_VIEWER_EFFECT);
                     }
                 };
         }

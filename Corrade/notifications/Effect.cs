@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> effect =
+            public static Action<NotificationParameters, Dictionary<string, string>> effect =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var viewerEffectType = corradeNotificationParameters.Event.GetType();
@@ -28,26 +29,22 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(notificationViewerEffectEventArgs,
-                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    wasOpenMetaverse.Reflection.GetStructuredData(notificationViewerEffectEventArgs,
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT),
-                            notificationViewerEffectEventArgs.Type.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                            notificationViewerEffectEventArgs.SourceID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                            notificationViewerEffectEventArgs.TargetID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                            notificationViewerEffectEventArgs.TargetPosition.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
-                            notificationViewerEffectEventArgs.Duration.ToString(
-                                Utils.EnUsCulture));
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                            notificationViewerEffectEventArgs.EffectID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.GENERIC));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {notificationViewerEffectEventArgs},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                         return;
                     }
                     if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
@@ -58,24 +55,22 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(notificationViewerPointAtEventArgs,
-                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    wasOpenMetaverse.Reflection.GetStructuredData(notificationViewerPointAtEventArgs,
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                            notificationViewerPointAtEventArgs.SourceID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                            notificationViewerPointAtEventArgs.TargetID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                            notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
-                            notificationViewerPointAtEventArgs.Duration.ToString(
-                                Utils.EnUsCulture));
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                            notificationViewerPointAtEventArgs.EffectID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.POINT));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {notificationViewerPointAtEventArgs},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                         return;
                     }
                     if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
@@ -86,24 +81,22 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(notificationViewerLookAtEventArgs,
-                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    wasOpenMetaverse.Reflection.GetStructuredData(notificationViewerLookAtEventArgs,
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                            notificationViewerLookAtEventArgs.SourceID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                            notificationViewerLookAtEventArgs.TargetID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                            notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
-                            notificationViewerLookAtEventArgs.Duration.ToString(
-                                Utils.EnUsCulture));
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                            notificationViewerLookAtEventArgs.EffectID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.LOOK));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {notificationViewerLookAtEventArgs},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                     }
                 };
         }

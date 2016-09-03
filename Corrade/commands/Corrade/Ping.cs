@@ -14,11 +14,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> ping =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> ping =
                 (corradeCommandParameters, result) =>
                 {
-                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                        Reflection.GetNameFromEnumValue(ScriptKeys.PONG));
+                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.PONG));
                 };
         }
     }

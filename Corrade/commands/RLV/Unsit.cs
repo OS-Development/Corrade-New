@@ -8,7 +8,6 @@ using System;
 using System.Linq;
 using OpenMetaverse;
 using wasOpenMetaverse;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -16,9 +15,9 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> unsit = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> unsit = (message, rule, senderUUID) =>
             {
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE))
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE))
                 {
                     return;
                 }
@@ -31,7 +30,7 @@ namespace Corrade
                 {
                     Client.Self.SignaledAnimations.Copy()
                         .Keys.AsParallel()
-                        .Where(o => !Helpers.LindenAnimations.Contains(o))
+                        .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                         .ForAll(o => { Client.Self.AnimationStop(o, true); });
                 }
                 // Set the camera on the avatar.

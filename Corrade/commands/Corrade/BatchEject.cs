@@ -12,7 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,18 +20,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> batcheject =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> batcheject =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
                     switch (string.IsNullOrEmpty(target))
                     {
@@ -40,7 +40,7 @@ namespace Corrade
                                 !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
-                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
@@ -51,11 +51,11 @@ namespace Corrade
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                     {
-                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
@@ -67,7 +67,7 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
@@ -84,7 +84,7 @@ namespace Corrade
                     if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                     }
                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
 
@@ -94,7 +94,7 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
                     {
-                        throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                     }
                     // Get roles members.
                     List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
@@ -111,7 +111,7 @@ namespace Corrade
                     if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                     }
                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
 
@@ -120,7 +120,7 @@ namespace Corrade
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
                                 corradeCommandParameters.Message)))
                         .ToArray()
                         .AsParallel()
@@ -129,7 +129,7 @@ namespace Corrade
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))
                             {
-                                var fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
                                 if (
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
@@ -211,7 +211,7 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

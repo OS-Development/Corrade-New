@@ -110,11 +110,12 @@ namespace wasOpenMetaverse
         /// <param name="groupUUID">the UUID of the group</param>
         /// <param name="bans">a dictionary to store group bans</param>
         /// <returns>true if the current groups could be fetched</returns>
-        public static bool GetGroupBans(GridClient Client, UUID groupUUID, uint millisecondsTimeout, ref Dictionary<UUID, DateTime> bans)
+        public static bool GetGroupBans(GridClient Client, UUID groupUUID, uint millisecondsTimeout,
+            ref Dictionary<UUID, DateTime> bans)
         {
             Dictionary<UUID, DateTime> bannedAgents = null;
             var BannedAgentsEvent = new ManualResetEvent(false);
-            bool succeeded = false;
+            var succeeded = false;
             EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
             {
                 succeeded = args.Success;
@@ -125,7 +126,7 @@ namespace wasOpenMetaverse
             {
                 Client.Groups.BannedAgents += BannedAgentsEventHandler;
                 Client.Groups.RequestBannedAgents(groupUUID);
-                if(!BannedAgentsEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!BannedAgentsEvent.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Groups.BannedAgents -= BannedAgentsEventHandler;
                     return false;

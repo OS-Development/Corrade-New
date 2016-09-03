@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,114 +18,114 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> pay =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> pay =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     int amount;
                     if (
                         !int.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
                                     corradeCommandParameters.Message)),
                             out amount))
                     {
-                        throw new ScriptException(ScriptError.INVALID_AMOUNT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
                     }
                     if (amount.Equals(0))
                     {
-                        throw new ScriptException(ScriptError.INVALID_AMOUNT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
                     }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                     {
-                        throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         if (Client.Self.Balance < amount)
                         {
-                            throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                         }
                     }
                     UUID targetUUID;
                     switch (
-                        Reflection.GetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Entity.GROUP:
+                        case Enumerations.Entity.GROUP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)));
                             }
                             break;
-                        case Entity.AVATAR:
+                        case Enumerations.Entity.AVATAR:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out targetUUID) &&
                                 !Resolvers.AgentNameToUUID(Client,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message)),
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
                             {
-                                throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.GiveAvatarMoney(targetUUID, amount,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)));
                             }
                             break;
-                        case Entity.OBJECT:
+                        case Enumerations.Entity.OBJECT:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID))
                             {
-                                throw new ScriptException(ScriptError.INVALID_PAY_TARGET);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PAY_TARGET);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.GiveObjectMoney(targetUUID, amount,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                             corradeCommandParameters.Message)));
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                 };
         }

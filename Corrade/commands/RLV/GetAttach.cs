@@ -19,7 +19,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getattach = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getattach = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -44,31 +44,31 @@ namespace Corrade
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
-                        var RLVattachment = RLVAttachments.AsParallel().FirstOrDefault(
+                        var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
                             o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        switch (!RLVattachment.Equals(default(RLVAttachment)))
+                        switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                         {
                             case true:
                                 if (!attachmentPoints.Contains(RLVattachment.AttachmentPoint))
                                     goto default;
-                                response.Append(RLV_CONSTANTS.TRUE_MARKER);
+                                response.Append(wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER);
                                 break;
                             default:
-                                response.Append(RLV_CONSTANTS.FALSE_MARKER);
+                                response.Append(wasOpenMetaverse.RLV.RLV_CONSTANTS.FALSE_MARKER);
                                 break;
                         }
                         break;
                     default:
-                        var data = new string[RLVAttachments.Count];
-                        Enumerable.Range(0, RLVAttachments.Count).AsParallel().ForAll(o =>
+                        var data = new string[wasOpenMetaverse.RLV.RLVAttachments.Count];
+                        Enumerable.Range(0, wasOpenMetaverse.RLV.RLVAttachments.Count).AsParallel().ForAll(o =>
                         {
-                            switch (!attachmentPoints.Contains(RLVAttachments[o].AttachmentPoint))
+                            switch (!attachmentPoints.Contains(wasOpenMetaverse.RLV.RLVAttachments[o].AttachmentPoint))
                             {
                                 case true:
-                                    data[o] = RLV_CONSTANTS.FALSE_MARKER;
+                                    data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.FALSE_MARKER;
                                     return;
                                 default:
-                                    data[o] = RLV_CONSTANTS.TRUE_MARKER;
+                                    data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER;
                                     break;
                             }
                         });

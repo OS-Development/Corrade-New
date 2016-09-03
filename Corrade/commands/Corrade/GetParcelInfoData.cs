@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,19 +20,19 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getparcelinfodata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getparcelinfodata =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -39,7 +40,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -53,14 +54,14 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
                         !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     UUID parcelUUID;
                     lock (Locks.ClientInstanceParcelsLock)
@@ -70,7 +71,7 @@ namespace Corrade
                     }
                     if (parcelUUID.Equals(UUID.Zero))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     var ParcelInfoEvent = new ManualResetEvent(false);
                     var parcelInfo = new ParcelInfo();
@@ -89,20 +90,21 @@ namespace Corrade
                         if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                     }
                     if (parcelInfo.Equals(default(ParcelInfo)))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_PARCEL_INFO);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
                     }
-                    var data = GetStructuredData(parcelInfo,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))).ToList();
+                    var data =
+                        parcelInfo.GetStructuredData(
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,20 +21,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> derez =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> derez =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -41,7 +42,7 @@ namespace Corrade
                     }
                     var folder = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                             corradeCommandParameters.Message));
                     InventoryFolder inventoryFolder;
                     switch (!string.IsNullOrEmpty(folder))
@@ -65,7 +66,7 @@ namespace Corrade
                             }
                             if (inventoryFolder == null)
                             {
-                                throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
                             }
                             break;
                         default:
@@ -84,16 +85,16 @@ namespace Corrade
                                 o.Name.Equals(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -106,7 +107,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
                         default:
@@ -117,7 +118,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
                     }

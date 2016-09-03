@@ -19,24 +19,24 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> divorce =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> divorce =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     var firstname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                             corradeCommandParameters.Message));
 
                     var lastname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                             corradeCommandParameters.Message));
 
                     if (string.IsNullOrEmpty(firstname) && string.IsNullOrEmpty(lastname))
@@ -47,10 +47,10 @@ namespace Corrade
 
                     var secret = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SECRET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SECRET)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(secret))
-                        throw new ScriptException(ScriptError.NO_SECRET_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
                     var cookieContainer = new CookieContainer();
 
@@ -71,7 +71,7 @@ namespace Corrade
                         });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
@@ -79,7 +79,7 @@ namespace Corrade
 
                     var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
                     if (openIDNodes == null || !openIDNodes.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var openID =
                         openIDNodes.AsParallel()
@@ -91,13 +91,13 @@ namespace Corrade
                                 o => o.Attributes["value"].Value);
 
                     if (!openID.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
                     postData =
                         GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                             "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     #endregion
 
@@ -111,7 +111,7 @@ namespace Corrade
                             });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
 
                     // Check for proposal errors (ie user already has a partner request, etc...).
                     doc = new HtmlDocument();
@@ -122,7 +122,7 @@ namespace Corrade
                     // Get the divorce form.
                     var formNode = doc.DocumentNode.SelectSingleNode("//form[@action='/my/account/partners.php']");
                     if (formNode == null)
-                        throw new ScriptException(ScriptError.NO_PARTNER_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PARTNER_FOUND);
 
                     // Build the new divorce request form.
                     var newDivorce = new Dictionary<string, string>();
@@ -143,7 +143,7 @@ namespace Corrade
                         "https://secondlife.com/my/account/partners.php", newDivorce);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_POST_DIVORCE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_POST_DIVORCE);
 
                     // Check for proposal errors (ie user already has a partner request, etc...).
                     doc = new HtmlDocument();
@@ -153,9 +153,9 @@ namespace Corrade
                     var errorNodes = doc.DocumentNode.SelectNodes("//div[@class='error']/ul/li");
                     if (errorNodes != null && errorNodes.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(errorNodes.Select(o => o.InnerText.Trim())));
-                        throw new ScriptException(ScriptError.UNABLE_TO_DIVORCE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_DIVORCE);
                     }
                 };
         }

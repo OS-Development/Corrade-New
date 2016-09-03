@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,26 +20,26 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setestatecovenant =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setestatecovenant =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
                     }
 
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
 
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
@@ -51,7 +52,7 @@ namespace Corrade
                                 .FirstOrDefault() as InventoryItem;
                         if (inventoryItem == null)
                         {
-                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                         }
                         itemUUID = inventoryItem.AssetUUID;
                     }

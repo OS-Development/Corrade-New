@@ -11,8 +11,8 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> rez =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> rez =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     InventoryItem inventoryItem;
                     UUID itemUUID;
@@ -55,30 +55,31 @@ namespace Corrade
                     }
                     if (inventoryItem == null)
                     {
-                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
-                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                     }
-                    if (Helpers.IsSecondLife(Client) &&
-                        position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        position.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
-                        throw new ScriptException(ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
                     }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROTATION)),
                                     corradeCommandParameters.Message)),
                             out rotation))
                     {
@@ -86,7 +87,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -100,14 +101,14 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
                         !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
                     {
@@ -117,7 +118,8 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                                 {
-                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -126,7 +128,8 @@ namespace Corrade
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
-                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                             }
                         }

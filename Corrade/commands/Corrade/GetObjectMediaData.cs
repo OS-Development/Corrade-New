@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,20 +19,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getobjectmediadata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getobjectmediadata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -39,11 +40,11 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -56,7 +57,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                         default:
@@ -67,7 +68,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                     }
@@ -82,20 +83,20 @@ namespace Corrade
                                 switch (succeeded)
                                 {
                                     case true:
-                                        data.AddRange(GetStructuredData(faceMedia,
-                                            wasInput(
-                                                KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                                                    corradeCommandParameters.Message))));
+                                        data.AddRange(faceMedia.GetStructuredData(wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                                corradeCommandParameters.Message))));
                                         break;
                                     default:
-                                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
                                 }
                             });
                     }
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

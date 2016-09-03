@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,13 +21,13 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> batchmute =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> batchmute =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Mute))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var mutes = Enumerable.Empty<MuteEntry>();
                     // retrieve the current mute list
@@ -35,7 +36,7 @@ namespace Corrade
                         case true:
                             if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                             }
                             break;
                         default:
@@ -51,19 +52,19 @@ namespace Corrade
 
                     CSV.ToKeyValue(
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MUTES)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MUTES)),
                             corradeCommandParameters.Message))).AsParallel().ForAll(o =>
                             {
                                 UUID targetUUID;
                                 bool succeeded;
                                 switch (
-                                    Reflection.GetEnumValueFromName<Action>(
+                                    Reflection.GetEnumValueFromName<Enumerations.Action>(
                                         wasInput(
                                             KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                                 {
-                                    case Action.MUTE:
+                                    case Enumerations.Action.MUTE:
 
                                         if (!UUID.TryParse(o.Value, out targetUUID) ||
                                             !Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
@@ -97,7 +98,8 @@ namespace Corrade
                                                         wasInput(
                                                             KeyValue.Get(
                                                                 wasOutput(
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.TYPE)),
                                                                 corradeCommandParameters.Message)),
                                                         StringComparison.Ordinal));
                                         // ...or assume "Default" mute type from MuteType
@@ -111,7 +113,7 @@ namespace Corrade
                                         CSV.ToEnumerable(
                                             wasInput(
                                                 KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
+                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
                                                     corradeCommandParameters.Message)))
                                             .ToArray()
                                             .AsParallel()
@@ -157,7 +159,7 @@ namespace Corrade
                                                 break;
                                         }
                                         break;
-                                    case Action.UNMUTE:
+                                    case Enumerations.Action.UNMUTE:
                                         UUID.TryParse(o.Value, out targetUUID);
 
                                         if (targetUUID.Equals(UUID.Zero) ||
@@ -221,7 +223,7 @@ namespace Corrade
                             });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

@@ -7,7 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using wasOpenMetaverse;
+using Corrade.Events;
+using Corrade.Helpers;
 using wasSharp;
 
 namespace Corrade
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> membership =
+            public static Action<NotificationParameters, Dictionary<string, string>> membership =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var groupMembershipEventArgs =
@@ -28,38 +29,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(groupMembershipEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(groupMembershipEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    var name = Helpers.GetAvatarNames(groupMembershipEventArgs.AgentName);
-                    if (name != null)
-                    {
-                        var fullName = new List<string>(name);
-                        if (fullName.Count.Equals(2))
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                fullName.First());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                fullName.Last());
-                        }
-                    }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        groupMembershipEventArgs.AgentUUID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                        groupMembershipEventArgs.GroupName);
-                    switch (groupMembershipEventArgs.Action)
-                    {
-                        case Action.JOINED:
-                        case Action.PARTED:
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                !groupMembershipEventArgs.Action.Equals(
-                                    Action.JOINED)
-                                    ? Reflection.GetNameFromEnumValue(Action.PARTED)
-                                    : Reflection.GetNameFromEnumValue(Action.JOINED));
-                            break;
-                    }
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {groupMembershipEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

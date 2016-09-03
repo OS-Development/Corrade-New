@@ -7,7 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -17,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> control =
+            public static Action<NotificationParameters, Dictionary<string, string>> control =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var scriptControlEventArgs =
@@ -26,21 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(scriptControlEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(scriptControlEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CONTROLS),
-                        CSV.FromEnumerable(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
-                                                                                  BindingFlags.Static)
-                            .AsParallel().Where(
-                                p => scriptControlEventArgs.Controls.IsMaskFlagSet((ScriptControlChange)p.GetValue(null)))
-                            .Select(p => p.Name)));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PASS),
-                        scriptControlEventArgs.Pass.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TAKE),
-                        scriptControlEventArgs.Take.ToString());
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {scriptControlEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

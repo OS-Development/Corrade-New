@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>wasOpenMetaverse</RootNamespace>
     <AssemblyName>wasOpenMetaverse</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -55,6 +56,9 @@
     <Reference Include="wasSharp">
       <HintPath>..\wasSharp\bin\Release\wasSharp.dll</HintPath>
     </Reference>
+    <Reference Include="wasSharpNET">
+      <HintPath>..\wasSharpNET\bin\Release\wasSharpNET.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cache.cs" />
@@ -64,7 +68,9 @@
     <Compile Include="OSD.cs" />
     <Compile Include="Locks.cs" />
     <Compile Include="Mesh.cs" />
+    <Compile Include="Reflection.cs" />
     <Compile Include="Resolvers.cs" />
+    <Compile Include="RLV.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="wasOpenMetaverse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

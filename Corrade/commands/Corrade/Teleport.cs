@@ -11,7 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,21 +19,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> teleport =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> teleport =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -44,7 +44,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TURNTO)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TURNTO)),
                                     corradeCommandParameters.Message)),
                             out lookAt))
                     {
@@ -53,7 +53,7 @@ namespace Corrade
                     // We override the default teleport since region names are unique and case insensitive.
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
@@ -62,20 +62,20 @@ namespace Corrade
                     // Check if the teleport destination is not too close.
                     if (region.Equals(Client.Network.CurrentSim.Name) &&
                         Vector3.Distance(Client.Self.SimPosition, position) <
-                        Constants.REGION.TELEPORT_MINIMUM_DISTANCE)
+                        wasOpenMetaverse.Constants.REGION.TELEPORT_MINIMUM_DISTANCE)
                     {
-                        throw new ScriptException(ScriptError.DESTINATION_TOO_CLOSE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.DESTINATION_TOO_CLOSE);
                     }
                     ulong regionHandle = 0;
                     if (
                         !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
                             ref regionHandle))
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
-                    if (Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
                     {
-                        throw new ScriptException(ScriptError.TELEPORT_THROTTLED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_THROTTLED);
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {
@@ -87,7 +87,7 @@ namespace Corrade
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
                             corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
@@ -96,7 +96,7 @@ namespace Corrade
                             {
                                 Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
-                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             }
                             break;
@@ -105,15 +105,15 @@ namespace Corrade
                     {
                         if (!Client.Self.Teleport(regionHandle, position, lookAt))
                         {
-                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 Client.Self.TeleportMessage);
-                            throw new ScriptException(ScriptError.TELEPORT_FAILED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
                         }
                     }
                     bool fly;
                     // perform the post-action
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLY)),
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true: // if fly was specified, set the fly state

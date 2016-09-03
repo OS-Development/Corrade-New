@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>group</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>Corrade.Events.GroupMessageEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>FirstName</Path>
+            <Name>firstname</Name>
+          </Parameter>
+          <Parameter>
+            <Path>LastName</Path>
+            <Name>lastname</Name>
+          </Parameter>
+          <Parameter>
+            <Path>AgentUUID</Path>
+            <Name>agent</Name>
+          </Parameter>
+          <Parameter>
+            <Path>GroupName</Path>
+            <Name>group</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Message</Path>
+            <Name>message</Name>
+            <Processing>
+              <IdentifyLanguage>
+                <Name>language</Name>
+              </IdentifyLanguage>
+            </Processing>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

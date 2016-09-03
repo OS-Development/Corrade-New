@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Xml;
+using Corrade.Constants;
 using CorradeConfiguration;
 using wasSharp;
 
@@ -16,63 +17,63 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> configuration =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> configuration =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
-                    var action = Reflection.GetEnumValueFromName<Action>(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                    var action = Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
                         .ToLowerInvariant());
 
                     switch (action)
                     {
-                        case Action.READ:
+                        case Enumerations.Action.READ:
                             try
                             {
                                 lock (ConfigurationFileLock)
                                 {
-                                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                         corradeConfiguration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
                                 }
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
                             }
                             break;
-                        case Action.WRITE:
+                        case Enumerations.Action.WRITE:
                             try
                             {
                                 lock (ConfigurationFileLock)
                                 {
                                     corradeConfiguration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE,
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message));
                                 }
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
                             }
                             break;
-                        case Action.SET:
-                        case Action.GET:
+                        case Enumerations.Action.SET:
+                        case Enumerations.Action.GET:
                             var path =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(path))
                             {
-                                throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
                             }
                             var conf = new XmlDocument();
                             try
@@ -84,34 +85,34 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
                             }
                             string data;
                             switch (action)
                             {
-                                case Action.GET:
+                                case Enumerations.Action.GET:
                                     try
                                     {
                                         data = conf.SelectSingleNode(path).InnerXml;
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.INVALID_XML_PATH);
+                                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_XML_PATH);
                                     }
                                     if (!string.IsNullOrEmpty(data))
                                     {
-                                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), data);
+                                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), data);
                                     }
                                     break;
-                                case Action.SET:
+                                case Enumerations.Action.SET:
                                     data =
                                         wasInput(
                                             KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                 corradeCommandParameters.Message));
                                     if (string.IsNullOrEmpty(data))
                                     {
-                                        throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
+                                        throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
                                     }
                                     try
                                     {
@@ -119,7 +120,7 @@ namespace Corrade
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.INVALID_XML_PATH);
+                                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_XML_PATH);
                                     }
 
                                     try
@@ -131,13 +132,14 @@ namespace Corrade
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
                                     }
                                     break;
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> animation =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> animation =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     InventoryItem inventoryItem;
                     UUID itemUUID;
@@ -54,29 +55,29 @@ namespace Corrade
                     }
                     if (inventoryItem == null)
                     {
-                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.START:
+                        case Enumerations.Action.START:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.AnimationStart(inventoryItem.AssetUUID, true);
                             }
                             break;
-                        case Action.STOP:
+                        case Enumerations.Action.STOP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.AnimationStop(inventoryItem.AssetUUID, true);
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ANIMATION_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ANIMATION_ACTION);
                     }
                 };
         }

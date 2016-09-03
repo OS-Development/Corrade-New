@@ -17,44 +17,45 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> writefile =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> writefile =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var path =
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
                     {
-                        throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
                     }
-                    var data = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                        corradeCommandParameters.Message));
+                    var data =
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(data))
                     {
-                        throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
                     }
                     FileMode fileMode;
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.APPEND:
+                        case Enumerations.Action.APPEND:
                             fileMode = FileMode.Append;
                             break;
-                        case Action.CREATE:
+                        case Enumerations.Action.CREATE:
                             fileMode = FileMode.Create;
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                     // Write to the file.
                     try
@@ -69,8 +70,8 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), ex.Message);
-                        throw new ScriptException(ScriptError.UNABLE_TO_WRITE_FILE);
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_WRITE_FILE);
                     }
                 };
         }

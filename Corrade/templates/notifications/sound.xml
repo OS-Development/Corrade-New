@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>sound</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>OpenMetaverse.SoundTriggerEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>Gain</Path>
+            <Name>gain</Name>
+          </Parameter>
+          <Parameter>
+            <Path>ObjectID</Path>
+            <Name>item</Name>
+          </Parameter>
+          <Parameter>
+            <Path>OwnerID</Path>
+            <Name>owner</Name>
+          </Parameter>
+          <Parameter>
+            <Path>ParentID</Path>
+            <Name>parent</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Position</Path>
+            <Name>position</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Simulator.Name</Path>
+            <Name>region</Name>
+          </Parameter>
+          <Parameter>
+            <Path>SoundID</Path>
+            <Name>asset</Name>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

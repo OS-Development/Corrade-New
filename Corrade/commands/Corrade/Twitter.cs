@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using Corrade.Constants;
 using CorradeConfiguration;
 using TweetSharp;
 using wasSharp;
@@ -17,14 +18,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> twitter =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> twitter =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Talk))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     /*
@@ -37,74 +38,74 @@ namespace Corrade
                     */
                     var consumerKey = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.KEY)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(consumerKey))
                     {
-                        throw new ScriptException(ScriptError.NO_CONSUMER_KEY_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CONSUMER_KEY_PROVIDED);
                     }
 
                     var consumerSecret = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SECRET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SECRET)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(consumerSecret))
                     {
-                        throw new ScriptException(ScriptError.NO_CONSUMER_SECRET_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CONSUMER_SECRET_PROVIDED);
                     }
 
                     var accessToken = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TOKEN)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TOKEN)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(accessToken))
                     {
-                        throw new ScriptException(ScriptError.NO_ACCESS_TOKEN_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ACCESS_TOKEN_PROVIDED);
                     }
 
                     var accessTokenSecret = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACCESS)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACCESS)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(accessTokenSecret))
                     {
-                        throw new ScriptException(ScriptError.NO_ACCESS_TOKEN_SECRET_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ACCESS_TOKEN_SECRET_PROVIDED);
                     }
 
                     var service = new TwitterService(consumerKey, consumerSecret);
                     service.AuthenticateWith(accessToken, accessTokenSecret);
 
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.TWEET:
+                        case Enumerations.Action.TWEET:
                             var message = wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(message))
                             {
-                                throw new ScriptException(ScriptError.NO_MESSAGE_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_MESSAGE_PROVIDED);
                             }
                             if (message.Length > CORRADE_CONSTANTS.TWITTER_MAXIMUM_TWEET_LENGTH)
                             {
-                                throw new ScriptException(ScriptError.MESSAGE_TOO_LONG);
+                                throw new Command.ScriptException(Enumerations.ScriptError.MESSAGE_TOO_LONG);
                             }
                             service.SendTweet(new SendTweetOptions {Status = message},
                                 (tweet, response) =>
                                 {
                                     if (!response.StatusCode.Equals(HttpStatusCode.OK))
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_POST_TWEET);
+                                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_POST_TWEET);
                                     }
                                 });
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
+using Corrade.Helpers;
 using wasSharp;
 
 namespace Corrade
@@ -15,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> outfit =
+            public static Action<NotificationParameters, Dictionary<string, string>> outfit =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var outfitEventArgs =
@@ -24,33 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(outfitEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(outfitEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                        Reflection.GetNameFromEnumValue(outfitEventArgs.Action));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
-                        outfitEventArgs.Asset.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CREATOR),
-                        outfitEventArgs.Creator.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION),
-                        outfitEventArgs.Description);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.INVENTORY),
-                        outfitEventArgs.Inventory.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        outfitEventArgs.Item.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                        outfitEventArgs.Name);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS),
-                        outfitEventArgs.Permissions);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.REPLACE),
-                        outfitEventArgs.Replace.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                        outfitEventArgs.Entity.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SLOT),
-                        outfitEventArgs.Slot);
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {outfitEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

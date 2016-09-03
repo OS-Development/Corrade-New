@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -18,7 +19,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getinvworn = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getinvworn = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -27,7 +28,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
@@ -46,7 +47,7 @@ namespace Corrade
                     .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                     .FirstOrDefault(
                         o =>
-                            string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
+                            string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
                                 .Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
                 switch (!folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
                 {
@@ -71,7 +72,7 @@ namespace Corrade
 
                     node.Nodes.Values.AsParallel().Where(
                         n =>
-                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                            !n.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
                             n.Data is InventoryItem && Inventory.CanBeWorn(n.Data)
                         ).ForAll(n =>
                         {
@@ -103,40 +104,42 @@ namespace Corrade
 
                     node.Nodes.Values.AsParallel().Where(
                         n =>
-                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                            !n.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
                             n.Data is InventoryFolder
                         ).ForAll(
                             n => n.Nodes.Values
-                                .AsParallel().Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                .AsParallel()
+                                .Where(o => !o.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
                                 .Where(
                                     o =>
                                         o.Data is InventoryItem && Inventory.CanBeWorn(o.Data) &&
-                                        !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)).ForAll(p =>
-                                        {
-                                            Interlocked.Increment(ref allItemsCount);
+                                        !o.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
+                                .ForAll(p =>
+                                {
+                                    Interlocked.Increment(ref allItemsCount);
 
-                                            Interlocked.Increment(ref myItemsCount);
-                                            var inventoryItem = Inventory.ResolveItemLink(Client,
-                                                p.Data as InventoryItem);
-                                            if (inventoryItem == null) return;
-                                            var itemUUID = inventoryItem.UUID;
-                                            var increment = false;
-                                            switch (p.Data is InventoryWearable)
-                                            {
-                                                case true:
-                                                    if (currentWearables.Contains(itemUUID))
-                                                        increment = true;
-                                                    break;
-                                                default:
-                                                    if (currentAttachments.Contains(itemUUID))
-                                                        increment = true;
-                                                    break;
-                                            }
+                                    Interlocked.Increment(ref myItemsCount);
+                                    var inventoryItem = Inventory.ResolveItemLink(Client,
+                                        p.Data as InventoryItem);
+                                    if (inventoryItem == null) return;
+                                    var itemUUID = inventoryItem.UUID;
+                                    var increment = false;
+                                    switch (p.Data is InventoryWearable)
+                                    {
+                                        case true:
+                                            if (currentWearables.Contains(itemUUID))
+                                                increment = true;
+                                            break;
+                                        default:
+                                            if (currentAttachments.Contains(itemUUID))
+                                                increment = true;
+                                            break;
+                                    }
 
-                                            if (increment == false) return;
+                                    if (increment == false) return;
 
-                                            Interlocked.Increment(ref allItemsWornCount);
-                                        }));
+                                    Interlocked.Increment(ref allItemsWornCount);
+                                }));
 
 
                     Func<int, int, string> WornIndicator =
@@ -147,14 +150,17 @@ namespace Corrade
                 };
 
                 var response = new List<string>();
-                response.Add($"{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
+                response.Add(
+                    $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
                 response.AddRange(
                     folderPath.Key.Nodes.Values.AsParallel().Where(o => o.Data is InventoryFolder)
-                        .Select(o => $"{o.Data.Name}{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
+                        .Select(
+                            o =>
+                                $"{o.Data.Name}{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
 
                 lock (Locks.ClientInstanceSelfLock)
                 {
-                    Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
+                    Client.Self.Chat(string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
                         channel,
                         ChatType.Normal);
                 }

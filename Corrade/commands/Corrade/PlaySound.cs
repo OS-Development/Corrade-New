@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> playsound =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> playsound =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -41,7 +42,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     switch (!string.IsNullOrEmpty(region))
@@ -58,7 +59,7 @@ namespace Corrade
                             }
                             if (simulator == null)
                             {
-                                throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                             }
                             break;
                         default:
@@ -67,18 +68,18 @@ namespace Corrade
                     }
                     float gain;
                     if (!float.TryParse(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GAIN)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.GAIN)),
                             corradeCommandParameters.Message)),
                         out gain))
                     {
                         gain = 1;
                     }
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
@@ -91,7 +92,7 @@ namespace Corrade
                                 .FirstOrDefault() as InventoryItem;
                         if (inventoryItem == null)
                         {
-                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                         }
                         itemUUID = inventoryItem.AssetUUID;
                     }

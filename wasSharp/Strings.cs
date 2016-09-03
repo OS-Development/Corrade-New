@@ -4,6 +4,7 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.IO;
 using System.Linq;
 
@@ -34,7 +35,7 @@ namespace wasSharp
         /// <param name="b">second string</param>
         /// <param name="comparison">string comparison to use</param>
         /// <returns>true if the strings are equal</returns>
-        public static bool Equals(string a, string b, System.StringComparison comparison)
+        public static bool Equals(string a, string b, StringComparison comparison)
         {
             return a.Length == b.Length && string.Equals(a, b, comparison);
         }

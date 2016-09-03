@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,18 +19,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> moderate =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> moderate =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
                     switch (string.IsNullOrEmpty(target))
                     {
@@ -38,7 +39,7 @@ namespace Corrade
                                 !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
-                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
@@ -50,61 +51,61 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
-                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
                     var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                     {
-                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
                     bool silence;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SILENCE)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SILENCE)),
                                     corradeCommandParameters.Message)),
                             out silence))
                     {
                         silence = false;
                     }
                     var type =
-                        Reflection.GetEnumValueFromName<Type>(
+                        Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     switch (type)
                     {
-                        case Type.TEXT:
-                        case Type.VOICE:
+                        case Enumerations.Type.TEXT:
+                        case Enumerations.Type.VOICE:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.ModerateChatSessions(groupUUID, agentUUID,
@@ -113,7 +114,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.TYPE_CAN_BE_VOICE_OR_TEXT);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TYPE_CAN_BE_VOICE_OR_TEXT);
                     }
                 };
         }

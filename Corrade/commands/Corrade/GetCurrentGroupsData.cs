@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,20 +19,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getcurrentgroupsdata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getcurrentgroupsdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
                     var data = new List<string>();
                     var LockObject = new object();
@@ -40,10 +41,11 @@ namespace Corrade
                         var dataGroup = new Group();
                         if (!Services.RequestGroup(Client, o, corradeConfiguration.ServicesTimeout, ref dataGroup))
                         {
-                            throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                         }
-                        var groupData = GetStructuredData(dataGroup,
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        var groupData = dataGroup.GetStructuredData(wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                         lock (LockObject)
                         {
@@ -52,7 +54,7 @@ namespace Corrade
                     });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

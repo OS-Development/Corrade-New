@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -17,7 +18,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getinv = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getinv = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -26,7 +27,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -51,7 +52,8 @@ namespace Corrade
                             .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                             .FirstOrDefault(
                                 o =>
-                                    string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
+                                    string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR,
+                                        o.Value.Skip(1).ToArray())
                                         .Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
                         switch (!folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
                         {
@@ -75,7 +77,10 @@ namespace Corrade
                         CORRADE_CONSTANTS.OneOrMoRegex, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
-                        .Where(o => o is InventoryFolder && !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                        .Where(
+                            o =>
+                                o is InventoryFolder &&
+                                !o.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
                         .Skip(1)
                         .Select(o => o.Name));
                 switch (!csv.Count.Equals(0))
@@ -83,7 +88,8 @@ namespace Corrade
                     case true:
                         lock (Locks.ClientInstanceSelfLock)
                         {
-                            Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
+                            Client.Self.Chat(
+                                string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
                                 ChatType.Normal);
                         }
                         break;

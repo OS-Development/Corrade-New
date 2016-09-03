@@ -11,7 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,48 +19,51 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> creategroup =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> creategroup =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var target = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(target))
                         target = corradeCommandParameters.Group.Name;
                     // if the grid is SecondLife and the group name length exceeds the allowed length...
-                    if (Helpers.IsSecondLife(Client) &&
-                        target.Length > Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        target.Length > wasOpenMetaverse.Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
                     {
-                        throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
                     }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                     {
-                        throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
                     if (Client.Self.Balance < corradeConfiguration.GroupCreateFee)
                     {
-                        throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                     }
                     if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var targetGroup = new Group
                     {
                         Name = target
                     };
-                    wasCSVToStructure(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                    /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
-                        ref targetGroup);
+                        ref targetGroup);*/
+                    targetGroup.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message)));
                     var succeeded = false;
                     var GroupCreatedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>
@@ -75,13 +78,13 @@ namespace Corrade
                         if (!GroupCreatedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_CREATING_GROUP);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_GROUP);
                         }
                         Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                     }
                     if (!succeeded)
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_CREATE_GROUP);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_CREATE_GROUP);
                     }
                 };
         }

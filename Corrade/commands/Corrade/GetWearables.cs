@@ -18,14 +18,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getwearables =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getwearables =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var csv =
                         Inventory.GetWearables(Client, CurrentOutfitFolder)
@@ -36,7 +36,7 @@ namespace Corrade
                             }).SelectMany(o => o).ToList();
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

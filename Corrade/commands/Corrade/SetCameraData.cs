@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,24 +18,29 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setcameradata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setcameradata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     AgentManager.AgentMovement.AgentCamera camera;
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         camera = Client.Self.Movement.Camera;
                     }
-                    wasCSVToStructure(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)),
-                        ref camera);
+                    /*Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        wasInput(
+                            KeyValue.Get(wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)),
+                        ref camera);*/
+                    camera.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)));
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.Movement.Camera.AtAxis = camera.AtAxis;

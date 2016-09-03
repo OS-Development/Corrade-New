@@ -9,7 +9,6 @@ using System.Linq;
 using System.Threading;
 using OpenMetaverse;
 using wasOpenMetaverse;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -17,10 +16,11 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> sit = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> sit = (message, rule, senderUUID) =>
             {
                 UUID sitTarget;
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE) || !UUID.TryParse(rule.Option, out sitTarget) ||
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) ||
+                    !UUID.TryParse(rule.Option, out sitTarget) ||
                     sitTarget.Equals(UUID.Zero))
                 {
                     return;
@@ -28,7 +28,7 @@ namespace Corrade
                 Primitive primitive = null;
                 if (
                     !Services.FindPrimitive(Client, sitTarget,
-                        Constants.LSL.SENSOR_RANGE,
+                        wasOpenMetaverse.Constants.LSL.SENSOR_RANGE,
                         ref primitive, corradeConfiguration.DataTimeout))
                 {
                     return;
@@ -50,7 +50,7 @@ namespace Corrade
                 {
                     Client.Self.SignaledAnimations.Copy()
                         .Keys.AsParallel()
-                        .Where(o => !Helpers.LindenAnimations.Contains(o))
+                        .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                         .ForAll(o => { Client.Self.AnimationStop(o, true); });
                 }
                 lock (Locks.ClientInstanceSelfLock)

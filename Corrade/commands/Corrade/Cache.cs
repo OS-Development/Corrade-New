@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -16,32 +17,32 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> cache =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> cache =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.GetEnumValueFromName<Action>(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
                         .ToLowerInvariant()))
                     {
-                        case Action.PURGE:
+                        case Enumerations.Action.PURGE:
                             Client.Assets.Cache.BeginPrune();
                             Cache.Purge();
                             break;
-                        case Action.SAVE:
+                        case Enumerations.Action.SAVE:
                             SaveCorradeCache.Invoke();
                             break;
-                        case Action.LOAD:
+                        case Enumerations.Action.LOAD:
                             LoadCorradeCache.Invoke();
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

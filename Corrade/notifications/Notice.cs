@@ -7,8 +7,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
+using GroupNotice = Corrade.Structures.GroupNotice;
 
 namespace Corrade
 {
@@ -16,7 +18,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> notice =
+            public static Action<NotificationParameters, Dictionary<string, string>> notice =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var notificationGroupNoticeEventArgs =
@@ -25,9 +27,10 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(notificationGroupNoticeEventArgs,
-                                CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(
+                                wasOpenMetaverse.Reflection.GetStructuredData(notificationGroupNoticeEventArgs,
+                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
                     // Retrieve the stored notice.
@@ -46,29 +49,16 @@ namespace Corrade
                     {
                         GroupNotices.Remove(notice);
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                        notice.Group.Name);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                        notice.Session.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        notice.Agent.UUID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                        notice.Agent.FirstName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                        notice.Agent.LastName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SUBJECT),
-                        notice.Subject);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        notice.Message);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS),
-                        notice.Attachment.ToString());
-                    if (notice.Attachment)
-                    {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
-                            notice.Asset.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER),
-                            notice.Folder.ToString());
-                    }
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {notificationGroupNoticeEventArgs, notice},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

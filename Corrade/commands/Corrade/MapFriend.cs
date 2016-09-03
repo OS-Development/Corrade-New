@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,35 +19,35 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> mapfriend =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> mapfriend =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Friendship))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
-                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
                     FriendInfo friend;
                     lock (Locks.ClientInstanceFriendsLock)
@@ -55,11 +56,11 @@ namespace Corrade
                     }
                     if (friend == null)
                     {
-                        throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_NOT_FOUND);
                     }
                     if (!friend.CanSeeThemOnMap)
                     {
-                        throw new ScriptException(ScriptError.FRIEND_DOES_NOT_ALLOW_MAPPING);
+                        throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_DOES_NOT_ALLOW_MAPPING);
                     }
                     ulong regionHandle = 0;
                     var position = Vector3.Zero;
@@ -84,13 +85,13 @@ namespace Corrade
                         if (!FriendFoundEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_MAPPING_FRIEND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_MAPPING_FRIEND);
                         }
                         Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                     }
                     if (offline)
                     {
-                        throw new ScriptException(ScriptError.FRIEND_OFFLINE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_OFFLINE);
                     }
                     var parcelUUID = Client.Parcels.RequestRemoteParcelID(position, regionHandle, UUID.Zero);
                     var ParcelInfoEvent = new ManualResetEvent(false);
@@ -107,11 +108,11 @@ namespace Corrade
                         if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                     }
-                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                         CSV.FromEnumerable(new[] {regionName, position.ToString()}));
                 };
         }

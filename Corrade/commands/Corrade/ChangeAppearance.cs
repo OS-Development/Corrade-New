@@ -7,12 +7,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,22 +21,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> changeappearance =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> changeappearance =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var folder = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder))
                     {
-                        throw new ScriptException(ScriptError.NO_FOLDER_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_FOLDER_SPECIFIED);
                     }
                     InventoryFolder inventoryFolder;
                     UUID folderUUID;
@@ -56,7 +57,7 @@ namespace Corrade
                     }
                     if (inventoryFolder == null)
                     {
-                        throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
                     }
 
                     var contents = new List<InventoryBase>();
@@ -73,13 +74,13 @@ namespace Corrade
                     // Check if any items are left over.
                     if (!equipItems.Any())
                     {
-                        throw new ScriptException(ScriptError.NO_EQUIPABLE_ITEMS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_EQUIPABLE_ITEMS);
                     }
 
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
                             corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
@@ -88,7 +89,7 @@ namespace Corrade
                             {
                                 Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
-                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             }
                             break;
@@ -143,7 +144,7 @@ namespace Corrade
                                                     slot = AttachmentPoint.Default.ToString();
                                                 }
                                             }
-                                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
                                                     Configuration.Notifications.OutfitChanged,
                                                     new OutfitEventArgs
@@ -151,8 +152,8 @@ namespace Corrade
                                                         Action =
                                                             inventoryItem is InventoryObject ||
                                                             inventoryItem is InventoryAttachment
-                                                                ? Action.DETACH
-                                                                : Action.UNWEAR,
+                                                                ? Enumerations.Action.DETACH
+                                                                : Enumerations.Action.UNWEAR,
                                                         Name = inventoryItem.Name,
                                                         Description = inventoryItem.Description,
                                                         Item = inventoryItem.UUID,
@@ -199,7 +200,8 @@ namespace Corrade
                     }
                     catch (Exception)
                     {
-                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                     }
 
                     attachments = Inventory.GetAttachments(Client,
@@ -227,15 +229,15 @@ namespace Corrade
                                 slot = AttachmentPoint.Default.ToString();
                             }
                         }
-                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(
                                 Configuration.Notifications.OutfitChanged,
                                 new OutfitEventArgs
                                 {
                                     Action =
                                         o is InventoryObject || o is InventoryAttachment
-                                            ? Action.ATTACH
-                                            : Action.WEAR,
+                                            ? Enumerations.Action.ATTACH
+                                            : Enumerations.Action.WEAR,
                                     Name = o.Name,
                                     Description = o.Description,
                                     Item = o.UUID,

@@ -18,48 +18,48 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> notify =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> notify =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Notifications))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var url = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.URL)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.URL)),
                             corradeCommandParameters.Message));
                     var notificationTypes =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant();
                     var action =
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     var LockObject = new object();
                     var groupNotifications = new HashSet<Notification>();
                     switch (action)
                     {
-                        case Action.SET:
-                        case Action.ADD:
+                        case Enumerations.Action.SET:
+                        case Enumerations.Action.ADD:
                             if (string.IsNullOrEmpty(url))
                             {
-                                throw new ScriptException(ScriptError.INVALID_URL_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_URL_PROVIDED);
                             }
                             Uri notifyURL;
                             if (!Uri.TryCreate(url, UriKind.Absolute, out notifyURL))
                             {
-                                throw new ScriptException(ScriptError.INVALID_URL_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_URL_PROVIDED);
                             }
                             if (string.IsNullOrEmpty(notificationTypes))
                             {
-                                throw new ScriptException(ScriptError.INVALID_NOTIFICATION_TYPES);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NOTIFICATION_TYPES);
                             }
                             Notification notification;
                             lock (GroupNotificationsLock)
@@ -73,15 +73,15 @@ namespace Corrade
                             var afterBurnData =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AFTERBURN)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AFTERBURN)),
                                         corradeCommandParameters.Message));
                             var afterburn =
                                 new Collections.SerializableDictionary<string, string>();
                             if (!string.IsNullOrEmpty(afterBurnData))
                             {
                                 // remove keys that are script keys, result keys or invalid key-value pairs
-                                var results = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
-                                var scripts = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
+                                var results = new HashSet<string>(Reflection.GetEnumNames<Command.ResultKeys>());
+                                var scripts = new HashSet<string>(Reflection.GetEnumNames<Command.ScriptKeys>());
                                 CSV.ToKeyValue(afterBurnData)
                                     .ToArray()
                                     .AsParallel()
@@ -102,7 +102,7 @@ namespace Corrade
                             var fields =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message));
                             var data = new HashSet<string>();
                             if (!string.IsNullOrEmpty(fields))
@@ -184,7 +184,7 @@ namespace Corrade
                                                 break;
                                             switch (action)
                                             {
-                                                case Action.ADD:
+                                                case Enumerations.Action.ADD:
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationURLDestination[
@@ -192,7 +192,7 @@ namespace Corrade
                                                             .Add(url);
                                                     }
                                                     break;
-                                                case Action.SET:
+                                                case Enumerations.Action.SET:
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationURLDestination[
@@ -211,7 +211,7 @@ namespace Corrade
                             switch (succeeded)
                             {
                                 case false:
-                                    throw new ScriptException(ScriptError.NOTIFICATION_NOT_ALLOWED);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NOTIFICATION_NOT_ALLOWED);
                             }
                             lock (GroupNotificationsLock)
                             {
@@ -224,7 +224,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
-                        case Action.REMOVE:
+                        case Enumerations.Action.REMOVE:
                             lock (GroupNotificationsLock)
                             {
                                 GroupNotifications.AsParallel().ForAll(o =>
@@ -304,7 +304,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
-                        case Action.LIST:
+                        case Enumerations.Action.LIST:
                             // If the group has no installed notifications, bail
                             var csv = new List<string>();
                             lock (GroupNotificationsLock)
@@ -335,11 +335,11 @@ namespace Corrade
                             }
                             if (csv.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
                             }
                             break;
-                        case Action.CLEAR:
+                        case Enumerations.Action.CLEAR:
                             lock (GroupNotificationsLock)
                             {
                                 GroupNotifications.AsParallel().ForAll(o =>
@@ -387,7 +387,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
-                        case Action.PURGE:
+                        case Enumerations.Action.PURGE:
                             lock (GroupNotificationsLock)
                             {
                                 GroupNotifications.RemoveWhere(
@@ -397,17 +397,17 @@ namespace Corrade
                             SaveNotificationState.Invoke();
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
 
                     // If notifications changed, rebuild the notification cache.
                     switch (action)
                     {
-                        case Action.ADD:
-                        case Action.SET:
-                        case Action.REMOVE:
-                        case Action.CLEAR:
-                        case Action.PURGE:
+                        case Enumerations.Action.ADD:
+                        case Enumerations.Action.SET:
+                        case Enumerations.Action.REMOVE:
+                        case Enumerations.Action.CLEAR:
+                        case Enumerations.Action.PURGE:
                             // Build the group notification cache.
                             lock (GroupNotificationsLock)
                             {

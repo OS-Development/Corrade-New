@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,27 +17,29 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> debug =
+            public static Action<NotificationParameters, Dictionary<string, string>> debug =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    var DebugEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
+                    var debugEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(DebugEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(debugEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        DebugEventArgs.SourceID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                        DebugEventArgs.FromName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                        DebugEventArgs.Position.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        DebugEventArgs.Message);
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {debugEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

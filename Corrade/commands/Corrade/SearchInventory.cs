@@ -20,19 +20,19 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> searchinventory =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> searchinventory =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var assetTypes = new HashSet<AssetType>();
                     var LockObject = new object();
                     CSV.ToEnumerable(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                             corradeCommandParameters.Message)))
                         .ToArray()
                         .AsParallel()
@@ -49,11 +49,11 @@ namespace Corrade
                                     }));
                     var pattern =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATTERN)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATTERN)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(pattern))
                     {
-                        throw new ScriptException(ScriptError.NO_PATTERN_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PATTERN_PROVIDED);
                     }
                     Regex search;
                     try
@@ -62,7 +62,7 @@ namespace Corrade
                     }
                     catch
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
                     var csv = new List<string>();
                     Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search,
@@ -88,7 +88,7 @@ namespace Corrade
                             });
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

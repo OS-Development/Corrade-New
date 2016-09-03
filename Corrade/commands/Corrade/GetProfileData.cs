@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,35 +19,35 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprofiledata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprofiledata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
-                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
                     var ProfileDataReceivedAlarm =
                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
@@ -106,7 +107,7 @@ namespace Corrade
                             Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                         }
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
@@ -115,23 +116,23 @@ namespace Corrade
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                     }
                     var fields =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     var csv = new List<string>();
-                    csv.AddRange(GetStructuredData(properties, fields));
-                    csv.AddRange(GetStructuredData(interests, fields));
-                    csv.AddRange(GetStructuredData(groups, fields));
+                    csv.AddRange(properties.GetStructuredData(fields));
+                    csv.AddRange(interests.GetStructuredData(fields));
+                    csv.AddRange(groups.GetStructuredData(fields));
                     if (picks != null)
                     {
-                        csv.AddRange(GetStructuredData(picks, fields));
+                        csv.AddRange(picks.GetStructuredData(fields));
                     }
                     if (classifieds != null)
                     {
-                        csv.AddRange(GetStructuredData(classifieds, fields));
+                        csv.AddRange(classifieds.GetStructuredData(fields));
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

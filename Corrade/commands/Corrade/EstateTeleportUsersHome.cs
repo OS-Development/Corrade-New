@@ -11,7 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,23 +19,23 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> estateteleportusershome =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> estateteleportusershome =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     lock (Locks.ClientInstanceNetworkLock)
                     {
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                         }
                     }
                     var avatars =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
                                 corradeCommandParameters.Message));
                     // if no avatars were specified, teleport all users home
                     if (string.IsNullOrEmpty(avatars))
@@ -50,7 +50,7 @@ namespace Corrade
                         switch (!UUID.TryParse(o, out agentUUID))
                         {
                             case true:
-                                var fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
                                 switch (
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
@@ -78,7 +78,7 @@ namespace Corrade
                     });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

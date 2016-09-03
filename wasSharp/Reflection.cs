@@ -144,6 +144,82 @@ namespace wasSharp
             return field != null ? ((NameAttribute) field.Att).Name : string.Empty;
         }
 
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Get field or property from a class by supplying a path.
+        /// </summary>
+        /// <typeparam name="T">the type of the object</typeparam>
+        /// <param name="o">the object</param>
+        /// <param name="path">the fully qualified path to the field of property</param>
+        /// <returns>
+        ///     the last object in the fully qualified path or null in case the field or property could not be found
+        /// </returns>
+        public static object GetFP<T>(this T o, string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            if (o == null) return null;
+
+            var memberType = o.GetType();
+            var components = path.Split('.');
+
+            var f = memberType.GetRuntimeField(components[0]);
+            var p = memberType.GetRuntimeProperty(components[0]);
+
+            if (f != null)
+                return components.Length > 1
+                    ? GetFP(f.GetValue(o),
+                        components.Skip(1).Aggregate((a, i) => a + @"." + i))
+                    : memberType.GetRuntimeField(path).GetValue(o);
+
+            if (p != null)
+                return components.Length > 1
+                    ? GetFP(p.GetValue(o),
+                        components.Skip(1).Aggregate((a, i) => a + @"." + i))
+                    : memberType.GetRuntimeProperty(path).GetValue(o);
+
+            return null;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Get field or property info from a class by supplying a path.
+        /// </summary>
+        /// <typeparam name="T">the type of the object</typeparam>
+        /// <param name="o">the object</param>
+        /// <param name="path">the fully qualified path to the field of property</param>
+        /// <returns>
+        ///     the field or property info of the last object in the path or null if the object cannot be found
+        /// </returns>
+        public static object GetFPInfo<T>(this T o, string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            if (o == null) return null;
+
+            var memberType = o.GetType();
+            var components = path.Split('.');
+
+            var f = memberType.GetRuntimeField(components[0]);
+            var p = memberType.GetRuntimeProperty(components[0]);
+
+            if (f != null)
+                return components.Length > 1
+                    ? GetFPInfo(f.GetValue(o),
+                        components.Skip(1).Aggregate((a, i) => a + @"." + i))
+                    : memberType.GetRuntimeField(path);
+
+            if (p != null)
+                return components.Length > 1
+                    ? GetFPInfo(p.GetValue(o),
+                        components.Skip(1).Aggregate((a, i) => a + @"." + i))
+                    : memberType.GetRuntimeProperty(path);
+
+            return null;
+        }
+
         /// <summary>
         ///     A generic name attribute.
         /// </summary>

@@ -15,26 +15,26 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> rlv =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> rlv =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.ENABLE:
+                        case Enumerations.Action.ENABLE:
                             corradeConfiguration.EnableRLV = true;
                             break;
-                        case Action.DISABLE:
+                        case Enumerations.Action.DISABLE:
                             corradeConfiguration.EnableRLV = false;
-                            lock (RLVRulesLock)
+                            lock (RLV.RLVRulesLock)
                             {
                                 RLVRules.Clear();
                             }

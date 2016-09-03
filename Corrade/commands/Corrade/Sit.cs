@@ -12,7 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> sit =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> sit =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 offset;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.OFFSET)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.OFFSET)),
                                     corradeCommandParameters.Message)),
                             out offset))
                     {
@@ -44,7 +44,7 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -52,11 +52,11 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -69,7 +69,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
                         default:
@@ -80,7 +80,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
                     }
@@ -93,7 +93,7 @@ namespace Corrade
                     };
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
                     {
-                        if (args.Message.Equals(Constants.ALERTS.NO_ROOM_TO_SIT_HERE))
+                        if (args.Message.Equals(wasOpenMetaverse.Constants.ALERTS.NO_ROOM_TO_SIT_HERE))
                         {
                             succeeded = false;
                         }
@@ -109,7 +109,7 @@ namespace Corrade
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
                             corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
@@ -118,7 +118,7 @@ namespace Corrade
                             {
                                 Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
-                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             }
                             break;
@@ -132,14 +132,14 @@ namespace Corrade
                         {
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_REQUESTING_SIT);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_SIT);
                         }
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
                     }
                     if (!succeeded)
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_SIT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SIT);
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {

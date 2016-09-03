@@ -19,9 +19,9 @@ using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -29,29 +29,29 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> importxml =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> importxml =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     // Get data.
                     var data =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(data))
-                        throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
 
                     // Get permissions to apply if requested.
                     var itemPermissions =
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message));
                     var permissions = new Permissions((uint) PermissionMask.All, (uint) PermissionMask.All,
                         (uint) PermissionMask.All, (uint) PermissionMask.All, (uint) PermissionMask.All);
@@ -66,16 +66,17 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
-                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                     }
-                    if (Helpers.IsSecondLife(Client) &&
-                        position.Z > Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        position.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
-                        throw new ScriptException(ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
                     }
 
                     // Check build rights.
@@ -85,7 +86,7 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
                     {
@@ -95,7 +96,8 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                                 {
-                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -104,7 +106,8 @@ namespace Corrade
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
-                                    throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
                             }
                         }
@@ -112,14 +115,14 @@ namespace Corrade
 
                     var primitives = new List<Primitive>();
                     var textures = new Dictionary<UUID, UUID>();
-                    switch (Reflection.GetEnumValueFromName<Type>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Type>(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Type.ZIP:
+                        case Enumerations.Type.ZIP:
                             byte[] byteData;
                             try
                             {
@@ -127,7 +130,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
                             }
 
                             // By default use the cache unless the user explicitly disables it.
@@ -135,7 +138,7 @@ namespace Corrade
                             if (!bool.TryParse(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CACHE)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CACHE)),
                                         corradeCommandParameters.Message)),
                                 out useCache))
                             {
@@ -152,7 +155,7 @@ namespace Corrade
                                     )
                                 {
                                     var LockObject = new object();
-                                    var scriptError = ScriptError.NONE;
+                                    var scriptError = Enumerations.ScriptError.NONE;
                                     Parallel.ForEach(zipInputStream.Entries, (o, s) =>
                                     {
                                         var filename = o.Name.ToLowerInvariant();
@@ -181,7 +184,7 @@ namespace Corrade
                                                 }
                                                 catch (Exception)
                                                 {
-                                                    scriptError = ScriptError.COULD_NOT_READ_XML_FILE;
+                                                    scriptError = Enumerations.ScriptError.COULD_NOT_READ_XML_FILE;
                                                     s.Break();
                                                 }
                                                 break;
@@ -191,15 +194,15 @@ namespace Corrade
                                                     break; // skip any textures whose names are not named properly
 
                                                 // If this is Second Life, skip any default textures.
-                                                if (Helpers.IsSecondLife(Client) &&
+                                                if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                                                     new[]
                                                     {
-                                                        Constants.TEXTURES.TEXTURE_BLANK,
-                                                        Constants.TEXTURES.TEXTURE_DEFAULT,
-                                                        Constants.TEXTURES.TEXTURE_MEDIA,
-                                                        Constants.TEXTURES.TEXTURE_PLYWOOD,
-                                                        Constants.TEXTURES.TEXTURE_TRANSPARENT,
-                                                        Constants.TEXTURES.DEFAULT_SCULPT
+                                                        wasOpenMetaverse.Constants.TEXTURES.TEXTURE_BLANK,
+                                                        wasOpenMetaverse.Constants.TEXTURES.TEXTURE_DEFAULT,
+                                                        wasOpenMetaverse.Constants.TEXTURES.TEXTURE_MEDIA,
+                                                        wasOpenMetaverse.Constants.TEXTURES.TEXTURE_PLYWOOD,
+                                                        wasOpenMetaverse.Constants.TEXTURES.TEXTURE_TRANSPARENT,
+                                                        wasOpenMetaverse.Constants.TEXTURES.DEFAULT_SCULPT
                                                     }.Contains(
                                                         replaceTextureUUID))
                                                     break;
@@ -233,7 +236,8 @@ namespace Corrade
                                                         }
                                                         catch (Exception)
                                                         {
-                                                            scriptError = ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED;
+                                                            scriptError =
+                                                                Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED;
                                                             s.Break();
                                                         }
                                                         break;
@@ -253,7 +257,8 @@ namespace Corrade
                                                         }
                                                         catch (Exception)
                                                         {
-                                                            scriptError = ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED;
+                                                            scriptError =
+                                                                Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED;
                                                             s.Break();
                                                         }
 
@@ -264,20 +269,21 @@ namespace Corrade
                                                     !HasCorradePermission(corradeCommandParameters.Group.UUID,
                                                         (int) Configuration.Permissions.Economy))
                                                 {
-                                                    scriptError = ScriptError.NO_CORRADE_PERMISSIONS;
+                                                    scriptError = Enumerations.ScriptError.NO_CORRADE_PERMISSIONS;
                                                     s.Break();
                                                 }
                                                 if (
                                                     !Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                                                 {
-                                                    scriptError = ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE;
+                                                    scriptError =
+                                                        Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE;
                                                     s.Break();
                                                 }
                                                 lock (Locks.ClientInstanceSelfLock)
                                                 {
                                                     if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
                                                     {
-                                                        scriptError = ScriptError.INSUFFICIENT_FUNDS;
+                                                        scriptError = Enumerations.ScriptError.INSUFFICIENT_FUNDS;
                                                         s.Break();
                                                     }
                                                 }
@@ -301,13 +307,13 @@ namespace Corrade
                                                         !CreateItemFromAssetEvent.WaitOne(
                                                             (int) corradeConfiguration.ServicesTimeout, false))
                                                     {
-                                                        scriptError = ScriptError.TIMEOUT_UPLOADING_ASSET;
+                                                        scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
                                                         s.Break();
                                                     }
                                                 }
                                                 if (!succeeded)
                                                 {
-                                                    scriptError = ScriptError.ASSET_UPLOAD_FAILED;
+                                                    scriptError = Enumerations.ScriptError.ASSET_UPLOAD_FAILED;
                                                     s.Break();
                                                 }
                                                 // add the item to the cache.
@@ -327,14 +333,14 @@ namespace Corrade
                                                 break;
                                         }
                                     });
-                                    if (!scriptError.Equals(default(ScriptError)))
+                                    if (!scriptError.Equals(default(Enumerations.ScriptError)))
                                     {
-                                        throw new ScriptException(scriptError);
+                                        throw new Command.ScriptException(scriptError);
                                     }
                                 }
                             }
                             break;
-                        case Type.XML:
+                        case Enumerations.Type.XML:
                             // get the primitives from the XML data.
                             try
                             {
@@ -344,11 +350,11 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_READ_XML_FILE);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_READ_XML_FILE);
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
 
                     // Build an organized structure from the imported primitives
@@ -435,11 +441,11 @@ namespace Corrade
                                     // For Second Life, replace NULL UUIDs with TEXTURE_BLANK (meaning nothing).
                                     switch (
                                         currentPrim.Textures.DefaultTexture.TextureID.Equals(UUID.Zero) &&
-                                        Helpers.IsSecondLife(Client))
+                                        wasOpenMetaverse.Helpers.IsSecondLife(Client))
                                     {
                                         case true:
                                             currentPrim.Textures.DefaultTexture.TextureID =
-                                                Constants.TEXTURES.TEXTURE_BLANK;
+                                                wasOpenMetaverse.Constants.TEXTURES.TEXTURE_BLANK;
                                             break;
                                         default:
                                             UUID defaultTextureUUID;
@@ -467,10 +473,13 @@ namespace Corrade
                                     foreach (var faceTexture in currentPrim.Textures.FaceTextures.Where(o => o != null))
                                     {
                                         // For Second Life, replace NULL UUIDs with TEXTURE_BLANK (meaning nothing).
-                                        switch (faceTexture.TextureID.Equals(UUID.Zero) && Helpers.IsSecondLife(Client))
+                                        switch (
+                                            faceTexture.TextureID.Equals(UUID.Zero) &&
+                                            wasOpenMetaverse.Helpers.IsSecondLife(Client))
                                         {
                                             case true:
-                                                faceTexture.TextureID = Constants.TEXTURES.TEXTURE_BLANK;
+                                                faceTexture.TextureID =
+                                                    wasOpenMetaverse.Constants.TEXTURES.TEXTURE_BLANK;
                                                 break;
                                             default:
                                                 UUID faceTextureUUID;
@@ -529,7 +538,7 @@ namespace Corrade
                             if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                throw new ScriptException(ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
+                                throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
                             }
 
                             Client.Objects.SetPosition(Client.Network.CurrentSim,
@@ -550,7 +559,8 @@ namespace Corrade
                                 if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                    throw new ScriptException(ScriptError.FAILED_REZZING_CHILD_PRIMITIVE);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.FAILED_REZZING_CHILD_PRIMITIVE);
                                 }
                                 Client.Objects.SetPosition(Client.Network.CurrentSim,
                                     createdPrimitives[createdPrimitives.Count - 1].LocalID, position);

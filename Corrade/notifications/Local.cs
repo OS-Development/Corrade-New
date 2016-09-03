@@ -7,9 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -17,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> local =
+            public static Action<NotificationParameters, Dictionary<string, string>> local =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var localChatEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
@@ -25,47 +25,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(localChatEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(localChatEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    var name = Helpers.GetAvatarNames(localChatEventArgs.FromName);
-                    if (name != null)
-                    {
-                        var fullName = new List<string>(name);
-                        if (fullName.Count.Equals(2))
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                fullName.First());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                fullName.Last());
-                        }
-                    }
-                    // Message can be empty if it was not heard (out of chat range).
-                    if (!string.IsNullOrEmpty(localChatEventArgs.Message))
-                    {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                            localChatEventArgs.Message);
-                        // language detection
-                        var detectedLanguage =
-                            rankedLanguageIdentifier.Identify(localChatEventArgs.Message).FirstOrDefault();
-                        if (detectedLanguage != null)
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE),
-                                detectedLanguage.Item1.Iso639_3);
-                    }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                        localChatEventArgs.OwnerID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        localChatEventArgs.SourceID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                        localChatEventArgs.Position.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                        Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AUDIBLE),
-                        Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.VOLUME),
-                        Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {localChatEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

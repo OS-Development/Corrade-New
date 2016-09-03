@@ -13,8 +13,8 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -22,7 +22,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> addclassified =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> addclassified =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -31,13 +31,13 @@ namespace Corrade
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3d position;
                     if (
                         !Vector3d.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                 corradeCommandParameters.Message)),
                             out position))
                     {
@@ -45,7 +45,7 @@ namespace Corrade
                     }
                     var item =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                     var textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
@@ -58,22 +58,22 @@ namespace Corrade
                                     corradeConfiguration.ServicesTimeout).FirstOrDefault();
                             if (!(inventoryBaseItem is InventoryTexture))
                             {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
                     }
                     var name =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_CLASSIFIED_NAME);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_CLASSIFIED_NAME);
                     }
                     var classifiedDescription =
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message));
                     var AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                     var classifiedUUID = UUID.Zero;
@@ -95,15 +95,15 @@ namespace Corrade
                         if (!AvatarClassifiedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
                         }
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                     }
-                    if (Helpers.IsSecondLife(Client) &&
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         classifiedUUID.Equals(UUID.Zero) &&
-                        classifiedCount >= Constants.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
+                        classifiedCount >= wasOpenMetaverse.Constants.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
                     {
-                        throw new ScriptException(ScriptError.MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED);
                     }
                     if (classifiedUUID.Equals(UUID.Zero))
                     {
@@ -113,21 +113,21 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PRICE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PRICE)),
                                 corradeCommandParameters.Message)),
                             out price))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PRICE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
                     }
                     if (price < 0)
                     {
-                        throw new ScriptException(ScriptError.INVALID_PRICE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
                     }
                     bool renew;
                     if (
                         !bool.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RENEW)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RENEW)),
                                 corradeCommandParameters.Message)),
                             out renew))
                     {
@@ -140,7 +140,7 @@ namespace Corrade
                             o.Name.Equals(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     lock (Locks.ClientInstanceSelfLock)

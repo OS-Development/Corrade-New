@@ -7,11 +7,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Constants;
+using Corrade.Structures;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,14 +22,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> inventory =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> inventory =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     lock (GroupDirectoryTrackersLock)
@@ -38,7 +41,7 @@ namespace Corrade
                         }
                     }
                     var path =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     Func<string, InventoryBase, InventoryBase> findPath = null;
                     findPath = (o, p) =>
@@ -77,13 +80,13 @@ namespace Corrade
                         }
                         catch (Exception)
                         {
-                            throw new ScriptException(ScriptError.AMBIGUOUS_PATH);
+                            throw new Command.ScriptException(Enumerations.ScriptError.AMBIGUOUS_PATH);
                         }
 
                         switch (next != null && !next.Equals(default(InventoryBase)))
                         {
                             case false:
-                                throw new ScriptException(ScriptError.PATH_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                         }
 
                         if (!(next is InventoryFolder))
@@ -97,14 +100,14 @@ namespace Corrade
                     };
                     InventoryBase item;
                     var csv = new List<string>();
-                    var action = Reflection.GetEnumValueFromName<Action>(
+                    var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
                     {
-                        case Action.LS:
+                        case Enumerations.Action.LS:
                             switch (!string.IsNullOrEmpty(path))
                             {
                                 case true:
@@ -178,7 +181,7 @@ namespace Corrade
                                     break;
                             }
                             break;
-                        case Action.CWD:
+                        case Enumerations.Action.CWD:
                             lock (GroupDirectoryTrackersLock)
                             {
                                 var dirItem =
@@ -200,10 +203,10 @@ namespace Corrade
                                 });
                             }
                             break;
-                        case Action.CD:
+                        case Enumerations.Action.CD:
                             if (string.IsNullOrEmpty(path))
                             {
-                                throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
                             }
                             switch (!path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
                             {
@@ -224,22 +227,22 @@ namespace Corrade
                             item = findPath(path, item);
                             if (!(item is InventoryFolder))
                             {
-                                throw new ScriptException(ScriptError.UNEXPECTED_ITEM_IN_PATH);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNEXPECTED_ITEM_IN_PATH);
                             }
                             lock (GroupDirectoryTrackersLock)
                             {
                                 GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] = item;
                             }
                             break;
-                        case Action.MKDIR:
+                        case Enumerations.Action.MKDIR:
                             var mkdirName =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(mkdirName))
                             {
-                                throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
                             }
                             switch (!string.IsNullOrEmpty(path))
                             {
@@ -264,11 +267,11 @@ namespace Corrade
                             item = findPath(path, item);
                             if (!(item is InventoryFolder))
                             {
-                                throw new ScriptException(ScriptError.UNEXPECTED_ITEM_IN_PATH);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNEXPECTED_ITEM_IN_PATH);
                             }
                             if (Client.Inventory.CreateFolder(item.UUID, mkdirName) == UUID.Zero)
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_CREATE_FOLDER);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_FOLDER);
                             }
                             try
                             {
@@ -277,18 +280,20 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
-                        case Action.CHMOD:
+                        case Enumerations.Action.CHMOD:
                             var itemPermissions =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(itemPermissions))
                             {
-                                throw new ScriptException(ScriptError.NO_PERMISSIONS_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_PROVIDED);
                             }
                             switch (!string.IsNullOrEmpty(path))
                             {
@@ -324,7 +329,8 @@ namespace Corrade
                                                     !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem,
                                                         itemPermissions, corradeConfiguration.ServicesTimeout)))
                                         {
-                                            throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
                                         }
                                     }
                                     break;
@@ -333,7 +339,8 @@ namespace Corrade
                                         !Inventory.wasSetInventoryItemPermissions(Client, item as InventoryItem,
                                             itemPermissions, corradeConfiguration.ServicesTimeout))
                                     {
-                                        throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
                                     }
                                     break;
                             }
@@ -344,10 +351,12 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
-                        case Action.RM:
+                        case Enumerations.Action.RM:
                             switch (!string.IsNullOrEmpty(path))
                             {
                                 case true:
@@ -393,15 +402,17 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
-                        case Action.CP:
-                        case Action.MV:
-                        case Action.LN:
+                        case Enumerations.Action.CP:
+                        case Enumerations.Action.MV:
+                        case Enumerations.Action.LN:
                             var lnSourcePath =
                                 wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SOURCE)),
                                     corradeCommandParameters.Message));
                             InventoryBase sourceItem;
                             switch (!string.IsNullOrEmpty(lnSourcePath))
@@ -424,17 +435,18 @@ namespace Corrade
                             sourceItem = findPath(lnSourcePath, sourceItem);
                             switch (action)
                             {
-                                case Action.CP:
-                                case Action.LN:
+                                case Enumerations.Action.CP:
+                                case Enumerations.Action.LN:
                                     if (sourceItem is InventoryFolder)
                                     {
-                                        throw new ScriptException(ScriptError.EXPECTED_ITEM_AS_SOURCE);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.EXPECTED_ITEM_AS_SOURCE);
                                     }
                                     break;
                             }
                             var lnTargetPath =
                                 wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                     corradeCommandParameters.Message));
                             InventoryBase targetItem;
                             switch (!string.IsNullOrEmpty(lnTargetPath))
@@ -457,24 +469,25 @@ namespace Corrade
                             targetItem = findPath(lnTargetPath, targetItem);
                             if (!(targetItem is InventoryFolder))
                             {
-                                throw new ScriptException(ScriptError.EXPECTED_FOLDER_AS_TARGET);
+                                throw new Command.ScriptException(Enumerations.ScriptError.EXPECTED_FOLDER_AS_TARGET);
                             }
                             switch (action)
                             {
-                                case Action.LN:
+                                case Enumerations.Action.LN:
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
                                         Client.Inventory.CreateLink(targetItem.UUID, sourceItem, (succeeded, newItem) =>
                                         {
                                             if (!succeeded)
                                             {
-                                                throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
+                                                throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                                             }
                                             Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
                                         });
                                     }
                                     break;
-                                case Action.MV:
+                                case Enumerations.Action.MV:
                                     switch (sourceItem is InventoryFolder)
                                     {
                                         case true:
@@ -491,7 +504,7 @@ namespace Corrade
                                             break;
                                     }
                                     break;
-                                case Action.CP:
+                                case Enumerations.Action.CP:
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
                                         Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
@@ -500,7 +513,8 @@ namespace Corrade
                                             {
                                                 if (newItem == null)
                                                 {
-                                                    throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
+                                                    throw new Command.ScriptException(
+                                                        Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                                                 }
                                             });
                                     }
@@ -513,15 +527,17 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

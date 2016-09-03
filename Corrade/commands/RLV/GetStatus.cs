@@ -16,18 +16,18 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getstatus = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getstatus = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
                 {
                     return;
                 }
-                var separator = RLV_CONSTANTS.PATH_SEPARATOR;
+                var separator = wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR;
                 var filter = string.Empty;
                 if (!string.IsNullOrEmpty(rule.Option))
                 {
-                    var parts = rule.Option.Split(RLV_CONSTANTS.STATUS_SEPARATOR[0]);
+                    var parts = rule.Option.Split(wasOpenMetaverse.RLV.RLV_CONSTANTS.STATUS_SEPARATOR[0]);
                     if (parts.Length > 1 && parts[1].Length > 0)
                     {
                         separator = parts[1].Substring(0, 1);
@@ -38,7 +38,7 @@ namespace Corrade
                     }
                 }
                 var response = new StringBuilder();
-                lock (RLVRulesLock)
+                lock (RLV.RLVRulesLock)
                 {
                     var LockObject = new object();
                     RLVRules.AsParallel().Where(o =>
@@ -53,7 +53,8 @@ namespace Corrade
                             {
                                 lock (LockObject)
                                 {
-                                    response.AppendFormat("{0}{1}", RLV_CONSTANTS.PATH_SEPARATOR, o.Option);
+                                    response.AppendFormat("{0}{1}", wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR,
+                                        o.Option);
                                 }
                             }
                         });

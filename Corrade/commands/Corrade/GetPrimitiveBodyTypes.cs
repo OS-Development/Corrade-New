@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -18,14 +19,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitivebodytypes =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprimitivebodytypes =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var primitiveBodies = new CORRADE_CONSTANTS.PRIMTIVE_BODIES();
                     var data = typeof (AssetType).GetFields(BindingFlags.Public |
@@ -35,7 +36,7 @@ namespace Corrade
                                 Reflection.GetStructureMemberName(primitiveBodies, o)).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

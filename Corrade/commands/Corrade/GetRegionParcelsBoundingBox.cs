@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,58 +20,61 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getregionparcelsboundingbox =
-                (corradeCommandParameters, result) =>
-                {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getregionparcelsboundingbox =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var region =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
-                                corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
-                    }
-                    if (simulator == null)
-                    {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
-                    }
-                    // Get all sim parcels
-                    var SimParcelsDownloadedEvent = new ManualResetEvent(false);
-                    EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
-                        (sender, args) => SimParcelsDownloadedEvent.Set();
-                    lock (Locks.ClientInstanceParcelsLock)
-                    {
-                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                        Client.Parcels.RequestAllSimParcels(simulator);
-                        if (simulator.IsParcelMapFull())
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Land))
                         {
-                            SimParcelsDownloadedEvent.Set();
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        var region =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                    corradeCommandParameters.Message));
+                        Simulator simulator;
+                        lock (Locks.ClientInstanceNetworkLock)
                         {
+                            simulator =
+                                Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                    o =>
+                                        o.Name.Equals(
+                                            string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                            StringComparison.OrdinalIgnoreCase));
+                        }
+                        if (simulator == null)
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                        }
+                        // Get all sim parcels
+                        var SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                        EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
+                            (sender, args) => SimParcelsDownloadedEvent.Set();
+                        lock (Locks.ClientInstanceParcelsLock)
+                        {
+                            Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                            Client.Parcels.RequestAllSimParcels(simulator);
+                            if (simulator.IsParcelMapFull())
+                            {
+                                SimParcelsDownloadedEvent.Set();
+                            }
+                            if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                            }
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
-                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                    }
-                    var csv = new List<Vector3>();
-                    simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
-                    if (csv.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.FromEnumerable(csv.Select(o => o.ToString())));
-                    }
-                };
+                        var csv = new List<Vector3>();
+                        simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
+                        if (csv.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(csv.Select(o => o.ToString())));
+                        }
+                    };
         }
     }
 }

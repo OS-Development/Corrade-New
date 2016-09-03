@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,16 +20,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> terrain =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> terrain =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -42,16 +43,16 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     byte[] data = null;
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.GET:
+                        case Enumerations.Action.GET:
                             ManualResetEvent[] DownloadTerrainEvents =
                             {
                                 new ManualResetEvent(false),
@@ -83,33 +84,34 @@ namespace Corrade
                                 {
                                     Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                     Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_DOWNLOADING_ASSET);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_DOWNLOADING_ASSET);
                                 }
                                 Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived -= XferReceivedEventHandler;
                             }
                             if (data == null || !data.Any())
                             {
-                                throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
+                                throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
                             }
-                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), Convert.ToBase64String(data));
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                Convert.ToBase64String(data));
                             break;
-                        case Action.SET:
+                        case Enumerations.Action.SET:
                             try
                             {
                                 data = Convert.FromBase64String(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message)));
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
                             }
                             if (!data.Any())
                             {
-                                throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
+                                throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
                             }
                             var AssetUploadEvent = new ManualResetEvent(false);
                             EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
@@ -126,13 +128,13 @@ namespace Corrade
                                 if (!AssetUploadEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Assets.UploadProgress -= AssetUploadEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
-using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,22 +17,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getbalance =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getbalance =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                     {
-                        throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             Client.Self.Balance.ToString(Utils.EnUsCulture));
                     }
                 };

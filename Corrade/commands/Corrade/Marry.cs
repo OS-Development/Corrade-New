@@ -11,7 +11,6 @@ using System.Net;
 using System.Text;
 using CorradeConfiguration;
 using HtmlAgilityPack;
-using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -20,24 +19,24 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> marry =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> marry =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     var firstname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                             corradeCommandParameters.Message));
 
                     var lastname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                             corradeCommandParameters.Message));
 
                     if (string.IsNullOrEmpty(firstname) && string.IsNullOrEmpty(lastname))
@@ -48,10 +47,10 @@ namespace Corrade
 
                     var secret = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SECRET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SECRET)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(secret))
-                        throw new ScriptException(ScriptError.NO_SECRET_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
                     var cookieContainer = new CookieContainer();
 
@@ -72,7 +71,7 @@ namespace Corrade
                         });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
@@ -80,7 +79,7 @@ namespace Corrade
 
                     var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
                     if (openIDNodes == null || !openIDNodes.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var openID =
                         openIDNodes.AsParallel()
@@ -92,14 +91,14 @@ namespace Corrade
                                 o => o.Attributes["value"].Value);
 
                     if (!openID.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     postData =
                         GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                             "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     #endregion
 
@@ -109,38 +108,41 @@ namespace Corrade
                     HtmlNode partnerNode;
                     HtmlNodeCollection errorNodes;
                     string message;
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.PROPOSE: // Send a proposal
+                        case Enumerations.Action.PROPOSE: // Send a proposal
 
                             #region Partnership Parameters
 
                             var name = wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                 corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(name))
-                                throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
 
                             message = wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                 corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(message))
-                                throw new ScriptException(ScriptError.NO_MESSAGE_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_MESSAGE_PROVIDED);
                             // Sanitize input.
-                            if (Helpers.IsSecondLife(Client))
+                            if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                             {
                                 // Check for description length.
-                                if (message.Length > Constants.PARTNERSHIP.MAXIMUM_PROPOSAL_MESSAGE_LENGTH)
-                                    throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_PROPOSAL_MESSAGE);
+                                if (message.Length >
+                                    wasOpenMetaverse.Constants.PARTNERSHIP.MAXIMUM_PROPOSAL_MESSAGE_LENGTH)
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_PROPOSAL_MESSAGE);
                                 // Check for description HTML.
                                 var descriptionInput = new HtmlDocument();
                                 descriptionInput.LoadHtml(message);
                                 if (!descriptionInput.DocumentNode.InnerText.Equals(message))
-                                    throw new ScriptException(ScriptError.MESSAGE_MAY_NOT_CONTAIN_HTML);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.MESSAGE_MAY_NOT_CONTAIN_HTML);
                             }
 
                             #endregion
@@ -154,7 +156,8 @@ namespace Corrade
                                 });
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
 
                             doc = new HtmlDocument();
                             HtmlNode.ElementsFlags.Remove("form");
@@ -165,7 +168,7 @@ namespace Corrade
                                     .FirstOrDefault(o => o.Attributes["href"].Value.Equals("?revoke=true"));
 
                             if (revokeNode != null)
-                                throw new ScriptException(ScriptError.PROPOSAL_ALREADY_SENT);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PROPOSAL_ALREADY_SENT);
 
                             // Now send the proposal.
                             formNode = doc.DocumentNode.SelectSingleNode("//form[@class='wht-grybrdr-content']");
@@ -188,7 +191,7 @@ namespace Corrade
                                 "https://secondlife.com/my/account/partners.php", newProposal);
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_POST_PROPOSAL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_POST_PROPOSAL);
 
                             // Check for proposal errors (ie user already has a partner request, etc...).
                             doc = new HtmlDocument();
@@ -198,12 +201,12 @@ namespace Corrade
                             errorNodes = doc.DocumentNode.SelectNodes("//div[@class='error']/ul/li");
                             if (errorNodes != null && errorNodes.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(errorNodes.Select(o => o.InnerText.Trim())));
-                                throw new ScriptException(ScriptError.PROPOSAL_REJECTED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PROPOSAL_REJECTED);
                             }
                             break;
-                        case Action.REVOKE: // Revoke a sent proposal.
+                        case Enumerations.Action.REVOKE: // Revoke a sent proposal.
                             // Check whether a proposal has been sent.
                             postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
@@ -213,7 +216,8 @@ namespace Corrade
                                 });
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
 
                             doc = new HtmlDocument();
                             HtmlNode.ElementsFlags.Remove("form");
@@ -223,7 +227,7 @@ namespace Corrade
                                 doc.DocumentNode.Descendants("a")
                                     .FirstOrDefault(o => o.Attributes["href"].Value.Equals("?revoke=true"));
                             if (revokeNode == null)
-                                throw new ScriptException(ScriptError.NO_PROPOSAL_TO_REJECT);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PROPOSAL_TO_REJECT);
 
                             postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                 "https://secondlife.com/my/account/partners.php",
@@ -234,13 +238,13 @@ namespace Corrade
                                 });
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_REVOKE_PROPOSAL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REVOKE_PROPOSAL);
 
                             break;
-                        case Action.ACCEPT: // Accept a proposal from someone
+                        case Enumerations.Action.ACCEPT: // Accept a proposal from someone
 
                             message = wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                 corradeCommandParameters.Message));
 
                             // Check whether a proposal has been sent.
@@ -252,7 +256,8 @@ namespace Corrade
                                 });
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
 
                             doc = new HtmlDocument();
                             HtmlNode.ElementsFlags.Remove("form");
@@ -263,7 +268,7 @@ namespace Corrade
                                     .FirstOrDefault(o => o.Attributes["href"].Value.Equals("?revoke=true"));
 
                             if (revokeNode != null)
-                                throw new ScriptException(ScriptError.PROPOSAL_ALREADY_SENT);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PROPOSAL_ALREADY_SENT);
 
                             // Now accept the proposal.
                             formNode = doc.DocumentNode.SelectSingleNode("//form[@action='partners.php?lang=en']");
@@ -288,7 +293,7 @@ namespace Corrade
                                 "https://secondlife.com/my/account/partners.php", acceptProposal);
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_ACCEPT_PROPOSAL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_ACCEPT_PROPOSAL);
 
                             // Check for proposal errors (ie user already has a partner request, etc...).
                             doc = new HtmlDocument();
@@ -298,15 +303,15 @@ namespace Corrade
                             errorNodes = doc.DocumentNode.SelectNodes("//div[@class='error']/ul/li");
                             if (errorNodes != null && errorNodes.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(errorNodes.Select(o => o.InnerText.Trim())));
-                                throw new ScriptException(ScriptError.UNABLE_TO_ACCEPT_PROPOSAL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_ACCEPT_PROPOSAL);
                             }
 
                             break;
-                        case Action.REJECT: // Reject a proposal from someone.
+                        case Enumerations.Action.REJECT: // Reject a proposal from someone.
                             message = wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                 corradeCommandParameters.Message));
 
                             // Check whether a proposal has been sent.
@@ -318,7 +323,8 @@ namespace Corrade
                                 });
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_REACH_PARTNERSHIP_PAGE);
 
                             doc = new HtmlDocument();
                             HtmlNode.ElementsFlags.Remove("form");
@@ -329,7 +335,7 @@ namespace Corrade
                                     .FirstOrDefault(o => o.Attributes["href"].Value.Equals("?revoke=true"));
 
                             if (revokeNode != null)
-                                throw new ScriptException(ScriptError.PROPOSAL_ALREADY_SENT);
+                                throw new Command.ScriptException(Enumerations.ScriptError.PROPOSAL_ALREADY_SENT);
 
                             // Now accept the proposal.
                             formNode = doc.DocumentNode.SelectSingleNode("//form[@action='partners.php?lang=en']");
@@ -354,7 +360,7 @@ namespace Corrade
                                 "https://secondlife.com/my/account/partners.php", rejectProposal);
 
                             if (postData.Result == null)
-                                throw new ScriptException(ScriptError.UNABLE_TO_REJECT_PROPOSAL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REJECT_PROPOSAL);
 
                             // Check for proposal errors (ie user already has a partner request, etc...).
                             doc = new HtmlDocument();
@@ -364,14 +370,14 @@ namespace Corrade
                             errorNodes = doc.DocumentNode.SelectNodes("//div[@class='error']/ul/li");
                             if (errorNodes != null && errorNodes.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(errorNodes.Select(o => o.InnerText.Trim())));
-                                throw new ScriptException(ScriptError.UNABLE_TO_REJECT_PROPOSAL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REJECT_PROPOSAL);
                             }
 
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

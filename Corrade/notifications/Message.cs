@@ -7,10 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
-using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -18,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> message =
+            public static Action<NotificationParameters, Dictionary<string, string>> message =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var notificationInstantMessage =
@@ -27,36 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(notificationInstantMessage,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(notificationInstantMessage,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    var name =
-                        Helpers.GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
-                    if (name != null)
-                    {
-                        var fullName = new List<string>(name);
-                        if (fullName.Count.Equals(2))
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                fullName.First());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                fullName.Last());
-                        }
-                    }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        notificationInstantMessage.IM.FromAgentID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        notificationInstantMessage.IM.Message);
-                    // language detection
-                    var detectedLanguage =
-                        rankedLanguageIdentifier.Identify(notificationInstantMessage.IM.Message).FirstOrDefault();
-                    if (detectedLanguage != null)
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE),
-                            detectedLanguage.Item1.Iso639_3);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATE),
-                        notificationInstantMessage.IM.Timestamp.ToString(Constants.LSL.DATE_TIME_STAMP));
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {notificationInstantMessage},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>collision</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>OpenMetaverse.MeanCollisionEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>Aggressor</Path>
+            <Name>aggressor</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Magnitude</Path>
+            <Name>magnitude</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Time</Path>
+            <Name>time</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Type</Path>
+            <Name>entity</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Victim</Path>
+            <Name>victim</Name>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

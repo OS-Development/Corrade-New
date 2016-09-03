@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using Corrade.Constants;
 using wasSharp;
 
 namespace Corrade
@@ -14,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> version =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> version =
                 (corradeCommandParameters, result) =>
                 {
-                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                         CORRADE_CONSTANTS.CORRADE_VERSION);
                 };
         }

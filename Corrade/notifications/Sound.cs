@@ -6,8 +6,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -17,34 +17,30 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> sound =
+            public static Action<NotificationParameters, Dictionary<string, string>> sound =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    var alertMessageEventArgs =
+                    var soundTriggerEventArgs =
                         (SoundTriggerEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(alertMessageEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(soundTriggerEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GAIN),
-                        alertMessageEventArgs.Gain.ToString(CultureInfo.InvariantCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        alertMessageEventArgs.ObjectID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                        alertMessageEventArgs.OwnerID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PARENT),
-                        alertMessageEventArgs.ParentID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                        alertMessageEventArgs.Position.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
-                        alertMessageEventArgs.Simulator.Name);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
-                        alertMessageEventArgs.SoundID.ToString());
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {soundTriggerEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

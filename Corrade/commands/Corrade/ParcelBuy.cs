@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,19 +20,19 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> parcelbuy =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> parcelbuy =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -39,7 +40,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -53,14 +54,14 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     bool forGroup;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORGROUP)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORGROUP)),
                                     corradeCommandParameters.Message)),
                             out forGroup))
                     {
@@ -70,7 +71,7 @@ namespace Corrade
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                         {
-                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
                         forGroup = true;
                     }
@@ -78,7 +79,7 @@ namespace Corrade
                     if (!bool.TryParse(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REMOVECONTRIBUTION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REMOVECONTRIBUTION)),
                                 corradeCommandParameters.Message)),
                         out removeContribution))
                     {
@@ -89,7 +90,7 @@ namespace Corrade
                         !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     UUID parcelUUID;
                     lock (Locks.ClientInstanceParcelsLock)
@@ -99,7 +100,7 @@ namespace Corrade
                     }
                     if (parcelUUID.Equals(UUID.Zero))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     var ParcelInfoEvent = new ManualResetEvent(false);
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
@@ -116,7 +117,7 @@ namespace Corrade
                         if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                     }
@@ -135,9 +136,9 @@ namespace Corrade
                                 forSale = o.ForSale;
                                 DirectorySearchResultsAlarm.Signal.Set();
                             });
-                            if (handledEvents > Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
+                            if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
                                 ((handledEvents - counter)%
-                                 Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
+                                 wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                             {
                                 ++counter;
                                 Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -155,30 +156,30 @@ namespace Corrade
                                 false))
                         {
                             Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
                         Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                     }
                     if (!forSale && !parcel.AuthBuyerID.Equals(Client.Self.AgentID))
                     {
-                        throw new ScriptException(ScriptError.PARCEL_NOT_FOR_SALE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.PARCEL_NOT_FOR_SALE);
                     }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                     {
-                        throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         if (Client.Self.Balance < parcel.SalePrice)
                         {
-                            throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                         }
                     }
                     if (!parcel.SalePrice.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Economy))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     lock (Locks.ClientInstanceParcelsLock)
                     {

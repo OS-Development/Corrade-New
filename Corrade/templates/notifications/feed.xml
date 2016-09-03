@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>feed</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>Corrade.Events.FeedEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>Title</Path>
+            <Name>title</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Summary</Path>
+            <Name>summary</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Name</Path>
+            <Name>name</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Date.DateTime</Path>
+            <Name>date</Name>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

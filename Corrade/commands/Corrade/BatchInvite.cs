@@ -12,8 +12,8 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -21,18 +21,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> batchinvite =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> batchinvite =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                             corradeCommandParameters.Message));
                     switch (string.IsNullOrEmpty(target))
                     {
@@ -41,7 +41,7 @@ namespace Corrade
                                 !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
-                                throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
@@ -52,11 +52,11 @@ namespace Corrade
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
                     {
-                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
@@ -64,7 +64,7 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     // Get the roles to invite to.
                     var roleUUIDs = new HashSet<UUID>();
@@ -72,7 +72,7 @@ namespace Corrade
                     Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROLE)),
                                 corradeCommandParameters.Message)))
                         .AsParallel().Where(o => !string.IsNullOrEmpty(o)), (o, s) =>
                         {
@@ -90,7 +90,7 @@ namespace Corrade
                             }
                         });
                     if (!rolesFound)
-                        throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.ROLE_NOT_FOUND);
                     // No roles specified, so assume everyone role.
                     if (!roleUUIDs.Any())
                     {
@@ -119,7 +119,8 @@ namespace Corrade
                         if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         if (!Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -129,7 +130,7 @@ namespace Corrade
                                 : GroupPowers.AssignMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
-                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
@@ -146,7 +147,7 @@ namespace Corrade
                     if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                     }
                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
 
@@ -155,7 +156,7 @@ namespace Corrade
                     if (
                         !Services.GetGroupBans(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref bannedAgents))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_GROUP_BAN_LIST);
                     }
 
                     var data = new HashSet<string>();
@@ -163,7 +164,7 @@ namespace Corrade
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
                                 corradeCommandParameters.Message)))
                         .ToArray()
                         .AsParallel()
@@ -172,7 +173,7 @@ namespace Corrade
                             UUID agentUUID;
                             if (!UUID.TryParse(o, out agentUUID))
                             {
-                                var fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
                                 if (
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
@@ -213,14 +214,17 @@ namespace Corrade
                                     // Check if the avatar is soft-banned.
                                     lock (GroupSoftBansLock)
                                     {
-                                        switch (GroupSoftBans.ContainsKey(groupUUID) && GroupSoftBans[groupUUID].Contains(agentUUID))
+                                        switch (
+                                            GroupSoftBans.ContainsKey(groupUUID) &&
+                                            GroupSoftBans[groupUUID].Contains(agentUUID))
                                         {
                                             case true:
                                                 // If the avatar is banned and soft is not true then do not invite the avatar.
                                                 bool soft;
                                                 if (!bool.TryParse(wasInput(
                                                     KeyValue.Get(
-                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOFT)),
+                                                        wasOutput(
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.SOFT)),
                                                         corradeCommandParameters.Message)), out soft) || !soft)
                                                 {
                                                     lock (LockObject)
@@ -245,7 +249,7 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

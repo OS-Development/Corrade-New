@@ -19,7 +19,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getpath = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getpath = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -28,7 +28,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
                 if (RLVFolder == null)
@@ -46,10 +46,9 @@ namespace Corrade
                 {
                     case true:
                         // Try attachments
-                        var RLVattachment =
-                            RLVAttachments.AsParallel().FirstOrDefault(
-                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        if (!RLVattachment.Equals(default(RLVAttachment)))
+                        var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
+                            o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                        if (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                         {
                             attachment =
                                 Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
@@ -72,10 +71,9 @@ namespace Corrade
                             }
                             break;
                         }
-                        var RLVwearable =
-                            RLVWearables.AsParallel().FirstOrDefault(
-                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        if (!RLVwearable.Equals(default(RLVWearable)))
+                        var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel().FirstOrDefault(
+                            o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                        if (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                         {
                             var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                                BindingFlags.Static)
@@ -134,7 +132,8 @@ namespace Corrade
                     case true:
                         lock (Locks.ClientInstanceSelfLock)
                         {
-                            Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()),
+                            Client.Self.Chat(
+                                string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()),
                                 channel,
                                 ChatType.Normal);
                         }

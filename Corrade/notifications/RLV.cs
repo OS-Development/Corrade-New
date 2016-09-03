@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> rlv =
+            public static Action<NotificationParameters, Dictionary<string, string>> rlv =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var RLVEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
@@ -24,19 +25,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(RLVEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(RLVEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        RLVEventArgs.SourceID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                        RLVEventArgs.FromName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                        RLVEventArgs.Position.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.RLV),
-                        CSV.FromEnumerable(wasRLVToString(RLVEventArgs.Message)));
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {RLVEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

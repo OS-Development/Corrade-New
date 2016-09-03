@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -19,15 +20,15 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> attach = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> attach = (message, rule, senderUUID) =>
             {
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE) || string.IsNullOrEmpty(rule.Option))
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) || string.IsNullOrEmpty(rule.Option))
                 {
                     return;
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -36,7 +37,7 @@ namespace Corrade
                     return;
                 }
                 var attachmentInventoryBases =
-                    new List<InventoryBase>(rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
+                    new List<InventoryBase>(rule.Option.Split(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR[0])
                         .AsParallel().Select(
                             p =>
                                 Inventory.FindInventory<InventoryBase>(Client, RLVFolder,
@@ -61,12 +62,12 @@ namespace Corrade
                     {
                         Inventory.Wear(Client, CurrentOutfitFolder, inventoryItem, true,
                             corradeConfiguration.ServicesTimeout);
-                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(
                                 Configuration.Notifications.OutfitChanged,
                                 new OutfitEventArgs
                                 {
-                                    Action = Action.ATTACH,
+                                    Action = Enumerations.Action.ATTACH,
                                     Name = inventoryItem.Name,
                                     Description = inventoryItem.Description,
                                     Item = inventoryItem.UUID,
@@ -95,12 +96,12 @@ namespace Corrade
                             .Where(p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID))
                             .Select(p => p.Value.ToString())
                             .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
-                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(
                                 Configuration.Notifications.OutfitChanged,
                                 new OutfitEventArgs
                                 {
-                                    Action = Action.ATTACH,
+                                    Action = Enumerations.Action.ATTACH,
                                     Name = inventoryItem.Name,
                                     Description = inventoryItem.Description,
                                     Item = inventoryItem.UUID,

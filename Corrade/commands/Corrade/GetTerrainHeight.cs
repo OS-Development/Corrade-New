@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,16 +20,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getterrainheight =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getterrainheight =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -42,7 +43,7 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     // Get all sim parcels
                     var SimParcelsDownloadedEvent = new ManualResetEvent(false);
@@ -59,7 +60,7 @@ namespace Corrade
                         if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                     }
@@ -68,7 +69,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOUTHWEST)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SOUTHWEST)),
                                     corradeCommandParameters.Message)),
                             out southwest))
                     {
@@ -79,7 +80,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NORTHEAST)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NORTHEAST)),
                                     corradeCommandParameters.Message)),
                             out northeast))
                     {
@@ -116,7 +117,7 @@ namespace Corrade
                         }));
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv.Select(o => o.ToString(Utils.EnUsCulture))));
                     }
                 };

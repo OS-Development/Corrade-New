@@ -8,11 +8,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Corrade.Structures;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,31 +21,31 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> conference =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> conference =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Talk))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var sessionUUID = UUID.Zero;
                     var LockObject = new object();
                     var csv = new List<string>();
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.CREATE: //starts a new conference
+                        case Enumerations.Action.CREATE: //starts a new conference
                             var conferenceParticipants = new HashSet<UUID>();
                             CSV.ToEnumerable(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
                                         corradeCommandParameters.Message)))
                                 .ToArray()
                                 .AsParallel()
@@ -53,7 +54,7 @@ namespace Corrade
                                     UUID agentUUID;
                                     if (!UUID.TryParse(o, out agentUUID))
                                     {
-                                        var fullName = new List<string>(Helpers.GetAvatarNames(o));
+                                        var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
                                         if (
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
@@ -69,7 +70,7 @@ namespace Corrade
                                 });
 
                             if (!conferenceParticipants.Any())
-                                throw new ScriptException(ScriptError.NO_AVATARS_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_AVATARS_FOUND);
 
                             var tmpSessionUUID = UUID.Random();
                             var conferenceName = string.Empty;
@@ -90,13 +91,14 @@ namespace Corrade
                                 if (!conferenceStartedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_STARTING_CONFERENCE);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_STARTING_CONFERENCE);
                                 }
                                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                             }
 
                             if (!succeeded)
-                                throw new ScriptException(ScriptError.UNABLE_TO_START_CONFERENCE);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_START_CONFERENCE);
 
                             lock (ConferencesLock)
                             {
@@ -110,19 +112,21 @@ namespace Corrade
                             // Save the conference state.
                             SaveConferenceState.Invoke();
                             // Return the conference details.
-                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), CSV.FromEnumerable(new[]
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)), conferenceName,
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)), sessionUUID.ToString()
-                            }));
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(new[]
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)), conferenceName,
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
+                                    sessionUUID.ToString()
+                                }));
                             break;
-                        case Action.DETAIL: // lists the avatar names and UUIDs of participants
+                        case Enumerations.Action.DETAIL: // lists the avatar names and UUIDs of participants
                             // Get the session UUID
                             if (!UUID.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)), out sessionUUID))
                             {
-                                throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                             }
                             // Join the chat if not yet joined
                             lock (Locks.ClientInstanceSelfLock)
@@ -130,12 +134,12 @@ namespace Corrade
                                 if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
                                     Client.Self.ChatterBoxAcceptInvite(sessionUUID);
                                 if (Services.JoinGroupChat(Client, sessionUUID, corradeConfiguration.ServicesTimeout))
-                                    throw new ScriptException(ScriptError.SESSION_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
                             }
                             List<ChatSessionMember> members;
                             if (!Client.Self.GroupChatSessions.TryGetValue(sessionUUID, out members))
                             {
-                                throw new ScriptException(ScriptError.SESSION_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
                             }
                             members.AsParallel().ForAll(o =>
                             {
@@ -152,11 +156,11 @@ namespace Corrade
                             });
                             if (csv.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
                             }
                             break;
-                        case Action.LIST: // lists the known conferences that we are part of
+                        case Enumerations.Action.LIST: // lists the known conferences that we are part of
                             lock (ConferencesLock)
                             {
                                 Conferences.AsParallel().ForAll(o =>
@@ -171,12 +175,12 @@ namespace Corrade
                             }
                             if (csv.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

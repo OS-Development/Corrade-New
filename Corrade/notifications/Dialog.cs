@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> dialog =
+            public static Action<NotificationParameters, Dictionary<string, string>> dialog =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var scriptDialogEventArgs =
@@ -25,27 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(scriptDialogEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(scriptDialogEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        scriptDialogEventArgs.Message);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                        scriptDialogEventArgs.FirstName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                        scriptDialogEventArgs.LastName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CHANNEL),
-                        scriptDialogEventArgs.Channel.ToString(Utils.EnUsCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                        scriptDialogEventArgs.ObjectName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                        scriptDialogEventArgs.ObjectID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                        scriptDialogEventArgs.OwnerID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BUTTON),
-                        CSV.FromEnumerable(scriptDialogEventArgs.ButtonLabels));
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {scriptDialogEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

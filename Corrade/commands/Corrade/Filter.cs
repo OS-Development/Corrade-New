@@ -16,26 +16,26 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> filter =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> filter =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Filter))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.SET:
+                        case Enumerations.Action.SET:
                             var inputFilters = new List<Configuration.Filter>();
                             var input =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INPUT)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INPUT)),
                                         corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(input))
                             {
@@ -52,7 +52,7 @@ namespace Corrade
                             var outputFilters = new List<Configuration.Filter>();
                             var output =
                                 wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.OUTPUT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.OUTPUT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(output))
                             {
@@ -67,30 +67,30 @@ namespace Corrade
                                 }
                             }
                             break;
-                        case Action.GET:
-                            switch (Reflection.GetEnumValueFromName<Type>(
+                        case Enumerations.Action.GET:
+                            switch (Reflection.GetEnumValueFromName<Enumerations.Type>(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
-                                case Type.INPUT:
+                                case Enumerations.Type.INPUT:
                                     lock (InputFiltersLock)
                                     {
                                         if (corradeConfiguration.InputFilters.Any())
                                         {
-                                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                                 CSV.FromEnumerable(corradeConfiguration.InputFilters.Select(
                                                     o => Reflection.GetNameFromEnumValue(o))));
                                         }
                                     }
                                     break;
-                                case Type.OUTPUT:
+                                case Enumerations.Type.OUTPUT:
                                     lock (OutputFiltersLock)
                                     {
                                         if (corradeConfiguration.OutputFilters.Any())
                                         {
-                                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                                 CSV.FromEnumerable(corradeConfiguration.OutputFilters.Select(
                                                     o => Reflection.GetNameFromEnumValue(o))));
                                         }

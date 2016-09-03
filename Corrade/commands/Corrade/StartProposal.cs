@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,24 +19,24 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> startproposal =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> startproposal =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
                     if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
-                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
@@ -43,47 +44,47 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     int duration;
                     if (
                         !int.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
                                     corradeCommandParameters.Message)),
                             out duration))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PROPOSAL_DURATION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_DURATION);
                     }
                     float majority;
                     if (
                         !float.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MAJORITY)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MAJORITY)),
                                     corradeCommandParameters.Message)),
                             out majority))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PROPOSAL_MAJORITY);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_MAJORITY);
                     }
                     int quorum;
                     if (
                         !int.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.QUORUM)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.QUORUM)),
                                     corradeCommandParameters.Message)),
                             out quorum))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PROPOSAL_QUORUM);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_QUORUM);
                     }
                     var text =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXT)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(text))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PROPOSAL_TEXT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_TEXT);
                     }
                     lock (Locks.ClientInstanceGroupsLock)
                     {

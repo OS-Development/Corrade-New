@@ -620,13 +620,11 @@ namespace wasOpenMetaverse
             if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
             {
                 // Wait for CAPs.
-                ManualResetEvent EventQueueRunningEvent = new ManualResetEvent(false);
-                EventHandler<EventQueueRunningEventArgs> EventQueueRunningEventHandler = (p, q) =>
-                {
-                    EventQueueRunningEvent.Set();
-                };
+                var EventQueueRunningEvent = new ManualResetEvent(false);
+                EventHandler<EventQueueRunningEventArgs> EventQueueRunningEventHandler =
+                    (p, q) => { EventQueueRunningEvent.Set(); };
                 Client.Network.EventQueueRunning += EventQueueRunningEventHandler;
-                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
+                EventQueueRunningEvent.WaitOne((int) millisecondsTimeout, false);
                 Client.Network.EventQueueRunning -= EventQueueRunningEventHandler;
             }
 
@@ -660,7 +658,7 @@ namespace wasOpenMetaverse
                     FolderUpdatedEvent.Reset();
                     Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
                         InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
+                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                 }
             } while (inventoryFolders.Any());

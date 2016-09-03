@@ -18,25 +18,25 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> execute =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> execute =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Execute))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var file =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FILE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FILE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(file))
                     {
-                        throw new ScriptException(ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
                     }
                     var p = new ProcessStartInfo(file,
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PARAMETER)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PARAMETER)),
                             corradeCommandParameters.Message)))
                     {
                         RedirectStandardOutput = true,
@@ -58,7 +58,7 @@ namespace Corrade
                     }
                     catch (Exception)
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_START_PROCESS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_START_PROCESS);
                     }
                     q.OutputDataReceived += (sender, output) =>
                     {
@@ -82,15 +82,15 @@ namespace Corrade
                     q.BeginOutputReadLine();
                     if (!q.WaitForExit((int) corradeConfiguration.ServicesTimeout))
                     {
-                        throw new ScriptException(ScriptError.TIMEOUT_WAITING_FOR_EXECUTION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_WAITING_FOR_EXECUTION);
                     }
                     if (StdEvent[0].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), stdout.ToString());
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stdout.ToString());
                     }
                     if (StdEvent[1].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), stderr.ToString());
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stderr.ToString());
                     }
                 };
         }

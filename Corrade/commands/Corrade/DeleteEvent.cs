@@ -19,24 +19,24 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteevent =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> deleteevent =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     var firstname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                             corradeCommandParameters.Message));
 
                     var lastname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                             corradeCommandParameters.Message));
 
                     if (string.IsNullOrEmpty(firstname) && string.IsNullOrEmpty(lastname))
@@ -47,17 +47,17 @@ namespace Corrade
 
                     var secret = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SECRET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SECRET)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(secret))
-                        throw new ScriptException(ScriptError.NO_SECRET_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
                     uint id;
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ID)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
                             corradeCommandParameters.Message)), out id))
-                        throw new ScriptException(ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
 
                     var cookieContainer = new CookieContainer();
 
@@ -76,7 +76,7 @@ namespace Corrade
                         });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
@@ -84,7 +84,7 @@ namespace Corrade
 
                     var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
                     if (openIDNodes == null || !openIDNodes.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var openID =
                         openIDNodes.AsParallel()
@@ -96,14 +96,14 @@ namespace Corrade
                                 o => o.Attributes["value"].Value);
 
                     if (!openID.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     postData =
                         GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                             "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     // Events
                     postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
@@ -111,14 +111,14 @@ namespace Corrade
                         new Dictionary<string, string>());
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
                     doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
                     var ToSNodes = doc.DocumentNode.SelectNodes("//form[@action='tos.php']/input[@type='hidden']");
                     if (ToSNodes == null || !ToSNodes.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
                     var eventToS =
                         ToSNodes
@@ -130,7 +130,7 @@ namespace Corrade
                         "https://secondlife.com/my/community/events/tos.php", eventToS);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
                     postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                         "https://secondlife.com/my/community/events/delete.php",
@@ -140,7 +140,7 @@ namespace Corrade
                         });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_DELETE_EVENT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_DELETE_EVENT);
                 };
         }
     }

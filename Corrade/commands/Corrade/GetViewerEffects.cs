@@ -17,25 +17,25 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getviewereffects =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getviewereffects =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var csv = new List<string>();
                     var LockObject = new object();
-                    var viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
+                    var viewerEffectType = Reflection.GetEnumValueFromName<Enumerations.ViewerEffectType>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)
                     {
-                        case ViewerEffectType.LOOK:
+                        case Enumerations.ViewerEffectType.LOOK:
                             LookAtEffects.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
@@ -56,7 +56,7 @@ namespace Corrade
                                 }
                             });
                             break;
-                        case ViewerEffectType.POINT:
+                        case Enumerations.ViewerEffectType.POINT:
                             PointAtEffects.AsParallel().ForAll(o =>
                             {
                                 lock (LockObject)
@@ -77,7 +77,7 @@ namespace Corrade
                                 }
                             });
                             break;
-                        case ViewerEffectType.SPHERE:
+                        case Enumerations.ViewerEffectType.SPHERE:
                             lock (SphereEffectsLock)
                             {
                                 SphereEffects.AsParallel().ForAll(o =>
@@ -109,7 +109,7 @@ namespace Corrade
                                 });
                             }
                             break;
-                        case ViewerEffectType.BEAM:
+                        case Enumerations.ViewerEffectType.BEAM:
                             lock (BeamEffectsLock)
                             {
                                 BeamEffects.AsParallel().ForAll(o =>
@@ -146,11 +146,11 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_EFFECT);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_EFFECT);
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

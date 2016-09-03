@@ -11,7 +11,6 @@ using System.Net;
 using System.Text;
 using CorradeConfiguration;
 using HtmlAgilityPack;
-using wasOpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -20,24 +19,24 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> modifyevent =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> modifyevent =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     var firstname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                             corradeCommandParameters.Message));
 
                     var lastname = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                             corradeCommandParameters.Message));
 
                     if (string.IsNullOrEmpty(firstname) && string.IsNullOrEmpty(lastname))
@@ -48,82 +47,83 @@ namespace Corrade
 
                     var secret = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SECRET)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SECRET)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(secret))
-                        throw new ScriptException(ScriptError.NO_SECRET_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
                     uint id;
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ID)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
                             corradeCommandParameters.Message)), out id))
-                        throw new ScriptException(ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
 
                     #region Event Parameters
 
                     var name = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                         corradeCommandParameters.Message));
-                    if (!string.IsNullOrEmpty(name) && Helpers.IsSecondLife(Client))
+                    if (!string.IsNullOrEmpty(name) && wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         // Check for description HTML.
                         var nameInput = new HtmlDocument();
                         nameInput.LoadHtml(name);
                         if (!nameInput.DocumentNode.InnerText.Equals(name))
-                            throw new ScriptException(ScriptError.NAME_MAY_NOT_CONTAIN_HTML);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NAME_MAY_NOT_CONTAIN_HTML);
                     }
 
                     var description = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                         corradeCommandParameters.Message));
                     // Sanitize input.
-                    if (!string.IsNullOrEmpty(description) && Helpers.IsSecondLife(Client))
+                    if (!string.IsNullOrEmpty(description) && wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         // Check for description length.
-                        if (description.Length > Constants.EVENTS.MAXIMUM_EVENT_DESCRIPTION_LENGTH)
-                            throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_EVENT_DESCRIPTION);
+                        if (description.Length > wasOpenMetaverse.Constants.EVENTS.MAXIMUM_EVENT_DESCRIPTION_LENGTH)
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_EVENT_DESCRIPTION);
                         // Check for description HTML.
                         var descriptionInput = new HtmlDocument();
                         descriptionInput.LoadHtml(description);
                         if (!descriptionInput.DocumentNode.InnerText.Equals(description))
-                            throw new ScriptException(ScriptError.DESCRIPTION_MAY_NOT_CONTAIN_HTML);
+                            throw new Command.ScriptException(Enumerations.ScriptError.DESCRIPTION_MAY_NOT_CONTAIN_HTML);
                     }
 
                     var date = new DateTime();
                     if (!DateTime.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATE)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATE)),
                         corradeCommandParameters.Message)), out date))
                         date = new DateTime();
 
                     var time = new DateTime();
                     if (!DateTime.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME)),
                         corradeCommandParameters.Message)), out time))
                         time = new DateTime();
 
                     int duration;
                     if (!int.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
                         corradeCommandParameters.Message)), out duration))
                         duration = -1;
 
                     var location = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LOCATION)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LOCATION)),
                             corradeCommandParameters.Message));
 
                     int category;
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CATEGORY)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
                             corradeCommandParameters.Message)), out category))
                         category = -1;
 
                     int amount;
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
                             corradeCommandParameters.Message)), out amount))
                         amount = -1;
 
@@ -146,7 +146,7 @@ namespace Corrade
                         });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
@@ -154,7 +154,7 @@ namespace Corrade
 
                     var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
                     if (openIDNodes == null || !openIDNodes.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     var openID =
                         openIDNodes.AsParallel()
@@ -166,14 +166,14 @@ namespace Corrade
                                 o => o.Attributes["value"].Value);
 
                     if (!openID.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     postData =
                         GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                             "https://id.secondlife.com/openid/openidserver", openID);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AUTHENTICATE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                     // Events
                     postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
@@ -181,14 +181,14 @@ namespace Corrade
                         new Dictionary<string, string>());
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
                     doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
                     var ToSNodes = doc.DocumentNode.SelectNodes("//form[@action='tos.php']/input[@type='hidden']");
                     if (ToSNodes == null || !ToSNodes.Any())
-                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
                     var eventToS =
                         ToSNodes
@@ -200,7 +200,7 @@ namespace Corrade
                         "https://secondlife.com/my/community/events/tos.php", eventToS);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_AGREE_TO_TOS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AGREE_TO_TOS);
 
                     postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                         "https://secondlife.com/my/community/events/edit.php",
@@ -211,7 +211,7 @@ namespace Corrade
                         });
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_REACH_EVENTS_PAGE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REACH_EVENTS_PAGE);
 
                     doc = new HtmlDocument();
                     HtmlNode.ElementsFlags.Remove("form");
@@ -219,13 +219,14 @@ namespace Corrade
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
                     var formNode = doc.DocumentNode.SelectSingleNode("//form[@id='event_frm']");
                     if (formNode == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_REACH_EVENTS_PAGE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REACH_EVENTS_PAGE);
 
                     if (string.IsNullOrEmpty(name))
                     {
                         var nameNode = formNode.SelectSingleNode("//input[@id='event_name']");
                         if (nameNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                         name = nameNode.Attributes["value"].Value;
                     }
 
@@ -233,7 +234,8 @@ namespace Corrade
                     {
                         var descriptionNode = formNode.SelectSingleNode("//textarea[@id='event_desc']");
                         if (descriptionNode?.InnerText == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
 
                         description = descriptionNode.InnerText;
                     }
@@ -242,18 +244,22 @@ namespace Corrade
                     {
                         var dateNode = formNode.SelectSingleNode("//input[@id='event_date']");
                         if (dateNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                         if (!DateTime.TryParse(dateNode.Attributes["value"].Value, out date))
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
 
                     if (time.Equals(default(DateTime)))
                     {
                         var timeNode = formNode.SelectSingleNode("//input[@id='event_selected_time']");
                         if (timeNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                         if (!DateTime.TryParse(timeNode.Attributes["value"].Value, out time))
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
 
                     if (duration == -1)
@@ -261,16 +267,19 @@ namespace Corrade
                         var durationNode =
                             formNode.SelectSingleNode("//select[@id='duration']/option[@selected='selected']");
                         if (durationNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                         if (!int.TryParse(durationNode.Attributes["value"].Value, out duration))
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
 
                     if (string.IsNullOrEmpty(location))
                     {
                         var locationNode = formNode.SelectSingleNode("//select[@id='parcel_chosen']/option[@selected]");
                         if (locationNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
 
                         location = locationNode.Attributes["value"].Value;
                     }
@@ -280,18 +289,22 @@ namespace Corrade
                         var categoryNode =
                             formNode.SelectSingleNode("//select[@id='category']/option[@selected='selected']");
                         if (categoryNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                         if (!int.TryParse(categoryNode.Attributes["value"].Value, out category))
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
 
                     if (amount == -1)
                     {
                         var amoutNode = formNode.SelectSingleNode("//input[@id='amount']");
                         if (amoutNode?.Attributes["value"].Value == null)
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                         if (!int.TryParse(amoutNode.Attributes["value"].Value, out amount))
-                            throw new ScriptException(ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
 
                     // Build the new event form data.
@@ -320,7 +333,7 @@ namespace Corrade
                         newEvent);
 
                     if (postData.Result == null)
-                        throw new ScriptException(ScriptError.UNABLE_TO_POST_EVENT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_POST_EVENT);
 
                     doc = new HtmlDocument();
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
@@ -329,9 +342,9 @@ namespace Corrade
                     var errorNodes = doc.DocumentNode.SelectNodes("//div[@id='display_errors']/ul/li");
                     if (errorNodes != null && errorNodes.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(errorNodes.Select(o => o.InnerText.Trim())));
-                        throw new ScriptException(ScriptError.EVENT_POSTING_REJECTED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EVENT_POSTING_REJECTED);
                     }
                 };
         }

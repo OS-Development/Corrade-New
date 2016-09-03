@@ -12,8 +12,8 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Parallel = System.Threading.Tasks.Parallel;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -21,51 +21,53 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> changeprimitivelink =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> changeprimitivelink =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
                     }
-                    var action = Reflection.GetEnumValueFromName<Action>(
+                    var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
                     {
-                        case Action.LINK:
-                        case Action.DELINK:
+                        case Enumerations.Action.LINK:
+                        case Enumerations.Action.DELINK:
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                     var items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                        corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)));
-                    if (!items.Any() || (action.Equals(Action.LINK) && items.Count < 2))
+                    if (!items.Any() || (action.Equals(Enumerations.Action.LINK) && items.Count < 2))
                     {
-                        throw new ScriptException(ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
                     }
-                    if (Helpers.IsSecondLife(Client))
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
-                        if (items.Count > Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
+                        if (items.Count > wasOpenMetaverse.Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
                         {
-                            throw new ScriptException(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
                         }
                     }
 
@@ -105,13 +107,13 @@ namespace Corrade
                         }
                     });
 
-                    if (!succeeded) throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                    if (!succeeded) throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
 
                     var primitives = searchPrimitives.ToList();
                     var rootPrimitive = primitives.First();
                     if (!primitives.AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
                     {
-                        throw new ScriptException(ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
                     }
                     var PrimChangeLinkEvent = new ManualResetEvent(false);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
@@ -136,18 +138,18 @@ namespace Corrade
                             o => o.Handle.Equals(rootPrimitive.RegionHandle));
                     }
                     if (simulator == null)
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     lock (Locks.ClientInstanceObjectsLock)
                     {
                         Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                         switch (action)
                         {
-                            case Action.LINK:
+                            case Enumerations.Action.LINK:
                                 Client.Objects.LinkPrims(
                                     simulator,
                                     primitives.Select(o => o.LocalID).ToList());
                                 break;
-                            case Action.DELINK:
+                            case Enumerations.Action.DELINK:
                                 Client.Objects.DelinkPrims(
                                     simulator,
                                     primitives.Select(o => o.LocalID).ToList());
@@ -156,7 +158,7 @@ namespace Corrade
                         if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_CHANGING_LINKS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                         }
                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                     }

@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<SerializedNotification xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Notification>url</Notification>
+  <NotificationParameters>
+    <Item>
+      <Key>
+        <string>OpenMetaverse.LoadUrlEventArgs</string>
+      </Key>
+      <Value>
+        <ArrayOfParameter>
+          <Parameter>
+            <Path>ObjectName</Path>
+            <Name>name</Name>
+          </Parameter>
+          <Parameter>
+            <Path>ObjectID</Path>
+            <Name>item</Name>
+          </Parameter>
+          <Parameter>
+            <Path>OwnerID</Path>
+            <Name>owner</Name>
+          </Parameter>
+          <Parameter>
+            <Path>OwnerIsGroup</Path>
+            <Name>group</Name>
+          </Parameter>
+          <Parameter>
+            <Path>Message</Path>
+            <Name>message</Name>
+          </Parameter>
+          <Parameter>
+            <Path>URL</Path>
+            <Name>url</Name>
+          </Parameter>
+        </ArrayOfParameter>
+      </Value>
+    </Item>
+  </NotificationParameters>
+</SerializedNotification>

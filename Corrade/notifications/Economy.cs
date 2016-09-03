@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> economy =
+            public static Action<NotificationParameters, Dictionary<string, string>> economy =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var notificationMoneyBalanceEventArgs =
@@ -25,36 +26,22 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(notificationMoneyBalanceEventArgs,
-                                CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(
+                                wasOpenMetaverse.Reflection.GetStructuredData(notificationMoneyBalanceEventArgs,
+                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE),
-                        notificationMoneyBalanceEventArgs.Balance.ToString(
-                            Utils.EnUsCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION),
-                        notificationMoneyBalanceEventArgs.Description);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.COMMITTED),
-                        notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
-                            Utils.EnUsCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CREDIT),
-                        notificationMoneyBalanceEventArgs.MetersCredit.ToString(
-                            Utils.EnUsCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS),
-                        notificationMoneyBalanceEventArgs.Success.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                        notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT),
-                        notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
-                            Utils.EnUsCulture));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                        notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                        notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TRANSACTION),
-                        Enum.GetName(typeof (MoneyTransactionType),
-                            notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {notificationMoneyBalanceEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,20 +20,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitivesdata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprimitivesdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -40,16 +41,16 @@ namespace Corrade
                     }
                     var updatePrimitives = new HashSet<Primitive>();
                     var LockObject = new object();
-                    switch (Reflection.GetEnumValueFromName<Entity>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Entity.RANGE:
+                        case Enumerations.Entity.RANGE:
                             updatePrimitives = Services.GetPrimitives(Client, range);
                             break;
-                        case Entity.WORLD:
+                        case Enumerations.Entity.WORLD:
                             var avatars =
                                 new HashSet<uint>(Services.GetAvatars(Client, range).Select(o => o.LocalID));
                             updatePrimitives =
@@ -58,13 +59,13 @@ namespace Corrade
                                         .AsParallel()
                                         .Where(o => o.ParentID.Equals(0) && !avatars.Contains(o.ParentID)));
                             break;
-                        case Entity.PARCEL:
+                        case Enumerations.Entity.PARCEL:
                             Vector3 position;
                             if (
                                 !Vector3.TryParse(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                             corradeCommandParameters.Message)),
                                     out position))
                             {
@@ -75,7 +76,7 @@ namespace Corrade
                                 !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
                                     corradeConfiguration.ServicesTimeout, ref parcel))
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                             }
                             updatePrimitives = Services.GetPrimitives(Client, new[]
                             {
@@ -87,7 +88,7 @@ namespace Corrade
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
                             }.Max());
                             break;
-                        case Entity.REGION:
+                        case Enumerations.Entity.REGION:
                             // Get all sim parcels
                             var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
@@ -105,7 +106,7 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                                 }
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
@@ -120,36 +121,36 @@ namespace Corrade
                                         new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
                                 }.Max()).Max());
                             break;
-                        case Entity.AVATAR:
+                        case Enumerations.Entity.AVATAR:
                             UUID agentUUID;
                             if (
                                 !UUID.TryParse(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out agentUUID) &&
                                 !Resolvers.AgentNameToUUID(Client,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message)),
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
                             {
-                                throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                             }
                             var avatar = Services.GetAvatars(Client, range)
                                 .AsParallel()
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                             if (avatar == null)
-                                throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
+                                throw new Command.ScriptException(Enumerations.ScriptError.AVATAR_NOT_IN_RANGE);
                             var objectsPrimitives =
                                 new HashSet<Primitive>(Services.GetPrimitives(Client, range));
                             objectsPrimitives.AsParallel().ForAll(
@@ -180,7 +181,7 @@ namespace Corrade
                                 });
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
 
                     // allow partial results
@@ -188,11 +189,11 @@ namespace Corrade
 
                     var data = new List<string>();
                     var dataQuery = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     updatePrimitives.AsParallel().ForAll(o =>
                     {
-                        var primitiveData = GetStructuredData(o, dataQuery).ToList();
+                        var primitiveData = o.GetStructuredData(dataQuery).ToList();
                         if (primitiveData.Any())
                         {
                             lock (LockObject)
@@ -203,7 +204,7 @@ namespace Corrade
                     });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

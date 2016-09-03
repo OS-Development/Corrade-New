@@ -16,40 +16,41 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getstatus =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getstatus =
                 (corradeCommandParameters, result) =>
                 {
                     uint status;
                     if (!uint.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.STATUS)),
                         corradeCommandParameters.Message)), out status))
                     {
-                        throw new ScriptException(ScriptError.INVALID_STATUS_SUPPLIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_STATUS_SUPPLIED);
                     }
-                    switch (Reflection.GetEnumValueFromName<Entity>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Entity.DESCRIPTION:
-                            var scriptErrorFieldInfo = typeof (ScriptError).GetFields(
+                        case Enumerations.Entity.DESCRIPTION:
+                            var scriptErrorFieldInfo = typeof (Enumerations.ScriptError).GetFields(
                                 BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        Reflection.GetAttributeFromEnumValue<StatusAttribute>(
-                                            (ScriptError) o.GetValue(null))
+                                        Reflection.GetAttributeFromEnumValue<Command.StatusAttribute>(
+                                            (Enumerations.ScriptError) o.GetValue(null))
                                             .Status.Equals(status));
                             if (scriptErrorFieldInfo == null)
-                                throw new ScriptException(ScriptError.STATUS_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.STATUS_NOT_FOUND);
                             var description =
-                                Reflection.GetNameFromEnumValue((ScriptError) scriptErrorFieldInfo.GetValue(null));
+                                Reflection.GetNameFromEnumValue(
+                                    (Enumerations.ScriptError) scriptErrorFieldInfo.GetValue(null));
                             if (string.IsNullOrEmpty(description))
-                                throw new ScriptException(ScriptError.NO_DESCRIPTION_FOR_STATUS);
-                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), description);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_DESCRIPTION_FOR_STATUS);
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), description);
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                 };
         }

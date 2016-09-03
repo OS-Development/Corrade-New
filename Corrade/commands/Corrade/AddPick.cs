@@ -13,8 +13,8 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -22,20 +22,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> addpick =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> addpick =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3d position;
                     if (
                         !Vector3d.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                 corradeCommandParameters.Message)),
                             out position))
                     {
@@ -43,7 +43,7 @@ namespace Corrade
                     }
                     var item =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                     var textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
@@ -57,7 +57,7 @@ namespace Corrade
                                     ).FirstOrDefault();
                             if (!(inventoryBaseItem is InventoryTexture))
                             {
-                                throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
@@ -65,11 +65,11 @@ namespace Corrade
                     var AvatarPicksReplyEvent = new ManualResetEvent(false);
                     var pickUUID = UUID.Zero;
                     var name =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_PICK_NAME);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_PICK_NAME);
                     }
                     var pickCount = 0;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
@@ -89,26 +89,27 @@ namespace Corrade
                         if (!AvatarPicksReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PICKS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PICKS);
                         }
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                     }
                     var description =
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message));
-                    if (Helpers.IsSecondLife(Client))
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         if (pickUUID.Equals(UUID.Zero) &&
-                            pickCount >= Constants.AVATARS.PICKS.MAXIMUM_PICKS)
+                            pickCount >= wasOpenMetaverse.Constants.AVATARS.PICKS.MAXIMUM_PICKS)
                         {
-                            throw new ScriptException(ScriptError.MAXIMUM_AMOUNT_OF_PICKS_REACHED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.MAXIMUM_AMOUNT_OF_PICKS_REACHED);
                         }
                         if (Encoding.UTF8.GetByteCount(description) >
-                            Constants.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
+                            wasOpenMetaverse.Constants.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
                         {
-                            throw new ScriptException(ScriptError.DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE);
                         }
                     }
                     if (pickUUID.Equals(UUID.Zero))

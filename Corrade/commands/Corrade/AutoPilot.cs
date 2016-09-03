@@ -11,7 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,32 +19,32 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> autopilot =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> autopilot =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.START:
+                        case Enumerations.Action.START:
                             Vector3 position;
                             if (
                                 !Vector3.TryParse(
                                     wasInput(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                         corradeCommandParameters.Message)),
                                     out position))
                             {
-                                throw new ScriptException(ScriptError.INVALID_POSITION);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                             }
                             uint moveRegionX, moveRegionY;
                             Utils.LongToUInts(Client.Network.CurrentSim.Handle, out moveRegionX, out moveRegionY);
@@ -58,7 +58,7 @@ namespace Corrade
                             // stop non default animations if requested
                             bool deanimate;
                             switch (bool.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
                                     corradeCommandParameters.Message)), out deanimate) && deanimate)
                             {
                                 case true:
@@ -67,7 +67,7 @@ namespace Corrade
                                     {
                                         Client.Self.SignaledAnimations.Copy()
                                             .Keys.AsParallel()
-                                            .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                            .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
                                     }
                                     break;
@@ -79,14 +79,14 @@ namespace Corrade
                                 Client.Self.AutoPilot(position.X + moveRegionX, position.Y + moveRegionY, position.Z);
                             }
                             break;
-                        case Action.STOP:
+                        case Enumerations.Action.STOP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.AutoPilotCancel();
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_MOVE_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_MOVE_ACTION);
                     }
                     // Set the camera on the avatar.
                     lock (Locks.ClientInstanceSelfLock)

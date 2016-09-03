@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -18,29 +19,29 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> wear =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> wear =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var wearables =
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WEARABLES)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WEARABLES)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(wearables))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_WEARABLES);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_WEARABLES);
                     }
                     bool replace;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REPLACE)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REPLACE)),
                                     corradeCommandParameters.Message)),
                             out replace))
                     {
@@ -86,12 +87,12 @@ namespace Corrade
                             {
                                 Inventory.Wear(Client, CurrentOutfitFolder, o, replace,
                                     corradeConfiguration.ServicesTimeout);
-                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                     () => SendNotification(
                                         Configuration.Notifications.OutfitChanged,
                                         new OutfitEventArgs
                                         {
-                                            Action = Action.WEAR,
+                                            Action = Enumerations.Action.WEAR,
                                             Name = o.Name,
                                             Description = o.Description,
                                             Item = o.UUID,

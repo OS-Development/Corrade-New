@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,14 +18,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getattachments =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getattachments =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
@@ -38,7 +39,7 @@ namespace Corrade
                         }).SelectMany(o => o).ToList();
                     if (attachments.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(attachments));
                     }
                 };

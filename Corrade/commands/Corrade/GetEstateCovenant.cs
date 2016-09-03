@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,12 +20,12 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getestatecovenant =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getestatecovenant =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var EstateCovenantReceivedEvent = new ManualResetEvent(false);
                     var csv = new List<string>();
@@ -46,13 +47,14 @@ namespace Corrade
                         if (!EstateCovenantReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ESTATE_COVENANT);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_COVENANT);
                         }
                         Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

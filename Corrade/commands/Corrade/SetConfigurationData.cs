@@ -6,8 +6,11 @@
 
 using System;
 using System.Collections.Generic;
+using Corrade.Constants;
 using CorradeConfiguration;
+using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -15,22 +18,27 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setconfigurationdata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setconfigurationdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     lock (ConfigurationFileLock)
                     {
-                        wasCSVToStructure(
+                        /*Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)), ref corradeConfiguration);
+                                    wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)), ref corradeConfiguration);*/
+                        corradeConfiguration.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                         UpdateDynamicConfiguration(corradeConfiguration);
                         ConfigurationWatcher.EnableRaisingEvents = false;
                         try
@@ -39,7 +47,8 @@ namespace Corrade
                         }
                         catch (Exception)
                         {
-                            throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
                         }
                         ConfigurationWatcher.EnableRaisingEvents = true;
                     }

@@ -16,63 +16,63 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getcommand =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getcommand =
                 (corradeCommandParameters, result) =>
                 {
                     var name =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
-                        throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
                     }
-                    var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(name);
-                    if (scriptKey.Equals(default(ScriptKeys)))
+                    var scriptKey = Reflection.GetEnumValueFromName<Command.ScriptKeys>(name);
+                    if (scriptKey.Equals(default(Command.ScriptKeys)))
                     {
-                        throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COMMAND_NOT_FOUND);
                     }
                     var commandPermissionMaskAttribute =
-                        Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
+                        Reflection.GetAttributeFromEnumValue<Command.CommandPermissionMaskAttribute>(scriptKey);
                     if (commandPermissionMaskAttribute == null)
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     switch (!corradeCommandParameters.Group.Equals(default(Configuration.Group)))
                     {
                         case false:
-                            throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Entity.SYNTAX:
+                        case Enumerations.Entity.SYNTAX:
                             switch (
-                                Reflection.GetEnumValueFromName<Type>(
+                                Reflection.GetEnumValueFromName<Enumerations.Type>(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
-                                case Type.INPUT:
+                                case Enumerations.Type.INPUT:
                                     var commandInputSyntaxAttribute = Reflection
                                         .GetAttributeFromEnumValue
-                                        <CommandInputSyntaxAttribute>(
-                                            Reflection.GetEnumValueFromName<ScriptKeys>(name));
+                                        <Command.CommandInputSyntaxAttribute>(
+                                            Reflection.GetEnumValueFromName<Command.ScriptKeys>(name));
                                     if (!string.IsNullOrEmpty(commandInputSyntaxAttribute?.Syntax))
                                     {
-                                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                             commandInputSyntaxAttribute.Syntax);
                                     }
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_SYNTAX_TYPE);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_SYNTAX_TYPE);
                             }
                             break;
-                        case Entity.PERMISSION:
+                        case Enumerations.Entity.PERMISSION:
                             var data = new HashSet<string>();
                             var LockObject = new object();
                             Reflection.GetEnumNames<Configuration.Permissions>()
@@ -90,12 +90,12 @@ namespace Corrade
                                 });
                             if (data.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(data));
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                 };
         }

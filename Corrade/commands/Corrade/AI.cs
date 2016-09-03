@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Corrade.Constants;
 using CorradeConfiguration;
 using wasSharp;
 
@@ -16,32 +17,32 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> ai =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> ai =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Talk))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     if (!corradeConfiguration.EnableSIML)
-                        throw new ScriptException(ScriptError.SIML_NOT_ENABLED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.SIML_NOT_ENABLED);
 
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.PROCESS:
+                        case Enumerations.Action.PROCESS:
                             var message =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(message))
                             {
-                                throw new ScriptException(ScriptError.NO_MESSAGE_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_MESSAGE_PROVIDED);
                             }
                             string reply;
                             lock (SIMLBotLock)
@@ -50,10 +51,10 @@ namespace Corrade
                             }
                             if (!string.IsNullOrEmpty(reply))
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), reply);
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), reply);
                             }
                             break;
-                        case Action.REBUILD:
+                        case Enumerations.Action.REBUILD:
                             lock (SIMLBotLock)
                             {
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
@@ -68,7 +69,8 @@ namespace Corrade
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_REMOVE_SIML_PACKAGE_FILE);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_REMOVE_SIML_PACKAGE_FILE);
                                     }
                                 }
                                 LoadChatBotFiles.Invoke();
@@ -76,7 +78,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

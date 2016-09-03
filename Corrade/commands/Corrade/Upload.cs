@@ -16,6 +16,7 @@ using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -23,27 +24,27 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> upload =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> upload =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var name =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
-                        throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
                     }
                     var permissions = PermissionMask.None;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message)))
                         .ToArray()
                         .AsParallel()
@@ -62,12 +63,12 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         Reflection.GetNameFromEnumValue(
-                                            ScriptKeys.TYPE),
+                                            Command.ScriptKeys.TYPE),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     if (assetTypeInfo == null)
                     {
-                        throw new ScriptException(ScriptError.UNKNOWN_ASSET_TYPE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
                     var assetType = (AssetType) assetTypeInfo.GetValue(null);
                     byte[] data;
@@ -75,12 +76,12 @@ namespace Corrade
                     {
                         data = Convert.FromBase64String(
                             wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)));
                     }
                     catch (Exception)
                     {
-                        throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
                     }
                     var succeeded = false;
                     var assetUUID = UUID.Zero;
@@ -95,17 +96,18 @@ namespace Corrade
                                 !HasCorradePermission(corradeCommandParameters.Group.UUID,
                                     (int) Configuration.Permissions.Economy))
                             {
-                                throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                             }
                             if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
                                 {
-                                    throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                                 }
                             }
                             switch (assetType)
@@ -132,7 +134,8 @@ namespace Corrade
                                                 }
                                                 catch (Exception)
                                                 {
-                                                    throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
+                                                    throw new Command.ScriptException(
+                                                        Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
                                                 }
 
                                                 break;
@@ -149,7 +152,8 @@ namespace Corrade
                                                 }
                                                 catch (Exception)
                                                 {
-                                                    throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
+                                                    throw new Command.ScriptException(
+                                                        Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
                                                 }
 
                                                 break;
@@ -164,7 +168,7 @@ namespace Corrade
                                 Client.Inventory.RequestCreateItemFromAsset(data, name,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     (InventoryType)
@@ -182,7 +186,7 @@ namespace Corrade
                                     });
                                 if (!CreateItemFromAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
@@ -195,17 +199,17 @@ namespace Corrade
                                         o.Name.Equals(
                                             wasInput(
                                                 KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WEAR)),
+                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WEAR)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             if (wearTypeInfo == null)
                             {
-                                throw new ScriptException(ScriptError.UNKNOWN_WEARABLE_TYPE);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_WEARABLE_TYPE);
                             }
                             var wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
                             if (wearableUUID.Equals(UUID.Zero))
                             {
-                                throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
                             }
                             var CreateWearableEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
@@ -214,7 +218,7 @@ namespace Corrade
                                     name,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
@@ -228,7 +232,7 @@ namespace Corrade
                                     });
                                 if (!CreateWearableEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             break;
@@ -236,7 +240,7 @@ namespace Corrade
                             var landmarkUUID = Client.Assets.RequestUpload(assetType, data, false);
                             if (landmarkUUID.Equals(UUID.Zero))
                             {
-                                throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
                             }
                             var CreateLandmarkEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
@@ -245,7 +249,7 @@ namespace Corrade
                                     name,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     landmarkUUID, InventoryType.Landmark, PermissionMask.All,
@@ -258,7 +262,7 @@ namespace Corrade
                                     });
                                 if (!CreateLandmarkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             break;
@@ -271,7 +275,7 @@ namespace Corrade
                                     name,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Gesture,
@@ -286,12 +290,12 @@ namespace Corrade
                                     });
                                 if (!CreateGestureEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             if (!succeeded)
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                             }
                             var UploadGestureAssetEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
@@ -306,7 +310,7 @@ namespace Corrade
                                     });
                                 if (!UploadGestureAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
@@ -319,7 +323,7 @@ namespace Corrade
                                     name,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Notecard,
@@ -334,12 +338,12 @@ namespace Corrade
                                     });
                                 if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             if (!succeeded)
                             {
-                                throw new ScriptException(ScriptError.UNABLE_TO_CREATE_ITEM);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                             }
                             var UploadNotecardAssetEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
@@ -354,7 +358,7 @@ namespace Corrade
                                     });
                                 if (!UploadNotecardAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
@@ -367,7 +371,7 @@ namespace Corrade
                                     name,
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     UUID.Random(), InventoryType.LSL,
@@ -382,7 +386,7 @@ namespace Corrade
                                     });
                                 if (!CreateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             var UpdateScriptEvent = new ManualResetEvent(false);
@@ -399,16 +403,16 @@ namespace Corrade
                                     });
                                 if (!UpdateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_INVENTORY_TYPE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_INVENTORY_TYPE);
                     }
                     if (!succeeded)
                     {
-                        throw new ScriptException(ScriptError.ASSET_UPLOAD_FAILED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
                     }
                     // Store the any asset in the cache.
                     if (!assetUUID.Equals(UUID.Zero))
@@ -421,11 +425,11 @@ namespace Corrade
                             HordeDistributeCacheAsset(itemUUID, data, Configuration.HordeDataSynchronizationOption.Add);
                     }
                     // Return the item and asset UUID.
-                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                         CSV.FromEnumerable(new[]
                         {
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)), itemUUID.ToString(),
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET)), assetUUID.ToString()
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)), itemUUID.ToString(),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)), assetUUID.ToString()
                         }));
                 };
         }

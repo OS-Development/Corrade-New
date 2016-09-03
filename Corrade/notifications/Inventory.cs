@@ -7,11 +7,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
+using Corrade.Constants;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -19,7 +19,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> inventory =
+            public static Action<NotificationParameters, Dictionary<string, string>> inventory =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var inventoryOfferedType = corradeNotificationParameters.Event.GetType();
@@ -31,98 +31,74 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(inventoryOfferEventArgs,
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(
+                                    inventoryOfferEventArgs,
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        var inventoryObjectOfferedName =
-                            new List<string>(Helpers.AvatarFullNameRegex.Matches(
-                                inventoryOfferEventArgs.IM.FromAgentName)
-                                .Cast<Match>()
-                                .ToDictionary(p => new[]
-                                {
-                                    p.Groups["first"].Value,
-                                    p.Groups["last"].Value
-                                })
-                                .SelectMany(
-                                    p =>
-                                        new[]
-                                        {
-                                            p.Key[0].Trim(),
-                                            !string.IsNullOrEmpty(p.Key[1])
-                                                ? p.Key[1].Trim()
-                                                : string.Empty
-                                        }));
-                        switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+
+                        var objects = new List<object>
                         {
-                            case true:
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    inventoryObjectOfferedName.First());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                    inventoryObjectOfferedName.Last());
-                                break;
-                            default:
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                    inventoryObjectOfferedName.First());
-                                break;
-                        }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                            inventoryOfferEventArgs.IM.FromAgentID.ToString());
+                            inventoryOfferEventArgs
+                        };
+
+                        var inventoryObjectOfferedEventArgs =
+                            new KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>();
                         switch (inventoryOfferEventArgs.IM.Dialog)
                         {
-                            case InstantMessageDialog.InventoryAccepted:
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.ACCEPT));
-                                break;
-                            case InstantMessageDialog.InventoryDeclined:
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.DECLINE));
-                                break;
                             case InstantMessageDialog.TaskInventoryOffered:
                             case InstantMessageDialog.InventoryOffered:
                                 lock (InventoryOffersLock)
                                 {
-                                    var
-                                        inventoryObjectOfferedEventArgs =
-                                            InventoryOffers.AsParallel().FirstOrDefault(p =>
-                                                p.Key.Offer.IMSessionID.Equals(
-                                                    inventoryOfferEventArgs.IM.IMSessionID));
+                                    inventoryObjectOfferedEventArgs =
+                                        InventoryOffers.AsParallel().FirstOrDefault(p =>
+                                            p.Key.Offer.IMSessionID.Equals(
+                                                inventoryOfferEventArgs.IM.IMSessionID));
                                     if (
                                         !inventoryObjectOfferedEventArgs.Equals(
                                             default(
-                                                KeyValuePair
-                                                    <InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                                KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
                                     {
-                                        switch (inventoryObjectOfferedEventArgs.Key.Accept)
-                                        {
-                                            case true:
-                                                notificationData.Add(
-                                                    Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                                    Reflection.GetNameFromEnumValue(Action.ACCEPT));
-                                                break;
-                                            default:
-                                                notificationData.Add(
-                                                    Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                                    Reflection.GetNameFromEnumValue(Action.DECLINE));
-                                                break;
-                                        }
+                                        objects.Add(inventoryObjectOfferedEventArgs.Key);
                                     }
                                     var groups =
                                         CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                             inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
-                                    if (groups.Count > 0)
+                                    if (groups.Count > 1)
                                     {
-                                        notificationData.Add(
-                                            Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                            groups[1].Value);
+                                        objects.Add(groups[1]);
                                     }
-                                    InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
                                 }
                                 break;
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION),
-                            Reflection.GetNameFromEnumValue(Action.REPLY));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    objects,
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
+
+                        switch (inventoryOfferEventArgs.IM.Dialog)
+                        {
+                            case InstantMessageDialog.TaskInventoryOffered:
+                            case InstantMessageDialog.InventoryOffered:
+                                if (
+                                    !inventoryObjectOfferedEventArgs.Equals(
+                                        default(
+                                            KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                {
+                                    lock (InventoryOffersLock)
+                                    {
+                                        InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
+                                    }
+                                }
+                                break;
+                        }
                         return;
                     }
                     if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
@@ -133,58 +109,35 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(inventoryObjectOfferedEventArgs,
-                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    wasOpenMetaverse.Reflection.GetStructuredData(inventoryObjectOfferedEventArgs,
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        var inventoryObjectOfferedName =
-                            new List<string>(Helpers.AvatarFullNameRegex.Matches(
-                                inventoryObjectOfferedEventArgs.Offer.FromAgentName)
-                                .Cast<Match>()
-                                .ToDictionary(p => new[]
-                                {
-                                    p.Groups["first"].Value,
-                                    p.Groups["last"].Value
-                                })
-                                .SelectMany(
-                                    p =>
-                                        new[]
-                                        {
-                                            p.Key[0],
-                                            !string.IsNullOrEmpty(p.Key[1])
-                                                ? p.Key[1]
-                                                : string.Empty
-                                        }));
-                        switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+
+                        var objects = new List<object>
                         {
-                            case true:
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    inventoryObjectOfferedName.First());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                    inventoryObjectOfferedName.Last());
-                                break;
-                            default:
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                    inventoryObjectOfferedName.First());
-                                break;
-                        }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                            inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
-                            inventoryObjectOfferedEventArgs.AssetType.ToString());
+                            inventoryObjectOfferedEventArgs
+                        };
+
                         var groups =
                             CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                 inventoryObjectOfferedEventArgs.Offer.Message).Groups;
-                        if (groups.Count > 0)
+                        if (groups.Count > 1)
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                groups[1].Value);
+                            objects.Add(groups[1]);
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                            inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION),
-                            Reflection.GetNameFromEnumValue(Action.OFFER));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    objects,
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                     }
                 };
         }

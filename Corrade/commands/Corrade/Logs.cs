@@ -10,10 +10,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Corrade.Constants;
+using Corrade.Structures;
 using CorradeConfiguration;
 using OpenMetaverse;
-using wasOpenMetaverse;
 using wasSharp;
+using InstantMessage = Corrade.Structures.InstantMessage;
 
 namespace Corrade
 {
@@ -21,24 +23,24 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> logs =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> logs =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
                         (int) Configuration.Permissions.Talk))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var LockObject = new object();
                     var csv = new List<string>();
-                    switch (Reflection.GetEnumValueFromName<Entity>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Entity.GROUP:
+                        case Enumerations.Entity.GROUP:
                             // read the log file
                             string groupChatLog;
                             try
@@ -58,7 +60,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.FAILED_TO_READ_LOG_FILE);
+                                throw new Command.ScriptException(Enumerations.ScriptError.FAILED_TO_READ_LOG_FILE);
                             }
                             // process the log file and create the set of messages to process
                             var groupMessages = new HashSet<GroupMessage>();
@@ -87,25 +89,25 @@ namespace Corrade
                                             });
                                         }
                                     });
-                            switch (Reflection.GetEnumValueFromName<Action>(
+                            switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
                                     .ToLowerInvariant()))
                             {
-                                case Action.GET:
+                                case Enumerations.Action.GET:
                                     // search by date
                                     DateTime getGroupMessageFromDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
                                         corradeCommandParameters.Message), out getGroupMessageFromDate))
                                     {
                                         getGroupMessageFromDate = DateTime.MinValue;
                                     }
                                     DateTime getGroupMessageToDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
                                         corradeCommandParameters.Message), out getGroupMessageToDate))
                                     {
                                         getGroupMessageToDate = DateTime.MaxValue;
@@ -115,7 +117,7 @@ namespace Corrade
                                     try
                                     {
                                         getGroupMessageFirstNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -127,7 +129,7 @@ namespace Corrade
                                     try
                                     {
                                         getGroupMessageLastNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -139,7 +141,7 @@ namespace Corrade
                                     try
                                     {
                                         getGroupMessageMessageRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -161,38 +163,42 @@ namespace Corrade
                                                     {
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                             o.DateTime.ToUniversalTime()
-                                                                .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                .ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                         });
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME),
                                                             o.FirstName
                                                         });
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME),
                                                             o.LastName
                                                         });
                                                         csv.AddRange(new[]
-                                                        {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE),
+                                                            o.Message
+                                                        });
                                                     }
                                                 });
                                     break;
-                                case Action.SEARCH:
+                                case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchGroupMessagesRegex;
                                     try
                                     {
                                         searchGroupMessagesRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
                                     groupMessages.AsParallel()
                                         .Where(o => searchGroupMessagesRegex.IsMatch(o.FirstName) ||
@@ -203,33 +209,37 @@ namespace Corrade
                                                         {
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                                 o.DateTime.ToUniversalTime()
-                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                    .ToString(
+                                                                        wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.FIRSTNAME),
                                                                 o.FirstName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.LASTNAME),
                                                                 o.LastName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.MESSAGE),
                                                                 o.Message
                                                             });
                                                         }
                                                     });
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
-                        case Entity.MESSAGE:
+                        case Enumerations.Entity.MESSAGE:
                             var instantMessages = new HashSet<InstantMessage>();
                             Directory.GetFiles(corradeConfiguration.InstantMessageLogDirectory).AsParallel().ForAll(o =>
                             {
@@ -273,25 +283,25 @@ namespace Corrade
                                             }
                                         });
                             });
-                            switch (Reflection.GetEnumValueFromName<Action>(
+                            switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
                                     .ToLowerInvariant()))
                             {
-                                case Action.GET:
+                                case Enumerations.Action.GET:
                                     // search by date
                                     DateTime getInstantMessageFromDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
                                         corradeCommandParameters.Message), out getInstantMessageFromDate))
                                     {
                                         getInstantMessageFromDate = DateTime.MinValue;
                                     }
                                     DateTime getInstantMessageToDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
                                         corradeCommandParameters.Message), out getInstantMessageToDate))
                                     {
                                         getInstantMessageToDate = DateTime.MaxValue;
@@ -301,7 +311,7 @@ namespace Corrade
                                     try
                                     {
                                         getInstantMessageFirstNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -313,7 +323,7 @@ namespace Corrade
                                     try
                                     {
                                         getInstantMessageLastNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -325,7 +335,7 @@ namespace Corrade
                                     try
                                     {
                                         getInstantMessageMessageRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -349,49 +359,55 @@ namespace Corrade
                                                                                         {
                                                                                             Reflection
                                                                                                 .GetNameFromEnumValue(
-                                                                                                    ScriptKeys.TIME),
+                                                                                                    Command.ScriptKeys
+                                                                                                        .TIME),
                                                                                             o.DateTime.ToUniversalTime()
                                                                                                 .ToString(
-                                                                                                    Constants.LSL
+                                                                                                    wasOpenMetaverse
+                                                                                                        .Constants.LSL
                                                                                                         .DATE_TIME_STAMP)
                                                                                         });
                                                                                         csv.AddRange(new[]
                                                                                         {
                                                                                             Reflection
                                                                                                 .GetNameFromEnumValue(
-                                                                                                    ScriptKeys.FIRSTNAME),
+                                                                                                    Command.ScriptKeys
+                                                                                                        .FIRSTNAME),
                                                                                             o.FirstName
                                                                                         });
                                                                                         csv.AddRange(new[]
                                                                                         {
                                                                                             Reflection
                                                                                                 .GetNameFromEnumValue(
-                                                                                                    ScriptKeys.LASTNAME),
+                                                                                                    Command.ScriptKeys
+                                                                                                        .LASTNAME),
                                                                                             o.LastName
                                                                                         });
                                                                                         csv.AddRange(new[]
                                                                                         {
                                                                                             Reflection
                                                                                                 .GetNameFromEnumValue(
-                                                                                                    ScriptKeys.MESSAGE),
+                                                                                                    Command.ScriptKeys
+                                                                                                        .MESSAGE),
                                                                                             o.Message
                                                                                         });
                                                                                     }
                                                                                 });
                                     break;
-                                case Action.SEARCH:
+                                case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchInstantMessagesRegex;
                                     try
                                     {
                                         searchInstantMessagesRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
                                     instantMessages.AsParallel()
                                         .Where(o => searchInstantMessagesRegex.IsMatch(o.FirstName) ||
@@ -402,33 +418,37 @@ namespace Corrade
                                                         {
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                                 o.DateTime.ToUniversalTime()
-                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                    .ToString(
+                                                                        wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.FIRSTNAME),
                                                                 o.FirstName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.LASTNAME),
                                                                 o.LastName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.MESSAGE),
                                                                 o.Message
                                                             });
                                                         }
                                                     });
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
-                        case Entity.CONFERENCE:
+                        case Enumerations.Entity.CONFERENCE:
                             var conferenceMessages = new HashSet<InstantMessage>();
                             Directory.GetFiles(corradeConfiguration.ConferenceMessageLogDirectory)
                                 .AsParallel()
@@ -475,25 +495,25 @@ namespace Corrade
                                                 }
                                             });
                                 });
-                            switch (Reflection.GetEnumValueFromName<Action>(
+                            switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
                                     .ToLowerInvariant()))
                             {
-                                case Action.GET:
+                                case Enumerations.Action.GET:
                                     // search by date
                                     DateTime getConferenceMessageFromDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
                                         corradeCommandParameters.Message), out getConferenceMessageFromDate))
                                     {
                                         getConferenceMessageFromDate = DateTime.MinValue;
                                     }
                                     DateTime getConferenceMessageToDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
                                         corradeCommandParameters.Message), out getConferenceMessageToDate))
                                     {
                                         getConferenceMessageToDate = DateTime.MaxValue;
@@ -503,7 +523,7 @@ namespace Corrade
                                     try
                                     {
                                         getConferenceMessageFirstNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -515,7 +535,7 @@ namespace Corrade
                                     try
                                     {
                                         getConferenceMessageLastNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -527,7 +547,7 @@ namespace Corrade
                                     try
                                     {
                                         getConferenceMessageMessageRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -552,49 +572,50 @@ namespace Corrade
                                                                 {
                                                                     Reflection
                                                                         .GetNameFromEnumValue(
-                                                                            ScriptKeys.TIME),
+                                                                            Command.ScriptKeys.TIME),
                                                                     o.DateTime.ToUniversalTime()
                                                                         .ToString(
-                                                                            Constants.LSL
+                                                                            wasOpenMetaverse.Constants.LSL
                                                                                 .DATE_TIME_STAMP)
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
                                                                     Reflection
                                                                         .GetNameFromEnumValue(
-                                                                            ScriptKeys.FIRSTNAME),
+                                                                            Command.ScriptKeys.FIRSTNAME),
                                                                     o.FirstName
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
                                                                     Reflection
                                                                         .GetNameFromEnumValue(
-                                                                            ScriptKeys.LASTNAME),
+                                                                            Command.ScriptKeys.LASTNAME),
                                                                     o.LastName
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
                                                                     Reflection
                                                                         .GetNameFromEnumValue(
-                                                                            ScriptKeys.MESSAGE),
+                                                                            Command.ScriptKeys.MESSAGE),
                                                                     o.Message
                                                                 });
                                                             }
                                                         });
                                     break;
-                                case Action.SEARCH:
+                                case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchConferenceMessagesRegex;
                                     try
                                     {
                                         searchConferenceMessagesRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
                                     conferenceMessages.AsParallel()
                                         .Where(o => searchConferenceMessagesRegex.IsMatch(o.FirstName) ||
@@ -605,33 +626,37 @@ namespace Corrade
                                                         {
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                                 o.DateTime.ToUniversalTime()
-                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                    .ToString(
+                                                                        wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.FIRSTNAME),
                                                                 o.FirstName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.LASTNAME),
                                                                 o.LastName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.MESSAGE),
                                                                 o.Message
                                                             });
                                                         }
                                                     });
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
-                        case Entity.LOCAL:
+                        case Enumerations.Entity.LOCAL:
                             var localMessages = new HashSet<LocalMessage>();
                             Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory).AsParallel().ForAll(o =>
                             {
@@ -679,25 +704,25 @@ namespace Corrade
                                             }
                                         });
                             });
-                            switch (Reflection.GetEnumValueFromName<Action>(
+                            switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
                                     .ToLowerInvariant()))
                             {
-                                case Action.GET:
+                                case Enumerations.Action.GET:
                                     // search by date
                                     DateTime getLocalMessageFromDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
                                         corradeCommandParameters.Message), out getLocalMessageFromDate))
                                     {
                                         getLocalMessageFromDate = DateTime.MinValue;
                                     }
                                     DateTime getLocalMessageToDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
                                         corradeCommandParameters.Message), out getLocalMessageToDate))
                                     {
                                         getLocalMessageToDate = DateTime.MaxValue;
@@ -707,7 +732,7 @@ namespace Corrade
                                     try
                                     {
                                         getLocalMessageFirstNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -719,7 +744,7 @@ namespace Corrade
                                     try
                                     {
                                         getLocalMessageLastNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -731,7 +756,7 @@ namespace Corrade
                                     try
                                     {
                                         getLocalMessageMessageRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -743,7 +768,7 @@ namespace Corrade
                                     try
                                     {
                                         getLocalMessageRegionNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -755,7 +780,7 @@ namespace Corrade
                                     try
                                     {
                                         getLocalMessageChatTypeRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -780,52 +805,58 @@ namespace Corrade
                                                         {
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                                 o.DateTime.ToUniversalTime()
-                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                    .ToString(
+                                                                        wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.REGION),
                                                                 o.RegionName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),
                                                                 Enum.GetName(typeof (ChatType),
                                                                     o.ChatType)
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.FIRSTNAME),
                                                                 o.FirstName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.LASTNAME),
                                                                 o.LastName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.MESSAGE),
                                                                 o.Message
                                                             });
                                                         }
                                                     });
                                     break;
-                                case Action.SEARCH:
+                                case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchLocalMessagesRegex;
                                     try
                                     {
                                         searchLocalMessagesRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
                                     localMessages.AsParallel()
                                         .Where(o => searchLocalMessagesRegex.IsMatch(o.FirstName) ||
@@ -839,44 +870,52 @@ namespace Corrade
                                                             {
                                                                 csv.AddRange(new[]
                                                                 {
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.TIME),
                                                                     o.DateTime.ToUniversalTime()
-                                                                        .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                        .ToString(
+                                                                            wasOpenMetaverse.Constants.LSL
+                                                                                .DATE_TIME_STAMP)
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.REGION),
                                                                     o.RegionName
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.TYPE),
                                                                     Enum.GetName(typeof (ChatType),
                                                                         o.ChatType)
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.FIRSTNAME),
                                                                     o.FirstName
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.LASTNAME),
                                                                     o.LastName
                                                                 });
                                                                 csv.AddRange(new[]
                                                                 {
-                                                                    Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        Command.ScriptKeys.MESSAGE),
                                                                     o.Message
                                                                 });
                                                             }
                                                         });
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
-                        case Entity.REGION:
+                        case Enumerations.Entity.REGION:
                             var regionMessages = new HashSet<RegionMessage>();
                             Directory.GetFiles(corradeConfiguration.RegionMessageLogDirectory).AsParallel().ForAll(o =>
                             {
@@ -921,25 +960,25 @@ namespace Corrade
                                             }
                                         });
                             });
-                            switch (Reflection.GetEnumValueFromName<Action>(
+                            switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
                                     .ToLowerInvariant()))
                             {
-                                case Action.GET:
+                                case Enumerations.Action.GET:
                                     // search by date
                                     DateTime getRegionMessageFromDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FROM)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
                                         corradeCommandParameters.Message), out getRegionMessageFromDate))
                                     {
                                         getRegionMessageFromDate = DateTime.MinValue;
                                     }
                                     DateTime getRegionMessageToDate;
                                     if (!DateTime.TryParse(KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TO)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
                                         corradeCommandParameters.Message), out getRegionMessageToDate))
                                     {
                                         getRegionMessageToDate = DateTime.MaxValue;
@@ -949,7 +988,7 @@ namespace Corrade
                                     try
                                     {
                                         getRegionMessageFirstNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -961,7 +1000,7 @@ namespace Corrade
                                     try
                                     {
                                         getRegionMessageLastNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled | RegexOptions.IgnoreCase);
                                     }
@@ -973,7 +1012,7 @@ namespace Corrade
                                     try
                                     {
                                         getRegionMessageMessageRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -985,7 +1024,7 @@ namespace Corrade
                                     try
                                     {
                                         getRegionMessageRegionNameRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
@@ -1008,43 +1047,47 @@ namespace Corrade
                                                     {
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                             o.DateTime.ToUniversalTime()
-                                                                .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                .ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                         });
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION),
                                                             o.RegionName
                                                         });
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME),
                                                             o.FirstName
                                                         });
                                                         csv.AddRange(new[]
                                                         {
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME),
                                                             o.LastName
                                                         });
                                                         csv.AddRange(new[]
-                                                        {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Message});
+                                                        {
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE),
+                                                            o.Message
+                                                        });
                                                     }
                                                 });
                                     break;
-                                case Action.SEARCH:
+                                case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchRegionMessagesRegex;
                                     try
                                     {
                                         searchRegionMessagesRegex = new Regex(KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message),
                                             RegexOptions.Compiled);
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                                     }
                                     regionMessages.AsParallel()
                                         .Where(o => searchRegionMessagesRegex.IsMatch(o.FirstName) ||
@@ -1056,43 +1099,48 @@ namespace Corrade
                                                         {
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME),
                                                                 o.DateTime.ToUniversalTime()
-                                                                    .ToString(Constants.LSL.DATE_TIME_STAMP)
+                                                                    .ToString(
+                                                                        wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.REGION),
                                                                 o.RegionName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.FIRSTNAME),
                                                                 o.FirstName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.LASTNAME),
                                                                 o.LastName
                                                             });
                                                             csv.AddRange(new[]
                                                             {
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.MESSAGE),
                                                                 o.Message
                                                             });
                                                         }
                                                     });
                                     break;
                                 default:
-                                    throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

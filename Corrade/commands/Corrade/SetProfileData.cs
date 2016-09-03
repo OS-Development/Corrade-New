@@ -13,7 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -21,14 +21,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setprofiledata =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setprofiledata =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     ManualResetEvent[] AvatarProfileDataEvent =
                     {
@@ -58,29 +58,29 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PROFILE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE);
                         }
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
                     }
                     var fields =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
-                    wasCSVToStructure(fields, ref properties);
-                    if (Helpers.IsSecondLife(Client))
+                    properties.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout, fields);
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         if (Encoding.UTF8.GetByteCount(properties.AboutText) >
-                            Constants.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
+                            wasOpenMetaverse.Constants.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
                         {
-                            throw new ScriptException(ScriptError.SECOND_LIFE_TEXT_TOO_LARGE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.SECOND_LIFE_TEXT_TOO_LARGE);
                         }
                         if (Encoding.UTF8.GetByteCount(properties.FirstLifeText) >
-                            Constants.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
+                            wasOpenMetaverse.Constants.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
                         {
-                            throw new ScriptException(ScriptError.FIRST_LIFE_TEXT_TOO_LARGE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.FIRST_LIFE_TEXT_TOO_LARGE);
                         }
                     }
-                    wasCSVToStructure(fields, ref interests);
+                    interests.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout, fields);
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.UpdateProfile(properties);

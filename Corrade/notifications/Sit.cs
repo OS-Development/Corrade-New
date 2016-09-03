@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> sit =
+            public static Action<NotificationParameters, Dictionary<string, string>> sit =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var sitChangedEventArgs =
@@ -25,45 +26,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(sitChangedEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(sitChangedEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
-                        sitChangedEventArgs.Simulator.Name);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                        sitChangedEventArgs.Avatar.FirstName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                        sitChangedEventArgs.Avatar.LastName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        sitChangedEventArgs.Avatar.ID.ToString());
-                    var oldPrimitive = sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
-                        .AsParallel()
-                        .FirstOrDefault(o => o.Key.Equals(sitChangedEventArgs.OldSeat));
-                    if (!oldPrimitive.Equals(default(KeyValuePair<uint, Primitive>)))
-                    {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
-                            oldPrimitive.Value.ID.ToString());
-                    }
-                    var newPrimitive = sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
-                        .AsParallel()
-                        .FirstOrDefault(o => o.Key.Equals(sitChangedEventArgs.SittingOn));
-                    if (!newPrimitive.Equals(default(KeyValuePair<uint, Primitive>)))
-                    {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
-                            newPrimitive.Value.ID.ToString());
-                    }
-                    /*notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
-                        sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
-                            .AsParallel()
-                            .FirstOrDefault(o => o.Key.Equals(sitChangedEventArgs.OldSeat))
-                            .Value.ID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
-                        sitChangedEventArgs.Simulator.ObjectsPrimitives.Copy()
-                            .AsParallel()
-                            .FirstOrDefault(o => o.Key.Equals(sitChangedEventArgs.SittingOn))
-                            .Value.ID.ToString());*/
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {sitChangedEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

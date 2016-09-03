@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
+using Corrade.Helpers;
 using wasSharp;
 
 namespace Corrade
@@ -15,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> group =
+            public static Action<NotificationParameters, Dictionary<string, string>> group =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var notificationGroupMessage =
@@ -27,27 +29,21 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(notificationGroupMessage,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(notificationGroupMessage,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                        notificationGroupMessage.FirstName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                        notificationGroupMessage.LastName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        notificationGroupMessage.AgentUUID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                        notificationGroupMessage.GroupName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        notificationGroupMessage.Message);
-                    // language detection
-                    var detectedLanguage =
-                        rankedLanguageIdentifier.Identify(notificationGroupMessage.Message).FirstOrDefault();
-                    if (detectedLanguage != null)
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE),
-                            detectedLanguage.Item1.Iso639_3);
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {notificationGroupMessage},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

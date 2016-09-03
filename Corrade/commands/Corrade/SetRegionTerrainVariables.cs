@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -16,76 +17,77 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setregionterrainvariables =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setregionterrainvariables
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                     }
                     float waterHeight;
                     if (
                         !float.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WATERHEIGHT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WATERHEIGHT)),
                                     corradeCommandParameters.Message)), out waterHeight))
                     {
-                        waterHeight = Constants.REGION.DEFAULT_WATER_HEIGHT;
+                        waterHeight = wasOpenMetaverse.Constants.REGION.DEFAULT_WATER_HEIGHT;
                     }
                     float terrainRaiseLimit;
                     if (
                         !float.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAINRAISELIMIT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TERRAINRAISELIMIT)),
                                     corradeCommandParameters.Message)), out terrainRaiseLimit))
                     {
-                        terrainRaiseLimit = Constants.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
+                        terrainRaiseLimit = wasOpenMetaverse.Constants.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
                     }
                     float terrainLowerLimit;
                     if (
                         !float.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAINLOWERLIMIT)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TERRAINLOWERLIMIT)),
                                     corradeCommandParameters.Message)), out terrainLowerLimit))
                     {
-                        terrainLowerLimit = Constants.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
+                        terrainLowerLimit = wasOpenMetaverse.Constants.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
                     }
                     bool useEstateSun;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.USEESTATESUN)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.USEESTATESUN)),
                                     corradeCommandParameters.Message)), out useEstateSun))
                     {
-                        useEstateSun = Constants.REGION.DEFAULT_USE_ESTATE_SUN;
+                        useEstateSun = wasOpenMetaverse.Constants.REGION.DEFAULT_USE_ESTATE_SUN;
                     }
                     bool fixedSun;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIXEDSUN)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIXEDSUN)),
                                     corradeCommandParameters.Message)), out fixedSun))
                     {
-                        fixedSun = Constants.REGION.DEFAULT_FIXED_SUN;
+                        fixedSun = wasOpenMetaverse.Constants.REGION.DEFAULT_FIXED_SUN;
                     }
                     float sunPosition;
                     if (
                         !float.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUNPOSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SUNPOSITION)),
                                     corradeCommandParameters.Message)), out sunPosition))
                     {
-                        sunPosition = Constants.REGION.SUNRISE;
+                        sunPosition = wasOpenMetaverse.Constants.REGION.SUNRISE;
                     }
                     lock (Locks.ClientInstanceEstateLock)
                     {

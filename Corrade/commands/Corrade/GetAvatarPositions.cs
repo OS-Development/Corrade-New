@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,34 +19,34 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getavatarpositions =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getavatarpositions =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
                         position = Client.Self.SimPosition;
                     }
-                    var entity = Reflection.GetEnumValueFromName<Entity>(
+                    var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -59,23 +60,23 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     switch (entity)
                     {
-                        case Entity.REGION:
+                        case Enumerations.Entity.REGION:
                             break;
-                        case Entity.PARCEL:
+                        case Enumerations.Entity.PARCEL:
                             if (
                                 !Services.GetParcelAtPosition(Client, simulator, position,
                                     corradeConfiguration.ServicesTimeout, ref parcel))
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                     var csv = new List<string>();
                     var avatarPositions = new Dictionary<UUID, Vector3>();
@@ -90,9 +91,9 @@ namespace Corrade
                             return;
                         switch (entity)
                         {
-                            case Entity.REGION:
+                            case Enumerations.Entity.REGION:
                                 break;
-                            case Entity.PARCEL:
+                            case Enumerations.Entity.PARCEL:
                                 Parcel avatarParcel = null;
                                 if (
                                     !Services.GetParcelAtPosition(Client, simulator, p.Value,
@@ -110,7 +111,7 @@ namespace Corrade
                     });
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
                     }
                 };

@@ -21,7 +21,7 @@ using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
-using Helpers = OpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -29,20 +29,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> exportxml =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> exportxml =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -50,11 +50,11 @@ namespace Corrade
                     }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -67,7 +67,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                         default:
@@ -78,7 +78,7 @@ namespace Corrade
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
                             {
-                                throw new ScriptException(ScriptError.OBJECT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
                     }
@@ -140,7 +140,7 @@ namespace Corrade
                     // Get the destination format to convert the downloaded textures to.
                     var format =
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORMAT)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
                             corradeCommandParameters.Message));
                     PropertyInfo formatProperty = null;
                     if (!string.IsNullOrEmpty(format))
@@ -153,7 +153,7 @@ namespace Corrade
                                     Strings.Equals(o.Name, format, StringComparison.Ordinal));
                         if (formatProperty == null)
                         {
-                            throw new ScriptException(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
                         }
                     }
 
@@ -184,7 +184,8 @@ namespace Corrade
                                     if (
                                         !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
-                                        throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                     }
                                 }
                                 lock (Locks.ClientInstanceAssetsLock)
@@ -208,7 +209,8 @@ namespace Corrade
                                 ManagedImage managedImage;
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                 {
-                                    throw new ScriptException(ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
                                 }
                                 using (var imageStream = new MemoryStream())
                                 {
@@ -236,7 +238,8 @@ namespace Corrade
                                     }
                                     catch (Exception)
                                     {
-                                        throw new ScriptException(ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
                                     }
                                     lock (LockObject)
                                     {
@@ -303,7 +306,7 @@ namespace Corrade
                                 {
                                     primitiveEntryDataStreamWriter.Write(
                                         OSDParser.SerializeLLSDXmlString(
-                                            Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
+                                            OpenMetaverse.Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
                                     primitiveEntryDataStreamWriter.Flush();
                                 }
                             }
@@ -315,11 +318,11 @@ namespace Corrade
                         // If no path was specificed, then send the data.
                         var path =
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                                 corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(path))
                         {
-                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 Convert.ToBase64String(zipMemoryStream.ToArray()));
                             return;
                         }
@@ -327,7 +330,7 @@ namespace Corrade
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
                                 (int) Configuration.Permissions.System))
                         {
-                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         // Otherwise, save it to the specified file.
                         using (

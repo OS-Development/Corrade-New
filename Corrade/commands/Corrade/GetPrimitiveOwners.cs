@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,16 +21,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitiveowners =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprimitiveowners =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -43,13 +44,13 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Vector3 position;
                     var parcels = new HashSet<Parcel>();
                     switch (Vector3.TryParse(
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                             corradeCommandParameters.Message)),
                         out position))
                     {
@@ -59,7 +60,7 @@ namespace Corrade
                                 !Services.GetParcelAtPosition(Client, simulator, position,
                                     corradeConfiguration.ServicesTimeout, ref parcel))
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                             }
                             parcels.Add(parcel);
                             break;
@@ -81,7 +82,7 @@ namespace Corrade
                                         false))
                                 {
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                                 }
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
@@ -121,7 +122,8 @@ namespace Corrade
                                 state.Break();
                             }
                         });
-                    if (!succeeded) throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                    if (!succeeded)
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     var primitives = new Dictionary<UUID, int>();
                     var LockObject = new object();
                     foreach (var parcel in parcels)
@@ -143,7 +145,7 @@ namespace Corrade
                                     false))
                             {
                                 Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                                throw new ScriptException(ScriptError.TIMEOUT_GETTING_LAND_USERS);
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_LAND_USERS);
                             }
                             Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                             parcelPrimOwners.AsParallel().ForAll(o =>
@@ -181,7 +183,7 @@ namespace Corrade
                     });
                     if (csv.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), CSV.FromEnumerable(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), CSV.FromEnumerable(csv));
                     }
                 };
         }

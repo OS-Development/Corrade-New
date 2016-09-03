@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> setrot = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> setrot = (message, rule, senderUUID) =>
             {
                 double rotation;
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE) ||
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) ||
                     !double.TryParse(rule.Option, NumberStyles.Float, Utils.EnUsCulture,
                         out rotation))
                 {

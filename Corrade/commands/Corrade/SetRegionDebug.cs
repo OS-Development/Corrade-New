@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,23 +18,23 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> setregiondebug =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setregiondebug =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                     }
                     bool scripts;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SCRIPTS)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCRIPTS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out scripts))
                     {
@@ -44,7 +45,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COLLISIONS)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.COLLISIONS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out collisions))
                     {
@@ -55,7 +56,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PHYSICS)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PHYSICS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out physics))
                     {

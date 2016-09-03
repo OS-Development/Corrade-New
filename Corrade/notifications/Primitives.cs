@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> primitives =
+            public static Action<NotificationParameters, Dictionary<string, string>> primitives =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var radarPrimitivesType = corradeNotificationParameters.Event.GetType();
@@ -33,23 +34,21 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(primEventArgs,
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(primEventArgs,
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                            primEventArgs.Prim.OwnerID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                            primEventArgs.Prim.ID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                            primEventArgs.Prim.Position.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                            primEventArgs.Prim.Rotation.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                            primEventArgs.Prim.PrimData.PCode.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.APPEAR));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {primEventArgs},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                         return;
                     }
                     if (radarPrimitivesType == typeof (KillObjectEventArgs))
@@ -72,23 +71,21 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(killObjectEventArgs,
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(killObjectEventArgs,
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                            primitive.OwnerID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                            primitive.ID.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                            primitive.Position.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                            primitive.Rotation.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                            primitive.PrimData.PCode.ToString());
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.VANISH));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {primitive},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                     }
                 };
         }

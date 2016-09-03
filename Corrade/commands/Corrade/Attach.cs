@@ -8,12 +8,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -21,30 +22,30 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> attach =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> attach =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var attachments =
                         wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ATTACHMENTS)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(attachments))
                     {
-                        throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ATTACHMENTS);
                     }
                     bool replace;
                     if (
                         !bool.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REPLACE)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REPLACE)),
                                     corradeCommandParameters.Message)),
                             out replace))
                     {
@@ -53,7 +54,7 @@ namespace Corrade
                     var items = CSV.ToKeyValue(attachments)
                         .ToDictionary(o => o.Key, o => o.Value);
                     // if this is SecondLife, check that the additional attachments would not exceed the maximum attachment limit
-                    if (Helpers.IsSecondLife(Client))
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         switch (replace)
                         {
@@ -64,20 +65,20 @@ namespace Corrade
                                     typeof (AttachmentPoint).GetFields(
                                         BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Count(p => !items.ContainsKey(p.Name)) >
-                                    Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
+                                    wasOpenMetaverse.Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
-                                    throw new ScriptException(
-                                        ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
                                 }
                                 break;
                             default:
                                 if (items.Count +
                                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .Count() >
-                                    Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
+                                    wasOpenMetaverse.Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
-                                    throw new ScriptException(
-                                        ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
                                 }
                                 break;
                         }
@@ -86,7 +87,7 @@ namespace Corrade
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
                             corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
@@ -95,7 +96,7 @@ namespace Corrade
                             {
                                 Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
-                                    .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             }
                             break;
@@ -146,12 +147,12 @@ namespace Corrade
                                                                 inventoryItem.UUID))
                                                     .Select(p => p.Value.ToString())
                                                     .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
-                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                     () => SendNotification(
                                                         Configuration.Notifications.OutfitChanged,
                                                         new OutfitEventArgs
                                                         {
-                                                            Action = Action.ATTACH,
+                                                            Action = Enumerations.Action.ATTACH,
                                                             Name = inventoryItem.Name,
                                                             Description = inventoryItem.Description,
                                                             Item = inventoryItem.UUID,

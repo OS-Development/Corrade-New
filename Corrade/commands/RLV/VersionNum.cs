@@ -14,7 +14,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> versionnum = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> versionnum = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -23,7 +23,7 @@ namespace Corrade
                 }
                 lock (Locks.ClientInstanceSelfLock)
                 {
-                    Client.Self.Chat(RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
+                    Client.Self.Chat(wasOpenMetaverse.RLV.RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
                 }
             };
         }

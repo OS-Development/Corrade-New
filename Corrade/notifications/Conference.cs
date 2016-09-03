@@ -7,10 +7,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
+using Corrade.Structures;
 using OpenMetaverse;
-using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
 
 namespace Corrade
 {
@@ -18,7 +18,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> conference =
+            public static Action<NotificationParameters, Dictionary<string, string>> conference =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var conferenceMessageEventArgs =
@@ -27,17 +27,11 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(conferenceMessageEventArgs,
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(conferenceMessageEventArgs,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    // Conference name.
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                        Utils.BytesToString(conferenceMessageEventArgs.IM.BinaryBucket));
-                    // Conference session.
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                        conferenceMessageEventArgs.IM.IMSessionID.ToString());
                     Conference conference;
                     lock (ConferencesLock)
                     {
@@ -45,37 +39,16 @@ namespace Corrade
                             Conferences.AsParallel()
                                 .FirstOrDefault(o => o.Session.Equals(conferenceMessageEventArgs.IM.IMSessionID));
                     }
-                    if (!conference.Equals(default(Conference)))
-                    {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.RESTORED),
-                            conference.Restored.ToString());
-                    }
-                    // Avatar name sending the message.
-                    var name =
-                        Helpers.GetAvatarNames(conferenceMessageEventArgs.IM.FromAgentName);
-                    if (name != null)
-                    {
-                        var fullName = new List<string>(name);
-                        if (fullName.Count.Equals(2))
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                fullName.First());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                fullName.Last());
-                        }
-                    }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        conferenceMessageEventArgs.IM.FromAgentID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                        conferenceMessageEventArgs.IM.Message);
-                    // language detection
-                    var detectedLanguage =
-                        rankedLanguageIdentifier.Identify(conferenceMessageEventArgs.IM.Message).FirstOrDefault();
-                    if (detectedLanguage != null)
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LANGUAGE),
-                            detectedLanguage.Item1.Iso639_3);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATE),
-                        DateTime.Now.ToUniversalTime().ToString(Constants.LSL.DATE_TIME_STAMP));
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {conferenceMessageEventArgs, conference},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

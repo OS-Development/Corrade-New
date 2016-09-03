@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,27 +20,27 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> flyto =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> flyto =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     Vector3 position;
                     if (!Vector3.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                             corradeCommandParameters.Message)),
                         out position))
                     {
-                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                     }
                     uint duration;
                     if (!uint.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
                             corradeCommandParameters.Message)),
                         out duration))
                     {
@@ -47,7 +48,7 @@ namespace Corrade
                     }
                     float vicinity;
                     if (!float.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VICINITY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.VICINITY)),
                             corradeCommandParameters.Message)),
                         out vicinity))
                     {
@@ -55,7 +56,7 @@ namespace Corrade
                     }
                     int affinity;
                     if (!int.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AFFINITY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AFFINITY)),
                             corradeCommandParameters.Message)),
                         out affinity))
                     {
@@ -142,13 +143,13 @@ namespace Corrade
                     // in case the flying timed out, then bail
                     if (!succeeded)
                     {
-                        throw new ScriptException(ScriptError.TIMEOUT_REACHING_DESTINATION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REACHING_DESTINATION);
                     }
 
                     // perform the post-action
                     bool fly;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLY)),
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true:

@@ -19,20 +19,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> feed =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> feed =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Feed))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var action =
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     // Check for passed parameters.
@@ -40,25 +40,25 @@ namespace Corrade
                     var url = string.Empty;
                     switch (action)
                     {
-                        case Action.ADD:
+                        case Enumerations.Action.ADD:
                             name = wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(name))
-                                throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
-                            goto case Action.REMOVE;
-                        case Action.REMOVE:
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
+                            goto case Enumerations.Action.REMOVE;
+                        case Enumerations.Action.REMOVE:
                             url = wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.URL)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.URL)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(url))
-                                throw new ScriptException(ScriptError.INVALID_URL_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_URL_PROVIDED);
                             break;
                     }
                     // Perform the operation.
                     switch (action)
                     {
-                        case Action.ADD:
+                        case Enumerations.Action.ADD:
                             // Check whether the feed is valid before adding.
                             try
                             {
@@ -69,7 +69,7 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new ScriptException(ScriptError.INVALID_FEED_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FEED_PROVIDED);
                             }
                             // Add the feed.
                             lock (GroupFeedsLock)
@@ -78,7 +78,8 @@ namespace Corrade
                                 {
                                     if (GroupFeeds[url].ContainsKey(corradeCommandParameters.Group.UUID))
                                     {
-                                        throw new ScriptException(ScriptError.ALREADY_SUBSCRIBED_TO_FEED);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.ALREADY_SUBSCRIBED_TO_FEED);
                                     }
                                     GroupFeeds[url].Add(corradeCommandParameters.Group.UUID, name);
                                     return;
@@ -89,7 +90,7 @@ namespace Corrade
                                 });
                             }
                             break;
-                        case Action.REMOVE:
+                        case Enumerations.Action.REMOVE:
                             lock (GroupFeedsLock)
                             {
                                 // first remove the calling group.
@@ -102,7 +103,7 @@ namespace Corrade
                                     GroupFeeds.Remove(url);
                             }
                             break;
-                        case Action.LIST:
+                        case Enumerations.Action.LIST:
                             var csv = new List<string>();
                             lock (GroupFeedsLock)
                             {
@@ -120,18 +121,18 @@ namespace Corrade
                             }
                             if (csv.Any())
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                     // Save the state in case the feeds changed.
                     switch (action)
                     {
-                        case Action.ADD:
-                        case Action.REMOVE:
+                        case Enumerations.Action.ADD:
+                        case Enumerations.Action.REMOVE:
                             SaveGroupFeedState.Invoke();
                             break;
                     }

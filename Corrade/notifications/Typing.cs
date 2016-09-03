@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Events;
+using Corrade.Helpers;
 using wasSharp;
 
 namespace Corrade
@@ -15,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> typing =
+            public static Action<NotificationParameters, Dictionary<string, string>> typing =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var notificationTypingMessageEventArgs =
@@ -24,21 +26,22 @@ namespace Corrade
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                            CSV.FromEnumerable(GetStructuredData(notificationTypingMessageEventArgs,
-                                CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                        notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            CSV.FromEnumerable(
+                                wasOpenMetaverse.Reflection.GetStructuredData(notificationTypingMessageEventArgs,
+                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                        notificationTypingMessageEventArgs.AgentUUID.ToString());
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                        notificationTypingMessageEventArgs.FirstName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                        notificationTypingMessageEventArgs.LastName);
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                        Reflection.GetNameFromEnumValue(notificationTypingMessageEventArgs.Action));
-                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                        Reflection.GetNameFromEnumValue(notificationTypingMessageEventArgs.Entity));
+
+                    var LockObject = new object();
+                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        .NotificationParameters.AsParallel()
+                        .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                        {
+                            p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                new List<object> {notificationTypingMessageEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier);
+                        }));
                 };
         }
     }

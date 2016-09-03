@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -16,39 +17,39 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> run =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> run =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var action = Reflection.GetEnumValueFromName<Action>(
+                    var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
                     {
-                        case Action.ENABLE:
-                        case Action.DISABLE:
+                        case Enumerations.Action.ENABLE:
+                        case Enumerations.Action.DISABLE:
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.Movement.AlwaysRun = !action.Equals(Action.DISABLE);
+                                Client.Self.Movement.AlwaysRun = !action.Equals(Enumerations.Action.DISABLE);
                                 Client.Self.Movement.SendUpdate(true);
                             }
                             break;
-                        case Action.GET:
+                        case Enumerations.Action.GET:
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                     Client.Self.Movement.AlwaysRun.ToString());
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

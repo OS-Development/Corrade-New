@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -18,7 +19,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> findfolder = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> findfolder = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
@@ -35,7 +36,7 @@ namespace Corrade
                 }
                 var RLVFolder =
                     Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.Data is InventoryFolder);
@@ -46,7 +47,7 @@ namespace Corrade
                 }
                 var folders = new List<string>();
                 var parts =
-                    new HashSet<string>(rule.Option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
+                    new HashSet<string>(rule.Option.Split(wasOpenMetaverse.RLV.RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
                 var LockObject = new object();
                 Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder,
                     CORRADE_CONSTANTS.OneOrMoRegex,
@@ -55,28 +56,30 @@ namespace Corrade
                     .AsParallel().Where(
                         o =>
                             o.Key is InventoryFolder &&
-                            !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.DOT_MARKER) &&
-                            !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.TILDE_MARKER)).ForAll(o =>
+                            !o.Key.Name.Substring(1).Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
+                            !o.Key.Name.Substring(1).Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.TILDE_MARKER))
+                    .ForAll(o =>
+                    {
+                        var count = 0;
+                        parts.AsParallel().ForAll(p => o.Value.AsParallel().ForAll(q =>
+                        {
+                            if (q.Contains(p))
                             {
-                                var count = 0;
-                                parts.AsParallel().ForAll(p => o.Value.AsParallel().ForAll(q =>
-                                {
-                                    if (q.Contains(p))
-                                    {
-                                        Interlocked.Increment(ref count);
-                                    }
-                                }));
-                                if (!count.Equals(parts.Count)) return;
-                                lock (LockObject)
-                                {
-                                    folders.Add(o.Key.Name);
-                                }
-                            });
+                                Interlocked.Increment(ref count);
+                            }
+                        }));
+                        if (!count.Equals(parts.Count)) return;
+                        lock (LockObject)
+                        {
+                            folders.Add(o.Key.Name);
+                        }
+                    });
                 if (folders.Any())
                 {
                     lock (Locks.ClientInstanceSelfLock)
                     {
-                        Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
+                        Client.Self.Chat(
+                            string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
                             channel,
                             ChatType.Normal);
                     }

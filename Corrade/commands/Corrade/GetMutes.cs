@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,12 +19,12 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> getmutes =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getmutes =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Mute))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var mutes = Enumerable.Empty<MuteEntry>();
                     // retrieve the current mute list
@@ -32,7 +33,7 @@ namespace Corrade
                         case true:
                             if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                             }
                             break;
                         default:
@@ -48,7 +49,7 @@ namespace Corrade
                     }).SelectMany(o => o).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
                     }
                 };

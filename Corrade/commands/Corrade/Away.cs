@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,22 +18,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> away =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> away =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.GetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
-                        case Action.ENABLE:
+                        case Enumerations.Action.ENABLE:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.AnimationStart(Animations.AWAY, true);
@@ -40,7 +41,7 @@ namespace Corrade
                                 Client.Self.Movement.SendUpdate(true);
                             }
                             break;
-                        case Action.DISABLE:
+                        case Enumerations.Action.DISABLE:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.Away = false;
@@ -48,15 +49,15 @@ namespace Corrade
                                 Client.Self.Movement.SendUpdate(true);
                             }
                             break;
-                        case Action.GET:
+                        case Enumerations.Action.GET:
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                     Client.Self.Movement.Away.ToString());
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

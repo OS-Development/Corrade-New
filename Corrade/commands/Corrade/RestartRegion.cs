@@ -10,6 +10,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,51 +18,51 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> restartregion =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> restartregion =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (!Client.Network.CurrentSim.IsEstateManager)
                     {
-                        throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                     }
                     uint delay;
                     if (
                         !uint.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DELAY)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DELAY)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out delay))
                     {
-                        delay = Constants.ESTATE.REGION_RESTART_DELAY;
+                        delay = wasOpenMetaverse.Constants.ESTATE.REGION_RESTART_DELAY;
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.RESTART:
+                        case Enumerations.Action.RESTART:
                             // Manually override Client.Estate.RestartRegion();
                             lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateOwnerMessage(
-                                    Constants.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
+                                    wasOpenMetaverse.Constants.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
                                     delay.ToString(Utils.EnUsCulture));
                             }
                             break;
-                        case Action.CANCEL:
+                        case Enumerations.Action.CANCEL:
                             lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.CancelRestart();
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_RESTART_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_RESTART_ACTION);
                     }
                 };
         }

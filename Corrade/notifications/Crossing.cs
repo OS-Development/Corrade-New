@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
 
@@ -16,7 +17,7 @@ namespace Corrade
     {
         public static partial class CorradeNotifications
         {
-            public static Action<CorradeNotificationParameters, Dictionary<string, string>> crossing =
+            public static Action<NotificationParameters, Dictionary<string, string>> crossing =
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var regionChangeType = corradeNotificationParameters.Event.GetType();
@@ -28,20 +29,22 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(simChangedEventArgs,
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(simChangedEventArgs,
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        if (simChangedEventArgs.PreviousSimulator != null)
-                        {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
-                                simChangedEventArgs.PreviousSimulator.Name);
-                        }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
-                            Client.Network.CurrentSim.Name);
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.CHANGED));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {simChangedEventArgs},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
+
                         return;
                     }
                     if (regionChangeType == typeof (RegionCrossedEventArgs))
@@ -52,20 +55,21 @@ namespace Corrade
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                CSV.FromEnumerable(GetStructuredData(regionCrossedEventArgs,
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(regionCrossedEventArgs,
                                     CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
-                        if (regionCrossedEventArgs.OldSimulator != null)
-                        {
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
-                                regionCrossedEventArgs.OldSimulator.Name);
-                        }
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
-                            regionCrossedEventArgs.NewSimulator.Name);
-                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                            Reflection.GetNameFromEnumValue(Action.CROSSED));
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> {regionCrossedEventArgs},
+                                    notificationData, LockObject, rankedLanguageIdentifier);
+                            }));
                     }
                 };
         }

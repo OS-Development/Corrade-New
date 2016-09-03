@@ -12,7 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -20,32 +20,32 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> creategrass =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> creategrass =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Interact))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
-                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                     }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROTATION)),
                                     corradeCommandParameters.Message)),
                             out rotation))
                     {
@@ -53,7 +53,7 @@ namespace Corrade
                     }
                     var region =
                         wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)
@@ -67,20 +67,20 @@ namespace Corrade
                     }
                     if (simulator == null)
                     {
-                        throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
                         !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
                             ref parcel))
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                     {
                         if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                         {
-                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
                         if (
                             !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
@@ -88,32 +88,33 @@ namespace Corrade
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                         {
-                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
                     }
                     Vector3 scale;
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SCALE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCALE)),
                                     corradeCommandParameters.Message)),
                             out scale))
                     {
                         scale = new Vector3(0.5f, 0.5f, 0.5f);
                     }
-                    if (Helpers.IsSecondLife(Client) &&
-                        (scale.X < Constants.PRIMITIVES.MINIMUM_SIZE_X ||
-                         scale.Y < Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
-                         scale.Z < Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
-                         scale.X > Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
-                         scale.Y > Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
-                         scale.Z > Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        (scale.X < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_X ||
+                         scale.Y < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
+                         scale.Z < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Z ||
+                         scale.X > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
+                         scale.Y > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                         scale.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
                     {
-                        throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
                     var type = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                             corradeCommandParameters.Message));
                     var grassFieldInfo = typeof (Grass).GetFields(
                         BindingFlags.Public |
@@ -124,7 +125,7 @@ namespace Corrade
                                     StringComparison.OrdinalIgnoreCase));
                     if (grassFieldInfo == null)
                     {
-                        throw new ScriptException(ScriptError.UNKNOWN_GRASS_TYPE);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_GRASS_TYPE);
                     }
                     // Finally, add the grass to the simulator.
                     lock (Locks.ClientInstanceObjectsLock)

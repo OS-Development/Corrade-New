@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,13 +20,13 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> eject =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> eject =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
@@ -37,34 +38,34 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
-                        throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
-                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
                     if (
                         !Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout))
                     {
-                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
                     var targetGroup = new Group();
                     if (
@@ -72,7 +73,7 @@ namespace Corrade
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
                     {
-                        throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                     }
                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
@@ -89,7 +90,7 @@ namespace Corrade
                     if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                        throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                     }
                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                     lock (Locks.ClientInstanceGroupsLock)
@@ -106,7 +107,7 @@ namespace Corrade
                                             agentUUID));
                                 break;
                             default:
-                                throw new ScriptException(ScriptError.CANNOT_EJECT_OWNERS);
+                                throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_EJECT_OWNERS);
                         }
                     }
                     var GroupEjectEvent = new ManualResetEvent(false);
@@ -123,13 +124,13 @@ namespace Corrade
                         if (!GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                            throw new ScriptException(ScriptError.TIMEOUT_EJECTING_AGENT);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT);
                         }
                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                     }
                     if (!succeeded)
                     {
-                        throw new ScriptException(ScriptError.COULD_NOT_EJECT_AGENT);
+                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_EJECT_AGENT);
                     }
                 };
         }

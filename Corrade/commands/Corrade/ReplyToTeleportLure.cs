@@ -7,10 +7,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Structures;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -18,46 +20,46 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytoteleportlure =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> replytoteleportlure =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
-                        throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
                     UUID sessionUUID;
                     if (
                         !UUID.TryParse(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)),
                             out sessionUUID))
                     {
-                        throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                     }
                     TeleportLure teleportLure;
                     lock (TeleportLureLock)
@@ -66,18 +68,19 @@ namespace Corrade
                     }
                     if (teleportLure.Equals(default(TeleportLure)))
                     {
-                        throw new ScriptException(ScriptError.TELEPORT_LURE_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_LURE_NOT_FOUND);
                     }
                     // remove teleport lure
                     lock (TeleportLureLock)
                     {
                         TeleportLures.Remove(teleportLure);
                     }
-                    Client.Self.TeleportLureRespond(agentUUID, sessionUUID, Reflection.GetEnumValueFromName<Action>(
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
-                                corradeCommandParameters.Message))
-                            .ToLowerInvariant()).Equals(Action.ACCEPT));
+                    Client.Self.TeleportLureRespond(agentUUID, sessionUUID,
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message))
+                                .ToLowerInvariant()).Equals(Enumerations.Action.ACCEPT));
                 };
         }
     }

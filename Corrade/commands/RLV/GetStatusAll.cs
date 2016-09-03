@@ -13,7 +13,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> getstatusall = getstatus;
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getstatusall = getstatus;
         }
     }
 }

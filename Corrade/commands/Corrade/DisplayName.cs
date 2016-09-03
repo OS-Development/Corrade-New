@@ -11,7 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using Helpers = wasOpenMetaverse.Helpers;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,14 +19,14 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> displayname =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> displayname =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Grooming))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var previous = string.Empty;
                     lock (Locks.ClientInstanceAvatarsLock)
@@ -36,36 +36,38 @@ namespace Corrade
                             {
                                 if (!succeded || names.Length < 1)
                                 {
-                                    throw new ScriptException(ScriptError.FAILED_TO_GET_DISPLAY_NAME);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.FAILED_TO_GET_DISPLAY_NAME);
                                 }
                                 previous = names[0].DisplayName;
                             });
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Action.GET:
-                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), previous);
+                        case Enumerations.Action.GET:
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), previous);
                             break;
-                        case Action.SET:
+                        case Enumerations.Action.SET:
                             var name =
                                 wasInput(
                                     KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(name))
                             {
-                                throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
                             }
-                            if (Helpers.IsSecondLife(Client) &&
-                                (name.Length > Constants.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
-                                 name.Length < Constants.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
+                            if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                                (name.Length > wasOpenMetaverse.Constants.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
+                                 name.Length < wasOpenMetaverse.Constants.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
                             {
-                                throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME);
                             }
                             var succeeded = true;
                             var SetDisplayNameEvent = new ManualResetEvent(false);
@@ -73,7 +75,8 @@ namespace Corrade
                                 (sender, args) =>
                                 {
                                     succeeded =
-                                        args.Status.Equals((int) Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
+                                        args.Status.Equals(
+                                            (int) wasOpenMetaverse.Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                     SetDisplayNameEvent.Set();
                                 };
                             lock (Locks.ClientInstanceSelfLock)
@@ -83,17 +86,18 @@ namespace Corrade
                                 if (!SetDisplayNameEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_WAITING_FOR_DISPLAY_NAME);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_WAITING_FOR_DISPLAY_NAME);
                                 }
                                 Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                             }
                             if (!succeeded)
                             {
-                                throw new ScriptException(ScriptError.COULD_NOT_SET_DISPLAY_NAME);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_DISPLAY_NAME);
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                 };
         }

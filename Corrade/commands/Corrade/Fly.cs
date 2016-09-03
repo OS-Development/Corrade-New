@@ -10,6 +10,7 @@ using System.Linq;
 using CorradeConfiguration;
 using wasOpenMetaverse;
 using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -17,26 +18,26 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> fly =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> fly =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Movement))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var action =
-                        Reflection.GetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     switch (action)
                     {
-                        case Action.START:
-                        case Action.STOP:
+                        case Enumerations.Action.START:
+                        case Enumerations.Action.STOP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
@@ -47,7 +48,7 @@ namespace Corrade
                             // stop non default animations if requested
                             bool deanimate;
                             switch (bool.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
                                     corradeCommandParameters.Message)), out deanimate) && deanimate)
                             {
                                 case true:
@@ -56,18 +57,18 @@ namespace Corrade
                                     {
                                         Client.Self.SignaledAnimations.Copy()
                                             .Keys.AsParallel()
-                                            .Where(o => !Helpers.LindenAnimations.Contains(o))
+                                            .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
                                     }
                                     break;
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.Fly(action.Equals(Action.START));
+                                Client.Self.Fly(action.Equals(Enumerations.Action.START));
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.FLY_ACTION_START_OR_STOP);
+                            throw new Command.ScriptException(Enumerations.ScriptError.FLY_ACTION_START_OR_STOP);
                     }
                     // Set the camera on the avatar.
                     lock (Locks.ClientInstanceSelfLock)

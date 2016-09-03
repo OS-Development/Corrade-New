@@ -16,18 +16,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> listcommands =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> listcommands =
                 (corradeCommandParameters, result) =>
                 {
                     var data = new HashSet<string>();
                     var LockObject = new object();
-                    Reflection.GetEnumNames<ScriptKeys>().AsParallel().ForAll(o =>
+                    Reflection.GetEnumNames<Command.ScriptKeys>().AsParallel().ForAll(o =>
                     {
-                        var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(o);
-                        if (scriptKey.Equals(default(ScriptKeys)))
+                        var scriptKey = Reflection.GetEnumValueFromName<Command.ScriptKeys>(o);
+                        if (scriptKey.Equals(default(Command.ScriptKeys)))
                             return;
                         var commandPermissionMaskAttribute =
-                            Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
+                            Reflection.GetAttributeFromEnumValue<Command.CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
                         if (!corradeCommandParameters.Group.Equals(default(Configuration.Group)) &&
                             corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
@@ -41,7 +41,7 @@ namespace Corrade
                     });
                     if (data.Any())
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), CSV.FromEnumerable(data));
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), CSV.FromEnumerable(data));
                     }
                 };
         }

@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,21 +20,21 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> give =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> give =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.Inventory))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var item = wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                     {
-                        throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
                     InventoryItem inventoryItem;
                     UUID itemUUID;
@@ -54,17 +55,17 @@ namespace Corrade
                     }
                     if (inventoryItem == null)
                     {
-                        throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
                     // Sending an item requires transfer permission.
                     if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
                     {
-                        throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
                     }
                     // Set requested permissions if any on the item.
                     var permissions = wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                             corradeCommandParameters.Message));
                     if (!string.IsNullOrEmpty(permissions))
                     {
@@ -72,40 +73,40 @@ namespace Corrade
                             !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
                                 corradeConfiguration.ServicesTimeout))
                         {
-                            throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
                         }
                     }
                     switch (
-                        Reflection.GetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(
                                 KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
-                        case Entity.AVATAR:
+                        case Enumerations.Entity.AVATAR:
                             UUID agentUUID;
                             if (
                                 !UUID.TryParse(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out agentUUID) &&
                                 !Resolvers.AgentNameToUUID(Client,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(
-                                                Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
                                             corradeCommandParameters.Message)),
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
                             {
-                                throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                             }
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -113,13 +114,13 @@ namespace Corrade
                                     inventoryItem.AssetType, agentUUID, true);
                             }
                             break;
-                        case Entity.OBJECT:
+                        case Enumerations.Entity.OBJECT:
                             float range;
                             if (
                                 !float.TryParse(
                                     wasInput(
                                         KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                             corradeCommandParameters.Message)),
                                     out range))
                             {
@@ -127,11 +128,11 @@ namespace Corrade
                             }
                             Primitive primitive = null;
                             var target = wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                 corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(target))
                             {
-                                throw new ScriptException(ScriptError.NO_TARGET_SPECIFIED);
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_TARGET_SPECIFIED);
                             }
                             UUID targetUUID;
                             if (UUID.TryParse(target, out targetUUID))
@@ -143,7 +144,7 @@ namespace Corrade
                                         ref primitive,
                                         corradeConfiguration.DataTimeout))
                                 {
-                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                             }
                             else
@@ -155,7 +156,7 @@ namespace Corrade
                                         ref primitive,
                                         corradeConfiguration.DataTimeout))
                                 {
-                                    throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                             }
                             lock (Locks.ClientInstanceInventoryLock)
@@ -164,7 +165,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            throw new ScriptException(ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                 };
         }

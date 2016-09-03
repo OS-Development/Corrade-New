@@ -7,6 +7,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -18,9 +19,9 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule, UUID> remoutfit = (message, rule, senderUUID) =>
+            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> remoutfit = (message, rule, senderUUID) =>
             {
-                if (!rule.Param.Equals(RLV_CONSTANTS.FORCE))
+                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE))
                 {
                     return;
                 }
@@ -46,12 +47,12 @@ namespace Corrade
                                             (WearableType) wearTypeInfo.GetValue(null)));
                         if (wearable != null)
                         {
-                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                 () => SendNotification(
                                     Configuration.Notifications.OutfitChanged,
                                     new OutfitEventArgs
                                     {
-                                        Action = Action.UNWEAR,
+                                        Action = Enumerations.Action.UNWEAR,
                                         Name = wearable.Name,
                                         Description = wearable.Description,
                                         Item = wearable.UUID,
@@ -75,12 +76,12 @@ namespace Corrade
                             .ForAll(
                                 o =>
                                 {
-                                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                    CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                         () => SendNotification(
                                             Configuration.Notifications.OutfitChanged,
                                             new OutfitEventArgs
                                             {
-                                                Action = Action.UNWEAR,
+                                                Action = Enumerations.Action.UNWEAR,
                                                 Name = o.Name,
                                                 Description = o.Description,
                                                 Item = o.UUID,

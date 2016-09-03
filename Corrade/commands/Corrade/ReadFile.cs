@@ -17,22 +17,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<CorradeCommandParameters, Dictionary<string, string>> readfile =
+            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> readfile =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int) Configuration.Permissions.System))
                     {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var path =
                         wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
                     {
-                        throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
                     }
                     string data;
                     // Read from file.
@@ -48,12 +48,12 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), ex.Message);
-                        throw new ScriptException(ScriptError.UNABLE_TO_READ_FILE);
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_READ_FILE);
                     }
                     if (!string.IsNullOrEmpty(data))
                     {
-                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), data);
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), data);
                     }
                 };
         }
