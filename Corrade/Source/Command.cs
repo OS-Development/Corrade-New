@@ -36,6 +36,10 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=shoot>&<group=<UUID|STRING>>&<password=<STRING>>&[target=<VECTOR3>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("shoot")] [Reflection.NameAttribute("shoot")] SHOOT,
+
+            [CommandInputSyntax(
                 "<command=softban>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<action=<ban|unban|list|import|export>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&action=import,export:<entity=<group|mute>>&entity=mute:[flags=MuteFlags]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group | (ulong) Configuration.Permissions.Mute)] [CorradeCommand("softban")] [Reflection.NameAttribute("softban")] SOFTBAN,
 

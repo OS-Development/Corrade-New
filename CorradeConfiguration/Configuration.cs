@@ -47,7 +47,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "region")] [Reflection.NameAttribute("region")] Region = 4uL,
             [XmlEnum(Name = "asset")] [Reflection.NameAttribute("asset")] Asset = 8uL,
             [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 16uL,
-            [XmlEnum(Name = "softban")] [Reflection.NameAttribute("softban")] SoftBan = 32uL
+            [XmlEnum(Name = "softban")] [Reflection.NameAttribute("softban")] SoftBan = 32uL,
+            [XmlEnum(Name = "user")] [Reflection.NameAttribute("user")] User = 64uL
         }
 
         /// <summary>
@@ -113,7 +114,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "outfit")] [Reflection.NameAttribute("outfit")] OutfitChanged = 2147483648uL,
             [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 4294967296uL,
             [XmlEnum(Name = "sound")] [Reflection.NameAttribute("sound")] Sound = 8589934592uL,
-            [XmlEnum(Name = "conference")] [Reflection.NameAttribute("conference")] Conference = 17179869184ul
+            [XmlEnum(Name = "conference")] [Reflection.NameAttribute("conference")] Conference = 17179869184ul,
+            [XmlEnum(Name = "preload")] [Reflection.NameAttribute("preload")] Preload = 34359738368ul
         }
 
         /// <summary>
@@ -142,6 +144,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "schedule")] [Reflection.NameAttribute("schedule")] Schedule = 65536uL,
             [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 131072uL
         }
+
+        private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         private readonly object ClientInstanceConfigurationLock = new object();
         private byte[] _AESIV;
@@ -242,7 +246,6 @@ namespace CorradeConfiguration
         private bool _useExpect100Continue;
         private bool _useNaggle;
         private string _vigenereSecret = string.Empty;
-        private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         public string Version
         {
@@ -1944,7 +1947,8 @@ namespace CorradeConfiguration
         /// <summary>
         ///     Group structure.
         /// </summary>
-        public struct Group
+        [Serializable]
+        public class Group
         {
             public string ChatLog;
             public bool ChatLogEnabled;
@@ -1957,10 +1961,12 @@ namespace CorradeConfiguration
             public UUID UUID;
             public uint Workers;
 
-            public Notifications NotificationMask => Notifications != null &&  Notifications.Any()
+            [XmlIgnore]
+            public Notifications NotificationMask => Notifications != null && Notifications.Any()
                 ? Notifications.CreateMask()
                 : Configuration.Notifications.NONE;
 
+            [XmlIgnore]
             public Permissions PermissionMask => Permissions != null && Permissions.Any()
                 ? Permissions.CreateMask()
                 : Configuration.Permissions.None;
@@ -1990,21 +1996,23 @@ namespace CorradeConfiguration
         /// </summary>
         public class HordePeer
         {
-            public string Name;
-            public string URL;
-            public string Username;
-            public string Password;
-            public string SharedSecret;
-
             public Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>
                 DataSynchronization =
                     new Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>();
 
-            public HordeDataSynchronization SynchronizationMask => DataSynchronization != null && DataSynchronization.Any()
-                ? DataSynchronization.Keys.CreateMask()
-                : HordeDataSynchronization.None;
+            public string Name;
+            public string Password;
+            public string SharedSecret;
+            public string URL;
+            public string Username;
 
-            public bool HasDataSynchronizationOption(HordeDataSynchronization sync, HordeDataSynchronizationOption option)
+            public HordeDataSynchronization SynchronizationMask
+                => DataSynchronization != null && DataSynchronization.Any()
+                    ? DataSynchronization.Keys.CreateMask()
+                    : HordeDataSynchronization.None;
+
+            public bool HasDataSynchronizationOption(HordeDataSynchronization sync,
+                HordeDataSynchronizationOption option)
             {
                 return DataSynchronization.ContainsKey(sync) && DataSynchronization[sync].IsMaskFlagSet(option);
             }

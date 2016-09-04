@@ -79,24 +79,21 @@ namespace wasOpenMetaverse
             uint dataTimeout, Time.DecayingAlarm alarm,
             ref UUID GroupUUID)
         {
+            var @group = Cache.GetGroup(GroupName);
+            if (!@group.Equals(default(Cache.Group)))
+            {
+                GroupUUID = @group.UUID;
+                return true;
+            }
             bool succeeded;
             lock (Locks.ClientInstanceDirectoryLock)
             {
-                var @group = Cache.GetGroup(GroupName);
-
-                if (!@group.Equals(default(Cache.Group)))
-                {
-                    GroupUUID = @group.UUID;
-                    return true;
-                }
-
                 succeeded = directGroupNameToUUID(Client, GroupName, millisecondsTimeout, dataTimeout, alarm,
                     ref GroupUUID);
-
-                if (succeeded)
-                {
-                    Cache.AddGroup(GroupName, GroupUUID);
-                }
+            }
+            if (succeeded)
+            {
+                Cache.AddGroup(GroupName, GroupUUID);
             }
             return succeeded;
         }
@@ -175,23 +172,21 @@ namespace wasOpenMetaverse
             Time.DecayingAlarm alarm,
             ref UUID AgentUUID)
         {
+            var agent = Cache.GetAgent(FirstName, LastName);
+            if (!agent.Equals(default(Cache.Agent)))
+            {
+                AgentUUID = agent.UUID;
+                return true;
+            }
             bool succeeded;
             lock (Locks.ClientInstanceDirectoryLock)
             {
-                var agent = Cache.GetAgent(FirstName, LastName);
-                if (!agent.Equals(default(Cache.Agent)))
-                {
-                    AgentUUID = agent.UUID;
-                    return true;
-                }
-
                 succeeded = directAgentNameToUUID(Client, FirstName, LastName, millisecondsTimeout, dataTimeout, alarm,
                     ref AgentUUID);
-
-                if (succeeded)
-                {
-                    Cache.AddAgent(FirstName, LastName, AgentUUID);
-                }
+            }
+            if (succeeded)
+            {
+                Cache.AddAgent(FirstName, LastName, AgentUUID);
             }
             return succeeded;
         }
@@ -246,23 +241,20 @@ namespace wasOpenMetaverse
         public static bool GroupUUIDToName(GridClient Client, UUID GroupUUID, uint millisecondsTimeout,
             ref string GroupName)
         {
+            var @group = Cache.GetGroup(GroupUUID);
+            if (!@group.Equals(default(Cache.Group)))
+            {
+                GroupName = @group.Name;
+                return true;
+            }
             bool succeeded;
             lock (Locks.ClientInstanceGroupsLock)
             {
-                var @group = Cache.GetGroup(GroupUUID);
-
-                if (!@group.Equals(default(Cache.Group)))
-                {
-                    GroupName = @group.Name;
-                    return true;
-                }
-
                 succeeded = directGroupUUIDToName(Client, GroupUUID, millisecondsTimeout, ref GroupName);
-
-                if (succeeded)
-                {
-                    Cache.AddGroup(GroupName, GroupUUID);
-                }
+            }
+            if (succeeded)
+            {
+                Cache.AddGroup(GroupName, GroupUUID);
             }
             return succeeded;
         }
@@ -317,23 +309,21 @@ namespace wasOpenMetaverse
         public static bool AgentUUIDToName(GridClient Client, UUID AgentUUID, uint millisecondsTimeout,
             ref string AgentName)
         {
+            var agent = Cache.GetAgent(AgentUUID);
+            if (!agent.Equals(default(Cache.Agent)))
+            {
+                AgentName = string.Join(" ", agent.FirstName, agent.LastName);
+                return true;
+            }
             bool succeeded;
             lock (Locks.ClientInstanceAvatarsLock)
             {
-                var agent = Cache.GetAgent(AgentUUID);
-                if (!agent.Equals(default(Cache.Agent)))
-                {
-                    AgentName = string.Join(" ", agent.FirstName, agent.LastName);
-                    return true;
-                }
-
                 succeeded = directAgentUUIDToName(Client, AgentUUID, millisecondsTimeout, ref AgentName);
-
-                if (succeeded)
-                {
-                    var name = new List<string>(Helpers.GetAvatarNames(AgentName));
-                    Cache.AddAgent(name.First(), name.Last(), AgentUUID);
-                }
+            }
+            if (succeeded)
+            {
+                var name = new List<string>(Helpers.GetAvatarNames(AgentName));
+                Cache.AddAgent(name.First(), name.Last(), AgentUUID);
             }
             return succeeded;
         }
@@ -488,22 +478,44 @@ namespace wasOpenMetaverse
         public static bool RegionNameToHandle(GridClient Client, string name, uint millisecondsTimeout,
             ref ulong regionHandle)
         {
+            var region = Cache.GetRegion(name);
+            if (!region.Equals(default(Cache.Region)))
+            {
+                regionHandle = region.Handle;
+                // Region cache is weakly volatile so we need to check cached regions.
+                new Thread(() =>
+                {
+                    ulong updateHandle = 0;
+                    // Use fail locks.
+                    var resolved = false;
+                    if (Monitor.TryEnter(Locks.ClientInstanceGridLock, 1000))
+                    {
+                        try
+                        {
+                            resolved = directRegionNameToHandle(Client, name, millisecondsTimeout, ref updateHandle);
+                        }
+                        finally
+                        {
+                            Monitor.Exit(Locks.ClientInstanceGridLock);
+                        }
+                    }
+
+                    if (!resolved || Cache.GetRegion(name).Handle.Equals(region.Handle)) return;
+
+                    if (Cache.RemoveRegion(name, region.Handle))
+                        Cache.AddRegion(name, updateHandle);
+                }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                return true;
+            }
+
             bool succeeded;
             lock (Locks.ClientInstanceGridLock)
             {
-                var region = Cache.GetRegion(name);
-                if (!region.Equals(default(Cache.Region)))
-                {
-                    regionHandle = region.Handle;
-                    return true;
-                }
-
                 succeeded = directRegionNameToHandle(Client, name, millisecondsTimeout, ref regionHandle);
-
-                if (succeeded)
-                {
-                    Cache.AddRegion(name, regionHandle);
-                }
+            }
+            if (succeeded)
+            {
+                Cache.AddRegion(name, regionHandle);
             }
             return succeeded;
         }

@@ -174,14 +174,20 @@
             this.Add = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.Remove = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.groupBox66 = new System.Windows.Forms.GroupBox();
-            this.pictureBox96 = new System.Windows.Forms.PictureBox();
+            this.pictureBox103 = new System.Windows.Forms.PictureBox();
+            this.label37 = new System.Windows.Forms.Label();
+            this.HordePeerName = new System.Windows.Forms.TextBox();
+            this.label34 = new System.Windows.Forms.Label();
+            this.label36 = new System.Windows.Forms.Label();
             this.HordePeerURL = new System.Windows.Forms.TextBox();
+            this.pictureBox96 = new System.Windows.Forms.PictureBox();
+            this.label35 = new System.Windows.Forms.Label();
+            this.HordePeerPassword = new System.Windows.Forms.TextBox();
             this.pictureBox97 = new System.Windows.Forms.PictureBox();
             this.HordePeerUsername = new System.Windows.Forms.TextBox();
-            this.pictureBox98 = new System.Windows.Forms.PictureBox();
-            this.HordePeerPassword = new System.Windows.Forms.TextBox();
-            this.button12 = new System.Windows.Forms.Button();
             this.button13 = new System.Windows.Forms.Button();
+            this.button12 = new System.Windows.Forms.Button();
+            this.pictureBox98 = new System.Windows.Forms.PictureBox();
             this.groupBox7 = new System.Windows.Forms.GroupBox();
             this.HordeEnabled = new System.Windows.Forms.CheckBox();
             this.pictureBox95 = new System.Windows.Forms.PictureBox();
@@ -427,12 +433,6 @@
             this.button11 = new System.Windows.Forms.Button();
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
-            this.label34 = new System.Windows.Forms.Label();
-            this.label35 = new System.Windows.Forms.Label();
-            this.label36 = new System.Windows.Forms.Label();
-            this.HordePeerName = new System.Windows.Forms.TextBox();
-            this.label37 = new System.Windows.Forms.Label();
-            this.pictureBox103 = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -523,6 +523,7 @@
             this.DataSynchronizationTabPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.HordeSynchronizationDataGridView)).BeginInit();
             this.groupBox66.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox96)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox97)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox98)).BeginInit();
@@ -650,7 +651,6 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -1497,7 +1497,8 @@
             "outfit",
             "feed",
             "sound",
-            "conference"});
+            "conference",
+            "preload"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -2353,6 +2354,63 @@
             this.groupBox66.TabStop = false;
             this.groupBox66.Text = "Manage Peers";
             // 
+            // pictureBox103
+            // 
+            this.pictureBox103.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox103.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox103.Image")));
+            this.pictureBox103.Location = new System.Drawing.Point(265, 26);
+            this.pictureBox103.Name = "pictureBox103";
+            this.pictureBox103.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox103.TabIndex = 16;
+            this.pictureBox103.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox103, "Any descriptive name for the horde peer.");
+            this.pictureBox103.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // label37
+            // 
+            this.label37.AutoSize = true;
+            this.label37.Location = new System.Drawing.Point(32, 26);
+            this.label37.Name = "label37";
+            this.label37.Size = new System.Drawing.Size(37, 16);
+            this.label37.TabIndex = 15;
+            this.label37.Text = "Name";
+            // 
+            // HordePeerName
+            // 
+            this.HordePeerName.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeerName.Location = new System.Drawing.Point(75, 25);
+            this.HordePeerName.Name = "HordePeerName";
+            this.HordePeerName.Size = new System.Drawing.Size(184, 20);
+            this.HordePeerName.TabIndex = 14;
+            this.HordePeerName.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
+            // 
+            // label34
+            // 
+            this.label34.AutoSize = true;
+            this.label34.Location = new System.Drawing.Point(6, 53);
+            this.label34.Name = "label34";
+            this.label34.Size = new System.Drawing.Size(63, 16);
+            this.label34.TabIndex = 11;
+            this.label34.Text = "HTTP URL";
+            // 
+            // label36
+            // 
+            this.label36.AutoSize = true;
+            this.label36.Location = new System.Drawing.Point(203, 80);
+            this.label36.Name = "label36";
+            this.label36.Size = new System.Drawing.Size(56, 16);
+            this.label36.TabIndex = 13;
+            this.label36.Text = "Password";
+            // 
+            // HordePeerURL
+            // 
+            this.HordePeerURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeerURL.Location = new System.Drawing.Point(75, 52);
+            this.HordePeerURL.Name = "HordePeerURL";
+            this.HordePeerURL.Size = new System.Drawing.Size(283, 20);
+            this.HordePeerURL.TabIndex = 0;
+            this.HordePeerURL.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
+            // 
             // pictureBox96
             // 
             this.pictureBox96.Cursor = System.Windows.Forms.Cursors.Help;
@@ -2365,14 +2423,24 @@
             this.toolTip1.SetToolTip(this.pictureBox96, resources.GetString("pictureBox96.ToolTip"));
             this.pictureBox96.Click += new System.EventHandler(this.ShowToolTip);
             // 
-            // HordePeerURL
+            // label35
             // 
-            this.HordePeerURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.HordePeerURL.Location = new System.Drawing.Point(75, 52);
-            this.HordePeerURL.Name = "HordePeerURL";
-            this.HordePeerURL.Size = new System.Drawing.Size(283, 20);
-            this.HordePeerURL.TabIndex = 0;
-            this.HordePeerURL.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
+            this.label35.AutoSize = true;
+            this.label35.Location = new System.Drawing.Point(12, 80);
+            this.label35.Name = "label35";
+            this.label35.Size = new System.Drawing.Size(57, 16);
+            this.label35.TabIndex = 12;
+            this.label35.Text = "Username";
+            // 
+            // HordePeerPassword
+            // 
+            this.HordePeerPassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordePeerPassword.Location = new System.Drawing.Point(265, 78);
+            this.HordePeerPassword.Name = "HordePeerPassword";
+            this.HordePeerPassword.Size = new System.Drawing.Size(93, 20);
+            this.HordePeerPassword.TabIndex = 0;
+            this.HordePeerPassword.UseSystemPasswordChar = true;
+            this.HordePeerPassword.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
             // 
             // pictureBox97
             // 
@@ -2397,6 +2465,28 @@
             this.HordePeerUsername.TabIndex = 0;
             this.HordePeerUsername.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
             // 
+            // button13
+            // 
+            this.button13.Location = new System.Drawing.Point(315, 104);
+            this.button13.Name = "button13";
+            this.button13.Size = new System.Drawing.Size(68, 23);
+            this.button13.TabIndex = 8;
+            this.button13.Text = "Remove";
+            this.toolTip1.SetToolTip(this.button13, "Delete the currently selected horde peer URL.");
+            this.button13.UseVisualStyleBackColor = true;
+            this.button13.Click += new System.EventHandler(this.RemoveHordePeerRequested);
+            // 
+            // button12
+            // 
+            this.button12.Location = new System.Drawing.Point(241, 104);
+            this.button12.Name = "button12";
+            this.button12.Size = new System.Drawing.Size(68, 23);
+            this.button12.TabIndex = 7;
+            this.button12.Text = "Add";
+            this.toolTip1.SetToolTip(this.button12, "Add a horde peer URL.");
+            this.button12.UseVisualStyleBackColor = true;
+            this.button12.Click += new System.EventHandler(this.AddHordePeerRequested);
+            // 
             // pictureBox98
             // 
             this.pictureBox98.Cursor = System.Windows.Forms.Cursors.Help;
@@ -2410,38 +2500,6 @@
         " other Corrade peer must have its\r\nHTTP server enabled and the all the\r\nauthenti" +
         "cation details filled-in.");
             this.pictureBox98.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // HordePeerPassword
-            // 
-            this.HordePeerPassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.HordePeerPassword.Location = new System.Drawing.Point(265, 78);
-            this.HordePeerPassword.Name = "HordePeerPassword";
-            this.HordePeerPassword.Size = new System.Drawing.Size(93, 20);
-            this.HordePeerPassword.TabIndex = 0;
-            this.HordePeerPassword.UseSystemPasswordChar = true;
-            this.HordePeerPassword.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
-            // 
-            // button12
-            // 
-            this.button12.Location = new System.Drawing.Point(241, 104);
-            this.button12.Name = "button12";
-            this.button12.Size = new System.Drawing.Size(68, 23);
-            this.button12.TabIndex = 7;
-            this.button12.Text = "Add";
-            this.toolTip1.SetToolTip(this.button12, "Add a horde peer URL.");
-            this.button12.UseVisualStyleBackColor = true;
-            this.button12.Click += new System.EventHandler(this.AddHordePeerRequested);
-            // 
-            // button13
-            // 
-            this.button13.Location = new System.Drawing.Point(315, 104);
-            this.button13.Name = "button13";
-            this.button13.Size = new System.Drawing.Size(68, 23);
-            this.button13.TabIndex = 8;
-            this.button13.Text = "Remove";
-            this.toolTip1.SetToolTip(this.button13, "Delete the currently selected horde peer URL.");
-            this.button13.UseVisualStyleBackColor = true;
-            this.button13.Click += new System.EventHandler(this.RemoveHordePeerRequested);
             // 
             // groupBox7
             // 
@@ -5138,63 +5196,6 @@
             this.ExperienceLevel.TabIndex = 12;
             this.ExperienceLevel.SelectedIndexChanged += new System.EventHandler(this.ExperienceLevelChanged);
             // 
-            // label34
-            // 
-            this.label34.AutoSize = true;
-            this.label34.Location = new System.Drawing.Point(6, 53);
-            this.label34.Name = "label34";
-            this.label34.Size = new System.Drawing.Size(63, 16);
-            this.label34.TabIndex = 11;
-            this.label34.Text = "HTTP URL";
-            // 
-            // label35
-            // 
-            this.label35.AutoSize = true;
-            this.label35.Location = new System.Drawing.Point(12, 80);
-            this.label35.Name = "label35";
-            this.label35.Size = new System.Drawing.Size(57, 16);
-            this.label35.TabIndex = 12;
-            this.label35.Text = "Username";
-            // 
-            // label36
-            // 
-            this.label36.AutoSize = true;
-            this.label36.Location = new System.Drawing.Point(203, 80);
-            this.label36.Name = "label36";
-            this.label36.Size = new System.Drawing.Size(56, 16);
-            this.label36.TabIndex = 13;
-            this.label36.Text = "Password";
-            // 
-            // HordePeerName
-            // 
-            this.HordePeerName.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.HordePeerName.Location = new System.Drawing.Point(75, 25);
-            this.HordePeerName.Name = "HordePeerName";
-            this.HordePeerName.Size = new System.Drawing.Size(184, 20);
-            this.HordePeerName.TabIndex = 14;
-            this.HordePeerName.TextChanged += new System.EventHandler(this.HordePeerConfigurationChanged);
-            // 
-            // label37
-            // 
-            this.label37.AutoSize = true;
-            this.label37.Location = new System.Drawing.Point(32, 26);
-            this.label37.Name = "label37";
-            this.label37.Size = new System.Drawing.Size(37, 16);
-            this.label37.TabIndex = 15;
-            this.label37.Text = "Name";
-            // 
-            // pictureBox103
-            // 
-            this.pictureBox103.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox103.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox103.Image")));
-            this.pictureBox103.Location = new System.Drawing.Point(265, 26);
-            this.pictureBox103.Name = "pictureBox103";
-            this.pictureBox103.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox103.TabIndex = 16;
-            this.pictureBox103.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox103, "Any descriptive name for the horde peer.");
-            this.pictureBox103.Click += new System.EventHandler(this.ShowToolTip);
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -5337,6 +5338,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.HordeSynchronizationDataGridView)).EndInit();
             this.groupBox66.ResumeLayout(false);
             this.groupBox66.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox96)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox97)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox98)).EndInit();
@@ -5508,7 +5510,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

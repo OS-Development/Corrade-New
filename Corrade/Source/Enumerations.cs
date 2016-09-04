@@ -209,7 +209,10 @@ namespace Corrade
             [Reflection.DescriptionAttribute("unable to apply soft ban")] UNABLE_TO_APPLY_SOFT_BAN,
             [Reflection.DescriptionAttribute("could not find notification file")] COULD_NOT_FIND_NOTIFICATION_FILE,
             [Reflection.DescriptionAttribute("unable to deserialize notification data")] UNABLE_TO_DESERIALIZE_NOTIFICATION_DATA,
-            [Reflection.DescriptionAttribute("parameters for requested event not found")] PARAMETERS_FOR_REQUESTED_EVENT_NOT_FOUND
+            [Reflection.DescriptionAttribute("parameters for requested event not found")] PARAMETERS_FOR_REQUESTED_EVENT_NOT_FOUND,
+            [Reflection.DescriptionAttribute("timeout preloading downloading preload sound")] TIMEOUT_DOWNLOADING_PRELOAD_SOUND,
+            [Reflection.DescriptionAttribute("unable to install service")] UNABLE_TO_INSTALL_SERVICE,
+            [Reflection.DescriptionAttribute("unable to uninstall service")] UNABLE_TO_UNINSTALL_SERVICE
         }
 
         /// <summary>
@@ -677,7 +680,8 @@ namespace Corrade
         {
             [Reflection.NameAttribute("cache")] CACHE,
             [Reflection.NameAttribute("mute")] MUTE,
-            [Reflection.NameAttribute("softban")] SOFTBAN
+            [Reflection.NameAttribute("softban")] SOFTBAN,
+            [Reflection.NameAttribute("user")] USER
         }
     }
 }

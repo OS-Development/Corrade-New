@@ -135,7 +135,8 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
+                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
+                        ex.StackTrace);
                 }
                 lock (WorkSetLock)
                 {

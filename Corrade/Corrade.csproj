@@ -88,7 +88,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.2.600\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.0\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -125,12 +125,12 @@
       <HintPath>..\packages\Syn.Bot.1.2.4\lib\portable-net45+win8+wp8\Syn.Bot.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Log, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Log.1.0.0\lib\portable-net45+win8+wp8\Syn.Log.dll</HintPath>
+    <Reference Include="Syn.Log, Version=1.0.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Log.1.0.3\lib\portable-net45+win8+wpa81+wp8\Syn.Log.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.VA, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.VA.1.0.1\lib\portable-net45+win8+wp8\Syn.VA.dll</HintPath>
+    <Reference Include="Syn.VA, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.VA.1.0.4\lib\portable-net45+win8+wpa81+wp8\Syn.VA.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System">
@@ -177,6 +177,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="commands\Corrade\Shoot.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Preload.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Source\Attributes.cs" />
     <Compile Include="Source\Command.cs" />
     <Compile Include="Source\Constants\CORRADE_CONSTANTS.cs" />
@@ -1497,8 +1503,8 @@
     </None>
     <None Include="app.config" />
     <None Include="Corrade.ini">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
   </ItemGroup>
@@ -1611,6 +1617,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\permission.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\preload.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\primitives.xml">
