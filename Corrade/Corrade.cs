@@ -3764,7 +3764,7 @@ namespace Corrade
 
                     var commandGroup = GetCorradeGroupFromMessage(message);
                     // do not process anything from unknown groups.
-                    if (commandGroup.Equals(default(Configuration.Group)))
+                    if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
                     {
                         httpContext?.Response.Close();
                         return;
@@ -4095,11 +4095,8 @@ namespace Corrade
                     {
                         // If the group was not set properly, then bail.
                         commandGroup = GetCorradeGroupFromMessage(e.Message);
-                        switch (!commandGroup.Equals(default(Configuration.Group)))
-                        {
-                            case false:
-                                return;
-                        }
+                        if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
+                            return;
                         // Spawn the command.
                         CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
                             () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
@@ -4182,11 +4179,9 @@ namespace Corrade
                     }
                     // If the group was not set properly, then bail.
                     commandGroup = GetCorradeGroupFromMessage(e.Message);
-                    switch (!commandGroup.Equals(default(Configuration.Group)))
-                    {
-                        case false:
-                            return;
-                    }
+                    if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
+                        return;
+                    
                     // Spawn the command.
                     CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
                         () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
@@ -4853,7 +4848,7 @@ namespace Corrade
                             var messageGroup =
                                 corradeConfiguration.Groups.AsParallel()
                                     .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
-                            if (!messageGroup.Equals(default(Configuration.Group)))
+                            if (messageGroup != null && !messageGroup.Equals(default(Configuration.Group)))
                             {
                                 // Add the group to the cache.
                                 Cache.AddGroup(messageGroup.Name, messageGroup.UUID);
@@ -5215,7 +5210,7 @@ namespace Corrade
 
             var configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
                 o => commandGroup.UUID.Equals(o.UUID));
-            if (configuredGroup.Equals(default(Configuration.Group)))
+            if (configuredGroup == null || configuredGroup.Equals(default(Configuration.Group)))
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.UNKNOWN_GROUP),
                     commandGroup.Name);
@@ -6054,7 +6049,7 @@ namespace Corrade
                                                     Encoding.UTF8))
                                             {
                                                 commandGroup = GetCorradeGroupFromMessage(receiveLine);
-                                                switch (!commandGroup.Equals(default(Configuration.Group)) &&
+                                                switch (commandGroup != null && !commandGroup.Equals(default(Configuration.Group)) &&
                                                         Authenticate(commandGroup.UUID,
                                                             wasInput(
                                                                 KeyValue.Get(
@@ -6258,7 +6253,7 @@ namespace Corrade
                                 }
                                 finally
                                 {
-                                    if (remoteEndPoint != null && !commandGroup.Equals(default(Configuration.Group)))
+                                    if (remoteEndPoint != null && commandGroup != null && !commandGroup.Equals(default(Configuration.Group)))
                                     {
                                         lock (GroupNotificationsLock)
                                         {

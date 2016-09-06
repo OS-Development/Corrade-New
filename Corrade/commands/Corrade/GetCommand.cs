@@ -37,11 +37,11 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (!corradeCommandParameters.Group.Equals(default(Configuration.Group)))
-                    {
-                        case false:
-                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    }
+
+                    if (corradeCommandParameters.Group == null ||
+                        corradeCommandParameters.Group.Equals(default(Configuration.Group)))
+                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
+                    
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(

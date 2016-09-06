@@ -29,14 +29,13 @@ namespace Corrade
                         var commandPermissionMaskAttribute =
                             Reflection.GetAttributeFromEnumValue<Command.CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
-                        if (!corradeCommandParameters.Group.Equals(default(Configuration.Group)) &&
-                            corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
-                                commandPermissionMaskAttribute.PermissionMask))
+                        if (corradeCommandParameters.Group == null ||
+                            corradeCommandParameters.Group.Equals(default(Configuration.Group)) ||
+                            !corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
+                                commandPermissionMaskAttribute.PermissionMask)) return;
+                        lock (LockObject)
                         {
-                            lock (LockObject)
-                            {
-                                data.Add(o);
-                            }
+                            data.Add(o);
                         }
                     });
                     if (data.Any())
