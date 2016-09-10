@@ -629,7 +629,10 @@ namespace Corrade
             [Command.StatusAttribute(46804)] [Reflection.DescriptionAttribute("could not send message")] COULD_NOT_SEND_MESSAGE,
             [Command.StatusAttribute(55110)] [Reflection.DescriptionAttribute("unknown mute type")] UNKNOWN_MUTE_TYPE,
             [Command.StatusAttribute(13491)] [Reflection.DescriptionAttribute("ban would exceed maximum ban list length")] BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH,
-            [Command.StatusAttribute(32528)] [Reflection.DescriptionAttribute("agent is soft banned")] AGENT_IS_SOFT_BANNED
+            [Command.StatusAttribute(32528)] [Reflection.DescriptionAttribute("agent is soft banned")] AGENT_IS_SOFT_BANNED,
+            [Command.StatusAttribute(05762)] [Reflection.DescriptionAttribute("primitives already linked")] PRIMITIVES_ALREADY_LINKED,
+            [Command.StatusAttribute(64420)] [Reflection.DescriptionAttribute("primitives are children of object")] PRIMITIVES_ARE_CHILDREN_OF_OBJECT,
+            [Command.StatusAttribute(10348)] [Reflection.DescriptionAttribute("primitives already delinked")] PRIMITIVES_ALREADY_DELINKED
         }
 
 

@@ -36,6 +36,16 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=renameitem>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("deactivate")] [Reflection.NameAttribute("deactivate")] DEACTIVATE,
+
+            [Reflection.NameAttribute("restructure")] RESTRUCTURE,
+
+            [CommandInputSyntax(
+                "<command=renameitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&<name=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("renameitem")] [Reflection.NameAttribute("renameitem")] RENAMEITEM,
+
+            [CommandInputSyntax(
                 "<command=shoot>&<group=<UUID|STRING>>&<password=<STRING>>&[target=<VECTOR3>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("shoot")] [Reflection.NameAttribute("shoot")] SHOOT,
 

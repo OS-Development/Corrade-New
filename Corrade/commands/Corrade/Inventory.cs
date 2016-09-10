@@ -52,8 +52,8 @@ namespace Corrade
                         var unpack = o.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
                         // Pop first item to process.
                         var first = unpack.First();
-                        // Remove item.
-                        unpack = unpack.AsParallel().Where(q => !q.Equals(first)).ToArray();
+                        // Remove first item.
+                        unpack = unpack.Skip(1).ToArray();
 
                         var next = p;
 
@@ -86,7 +86,7 @@ namespace Corrade
                         switch (next != null && !next.Equals(default(InventoryBase)))
                         {
                             case false:
-                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
+                                return null;
                         }
 
                         if (!(next is InventoryFolder))
@@ -129,6 +129,8 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
+                            if(item == null)
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (item is InventoryFolder)
                             {
                                 case true:
@@ -225,6 +227,8 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
+                            if(item == null)
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             if (!(item is InventoryFolder))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNEXPECTED_ITEM_IN_PATH);
@@ -265,6 +269,8 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
+                            if(item == null)
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             if (!(item is InventoryFolder))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNEXPECTED_ITEM_IN_PATH);
@@ -316,6 +322,8 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
+                            if(item == null)
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (item is InventoryFolder)
                             {
                                 case true:
@@ -378,6 +386,8 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
+                            if(item == null)
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (item is InventoryFolder)
                             {
                                 case true:
@@ -433,6 +443,8 @@ namespace Corrade
                                     break;
                             }
                             sourceItem = findPath(lnSourcePath, sourceItem);
+                            if(sourceItem == null)
+                                throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (action)
                             {
                                 case Enumerations.Action.CP:
@@ -466,25 +478,42 @@ namespace Corrade
                                     }
                                     break;
                             }
-                            targetItem = findPath(lnTargetPath, targetItem);
-                            if (!(targetItem is InventoryFolder))
+                            var targetName = sourceItem.Name;
+                            var target = findPath(lnTargetPath, targetItem);
+                            switch (target is InventoryFolder)
                             {
-                                throw new Command.ScriptException(Enumerations.ScriptError.EXPECTED_FOLDER_AS_TARGET);
+                                case false:
+                                    var pathSegments = lnTargetPath.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
+                                    target = findPath(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                        pathSegments.Take(pathSegments.Length - 1)), targetItem);
+                                    if (!(target is InventoryFolder))
+                                        throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
+                                    targetName = pathSegments.Last();
+                                    break;
+                                default:
+                                    targetItem = target;
+                                    break;
                             }
                             switch (action)
                             {
                                 case Enumerations.Action.LN:
+                                    var sourceInventoryItem = sourceItem as InventoryItem;
+                                    if (sourceInventoryItem == null)
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.EXPECTED_ITEM_AS_SOURCE);
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
-                                        Client.Inventory.CreateLink(targetItem.UUID, sourceItem, (succeeded, newItem) =>
-                                        {
-                                            if (!succeeded)
+                                        Client.Inventory.CreateLink(targetItem.UUID, sourceItem.UUID, targetName,
+                                            sourceInventoryItem.Description, sourceInventoryItem.AssetType,
+                                            sourceInventoryItem.InventoryType, UUID.Random(), (succeeded, newItem) =>
                                             {
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                                            }
-                                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                                        });
+                                                if (!succeeded)
+                                                {
+                                                    throw new Command.ScriptException(
+                                                        Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                                }
+                                                Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                                            });
                                     }
                                     break;
                                 case Enumerations.Action.MV:
@@ -493,13 +522,13 @@ namespace Corrade
                                         case true:
                                             lock (Locks.ClientInstanceInventoryLock)
                                             {
-                                                Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID);
+                                                Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID, targetName);
                                             }
                                             break;
                                         default:
                                             lock (Locks.ClientInstanceInventoryLock)
                                             {
-                                                Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID);
+                                                Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID, targetName);
                                             }
                                             break;
                                     }
@@ -508,7 +537,7 @@ namespace Corrade
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
                                         Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
-                                            sourceItem.Name,
+                                            targetName,
                                             newItem =>
                                             {
                                                 if (newItem == null)
