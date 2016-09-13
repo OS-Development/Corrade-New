@@ -34,7 +34,7 @@ namespace Corrade
 
                     lock (GroupDirectoryTrackersLock)
                     {
-                        if (!GroupDirectoryTrackers.Contains(corradeCommandParameters.Group.UUID))
+                        if (!GroupDirectoryTrackers.ContainsKey(corradeCommandParameters.Group.UUID))
                         {
                             GroupDirectoryTrackers.Add(corradeCommandParameters.Group.UUID,
                                 Client.Inventory.Store.RootFolder);
@@ -124,12 +124,12 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         item =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                             }
                             item = findPath(path, item);
-                            if(item == null)
+                            if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (item is InventoryFolder)
                             {
@@ -188,7 +188,7 @@ namespace Corrade
                             {
                                 var dirItem =
                                     DirItem.FromInventoryBase(
-                                        GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase);
+                                        GroupDirectoryTrackers[corradeCommandParameters.Group.UUID]);
                                 csv.AddRange(new[]
                                 {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                 csv.AddRange(new[]
@@ -216,7 +216,7 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         item =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                                 default:
@@ -227,7 +227,7 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
-                            if(item == null)
+                            if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             if (!(item is InventoryFolder))
                             {
@@ -264,12 +264,12 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         item =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                             }
                             item = findPath(path, item);
-                            if(item == null)
+                            if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             if (!(item is InventoryFolder))
                             {
@@ -317,12 +317,12 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         item =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                             }
                             item = findPath(path, item);
-                            if(item == null)
+                            if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (item is InventoryFolder)
                             {
@@ -381,12 +381,12 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         item =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                             }
                             item = findPath(path, item);
-                            if(item == null)
+                            if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (item is InventoryFolder)
                             {
@@ -438,12 +438,12 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         sourceItem =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                             }
                             sourceItem = findPath(lnSourcePath, sourceItem);
-                            if(sourceItem == null)
+                            if (sourceItem == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             switch (action)
                             {
@@ -474,7 +474,7 @@ namespace Corrade
                                     lock (GroupDirectoryTrackersLock)
                                     {
                                         targetItem =
-                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                     }
                                     break;
                             }

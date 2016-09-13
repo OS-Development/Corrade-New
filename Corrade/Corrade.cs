@@ -220,7 +220,9 @@ namespace Corrade
 
         private static readonly Hashtable GroupWorkers = new Hashtable();
         private static readonly object GroupWorkersLock = new object();
-        private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
+
+        private static readonly Dictionary<UUID, InventoryBase> GroupDirectoryTrackers =
+            new Dictionary<UUID, InventoryBase>();
         private static readonly object GroupDirectoryTrackersLock = new object();
         private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
 

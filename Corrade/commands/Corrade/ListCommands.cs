@@ -32,7 +32,7 @@ namespace Corrade
                         if (corradeCommandParameters.Group == null ||
                             corradeCommandParameters.Group.Equals(default(Configuration.Group)) ||
                             !corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
-                                commandPermissionMaskAttribute.PermissionMask)) return;
+                                (Configuration.Permissions) commandPermissionMaskAttribute.PermissionMask)) return;
                         lock (LockObject)
                         {
                             data.Add(o);

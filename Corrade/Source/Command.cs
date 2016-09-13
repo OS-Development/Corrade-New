@@ -36,6 +36,10 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=getremoteparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getremoteparcelinfodata")] [Reflection.NameAttribute("getremoteparcelinfodata")] GETREMOTEPARCELINFODATA,
+
+            [CommandInputSyntax(
                 "<command=renameitem>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("deactivate")] [Reflection.NameAttribute("deactivate")] DEACTIVATE,
 
