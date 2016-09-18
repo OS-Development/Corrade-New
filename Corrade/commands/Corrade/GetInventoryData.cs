@@ -9,8 +9,10 @@ using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -34,30 +36,33 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    InventoryItem inventoryItem;
+                    InventoryBase inventoryBase;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            inventoryItem =
+                            inventoryBase =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID,
                                     corradeConfiguration.ServicesTimeout
-                                    ).FirstOrDefault() as InventoryItem;
+                                    ).FirstOrDefault();
                             break;
                         default:
-                            inventoryItem =
+                            inventoryBase =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
                                     corradeConfiguration.ServicesTimeout)
-                                    .FirstOrDefault() as InventoryItem;
+                                    .FirstOrDefault();
                             break;
                     }
-                    if (inventoryItem == null)
+                    if (inventoryBase == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    var data = wasOpenMetaverse.Reflection.GetStructuredData(inventoryItem,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))).ToList();
+                    var data =
+                        inventoryBase.ToInventory().GetStructuredData(
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

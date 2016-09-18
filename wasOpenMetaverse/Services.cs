@@ -409,6 +409,49 @@ namespace wasOpenMetaverse
         }
 
         ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Get the parcel info of a parcel given a parcel UUID.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="parcelUUID">the UUID of the parcel</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="parcelInfo">a parcel info object</param>
+        /// <returns>true if the parcel could be found</returns>
+        public static bool GetParcelInfo(GridClient Client, UUID parcelUUID, uint millisecondsTimeout,
+            ref ParcelInfo parcelInfo)
+        {
+            var ParcelInfoEvent = new ManualResetEvent(false);
+            var localParcelInfo = new ParcelInfo();
+            EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
+            {
+                if (args.Parcel.ID.Equals(parcelUUID))
+                {
+                    localParcelInfo = args.Parcel;
+                    ParcelInfoEvent.Set();
+                }
+            };
+            lock (Locks.ClientInstanceParcelsLock)
+            {
+                Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
+                Client.Parcels.RequestParcelInfo(parcelUUID);
+                if (!ParcelInfoEvent.WaitOne((int) millisecondsTimeout, false))
+                {
+                    Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                    return false;
+                }
+                Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+            }
+            if (localParcelInfo.Equals(default(ParcelInfo)))
+            {
+                return false;
+            }
+            parcelInfo = localParcelInfo;
+            return true;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>

@@ -150,20 +150,58 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static bool AddRegion(string name, ulong handle)
+        public static bool UpdateRegion(string name, ulong handle)
         {
-            return !string.IsNullOrEmpty(name) && !handle.Equals(0) && AddRegion(new Region
+            return !string.IsNullOrEmpty(name) && !handle.Equals(0) && UpdateRegion(new Region
             {
                 Name = name,
                 Handle = handle
             });
         }
 
-        private static bool AddRegion(Region region)
+        public static bool UpdateRegion(UUID regionUUID, string name)
+        {
+            return !string.IsNullOrEmpty(name) && !regionUUID.Equals(UUID.Zero) && UpdateRegion(new Region
+            {
+                Name = name,
+                UUID = regionUUID
+            });
+        }
+
+        public static bool UpdateRegion(UUID regionUUID, ulong regionHandle)
+        {
+            return !regionHandle.Equals(0) && !regionUUID.Equals(UUID.Zero) && UpdateRegion(new Region
+            {
+                Handle = regionHandle,
+                UUID = regionUUID
+            });
+        }
+
+        private static bool UpdateRegion(Region region)
         {
             lock (RegionCacheLock)
             {
                 if (ObservableRegionCache.Contains(region)) return false;
+                var cachedRegion =
+                    ObservableRegionCache.AsParallel().FirstOrDefault(
+                        o =>
+                            (!string.IsNullOrEmpty(region.Name) && !string.IsNullOrEmpty(o.Name) &&
+                             Strings.Equals(o.Name, region.Name, StringComparison.OrdinalIgnoreCase)) ||
+                            o.Handle.Equals(region.Handle) || o.UUID.Equals(region.UUID));
+                // If the region exists...
+                if (!cachedRegion.Equals(default(Region)))
+                {
+                    // Update the current object with the data from the cache for fields that have not been passed.
+                    if (string.IsNullOrEmpty(region.Name) && !string.IsNullOrEmpty(cachedRegion.Name))
+                        region.Name = cachedRegion.Name;
+                    if (region.Handle.Equals(0) && !cachedRegion.Handle.Equals(0))
+                        region.Handle = cachedRegion.Handle;
+                    if (region.UUID.Equals(UUID.Zero) && !cachedRegion.UUID.Equals(UUID.Zero))
+                        region.UUID = cachedRegion.UUID;
+                    // ... and remove the region.
+                    ObservableRegionCache.Remove(cachedRegion);
+                }
+                // Add the region to the cache.
                 ObservableRegionCache.Add(region);
                 return true;
             }
@@ -178,8 +216,26 @@ namespace wasOpenMetaverse
                     ObservableRegionCache.AsParallel()
                         .FirstOrDefault(
                             o =>
+                                !string.IsNullOrEmpty(o.Name) &&
                                 Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
                                 handle.Equals(o.Handle));
+            }
+            if (region.Equals(default(Region)))
+                return false;
+            lock (RegionCacheLock)
+            {
+                return ObservableRegionCache.Remove(region);
+            }
+        }
+
+        public static bool RemoveRegion(UUID regionUUID, ulong handle)
+        {
+            Region region;
+            lock (RegionCacheLock)
+            {
+                region =
+                    ObservableRegionCache.AsParallel()
+                        .FirstOrDefault(o => regionUUID.Equals(o.UUID) && handle.Equals(o.Handle));
             }
             if (region.Equals(default(Region)))
                 return false;
@@ -195,7 +251,30 @@ namespace wasOpenMetaverse
             {
                 return
                     ObservableRegionCache.AsParallel()
-                        .FirstOrDefault(o => Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(
+                            o =>
+                                !string.IsNullOrEmpty(o.Name) &&
+                                Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        public static Region GetRegion(UUID regionUUID)
+        {
+            lock (RegionCacheLock)
+            {
+                return
+                    ObservableRegionCache.AsParallel()
+                        .FirstOrDefault(o => o.UUID.Equals(regionUUID));
+            }
+        }
+
+        public static Region GetRegion(ulong regionHandle)
+        {
+            lock (RegionCacheLock)
+            {
+                return
+                    ObservableRegionCache.AsParallel()
+                        .FirstOrDefault(o => o.Handle.Equals(regionHandle));
             }
         }
 
@@ -413,6 +492,7 @@ namespace wasOpenMetaverse
         {
             [XmlElement("Name")] public string Name;
             [XmlElement("Handle")] public ulong Handle;
+            [XmlElement("UUID")] public UUID UUID;
         }
 
         [XmlRoot("Agent")]

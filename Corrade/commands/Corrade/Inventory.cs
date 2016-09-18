@@ -138,8 +138,9 @@ namespace Corrade
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
                                         dirItems.AddRange(Client.Inventory.Store.GetContents(
-                                            item.UUID).AsParallel().Select(
-                                                DirItem.FromInventoryBase));
+                                            item.UUID).AsParallel().Select(o =>
+                                                DirItem.FromInventoryBase(Client, o,
+                                                    corradeConfiguration.ServicesTimeout)));
                                     }
                                     foreach (var dirItem in dirItems)
                                     {
@@ -160,10 +161,16 @@ namespace Corrade
                                             Reflection.GetStructureMemberName(dirItem, dirItem.Permissions),
                                             dirItem.Permissions
                                         });
+                                        csv.AddRange(new[]
+                                        {
+                                            Reflection.GetStructureMemberName(dirItem, dirItem.Time),
+                                            dirItem.Time.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                        });
                                     }
                                     break;
                                 case false:
-                                    var dir = DirItem.FromInventoryBase(item);
+                                    var dir = DirItem.FromInventoryBase(Client, item,
+                                        corradeConfiguration.ServicesTimeout);
                                     csv.AddRange(new[] {Reflection.GetStructureMemberName(dir, dir.Name), dir.Name});
                                     csv.AddRange(new[]
                                     {
@@ -180,6 +187,11 @@ namespace Corrade
                                         Reflection.GetStructureMemberName(dir, dir.Permissions),
                                         dir.Permissions
                                     });
+                                    csv.AddRange(new[]
+                                    {
+                                        Reflection.GetStructureMemberName(dir, dir.Time),
+                                        dir.Time.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                    });
                                     break;
                             }
                             break;
@@ -187,8 +199,9 @@ namespace Corrade
                             lock (GroupDirectoryTrackersLock)
                             {
                                 var dirItem =
-                                    DirItem.FromInventoryBase(
-                                        GroupDirectoryTrackers[corradeCommandParameters.Group.UUID]);
+                                    DirItem.FromInventoryBase(Client,
+                                        GroupDirectoryTrackers[corradeCommandParameters.Group.UUID],
+                                        corradeConfiguration.ServicesTimeout);
                                 csv.AddRange(new[]
                                 {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                 csv.AddRange(new[]
@@ -202,6 +215,11 @@ namespace Corrade
                                 {
                                     Reflection.GetStructureMemberName(dirItem, dirItem.Permissions),
                                     dirItem.Permissions
+                                });
+                                csv.AddRange(new[]
+                                {
+                                    Reflection.GetStructureMemberName(dirItem, dirItem.Time),
+                                    dirItem.Time.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                 });
                             }
                             break;

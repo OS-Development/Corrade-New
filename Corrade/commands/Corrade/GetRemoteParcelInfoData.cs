@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -50,28 +49,9 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    var ParcelInfoEvent = new ManualResetEvent(false);
                     var parcelInfo = new ParcelInfo();
-                    EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
-                    {
-                        if (args.Parcel.ID.Equals(parcelUUID))
-                        {
-                            parcelInfo = args.Parcel;
-                            ParcelInfoEvent.Set();
-                        }
-                    };
-                    lock (Locks.ClientInstanceParcelsLock)
-                    {
-                        Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
-                        Client.Parcels.RequestParcelInfo(parcelUUID);
-                        if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                        }
-                        Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                    }
-                    if (parcelInfo.Equals(default(ParcelInfo)))
+                    if (
+                        !Services.GetParcelInfo(Client, parcelUUID, corradeConfiguration.ServicesTimeout, ref parcelInfo))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
                     }

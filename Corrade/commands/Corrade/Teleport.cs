@@ -55,9 +55,35 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(region))
+                    UUID regionUUID;
+                    ulong regionHandle = 0;
+                    switch (UUID.TryParse(region, out regionUUID))
                     {
-                        region = Client.Network.CurrentSim.Name;
+                        case true:
+                            if (
+                                !Resolvers.RegionUUIDToHandle(Client, regionUUID, corradeConfiguration.ServicesTimeout,
+                                    ref regionHandle))
+                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                            var parcelUUID = Client.Parcels.RequestRemoteParcelID(new Vector3(128, 128, 0), regionHandle,
+                                UUID.Zero);
+                            if (parcelUUID.Equals(UUID.Zero))
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
+                            var parcelInfo = new ParcelInfo();
+                            if (
+                                !Services.GetParcelInfo(Client, parcelUUID, corradeConfiguration.ServicesTimeout,
+                                    ref parcelInfo))
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
+                            region = parcelInfo.SimName;
+                            break;
+                        default:
+                            if (string.IsNullOrEmpty(region))
+                            {
+                                lock (Locks.ClientInstanceNetworkLock)
+                                {
+                                    region = Client.Network.CurrentSim.Name;
+                                }
+                            }
+                            break;
                     }
                     // Check if the teleport destination is not too close.
                     if (region.Equals(Client.Network.CurrentSim.Name) &&
@@ -66,8 +92,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.DESTINATION_TOO_CLOSE);
                     }
-                    ulong regionHandle = 0;
-                    if (
+                    if (regionHandle.Equals(0) &&
                         !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
                             ref regionHandle))
                     {

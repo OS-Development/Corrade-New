@@ -3290,7 +3290,7 @@ namespace Corrade
                                                     switch (dataSynchronizationOption)
                                                     {
                                                         case Configuration.HordeDataSynchronizationOption.Add:
-                                                            Cache.AddRegion(region.Name, region.Handle);
+                                                            Cache.UpdateRegion(region.Name, region.Handle);
                                                             break;
                                                         case Configuration.HordeDataSynchronizationOption.Remove:
                                                             Cache.RemoveRegion(region.Name, region.Handle);

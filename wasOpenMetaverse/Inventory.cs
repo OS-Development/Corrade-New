@@ -863,5 +863,92 @@ namespace wasOpenMetaverse
             }
             return succeeded;
         }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns an specific inventory item from an inventory base.
+        /// </summary>
+        /// <param name="inventoryBase">the inventory base</param>
+        /// <returns>a specific inventory item or null</returns>
+        public static object ToInventory(this InventoryBase inventoryBase)
+        {
+            if (inventoryBase is InventoryFolder)
+            {
+                return inventoryBase as InventoryFolder;
+            }
+
+            if (!(inventoryBase is InventoryItem)) return null;
+
+            var inventoryItem = inventoryBase as InventoryItem;
+
+            if (inventoryItem is InventoryWearable)
+            {
+                return inventoryItem as InventoryWearable;
+            }
+
+            if (inventoryItem is InventoryTexture)
+            {
+                return inventoryItem as InventoryTexture;
+            }
+
+            if (inventoryItem is InventorySound)
+            {
+                return inventoryItem as InventorySound;
+            }
+
+            if (inventoryItem is InventoryCallingCard)
+            {
+                return inventoryItem as InventoryCallingCard;
+            }
+
+            if (inventoryItem is InventoryLandmark)
+            {
+                return inventoryItem as InventoryLandmark;
+            }
+
+            if (inventoryItem is InventoryObject)
+            {
+                return inventoryItem as InventoryObject;
+            }
+
+            if (inventoryItem is InventoryNotecard)
+            {
+                return inventoryItem as InventoryNotecard;
+            }
+
+            if (inventoryItem is InventoryCategory)
+            {
+                return inventoryItem as InventoryCategory;
+            }
+
+            if (inventoryItem is InventoryLSL)
+            {
+                return inventoryItem as InventoryLSL;
+            }
+
+            if (inventoryItem is InventorySnapshot)
+            {
+                return inventoryItem as InventorySnapshot;
+            }
+
+            if (inventoryItem is InventoryAttachment)
+            {
+                return inventoryItem as InventoryAttachment;
+            }
+
+            if (inventoryItem is InventoryAnimation)
+            {
+                return inventoryItem as InventoryAnimation;
+            }
+
+            if (inventoryItem is InventoryGesture)
+            {
+                return inventoryItem as InventoryGesture;
+            }
+
+            return null;
+        }
     }
 }

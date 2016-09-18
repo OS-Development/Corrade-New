@@ -19,6 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configurator", "Configurato
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CorradeConfiguration", "CorradeConfiguration\CorradeConfiguration.csproj", "{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}"
 	ProjectSection(ProjectDependencies) = postProject
+		{EF59AAC3-9861-4E63-A513-E39127376F24} = {EF59AAC3-9861-4E63-A513-E39127376F24}
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
 	EndProjectSection
 EndProject

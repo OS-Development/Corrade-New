@@ -618,7 +618,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("cache")] [Reflection.NameAttribute("cache")] CACHE,
 
             [CommandInputSyntax(
-                "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion[,GridRegion...]>>&[region=<STRING>]&[callback=<STRING>]"
+                "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion[,GridRegion...]>>&[region=<STRING|UUID>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getgridregiondata")] [Reflection.NameAttribute("getgridregiondata")] GETGRIDREGIONDATA,
 
             [CommandInputSyntax(

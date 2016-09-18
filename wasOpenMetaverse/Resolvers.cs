@@ -429,13 +429,13 @@ namespace wasOpenMetaverse
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Resolves a role name to a role UUID.
+        ///     Resolves a region name to a region handle.
         /// </summary>
         /// <param name="Client">the OpenMetaverse grid client</param>
         /// <param name="name">the name of the region</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="regionHandle">the found region handle</param>
-        /// <returns>true if the role could be resolved</returns>
+        /// <returns>true if the region name could be resolved</returns>
         private static bool directRegionNameToHandle(GridClient Client, string name, uint millisecondsTimeout,
             ref ulong regionHandle)
         {
@@ -474,7 +474,7 @@ namespace wasOpenMetaverse
         /// <param name="name">the name of the region</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="regionHandle">the found region handle</param>
-        /// <returns>true if the role could be resolved</returns>
+        /// <returns>true if the region name could be resolved</returns>
         public static bool RegionNameToHandle(GridClient Client, string name, uint millisecondsTimeout,
             ref ulong regionHandle)
         {
@@ -500,10 +500,8 @@ namespace wasOpenMetaverse
                         }
                     }
 
-                    if (!resolved || Cache.GetRegion(name).Handle.Equals(region.Handle)) return;
-
-                    if (Cache.RemoveRegion(name, region.Handle))
-                        Cache.AddRegion(name, updateHandle);
+                    if (!resolved || region.Handle.Equals(updateHandle)) return;
+                    Cache.UpdateRegion(name, updateHandle);
                 }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                 return true;
             }
@@ -515,7 +513,100 @@ namespace wasOpenMetaverse
             }
             if (succeeded)
             {
-                Cache.AddRegion(name, regionHandle);
+                Cache.UpdateRegion(name, regionHandle);
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves a region UUID to a region handle.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="regionUUID">the UUID of the region</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="regionHandle">the found region handle</param>
+        /// <returns>true if the region UUID could be resolved</returns>
+        private static bool directRegionUUIDToHandle(GridClient Client, UUID regionUUID, uint millisecondsTimeout,
+            ref ulong regionHandle)
+        {
+            if (regionUUID.Equals(UUID.Zero))
+                return false;
+            var GridRegionEvent = new ManualResetEvent(false);
+            ulong localRegionHandle = 0;
+            EventHandler<RegionHandleReplyEventArgs> GridRegionEventHandler =
+                (sender, args) =>
+                {
+                    localRegionHandle = args.RegionHandle;
+                    GridRegionEvent.Set();
+                };
+            Client.Grid.RegionHandleReply += GridRegionEventHandler;
+            Client.Grid.RequestRegionHandle(regionUUID);
+            if (!GridRegionEvent.WaitOne((int) millisecondsTimeout, false))
+            {
+                Client.Grid.RegionHandleReply -= GridRegionEventHandler;
+                return false;
+            }
+            Client.Grid.RegionHandleReply -= GridRegionEventHandler;
+            if (!localRegionHandle.Equals(0))
+            {
+                regionHandle = localRegionHandle;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        ///     A wrapper for region UUID to region handle lookups using caching.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="regionUUID">the UUID of the region</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="regionHandle">the found region handle</param>
+        /// <returns>true if the region UUID could be resolved</returns>
+        public static bool RegionUUIDToHandle(GridClient Client, UUID regionUUID, uint millisecondsTimeout,
+            ref ulong regionHandle)
+        {
+            var region = Cache.GetRegion(regionUUID);
+            if (!region.Equals(default(Cache.Region)))
+            {
+                regionHandle = region.Handle;
+                // Region cache is weakly volatile so we need to check cached regions.
+                new Thread(() =>
+                {
+                    ulong updateHandle = 0;
+                    // Use fail locks.
+                    var resolved = false;
+                    if (Monitor.TryEnter(Locks.ClientInstanceGridLock, 1000))
+                    {
+                        try
+                        {
+                            resolved = directRegionUUIDToHandle(Client, regionUUID, millisecondsTimeout,
+                                ref updateHandle);
+                        }
+                        finally
+                        {
+                            Monitor.Exit(Locks.ClientInstanceGridLock);
+                        }
+                    }
+
+                    if (!resolved || region.Handle.Equals(updateHandle)) return;
+                    Cache.UpdateRegion(regionUUID, updateHandle);
+                })
+                {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                return true;
+            }
+
+            bool succeeded;
+            lock (Locks.ClientInstanceGridLock)
+            {
+                succeeded = directRegionUUIDToHandle(Client, regionUUID, millisecondsTimeout, ref regionHandle);
+            }
+            if (succeeded)
+            {
+                Cache.UpdateRegion(regionUUID, regionHandle);
             }
             return succeeded;
         }
