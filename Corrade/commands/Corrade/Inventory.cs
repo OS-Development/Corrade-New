@@ -463,6 +463,9 @@ namespace Corrade
                             sourceItem = findPath(lnSourcePath, sourceItem);
                             if (sourceItem == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
+                            var sourceSegments = lnSourcePath.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
+                            var parentSource = findPath(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                sourceSegments.Take(sourceSegments.Length - 1)), sourceItem);
                             switch (action)
                             {
                                 case Enumerations.Action.CP:
@@ -497,19 +500,19 @@ namespace Corrade
                                     break;
                             }
                             var targetName = sourceItem.Name;
-                            var target = findPath(lnTargetPath, targetItem);
-                            switch (target is InventoryFolder)
+                            var parentTarget = findPath(lnTargetPath, targetItem);
+                            switch (parentTarget is InventoryFolder)
                             {
                                 case false:
                                     var pathSegments = lnTargetPath.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
-                                    target = findPath(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                    parentTarget = findPath(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR,
                                         pathSegments.Take(pathSegments.Length - 1)), targetItem);
-                                    if (!(target is InventoryFolder))
+                                    if (!(parentTarget is InventoryFolder))
                                         throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                                     targetName = pathSegments.Last();
                                     break;
                                 default:
-                                    targetItem = target;
+                                    targetItem = parentTarget;
                                     break;
                             }
                             switch (action)
@@ -550,6 +553,16 @@ namespace Corrade
                                             }
                                             break;
                                     }
+                                    if (parentSource is InventoryFolder)
+                                    {
+                                        Inventory.UpdateInventoryRecursive(Client, parentSource as InventoryFolder,
+                                            corradeConfiguration.ServicesTimeout);
+                                    }
+                                    if (parentTarget is InventoryFolder)
+                                    {
+                                        Inventory.UpdateInventoryRecursive(Client, parentTarget as InventoryFolder,
+                                            corradeConfiguration.ServicesTimeout);
+                                    }
                                     break;
                                 case Enumerations.Action.CP:
                                     lock (Locks.ClientInstanceInventoryLock)
@@ -563,6 +576,7 @@ namespace Corrade
                                                     throw new Command.ScriptException(
                                                         Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                                                 }
+                                                Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
                                             });
                                     }
                                     break;

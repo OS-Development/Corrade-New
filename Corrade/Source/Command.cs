@@ -36,6 +36,14 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=setinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("setinventorydata")]
+            [Reflection.NameAttribute("setinventorydata")]
+            SETINVENTORYDATA,
+
+            [CommandInputSyntax(
                 "<command=getremoteparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getremoteparcelinfodata")] [Reflection.NameAttribute("getremoteparcelinfodata")] GETREMOTEPARCELINFODATA,
 
@@ -879,7 +887,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventory")] [Reflection.NameAttribute("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
 
             [CommandInputSyntax(
-                "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
+                "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorydata")] [Reflection.NameAttribute("getinventorydata")] GETINVENTORYDATA,
 
             [CommandInputSyntax(
