@@ -96,12 +96,28 @@
       <HintPath>..\packages\Mono.Data.Sqlite.Portable.1.0.3.5\lib\net4\Mono.Data.Sqlite.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="NAudio, Version=1.7.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.1.7.3\lib\net35\NAudio.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NAudio.Lame, Version=1.0.3.3048, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.Lame.1.0.4\lib\net20\NAudio.Lame.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NAudio.Vorbis, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.Vorbis.1.0.0.0\lib\net35\NAudio.Vorbis.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NTextCat, Version=0.2.1.30, Culture=neutral, PublicKeyToken=a61413de1d13f8fc, processorArchitecture=MSIL">
       <HintPath>..\packages\NTextCat.0.2.1.30\lib\net40\NTextCat.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NVorbis, Version=0.8.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NVorbis.0.8.4.0\lib\NVorbis.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="OpenMetaverse, Version=0.9.2.3173, Culture=neutral, processorArchitecture=MSIL">
@@ -1550,6 +1566,12 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="libmp3lame.32.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libmp3lame.64.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="templates\notifications\alert.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

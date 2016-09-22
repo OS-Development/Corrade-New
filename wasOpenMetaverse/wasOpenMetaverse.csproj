@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="Cache.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="Graphics.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="Inventory.cs" />
     <Compile Include="OSD.cs" />

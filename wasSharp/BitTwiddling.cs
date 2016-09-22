@@ -100,5 +100,37 @@ namespace wasSharp
         {
             mask = unchecked(mask as dynamic ^ flag as dynamic);
         }
+
+        /// <summary>
+        ///     Computes the previous power of two.
+        /// </summary>
+        /// <param name="x">the integer</param>
+        /// <returns>the previous power of two</returns>
+        /// <remarks>Adapted from Hacker's Delight ISBN-10:0201914654</remarks>
+        public static T PreviousPowerOfTwo<T>(this T x)
+        {
+            var y = x as dynamic;
+            unchecked
+            {
+                y = y | (y >> 1);
+                y = y | (y >> 2);
+                y = y | (y >> 4);
+                y = y | (y >> 8);
+                y = y | (y >> 16);
+                return y - (y >> 1);
+            }
+        }
+
+        /// <summary>
+        ///     Determines if a number is a power of two.
+        /// </summary>
+        /// <typeparam name="T">the number type</typeparam>
+        /// <param name="x">the number</param>
+        /// <returns>true of the number is a power of two</returns>
+        public static bool IsPowerOfTwo<T>(this T x)
+        {
+            var y = x as dynamic;
+            return (y != 0) && ((y & (y - 1)) == 0);
+        }
     }
 }

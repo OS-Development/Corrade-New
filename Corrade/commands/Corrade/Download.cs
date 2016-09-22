@@ -14,6 +14,9 @@ using System.Text;
 using System.Threading;
 using CorradeConfiguration;
 using ImageMagick;
+using NAudio.Lame;
+using NAudio.Vorbis;
+using NAudio.Wave;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
@@ -325,6 +328,58 @@ namespace Corrade
                                             assetData = imageStream.ToArray();
                                         }
                                         break;
+                                }
+                            }
+                            break;
+                    }
+                    // If the asset type was a sound, convert it to the desired format.
+                    switch (assetType.Equals(AssetType.Sound))
+                    {
+                        case true:
+                            var format =
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
+                                    corradeCommandParameters.Message));
+                            if (!string.IsNullOrEmpty(format))
+                            {
+                                using (var soundOutputStream = new MemoryStream())
+                                {
+                                    using (var soundAssetStream = new MemoryStream(assetData))
+                                    {
+                                        using (var vorbis = new VorbisWaveReader(soundAssetStream))
+                                        {
+                                            using (var vorbisStream = new MemoryStream())
+                                            {
+                                                switch (format)
+                                                {
+                                                    case "mp3":
+                                                        using (
+                                                            var mp3Writer = new LameMP3FileWriter(soundOutputStream,
+                                                                vorbis.WaveFormat, LAMEPreset.ABR_256))
+                                                        {
+                                                            vorbis.CopyTo(vorbisStream);
+                                                            var vorbisData = vorbisStream.ToArray();
+                                                            mp3Writer.Write(vorbisData, 0, vorbisData.Length);
+                                                        }
+                                                        break;
+                                                    case "wav":
+                                                        using (
+                                                            var wavWriter = new WaveFileWriter(soundOutputStream,
+                                                                vorbis.WaveFormat))
+                                                        {
+                                                            vorbis.CopyTo(vorbisStream);
+                                                            var vorbisData = vorbisStream.ToArray();
+                                                            wavWriter.Write(vorbisData, 0, vorbisData.Length);
+                                                        }
+                                                        break;
+                                                    default:
+                                                        throw new Command.ScriptException(
+                                                            Enumerations.ScriptError.UNKOWN_SOUND_FORMAT_REQUESTED);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    assetData = soundOutputStream.ToArray();
                                 }
                             }
                             break;

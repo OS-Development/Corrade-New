@@ -633,7 +633,8 @@ namespace Corrade
             [Command.StatusAttribute(05762)] [Reflection.DescriptionAttribute("primitives already linked")] PRIMITIVES_ALREADY_LINKED,
             [Command.StatusAttribute(64420)] [Reflection.DescriptionAttribute("primitives are children of object")] PRIMITIVES_ARE_CHILDREN_OF_OBJECT,
             [Command.StatusAttribute(10348)] [Reflection.DescriptionAttribute("primitives already delinked")] PRIMITIVES_ALREADY_DELINKED,
-            [Command.StatusAttribute(23932)] [Reflection.DescriptionAttribute("no position provided")] NO_POSITION_PROVIDED
+            [Command.StatusAttribute(23932)] [Reflection.DescriptionAttribute("no position provided")] NO_POSITION_PROVIDED,
+            [Command.StatusAttribute(01382)] [Reflection.DescriptionAttribute("unknwon sound requested")] UNKOWN_SOUND_FORMAT_REQUESTED
         }
 
 

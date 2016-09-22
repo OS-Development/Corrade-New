@@ -200,6 +200,8 @@ namespace wasOpenMetaverse
             // Default texture in Second Life is the plywood texture.
             public static readonly UUID TEXTURE_DEFAULT = TEXTURE_BLANK;
             public static readonly UUID DEFAULT_SCULPT = new UUID(@"be293869-d0d9-0a69-5989-ad27f1946fd4");
+            public static readonly int MAX_PIXEL_WIDTH = 1024;
+            public static readonly int MAX_PIXEL_HEIGHT = 1024;
         }
     }
 }

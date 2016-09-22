@@ -7,6 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -16,6 +19,7 @@ using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using wasOpenMetaverse;
 using wasSharp;
+using Graphics = wasOpenMetaverse.Graphics;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -89,7 +93,6 @@ namespace Corrade
                     switch (assetType)
                     {
                         case AssetType.Texture:
-                        case AssetType.Sound:
                         case AssetType.Animation:
                             // the holy asset trinity is charged money
                             if (
@@ -124,12 +127,34 @@ namespace Corrade
                                         switch (Environment.OSVersion.Platform)
                                         {
                                             case PlatformID.Win32NT:
-
                                                 try
                                                 {
                                                     using (var magickImage = new MagickImage(data))
                                                     {
-                                                        data = OpenJPEG.EncodeFromImage(magickImage.ToBitmap(), true);
+                                                        using (var image = new Bitmap(magickImage.ToBitmap()))
+                                                        {
+                                                            var size = Graphics.GetScaleTextureSize(
+                                                                image.Width, image.Height);
+
+                                                            using (
+                                                                var newImage = new Bitmap(size.Width, size.Height,
+                                                                    PixelFormat.Format24bppRgb))
+                                                            {
+                                                                using (
+                                                                    var g =
+                                                                        System.Drawing.Graphics.FromImage(newImage))
+                                                                {
+                                                                    g.SmoothingMode =
+                                                                        SmoothingMode
+                                                                            .HighQuality;
+                                                                    g.InterpolationMode =
+                                                                        InterpolationMode
+                                                                            .HighQualityBicubic;
+                                                                    g.DrawImage(image, 0, 0, size.Width, size.Height);
+                                                                    data = OpenJPEG.EncodeFromImage(newImage, true);
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                                 catch (Exception)
@@ -142,11 +167,30 @@ namespace Corrade
                                             default:
                                                 try
                                                 {
-                                                    using (var image = (Image) new ImageConverter().ConvertFrom(data))
+                                                    using (var imageByteStream = new MemoryStream(data))
                                                     {
-                                                        using (var bitmap = new Bitmap(image))
+                                                        using (var image = Image.FromStream(imageByteStream))
                                                         {
-                                                            data = OpenJPEG.EncodeFromImage(bitmap, true);
+                                                            var size = Graphics.GetScaleTextureSize(
+                                                                image.Width, image.Height);
+
+                                                            using (
+                                                                var newImage = new Bitmap(size.Width, size.Height,
+                                                                    PixelFormat.Format24bppRgb))
+                                                            {
+                                                                using (
+                                                                    var g = System.Drawing.Graphics.FromImage(newImage))
+                                                                {
+                                                                    g.SmoothingMode =
+                                                                        SmoothingMode
+                                                                            .HighQuality;
+                                                                    g.InterpolationMode =
+                                                                        InterpolationMode
+                                                                            .HighQualityBicubic;
+                                                                    g.DrawImage(image, 0, 0, size.Width, size.Height);
+                                                                    data = OpenJPEG.EncodeFromImage(newImage, true);
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -155,13 +199,12 @@ namespace Corrade
                                                     throw new Command.ScriptException(
                                                         Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED);
                                                 }
-
                                                 break;
                                         }
                                     }
                                     break;
                             }
-                            // now create and upload the asset
+                            // ...now create and upload the asset
                             var CreateItemFromAssetEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -190,6 +233,45 @@ namespace Corrade
                                 }
                             }
                             break;
+                        case AssetType.SoundWAV:
+                        case AssetType.Sound:
+                            UUID soundUUID;
+                            lock (Locks.ClientInstanceAssetsLock)
+                            {
+                                soundUUID = Client.Assets.RequestUpload(assetType, data, false);
+                            }
+                            if (soundUUID.Equals(UUID.Zero))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
+                            }
+                            var CreateSoundEvent = new ManualResetEvent(false);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.RequestCreateItemFromAsset(data, name,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                                            corradeCommandParameters.Message)),
+                                    assetType,
+                                    (InventoryType)
+                                        typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                            .AsParallel().FirstOrDefault(
+                                                o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
+                                                    StringComparison.Ordinal)).GetValue(null),
+                                    Client.Inventory.FindFolderForType(assetType),
+                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    {
+                                        itemUUID = itemID;
+                                        assetUUID = assetID;
+                                        succeeded = completed;
+                                        CreateSoundEvent.Set();
+                                    });
+                                if (!CreateSoundEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
+                            }
+                            break;
                         case AssetType.Bodypart:
                         case AssetType.Clothing:
                             var wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
@@ -206,10 +288,14 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_WEARABLE_TYPE);
                             }
-                            var wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
-                            if (wearableUUID.Equals(UUID.Zero))
+                            var wearableUUID = UUID.Zero;
+                            lock (Locks.ClientInstanceAssetsLock)
                             {
-                                throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
+                                wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
+                                if (wearableUUID.Equals(UUID.Zero))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
+                                }
                             }
                             var CreateWearableEvent = new ManualResetEvent(false);
                             lock (Locks.ClientInstanceInventoryLock)
