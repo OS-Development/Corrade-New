@@ -39,7 +39,8 @@ namespace Corrade
                         {
                             p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                 new List<object> {outfitEventArgs},
-                                notificationData, LockObject, rankedLanguageIdentifier);
+                                notificationData, LockObject, rankedLanguageIdentifier,
+                                GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));
                 };
         }

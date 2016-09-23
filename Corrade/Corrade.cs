@@ -32,6 +32,7 @@ using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using BayesSharp;
 using Corrade.Constants;
 using Corrade.Events;
 using Corrade.Helpers;
@@ -223,6 +224,7 @@ namespace Corrade
 
         private static readonly Dictionary<UUID, InventoryBase> GroupDirectoryTrackers =
             new Dictionary<UUID, InventoryBase>();
+
         private static readonly object GroupDirectoryTrackersLock = new object();
         private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
 
@@ -258,6 +260,11 @@ namespace Corrade
             new Dictionary<string, Web.wasHTTPClient>();
 
         private static readonly object HordeHTTPClientsLock = new object();
+
+        private static readonly Dictionary<UUID, BayesSimpleTextClassifier> GroupBayesClassifiers =
+            new Dictionary<UUID, BayesSimpleTextClassifier>();
+
+        private static readonly object GroupBayesClassifiersLock = new object();
 
         private static string CorradePOSTMediaType;
 
@@ -755,6 +762,69 @@ namespace Corrade
         /// <summary>
         ///     Saves Corrade group members.
         /// </summary>
+        private static readonly Action SaveGroupBayesClassificiations = () =>
+        {
+            corradeConfiguration.Groups.AsParallel().ForAll(group =>
+            {
+                try
+                {
+                    lock (GroupBayesClassifiersLock)
+                    {
+                        if (!GroupBayesClassifiers.ContainsKey(group.UUID))
+                            return;
+
+                        GroupBayesClassifiers[group.UUID].Save(Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
+                            group.UUID.ToString()) + @"." + CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.UNABLE_TO_SAVE_GROUP_BAYES_DATA),
+                        e.Message);
+                }
+            });
+        };
+
+        /// <summary>
+        ///     Loads Corrade group members.
+        /// </summary>
+        private static readonly Action LoadGroupBayesClassificiations = () =>
+        {
+            corradeConfiguration.Groups.AsParallel().ForAll(group =>
+            {
+                lock (GroupBayesClassifiersLock)
+                {
+                    if (!GroupBayesClassifiers.ContainsKey(group.UUID))
+                    {
+                        GroupBayesClassifiers.Add(group.UUID, new BayesSimpleTextClassifier());
+                    }
+                }
+                var groupBayesDataFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY, group.UUID.ToString()) + @"." +
+                                         CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION;
+                if (!File.Exists(groupBayesDataFile))
+                    return;
+                try
+                {
+                    lock (GroupBayesClassifiersLock)
+                    {
+                        GroupBayesClassifiers[group.UUID].Load(groupBayesDataFile);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_BAYES_DATA),
+                        ex.Message);
+                }
+            });
+        };
+
+        /// <summary>
+        ///     Saves Corrade group members.
+        /// </summary>
         private static readonly Action SaveGroupMembersState = () =>
         {
             try
@@ -1072,27 +1142,27 @@ namespace Corrade
                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                 try
                 {
-                    using (
-                        var fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (GroupNotificationsLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            ((HashSet<Notification>)
-                                new XmlSerializer(typeof (HashSet<Notification>)).Deserialize(streamReader))
-                                .AsParallel()
-                                .Where(
-                                    o => groups.Contains(o.GroupUUID))
-                                .ForAll(o =>
-                                {
-                                    lock (GroupNotificationsLock)
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                ((HashSet<Notification>)
+                                    new XmlSerializer(typeof (HashSet<Notification>)).Deserialize(streamReader))
+                                    .AsParallel()
+                                    .Where(
+                                        o => groups.Contains(o.GroupUUID))
+                                    .ForAll(o =>
                                     {
                                         if (!GroupNotifications.Contains(o))
                                         {
                                             GroupNotifications.Add(o);
                                         }
-                                    }
-                                });
+                                    });
+                            }
                         }
                     }
                 }
@@ -1137,16 +1207,17 @@ namespace Corrade
         {
             try
             {
-                using (
-                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), FileMode.Create,
-                        FileAccess.Write, FileShare.None))
+                lock (Locks.ClientInstanceSelfLock)
                 {
-                    using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                    using (
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        var serializer = new XmlSerializer(typeof (AgentMovement));
-                        lock (Locks.ClientInstanceSelfLock)
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
+                            var serializer = new XmlSerializer(typeof (AgentMovement));
+
                             serializer.Serialize(writer, new AgentMovement
                             {
                                 AlwaysRun = Client.Self.Movement.AlwaysRun,
@@ -1161,8 +1232,8 @@ namespace Corrade
                                 StandUp = Client.Self.Movement.StandUp,
                                 State = Client.Self.Movement.State
                             });
+                            writer.Flush();
                         }
-                        writer.Flush();
                     }
                 }
             }
@@ -1229,19 +1300,19 @@ namespace Corrade
         {
             try
             {
-                using (
-                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.CONFERENCE_STATE_FILE), FileMode.Create,
-                        FileAccess.Write, FileShare.None))
+                lock (ConferencesLock)
                 {
-                    using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                    using (
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.CONFERENCE_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        var serializer = new XmlSerializer(typeof (HashSet<Conference>));
-                        lock (ConferencesLock)
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
+                            var serializer = new XmlSerializer(typeof (HashSet<Conference>));
                             serializer.Serialize(writer, Conferences);
+                            writer.Flush();
                         }
-                        writer.Flush();
                     }
                 }
             }
@@ -1374,14 +1445,15 @@ namespace Corrade
         {
             try
             {
-                using (
-                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE), FileMode.Create,
-                        FileAccess.Write, FileShare.None))
+                lock (GroupCookieContainersLock)
                 {
-                    var serializer = new BinaryFormatter();
-                    lock (GroupCookieContainersLock)
+                    using (
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
+                        var serializer = new BinaryFormatter();
+
                         serializer.Serialize(fileStream, GroupCookieContainers);
                     }
                 }
@@ -1403,22 +1475,23 @@ namespace Corrade
             GroupFeedWatcher.EnableRaisingEvents = false;
             try
             {
-                using (
-                    var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.FEEDS_STATE_FILE), FileMode.Create,
-                        FileAccess.Write, FileShare.None))
+                lock (GroupFeedsLock)
                 {
-                    using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                    using (
+                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.FEEDS_STATE_FILE), FileMode.Create,
+                            FileAccess.Write, FileShare.None))
                     {
-                        var serializer =
-                            new XmlSerializer(
-                                typeof (Collections.SerializableDictionary
-                                    <string, Collections.SerializableDictionary<UUID, string>>));
-                        lock (GroupFeedsLock)
+                        using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
+                            var serializer =
+                                new XmlSerializer(
+                                    typeof (Collections.SerializableDictionary
+                                        <string, Collections.SerializableDictionary<UUID, string>>));
+
                             serializer.Serialize(writer, GroupFeeds);
+                            writer.Flush();
                         }
-                        writer.Flush();
                     }
                 }
             }
@@ -2423,6 +2496,8 @@ namespace Corrade
             LoadGroupFeedState.Invoke();
             // Load group soft bans state.
             LoadGroupSoftBansState.Invoke();
+            // Load group Bayes classifications.
+            LoadGroupBayesClassificiations.Invoke();
             // Start the callback thread to send callbacks.
             var CallbackThread = new Thread(() =>
             {
@@ -2750,6 +2825,8 @@ namespace Corrade
             SaveMovementState.Invoke();
             // Save Corrade caches.
             SaveCorradeCache.Invoke();
+            // Save Bayes classifications.
+            SaveGroupBayesClassificiations.Invoke();
             // Stop the sphere effects expiration thread.
             runEffectsExpirationThread = false;
             if (EffectsExpirationThread != null)
@@ -4183,7 +4260,7 @@ namespace Corrade
                     commandGroup = GetCorradeGroupFromMessage(e.Message);
                     if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
                         return;
-                    
+
                     // Spawn the command.
                     CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
                         () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
@@ -6051,14 +6128,16 @@ namespace Corrade
                                                     Encoding.UTF8))
                                             {
                                                 commandGroup = GetCorradeGroupFromMessage(receiveLine);
-                                                switch (commandGroup != null && !commandGroup.Equals(default(Configuration.Group)) &&
-                                                        Authenticate(commandGroup.UUID,
-                                                            wasInput(
-                                                                KeyValue.Get(
-                                                                    wasOutput(
-                                                                        Reflection.GetNameFromEnumValue(
-                                                                            ScriptKeys.PASSWORD)),
-                                                                    receiveLine))))
+                                                switch (
+                                                    commandGroup != null &&
+                                                    !commandGroup.Equals(default(Configuration.Group)) &&
+                                                    Authenticate(commandGroup.UUID,
+                                                        wasInput(
+                                                            KeyValue.Get(
+                                                                wasOutput(
+                                                                    Reflection.GetNameFromEnumValue(
+                                                                        ScriptKeys.PASSWORD)),
+                                                                receiveLine))))
                                                 {
                                                     case false:
                                                         streamWriter.WriteLine(
@@ -6255,7 +6334,8 @@ namespace Corrade
                                 }
                                 finally
                                 {
-                                    if (remoteEndPoint != null && commandGroup != null && !commandGroup.Equals(default(Configuration.Group)))
+                                    if (remoteEndPoint != null && commandGroup != null &&
+                                        !commandGroup.Equals(default(Configuration.Group)))
                                     {
                                         lock (GroupNotificationsLock)
                                         {

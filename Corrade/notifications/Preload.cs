@@ -21,7 +21,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var preloadSoundEventArgs =
-                        (PreloadSoundEventArgs)corradeNotificationParameters.Event;
+                        (PreloadSoundEventArgs) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
@@ -38,8 +38,9 @@ namespace Corrade
                         .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
                             p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                new List<object> { preloadSoundEventArgs },
-                                notificationData, LockObject, rankedLanguageIdentifier);
+                                new List<object> {preloadSoundEventArgs},
+                                notificationData, LockObject, rankedLanguageIdentifier,
+                                GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));
                 };
         }

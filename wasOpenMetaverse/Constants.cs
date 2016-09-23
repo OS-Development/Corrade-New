@@ -23,6 +23,11 @@ namespace wasOpenMetaverse
             public const string HOME_SET = @"Home position set.";
         }
 
+        public struct INVENTORY
+        {
+            public const int MAXIMUM_FOLDER_TRANSFER_ITEM_COUNT = 42;
+        }
+
         public struct ASSETS
         {
             public struct NOTECARD

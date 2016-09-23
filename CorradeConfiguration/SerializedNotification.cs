@@ -88,6 +88,13 @@ namespace CorradeConfiguration
             }
         }
 
+        [XmlRoot(ElementName = "BayesClassify")]
+        public class BayesClassify
+        {
+            [XmlElement(ElementName = "Name")]
+            public string Name { get; set; }
+        }
+
         [XmlRoot(ElementName = "IdentifyLanguage")]
         public class IdentifyLanguage
         {
@@ -236,6 +243,9 @@ namespace CorradeConfiguration
 
             [XmlElement(ElementName = "IdentifyLanguage")]
             public IdentifyLanguage IdentifyLanguage { get; set; }
+
+            [XmlElement(ElementName = "BayesClassify")]
+            public BayesClassify BayesClassify { get; set; }
 
             [XmlElement(ElementName = "Resolve")]
             public Resolve Resolve { get; set; }

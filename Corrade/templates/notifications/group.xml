@@ -32,6 +32,11 @@
                 <Name>language</Name>
               </IdentifyLanguage>
             </Processing>
+            <Processing>
+              <BayesClassify>
+                <Name>bayes</Name>
+              </BayesClassify>
+            </Processing>
           </Parameter>
         </ArrayOfParameter>
       </Value>

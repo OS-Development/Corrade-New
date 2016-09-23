@@ -11,6 +11,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using BayesSharp;
 using Corrade.Constants;
 using CorradeConfiguration;
 using NTextCat;
@@ -67,7 +68,8 @@ namespace Corrade.Helpers
 
         public static void ProcessParameters(this SerializedNotification.Parameter o, GridClient Client,
             Configuration corradeConfiguration, string type, List<object> args,
-            Dictionary<string, string> store, object sync, RankedLanguageIdentifier rankedLanguageIdentifier)
+            Dictionary<string, string> store, object sync, RankedLanguageIdentifier rankedLanguageIdentifier,
+            BayesSimpleTextClassifier bayesSimpleClassifier)
         {
             object value;
             switch (o.Value != null)
@@ -273,6 +275,20 @@ namespace Corrade.Helpers
                                     {
                                         store.Add(process.IdentifyLanguage.Name,
                                             detectedLanguage.Item1.Iso639_3);
+                                    }
+                                }
+                                continue;
+                            }
+
+                            if (process.BayesClassify != null)
+                            {
+                                var bayesClassification =
+                                    bayesSimpleClassifier.Classify(value as string).FirstOrDefault();
+                                if (!bayesClassification.Equals(default(KeyValuePair<string, double>)))
+                                {
+                                    lock (sync)
+                                    {
+                                        store.Add(process.BayesClassify.Name, CSV.FromKeyValue(bayesClassification));
                                     }
                                 }
                                 continue;

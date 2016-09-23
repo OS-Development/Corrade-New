@@ -55,6 +55,7 @@ namespace Corrade.Constants
         public const string CACHE_DIRECTORY = @"cache";
         public const string ASSET_CACHE_DIRECTORY = @"assets";
         public const string LOG_FILE_EXTENSION = @"log";
+        public const string BAYES_CLASSIFICATION_EXTENSION = @"json";
         public const string TEMPLATES_DIRECTORY = @"templates";
         public const string NOTIFICATIONS_TEMPLATE_DIRECTORY = @"notifications";
         public const string STATE_DIRECTORY = @"state";
@@ -67,6 +68,7 @@ namespace Corrade.Constants
         public const string CONFERENCE_STATE_FILE = @"Conferences.state";
         public const string GROUP_SOFT_BAN_STATE_FILE = @"GroupSoftBans.state";
         public const string LIBS_DIRECTORY = @"libs";
+        public const string BAYES_DIRECTORY = @"Bayes";
         public const string LANGUAGE_PROFILE_FILE = @"Core14.profile.xml";
         public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
 

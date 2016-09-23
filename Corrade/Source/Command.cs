@@ -36,12 +36,12 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=bayes>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<action=<train|classify|list|merge|untrain|export|import|remove|add|rename>>&action=train,classify,untrain,import:<data=<STRING>>&action=train,untrain,remove,add:<category=<STRING>>&action=merge,rename:<source=<STRING>>&action=merge,rename:<target=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Database)] [CorradeCommand("bayes")] [Reflection.NameAttribute("bayes")] BAYES,
+
+            [CommandInputSyntax(
                 "<command=setinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
-            [CorradeCommand("setinventorydata")]
-            [Reflection.NameAttribute("setinventorydata")]
-            SETINVENTORYDATA,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("setinventorydata")] [Reflection.NameAttribute("setinventorydata")] SETINVENTORYDATA,
 
             [CommandInputSyntax(
                 "<command=getremoteparcelinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ParcelInfo[,ParcelInfo...]>>&[position=<VECTOR2>]&[callback=<STRING>]"

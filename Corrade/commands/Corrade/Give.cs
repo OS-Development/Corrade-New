@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -36,45 +37,100 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    InventoryItem inventoryItem;
+                    InventoryBase inventoryBase;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            inventoryItem =
+                            inventoryBase =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID,
                                     corradeConfiguration.ServicesTimeout
-                                    ).FirstOrDefault() as InventoryItem;
+                                    ).FirstOrDefault();
                             break;
                         default:
-                            inventoryItem =
+                            inventoryBase =
                                 Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
                                     corradeConfiguration.ServicesTimeout)
-                                    .FirstOrDefault() as InventoryItem;
+                                    .FirstOrDefault();
                             break;
                     }
-                    if (inventoryItem == null)
+                    if (inventoryBase == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    // Sending an item requires transfer permission.
-                    if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
+                    // If the requested item is an inventory item.
+                    if (inventoryBase is InventoryItem)
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
-                    }
-                    // Set requested permissions if any on the item.
-                    var permissions = wasInput(
-                        KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                            corradeCommandParameters.Message));
-                    if (!string.IsNullOrEmpty(permissions))
-                    {
-                        if (
-                            !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
-                                corradeConfiguration.ServicesTimeout))
+                        // Sending an item requires transfer permission.
+                        if (!(inventoryBase as InventoryItem).Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
                         }
+                        // Set requested permissions if any on the item.
+                        var permissions = wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
+                                corradeCommandParameters.Message));
+                        if (!string.IsNullOrEmpty(permissions))
+                        {
+                            if (
+                                !Inventory.wasSetInventoryItemPermissions(Client, inventoryBase as InventoryItem,
+                                    permissions,
+                                    corradeConfiguration.ServicesTimeout))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
+                            }
+                        }
+                    }
+                    // If the requested item is a folder.
+                    else if (inventoryBase is InventoryFolder)
+                    {
+                        // Keep track of all inventory items found.
+                        var folderContents = new HashSet<InventoryBase>();
+                        // Create the queue of folders.
+                        var inventoryFolders = new BlockingQueue<InventoryFolder>();
+                        // Enqueue the first folder (root).
+                        inventoryFolders.Enqueue(inventoryBase as InventoryFolder);
+
+                        var FolderUpdatedEvent = new ManualResetEvent(false);
+                        EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                        {
+                            folderContents.UnionWith(Client.Inventory.Store.GetContents(q.FolderID));
+                            FolderUpdatedEvent.Set();
+                        };
+
+                        do
+                        {
+                            // Dequeue folder.
+                            var folder = inventoryFolders.Dequeue();
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                                FolderUpdatedEvent.Reset();
+                                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                                    InventorySortOrder.ByDate);
+                                if (!FolderUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                {
+                                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_FOLDER_CONTENTS);
+                                }
+                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                            }
+                        } while (inventoryFolders.Any());
+
+                        // Check that if we are in SecondLife we would not transfer more items than SecondLife allows.
+                        if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                            folderContents.Count >
+                            wasOpenMetaverse.Constants.INVENTORY.MAXIMUM_FOLDER_TRANSFER_ITEM_COUNT)
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.TRANSFER_WOULD_EXCEED_MAXIMUM_COUNT);
+
+                        // Check that all the items to be transferred have transfer permission.
+                        if (folderContents.AsParallel()
+                            .Where(o => o is InventoryItem)
+                            .Any(o => !(o as InventoryItem).Permissions.OwnerMask.HasFlag(PermissionMask.Transfer)))
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
                     }
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Entity>(
@@ -110,11 +166,23 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceInventoryLock)
                             {
-                                Client.Inventory.GiveItem(inventoryItem.UUID, inventoryItem.Name,
-                                    inventoryItem.AssetType, agentUUID, true);
+                                if (inventoryBase is InventoryItem)
+                                {
+                                    Client.Inventory.GiveItem(inventoryBase.UUID, inventoryBase.Name,
+                                        (inventoryBase as InventoryItem).AssetType, agentUUID, true);
+                                    break;
+                                }
+                                if (inventoryBase is InventoryFolder)
+                                {
+                                    Client.Inventory.GiveFolder(inventoryBase.UUID, inventoryBase.Name,
+                                        AssetType.Folder, agentUUID, true);
+                                }
                             }
                             break;
                         case Enumerations.Entity.OBJECT:
+                            // Cannot transfer folders to objects.
+                            if (inventoryBase is InventoryFolder)
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ITEM_TYPE);
                             float range;
                             if (
                                 !float.TryParse(
@@ -161,7 +229,7 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceInventoryLock)
                             {
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryBase as InventoryItem);
                             }
                             break;
                         default:

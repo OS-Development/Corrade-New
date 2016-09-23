@@ -36,9 +36,9 @@ namespace wasSharp
         /// </summary>
         /// <returns>a commma-separated list of values</returns>
         /// <remarks>compliant with RFC 4180</remarks>
-        public static string FromDictionary(Dictionary<string, string> input)
+        public static string FromDictionary<K, V>(Dictionary<K, V> input)
         {
-            return string.Join(",", input.Keys.Zip(input.Values,
+            return string.Join(",", input.Keys.Select(o => o.ToString()).Zip(input.Values.Select(o => o.ToString()),
                 (o, p) =>
                     string.Join(",",
                         o.Replace("\"", "\"\"").IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1)
@@ -64,6 +64,30 @@ namespace wasSharp
                 .TakeWhile(o => o.Length%2 == 0)
                 .Where(o => !string.IsNullOrEmpty(o[0]) || !string.IsNullOrEmpty(o[1]))
                 .ToDictionary(o => o[0], p => p[1]).Select(o => o);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a generic key value pair to a CSV.
+        /// </summary>
+        /// <returns>a commma-separated list of values</returns>
+        /// <remarks>compliant with RFC 4180</remarks>
+        public static string FromKeyValue<K, V>(KeyValuePair<K, V> input)
+        {
+            var key = input.Key.ToString();
+            var value = input.Value.ToString();
+
+            return string.Join(",", key
+                .Replace("\"", "\"\"").IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}).Equals(-1)
+                ? key
+                : "\"" + key + "\"", value
+                    .Replace("\"", "\"\"")
+                    .IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'})
+                    .Equals(-1)
+                    ? value
+                    : "\"" + value + "\"");
         }
 
         ///////////////////////////////////////////////////////////////////////////

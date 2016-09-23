@@ -88,7 +88,12 @@ namespace Corrade
             [Reflection.NameAttribute("create")] CREATE,
             [Reflection.NameAttribute("detail")] DETAIL,
             [Reflection.NameAttribute("import")] IMPORT,
-            [Reflection.NameAttribute("export")] EXPORT
+            [Reflection.NameAttribute("export")] EXPORT,
+            [Reflection.NameAttribute("train")] TRAIN,
+            [Reflection.NameAttribute("classify")] CLASSIFY,
+            [Reflection.NameAttribute("merge")] MERGE,
+            [Reflection.NameAttribute("untrain")] UNTRAIN,
+            [Reflection.NameAttribute("rename")] RENAME
         }
 
 
@@ -212,7 +217,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("parameters for requested event not found")] PARAMETERS_FOR_REQUESTED_EVENT_NOT_FOUND,
             [Reflection.DescriptionAttribute("timeout preloading downloading preload sound")] TIMEOUT_DOWNLOADING_PRELOAD_SOUND,
             [Reflection.DescriptionAttribute("unable to install service")] UNABLE_TO_INSTALL_SERVICE,
-            [Reflection.DescriptionAttribute("unable to uninstall service")] UNABLE_TO_UNINSTALL_SERVICE
+            [Reflection.DescriptionAttribute("unable to uninstall service")] UNABLE_TO_UNINSTALL_SERVICE,
+            [Reflection.DescriptionAttribute("unable to save group Bayes data")] UNABLE_TO_SAVE_GROUP_BAYES_DATA,
+            [Reflection.DescriptionAttribute("unable to load group Bayes data")] UNABLE_TO_LOAD_GROUP_BAYES_DATA
         }
 
         /// <summary>
@@ -634,7 +641,11 @@ namespace Corrade
             [Command.StatusAttribute(64420)] [Reflection.DescriptionAttribute("primitives are children of object")] PRIMITIVES_ARE_CHILDREN_OF_OBJECT,
             [Command.StatusAttribute(10348)] [Reflection.DescriptionAttribute("primitives already delinked")] PRIMITIVES_ALREADY_DELINKED,
             [Command.StatusAttribute(23932)] [Reflection.DescriptionAttribute("no position provided")] NO_POSITION_PROVIDED,
-            [Command.StatusAttribute(01382)] [Reflection.DescriptionAttribute("unknwon sound requested")] UNKOWN_SOUND_FORMAT_REQUESTED
+            [Command.StatusAttribute(01382)] [Reflection.DescriptionAttribute("unknwon sound requested")] UNKOWN_SOUND_FORMAT_REQUESTED,
+            [Command.StatusAttribute(64423)] [Reflection.DescriptionAttribute("timeout getting folder contents")] TIMEOUT_GETTING_FOLDER_CONTENTS,
+            [Command.StatusAttribute(15964)] [Reflection.DescriptionAttribute("transfer would exceed maximum count")] TRANSFER_WOULD_EXCEED_MAXIMUM_COUNT,
+            [Command.StatusAttribute(36616)] [Reflection.DescriptionAttribute("invalid item type")] INVALID_ITEM_TYPE,
+            [Command.StatusAttribute(38945)] [Reflection.DescriptionAttribute("no source specified")] NO_SOURCE_SPECIFIED
         }
 
 

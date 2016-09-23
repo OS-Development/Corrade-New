@@ -81,7 +81,8 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     objects,
-                                    notificationData, LockObject, rankedLanguageIdentifier);
+                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
 
                         switch (instantMessageEventArgs.IM.Dialog)
@@ -138,7 +139,8 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     objects,
-                                    notificationData, LockObject, rankedLanguageIdentifier);
+                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                     }
                 };

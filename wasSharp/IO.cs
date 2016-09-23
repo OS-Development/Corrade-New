@@ -23,5 +23,16 @@ namespace wasSharp
         {
             return paths.Aggregate((x, y) => Path.Combine(x, y));
         }
+
+        /// <summary>
+        ///     Strip characters that are incompatible with file names.
+        /// </summary>
+        /// <param name="fileName">the name of the file</param>
+        /// <returns>a clean string</returns>
+        private static string CleanFileName(string fileName)
+        {
+            return Path.GetInvalidFileNameChars()
+                .Aggregate(fileName, (current, c) => current.Replace(c.ToString(), string.Empty));
+        }
     }
 }
