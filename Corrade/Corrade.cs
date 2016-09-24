@@ -19,10 +19,13 @@ using System.Linq;
 using System.Management;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.ServiceModel.Syndication;
 using System.ServiceProcess;
@@ -46,6 +49,7 @@ using Syn.Bot.Siml;
 using Syn.Bot.Siml.Events;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharpNET;
 using static wasSharp.Time;
 using static Corrade.Command;
 using Group = OpenMetaverse.Group;
@@ -267,6 +271,8 @@ namespace Corrade
         private static readonly object GroupBayesClassifiersLock = new object();
 
         private static string CorradePOSTMediaType;
+
+        private static readonly wasSharpNET.Cryptography.AES CorradeAES = new wasSharpNET.Cryptography.AES();
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -543,8 +549,7 @@ namespace Corrade
                         o = Cryptography.ATBASH(o);
                         break;
                     case Configuration.Filter.AES:
-                        o = wasSharpNET.Cryptography.wasAESDecrypt(o, corradeConfiguration.AESKey,
-                            corradeConfiguration.AESIV);
+                        o = CorradeAES.wasAESDecrypt(o, corradeConfiguration.AESKey);
                         break;
                     case Configuration.Filter.BASE64:
                         o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
@@ -588,8 +593,7 @@ namespace Corrade
                         o = Cryptography.ATBASH(o);
                         break;
                     case Configuration.Filter.AES:
-                        o = wasSharpNET.Cryptography.wasAESEncrypt(o, corradeConfiguration.AESKey,
-                            corradeConfiguration.AESIV);
+                        o = CorradeAES.wasAESEncrypt(o, corradeConfiguration.AESKey);
                         break;
                     case Configuration.Filter.BASE64:
                         o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
@@ -1685,7 +1689,7 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Group feed.
+        ///     Checks feeds for updates and enqueues a notification if they have changed.
         /// </summary>
         private static void CheckGroupFeeds()
         {
@@ -1740,6 +1744,348 @@ namespace Corrade
                     });
                 }
             } while (runGroupFeedThread);
+        }
+
+        /// <summary>
+        ///     Main thread that processes TCP connections.
+        /// </summary>
+        private static void ProcessTCPNotifications()
+        {
+            TCPListener =
+                new TcpListener(
+                    new IPEndPoint(IPAddress.Parse(corradeConfiguration.TCPNotificationsServerAddress),
+                        (int) corradeConfiguration.TCPNotificationsServerPort));
+            TCPListener.Start();
+
+            do
+            {
+                var TCPClient = TCPListener.AcceptTcpClient();
+
+                new Thread(() =>
+                {
+                    IPEndPoint remoteEndPoint = null;
+                    var commandGroup = new Configuration.Group();
+                    try
+                    {
+                        remoteEndPoint = TCPClient.Client.RemoteEndPoint as IPEndPoint;
+                        var certificate =
+                            new X509Certificate(corradeConfiguration.TCPNotificationsCertificatePath,
+                                corradeConfiguration.TCPNotificationsCertificatePassword);
+                        using (var networkStream = new SslStream(TCPClient.GetStream()))
+                        {
+                            // Do not require a client certificate.
+                            networkStream.AuthenticateAsServer(certificate, false,
+                                SslProtocols.Ssl3, true);
+                            using (
+                                var streamReader = new StreamReader(networkStream,
+                                    Encoding.UTF8))
+                            {
+                                /*var receiveLine = CorradeAES.wasAESDecrypt(streamReader.ReadLine(),
+                                    corradeConfiguration.AESKey);*/
+
+                                var receiveLine = streamReader.ReadLine();
+
+                                using (
+                                    var streamWriter = new StreamWriter(networkStream,
+                                        Encoding.UTF8))
+                                {
+                                    commandGroup = GetCorradeGroupFromMessage(receiveLine);
+                                    switch (
+                                        commandGroup != null &&
+                                        !commandGroup.Equals(default(Configuration.Group)) &&
+                                        Authenticate(commandGroup.UUID,
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(
+                                                        Reflection.GetNameFromEnumValue(
+                                                            ScriptKeys.PASSWORD)),
+                                                    receiveLine))))
+                                    {
+                                        case false:
+                                            streamWriter.WriteLine(
+                                                KeyValue.Encode(new Dictionary<string, string>
+                                                {
+                                                    {
+                                                        Reflection.GetNameFromEnumValue(
+                                                            ScriptKeys.SUCCESS),
+                                                        false.ToString()
+                                                    }
+                                                }));
+                                            streamWriter.Flush();
+                                            TCPClient.Close();
+                                            return;
+                                    }
+
+                                    var notificationTypes =
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(
+                                                    Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
+                                                receiveLine));
+                                    Notification notification;
+                                    lock (GroupNotificationsLock)
+                                    {
+                                        notification =
+                                            GroupNotifications.AsParallel().FirstOrDefault(
+                                                o =>
+                                                    o.GroupUUID.Equals(commandGroup.UUID));
+                                    }
+                                    // Build any requested data for raw notifications.
+                                    var fields = wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(
+                                                Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                            receiveLine));
+                                    var data = new HashSet<string>();
+                                    var LockObject = new object();
+                                    if (!string.IsNullOrEmpty(fields))
+                                    {
+                                        CSV.ToEnumerable(fields)
+                                            .ToArray()
+                                            .AsParallel()
+                                            .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                                            {
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                            });
+                                    }
+                                    switch (notification != null)
+                                    {
+                                        case false:
+                                            notification = new Notification
+                                            {
+                                                GroupName = commandGroup.Name,
+                                                GroupUUID = commandGroup.UUID,
+                                                NotificationURLDestination =
+                                                    new Collections.SerializableDictionary
+                                                        <Configuration.Notifications, HashSet<string>>(),
+                                                NotificationTCPDestination =
+                                                    new Dictionary
+                                                        <Configuration.Notifications, HashSet<IPEndPoint>>(),
+                                                Data = data
+                                            };
+                                            break;
+                                        case true:
+                                            if (notification.NotificationTCPDestination == null)
+                                            {
+                                                notification.NotificationTCPDestination =
+                                                    new Dictionary
+                                                        <Configuration.Notifications, HashSet<IPEndPoint>>();
+                                            }
+                                            if (notification.NotificationURLDestination == null)
+                                            {
+                                                notification.NotificationURLDestination =
+                                                    new Collections.SerializableDictionary
+                                                        <Configuration.Notifications, HashSet<string>>();
+                                            }
+                                            break;
+                                    }
+
+                                    var succeeded = true;
+                                    Parallel.ForEach(CSV.ToEnumerable(
+                                        notificationTypes)
+                                        .ToArray()
+                                        .AsParallel()
+                                        .Where(o => !string.IsNullOrEmpty(o)),
+                                        (o, state) =>
+                                        {
+                                            var notificationValue =
+                                                (ulong)
+                                                    Reflection
+                                                        .GetEnumValueFromName
+                                                        <Configuration.Notifications>(o);
+                                            if (
+                                                !GroupHasNotification(commandGroup.UUID,
+                                                    notificationValue))
+                                            {
+                                                // one of the notification was not allowed, so abort
+                                                succeeded = false;
+                                                state.Break();
+                                            }
+                                            switch (
+                                                !notification.NotificationTCPDestination.ContainsKey(
+                                                    (Configuration.Notifications) notificationValue))
+                                            {
+                                                case true:
+                                                    lock (LockObject)
+                                                    {
+                                                        notification.NotificationTCPDestination.Add(
+                                                            (Configuration.Notifications) notificationValue,
+                                                            new HashSet<IPEndPoint> {remoteEndPoint});
+                                                    }
+                                                    break;
+                                                default:
+                                                    lock (LockObject)
+                                                    {
+                                                        notification.NotificationTCPDestination[
+                                                            (Configuration.Notifications) notificationValue]
+                                                            .Add(
+                                                                remoteEndPoint);
+                                                    }
+                                                    break;
+                                            }
+                                        });
+
+                                    switch (succeeded)
+                                    {
+                                        case true:
+                                            lock (GroupNotificationsLock)
+                                            {
+                                                // Replace notification.
+                                                GroupNotifications.RemoveWhere(
+                                                    o =>
+                                                        o.GroupUUID.Equals(commandGroup.UUID));
+                                                GroupNotifications.Add(notification);
+                                                // Build the group notification cache.
+                                                GroupNotificationsCache.Clear();
+                                                new List<Configuration.Notifications>(
+                                                    Reflection.GetEnumValues<Configuration.Notifications>())
+                                                    .AsParallel().ForAll(o =>
+                                                    {
+                                                        GroupNotifications.AsParallel()
+                                                            .Where(p => p.NotificationMask.IsMaskFlagSet(o)).ForAll(p =>
+                                                            {
+                                                                lock (LockObject)
+                                                                {
+                                                                    if (GroupNotificationsCache.ContainsKey(o))
+                                                                    {
+                                                                        GroupNotificationsCache[o].Add(p);
+                                                                        return;
+                                                                    }
+                                                                    GroupNotificationsCache.Add(o,
+                                                                        new HashSet<Notification> {p});
+                                                                }
+                                                            });
+                                                    });
+                                            }
+                                            // Save the notifications state.
+                                            SaveNotificationState.Invoke();
+                                            streamWriter.WriteLine(
+                                                KeyValue.Encode(new Dictionary<string, string>
+                                                {
+                                                    {
+                                                        Reflection.GetNameFromEnumValue(
+                                                            ScriptKeys.SUCCESS),
+                                                        true.ToString()
+                                                    }
+                                                }));
+                                            streamWriter.Flush();
+                                            break;
+                                        default:
+                                            streamWriter.WriteLine(
+                                                KeyValue.Encode(new Dictionary<string, string>
+                                                {
+                                                    {
+                                                        Reflection.GetNameFromEnumValue(
+                                                            ScriptKeys.SUCCESS),
+                                                        false.ToString()
+                                                    }
+                                                }));
+                                            streamWriter.Flush();
+                                            TCPClient.Close();
+                                            return;
+                                    }
+
+                                    do
+                                    {
+                                        var notificationTCPQueueElement = new NotificationTCPQueueElement();
+                                        if (
+                                            !NotificationTCPQueue.Dequeue(
+                                                (int) corradeConfiguration.TCPNotificationThrottle,
+                                                ref notificationTCPQueueElement))
+                                            continue;
+                                        if (notificationTCPQueueElement.Equals(default(NotificationTCPQueueElement)) ||
+                                            !notificationTCPQueueElement.IPEndPoint.Equals(remoteEndPoint))
+                                            continue;
+                                        streamWriter.WriteLine(KeyValue.Encode(notificationTCPQueueElement.message));
+                                        streamWriter.Flush();
+                                    } while (runTCPNotificationsServer && TCPClient.Connected);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
+                            ex.Message);
+                    }
+                    finally
+                    {
+                        if (remoteEndPoint != null && commandGroup != null &&
+                            !commandGroup.Equals(default(Configuration.Group)))
+                        {
+                            lock (GroupNotificationsLock)
+                            {
+                                var notification =
+                                    GroupNotifications.AsParallel().FirstOrDefault(
+                                        o =>
+                                            o.GroupUUID.Equals(commandGroup.UUID));
+                                if (notification != null)
+                                {
+                                    var
+                                        notificationTCPDestination =
+                                            new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
+                                                ();
+                                    notification.NotificationTCPDestination.AsParallel().ForAll(o =>
+                                    {
+                                        switch (o.Value.Contains(remoteEndPoint))
+                                        {
+                                            case true:
+                                                var destinations =
+                                                    new HashSet<IPEndPoint>(
+                                                        o.Value.Where(p => !p.Equals(remoteEndPoint)));
+                                                notificationTCPDestination.Add(o.Key, destinations);
+                                                break;
+                                            default:
+                                                notificationTCPDestination.Add(o.Key, o.Value);
+                                                break;
+                                        }
+                                    });
+
+                                    GroupNotifications.Remove(notification);
+                                    GroupNotifications.Add(new Notification
+                                    {
+                                        GroupName = notification.GroupName,
+                                        GroupUUID = notification.GroupUUID,
+                                        NotificationURLDestination =
+                                            notification.NotificationURLDestination,
+                                        NotificationTCPDestination = notificationTCPDestination,
+                                        Afterburn = notification.Afterburn,
+                                        Data = notification.Data
+                                    });
+                                    // Build the group notification cache.
+                                    GroupNotificationsCache.Clear();
+                                    var LockObject = new object();
+                                    new List<Configuration.Notifications>(
+                                        Reflection.GetEnumValues<Configuration.Notifications>())
+                                        .AsParallel().ForAll(o =>
+                                        {
+                                            GroupNotifications.AsParallel()
+                                                .Where(p => p.NotificationMask.IsMaskFlagSet(o)).ForAll(p =>
+                                                {
+                                                    lock (LockObject)
+                                                    {
+                                                        if (GroupNotificationsCache.ContainsKey(o))
+                                                        {
+                                                            GroupNotificationsCache[o].Add(p);
+                                                            return;
+                                                        }
+                                                        GroupNotificationsCache.Add(o,
+                                                            new HashSet<Notification> {p});
+                                                    }
+                                                });
+                                        });
+                                }
+                            }
+                        }
+                    }
+                })
+                {IsBackground = true}.Start();
+            } while (runTCPNotificationsServer);
         }
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
@@ -6096,295 +6442,8 @@ namespace Corrade
                             Enumerations.ConsoleMessage.STARTING_TCP_NOTIFICATIONS_SERVER));
                     runTCPNotificationsServer = true;
                     // Start the TCP notifications server.
-                    TCPNotificationsThread = new Thread(() =>
-                    {
-                        TCPListener =
-                            new TcpListener(
-                                new IPEndPoint(IPAddress.Parse(configuration.TCPNotificationsServerAddress),
-                                    (int) configuration.TCPNotificationsServerPort));
-                        TCPListener.Start();
-
-                        do
-                        {
-                            var TCPClient = TCPListener.AcceptTcpClient();
-
-                            new Thread(() =>
-                            {
-                                IPEndPoint remoteEndPoint = null;
-                                var commandGroup = new Configuration.Group();
-                                try
-                                {
-                                    remoteEndPoint = TCPClient.Client.RemoteEndPoint as IPEndPoint;
-                                    using (var networkStream = TCPClient.GetStream())
-                                    {
-                                        using (
-                                            var streamReader = new StreamReader(networkStream,
-                                                Encoding.UTF8))
-                                        {
-                                            var receiveLine = streamReader.ReadLine();
-
-                                            using (
-                                                var streamWriter = new StreamWriter(networkStream,
-                                                    Encoding.UTF8))
-                                            {
-                                                commandGroup = GetCorradeGroupFromMessage(receiveLine);
-                                                switch (
-                                                    commandGroup != null &&
-                                                    !commandGroup.Equals(default(Configuration.Group)) &&
-                                                    Authenticate(commandGroup.UUID,
-                                                        wasInput(
-                                                            KeyValue.Get(
-                                                                wasOutput(
-                                                                    Reflection.GetNameFromEnumValue(
-                                                                        ScriptKeys.PASSWORD)),
-                                                                receiveLine))))
-                                                {
-                                                    case false:
-                                                        streamWriter.WriteLine(
-                                                            KeyValue.Encode(new Dictionary<string, string>
-                                                            {
-                                                                {
-                                                                    Reflection.GetNameFromEnumValue(
-                                                                        ScriptKeys.SUCCESS),
-                                                                    false.ToString()
-                                                                }
-                                                            }));
-                                                        streamWriter.Flush();
-                                                        TCPClient.Close();
-                                                        return;
-                                                }
-
-                                                var notificationTypes =
-                                                    wasInput(
-                                                        KeyValue.Get(
-                                                            wasOutput(
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
-                                                            receiveLine));
-                                                Notification notification;
-                                                lock (GroupNotificationsLock)
-                                                {
-                                                    notification =
-                                                        GroupNotifications.AsParallel().FirstOrDefault(
-                                                            o =>
-                                                                o.GroupUUID.Equals(commandGroup.UUID));
-                                                }
-                                                // Build any requested data for raw notifications.
-                                                var fields =
-                                                    wasInput(
-                                                        KeyValue.Get(
-                                                            wasOutput(
-                                                                Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                                                            receiveLine));
-                                                var data = new HashSet<string>();
-                                                var LockObject = new object();
-                                                if (!string.IsNullOrEmpty(fields))
-                                                {
-                                                    CSV.ToEnumerable(fields)
-                                                        .ToArray()
-                                                        .AsParallel()
-                                                        .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
-                                                        {
-                                                            lock (LockObject)
-                                                            {
-                                                                data.Add(o);
-                                                            }
-                                                        });
-                                                }
-                                                switch (notification != null)
-                                                {
-                                                    case false:
-                                                        notification = new Notification
-                                                        {
-                                                            GroupName = commandGroup.Name,
-                                                            GroupUUID = commandGroup.UUID,
-                                                            NotificationURLDestination =
-                                                                new Collections.SerializableDictionary
-                                                                    <Configuration.Notifications, HashSet<string>>(),
-                                                            NotificationTCPDestination =
-                                                                new Dictionary
-                                                                    <Configuration.Notifications, HashSet<IPEndPoint>>(),
-                                                            Data = data
-                                                        };
-                                                        break;
-                                                    case true:
-                                                        if (notification.NotificationTCPDestination == null)
-                                                        {
-                                                            notification.NotificationTCPDestination =
-                                                                new Dictionary
-                                                                    <Configuration.Notifications, HashSet<IPEndPoint>>();
-                                                        }
-                                                        if (notification.NotificationURLDestination == null)
-                                                        {
-                                                            notification.NotificationURLDestination =
-                                                                new Collections.SerializableDictionary
-                                                                    <Configuration.Notifications, HashSet<string>>();
-                                                        }
-                                                        break;
-                                                }
-
-                                                var succeeded = true;
-                                                Parallel.ForEach(CSV.ToEnumerable(
-                                                    notificationTypes)
-                                                    .ToArray()
-                                                    .AsParallel()
-                                                    .Where(o => !string.IsNullOrEmpty(o)),
-                                                    (o, state) =>
-                                                    {
-                                                        var notificationValue =
-                                                            (ulong)
-                                                                Reflection
-                                                                    .GetEnumValueFromName
-                                                                    <Configuration.Notifications>(o);
-                                                        if (
-                                                            !GroupHasNotification(commandGroup.UUID,
-                                                                notificationValue))
-                                                        {
-                                                            // one of the notification was not allowed, so abort
-                                                            succeeded = false;
-                                                            state.Break();
-                                                        }
-                                                        switch (
-                                                            !notification.NotificationTCPDestination.ContainsKey(
-                                                                (Configuration.Notifications) notificationValue))
-                                                        {
-                                                            case true:
-                                                                lock (LockObject)
-                                                                {
-                                                                    notification.NotificationTCPDestination.Add(
-                                                                        (Configuration.Notifications) notificationValue,
-                                                                        new HashSet<IPEndPoint> {remoteEndPoint});
-                                                                }
-                                                                break;
-                                                            default:
-                                                                lock (LockObject)
-                                                                {
-                                                                    notification.NotificationTCPDestination[
-                                                                        (Configuration.Notifications) notificationValue]
-                                                                        .Add(
-                                                                            remoteEndPoint);
-                                                                }
-                                                                break;
-                                                        }
-                                                    });
-
-                                                switch (succeeded)
-                                                {
-                                                    case true:
-                                                        lock (GroupNotificationsLock)
-                                                        {
-                                                            // Replace notification.
-                                                            GroupNotifications.RemoveWhere(
-                                                                o =>
-                                                                    o.GroupUUID.Equals(commandGroup.UUID));
-                                                            GroupNotifications.Add(notification);
-                                                        }
-                                                        // Save the notifications state.
-                                                        SaveNotificationState.Invoke();
-                                                        streamWriter.WriteLine(
-                                                            KeyValue.Encode(new Dictionary<string, string>
-                                                            {
-                                                                {
-                                                                    Reflection.GetNameFromEnumValue(
-                                                                        ScriptKeys.SUCCESS),
-                                                                    true.ToString()
-                                                                }
-                                                            }));
-                                                        streamWriter.Flush();
-                                                        break;
-                                                    default:
-                                                        streamWriter.WriteLine(
-                                                            KeyValue.Encode(new Dictionary<string, string>
-                                                            {
-                                                                {
-                                                                    Reflection.GetNameFromEnumValue(
-                                                                        ScriptKeys.SUCCESS),
-                                                                    false.ToString()
-                                                                }
-                                                            }));
-                                                        streamWriter.Flush();
-                                                        TCPClient.Close();
-                                                        return;
-                                                }
-                                                do
-                                                {
-                                                    var notificationTCPQueueElement =
-                                                        new NotificationTCPQueueElement();
-                                                    if (!NotificationTCPQueue.Dequeue(
-                                                        (int) configuration.TCPNotificationThrottle,
-                                                        ref notificationTCPQueueElement)) continue;
-                                                    if (notificationTCPQueueElement.Equals(
-                                                        default(NotificationTCPQueueElement)) ||
-                                                        !notificationTCPQueueElement.IPEndPoint.Equals(
-                                                            remoteEndPoint)) continue;
-                                                    streamWriter.WriteLine(
-                                                        KeyValue.Encode(
-                                                            notificationTCPQueueElement.message));
-                                                    streamWriter.Flush();
-                                                } while (runTCPNotificationsServer && TCPClient.Connected);
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Feedback(
-                                        Reflection.GetDescriptionFromEnumValue(
-                                            Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
-                                        ex.Message);
-                                }
-                                finally
-                                {
-                                    if (remoteEndPoint != null && commandGroup != null &&
-                                        !commandGroup.Equals(default(Configuration.Group)))
-                                    {
-                                        lock (GroupNotificationsLock)
-                                        {
-                                            var notification =
-                                                GroupNotifications.AsParallel().FirstOrDefault(
-                                                    o =>
-                                                        o.GroupUUID.Equals(commandGroup.UUID));
-                                            if (notification != null)
-                                            {
-                                                var
-                                                    notificationTCPDestination =
-                                                        new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
-                                                            ();
-                                                notification.NotificationTCPDestination.AsParallel().ForAll(o =>
-                                                {
-                                                    switch (o.Value.Contains(remoteEndPoint))
-                                                    {
-                                                        case true:
-                                                            var destinations =
-                                                                new HashSet<IPEndPoint>(
-                                                                    o.Value.Where(p => !p.Equals(remoteEndPoint)));
-                                                            notificationTCPDestination.Add(o.Key, destinations);
-                                                            break;
-                                                        default:
-                                                            notificationTCPDestination.Add(o.Key, o.Value);
-                                                            break;
-                                                    }
-                                                });
-
-                                                GroupNotifications.Remove(notification);
-                                                GroupNotifications.Add(new Notification
-                                                {
-                                                    GroupName = notification.GroupName,
-                                                    GroupUUID = notification.GroupUUID,
-                                                    NotificationURLDestination =
-                                                        notification.NotificationURLDestination,
-                                                    NotificationTCPDestination = notificationTCPDestination,
-                                                    Afterburn = notification.Afterburn,
-                                                    Data = notification.Data
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            })
-                            {IsBackground = true}.Start();
-                        } while (runTCPNotificationsServer);
-                    })
-                    {IsBackground = true};
+                    TCPNotificationsThread = new Thread(ProcessTCPNotifications);
+                    TCPNotificationsThread.IsBackground = true;
                     TCPNotificationsThread.Start();
                     break;
                 default:

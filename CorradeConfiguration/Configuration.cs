@@ -148,8 +148,7 @@ namespace CorradeConfiguration
         private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         private readonly object ClientInstanceConfigurationLock = new object();
-        private byte[] _AESIV;
-        private byte[] _AESKey;
+        private string _AESKey;
         private bool _autoActivateGroup;
         private uint _autoActivateGroupDelay = 5000;
         private string _bindIPAddress = string.Empty;
@@ -231,6 +230,8 @@ namespace CorradeConfiguration
         private uint _servicesTimeout = 60000;
         private string _startLocation = @"last";
         private uint _TCPnotificationQueueLength = 100;
+        private string _TCPNotificationsCertificatePassword = string.Empty;
+        private string _TCPNotificationsCertificatePath = string.Empty;
         private string _TCPNotificationsServerAddress = @"0.0.0.0";
         private uint _TCPNotificationsServerPort = 8095;
         private uint _TCPnotificationThrottle = 1000;
@@ -705,6 +706,42 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _TCPNotificationsServerAddress = value;
+                }
+            }
+        }
+
+        public string TCPNotificationsCertificatePath
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _TCPNotificationsCertificatePath;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _TCPNotificationsCertificatePath = value;
+                }
+            }
+        }
+
+        public string TCPNotificationsCertificatePassword
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _TCPNotificationsCertificatePassword;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _TCPNotificationsCertificatePassword = value;
                 }
             }
         }
@@ -1789,7 +1826,7 @@ namespace CorradeConfiguration
             }
         }
 
-        public byte[] AESKey
+        public string AESKey
         {
             get
             {
@@ -1803,24 +1840,6 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _AESKey = value;
-                }
-            }
-        }
-
-        public byte[] AESIV
-        {
-            get
-            {
-                lock (ClientInstanceConfigurationLock)
-                {
-                    return _AESIV;
-                }
-            }
-            set
-            {
-                lock (ClientInstanceConfigurationLock)
-                {
-                    _AESIV = value;
                 }
             }
         }

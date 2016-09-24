@@ -112,13 +112,9 @@ namespace Configurator
             mainForm.ENIGMAPlugSequence.DisplayMember = "Text";
             mainForm.ENIGMAReflector.Text = corradeConfiguration.ENIGMAConfiguration.reflector.ToString();
             mainForm.VIGENERESecret.Text = corradeConfiguration.VIGENERESecret;
-            if (corradeConfiguration.AESKey != null && !corradeConfiguration.AESKey.Length.Equals(0))
+            if (!string.IsNullOrEmpty(corradeConfiguration.AESKey))
             {
-                mainForm.AESKey.Text = Encoding.UTF8.GetString(corradeConfiguration.AESKey);
-            }
-            if (corradeConfiguration.AESIV != null && !corradeConfiguration.AESIV.Length.Equals(0))
-            {
-                mainForm.AESIV.Text = Encoding.UTF8.GetString(corradeConfiguration.AESIV);
+                mainForm.AESKey.Text = corradeConfiguration.AESKey;
             }
 
             // SIML
@@ -157,6 +153,8 @@ namespace Configurator
             mainForm.TCPNotificationsServerEnabled.Checked = corradeConfiguration.EnableTCPNotificationsServer;
             mainForm.TCPNotificationsServerAddress.Text = corradeConfiguration.TCPNotificationsServerAddress;
             mainForm.TCPNotificationsServerPort.Text = corradeConfiguration.TCPNotificationsServerPort.ToString();
+            mainForm.TCPNotificationsServerCertificatePath.Text = corradeConfiguration.TCPNotificationsCertificatePath;
+            mainForm.TCPNotificationsServerCertificatePassword.Text = corradeConfiguration.TCPNotificationsCertificatePassword;
 
             // limits
             mainForm.LimitsRange.Text = corradeConfiguration.Range.ToString(CultureInfo.DefaultThreadCurrentCulture);
@@ -399,14 +397,7 @@ namespace Configurator
                 case 16:
                 case 24:
                 case 32:
-                    corradeConfiguration.AESKey = AESKeyBytes;
-                    break;
-            }
-            var AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
-            switch (AESIVBytes.Length)
-            {
-                case 16:
-                    corradeConfiguration.AESIV = AESIVBytes;
+                    corradeConfiguration.AESKey = mainForm.AESKey.Text;
                     break;
             }
 
@@ -483,6 +474,8 @@ namespace Configurator
             {
                 corradeConfiguration.TCPNotificationsServerPort = outUint;
             }
+            corradeConfiguration.TCPNotificationsCertificatePath = mainForm.TCPNotificationsServerCertificatePath.Text;
+            corradeConfiguration.TCPNotificationsCertificatePassword = mainForm.TCPNotificationsServerCertificatePassword.Text;
 
             // limits
             if (uint.TryParse(mainForm.LimitsRange.Text, out outUint))
@@ -1498,8 +1491,6 @@ namespace Configurator
                 {
                     mainForm.AESKey.Text = new string(Enumerable.Repeat(readableCharacters, 32)
                         .Select(s => s[random.Next(s.Length)]).ToArray());
-                    mainForm.AESIV.Text = new string(Enumerable.Repeat(readableCharacters, 16)
-                        .Select(s => s[random.Next(s.Length)]).ToArray());
                 }));
         }
 
@@ -1523,29 +1514,6 @@ namespace Configurator
                             break;
                         default:
                             mainForm.AESKey.BackColor = Color.MistyRose;
-                            break;
-                    }
-                }));
-        }
-
-        private void AESIVChanged(object sender, EventArgs e)
-        {
-            mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    if (string.IsNullOrEmpty(mainForm.AESIV.Text))
-                    {
-                        mainForm.AESIV.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    var AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
-                    switch (AESIVBytes.Length)
-                    {
-                        case 16:
-                            mainForm.AESIV.BackColor = Color.Empty;
-                            break;
-                        default:
-                            mainForm.AESIV.BackColor = Color.MistyRose;
                             break;
                     }
                 }));
@@ -3518,6 +3486,73 @@ namespace Configurator
             public const string BODY = @"body";
             public const string HEADER = @"header";
             public const string QUEUE = @"queue";
+        }
+
+        private void LoadTCPNofitifcationsServerCertificateFileRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                mainForm.LoadTCPNotificationsServerCertificateFileDialog.InitialDirectory = Directory.GetCurrentDirectory();
+                switch (mainForm.LoadTCPNotificationsServerCertificateFileDialog.ShowDialog())
+                {
+                    case DialogResult.OK:
+                        var file = mainForm.LoadTCPNotificationsServerCertificateFileDialog.FileName;
+                        new Thread(() =>
+                        {
+                            mainForm.BeginInvoke((MethodInvoker)(() =>
+                            {
+                                try
+                                {
+                                    mainForm.StatusText.Text = @"loading TCP notifications server certificate...";
+                                    mainForm.StatusProgress.Value = 0;
+                                    mainForm.TCPNotificationsServerCertificatePath.Text = file;
+                                    mainForm.StatusText.Text = @"TCP notifications certificate loaded";
+                                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
+                                    mainForm.StatusProgress.Value = 100;
+                                }
+                                catch (Exception ex)
+                                {
+                                    mainForm.StatusText.Text = ex.Message;
+                                }
+                            }));
+                        })
+                        { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+                        break;
+                }
+            }));
+        }
+
+        private void EnableTCPNotificationsServerRequested(object sender, EventArgs e)
+        {
+
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerAddress.Text))
+                    {
+                        mainForm.TCPNotificationsServerEnabled.Checked = false;
+                        mainForm.TCPNotificationsServerAddress.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    mainForm.TCPNotificationsServerAddress.BackColor = Color.Empty;
+
+                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerPort.Text))
+                    {
+                        mainForm.TCPNotificationsServerEnabled.Checked = false;
+                        mainForm.TCPNotificationsServerPort.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    mainForm.TCPNotificationsServerPort.BackColor = Color.Empty;
+
+                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerCertificatePath.Text))
+                    {
+                        mainForm.TCPNotificationsServerEnabled.Checked = false;
+                        mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
+                }));
+
         }
     }
 }
