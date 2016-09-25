@@ -49,7 +49,7 @@ using Syn.Bot.Siml;
 using Syn.Bot.Siml.Events;
 using wasOpenMetaverse;
 using wasSharp;
-using wasSharpNET;
+using wasSharpNET.Cryptography;
 using static wasSharp.Time;
 using static Corrade.Command;
 using Group = OpenMetaverse.Group;
@@ -272,7 +272,7 @@ namespace Corrade
 
         private static string CorradePOSTMediaType;
 
-        private static readonly wasSharpNET.Cryptography.AES CorradeAES = new wasSharpNET.Cryptography.AES();
+        private static readonly AES CorradeAES = new AES();
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -1773,16 +1773,17 @@ namespace Corrade
                                 corradeConfiguration.TCPNotificationsCertificatePassword);
                         using (var networkStream = new SslStream(TCPClient.GetStream()))
                         {
+                            SslProtocols protocol;
+                            if (!Enum.TryParse(corradeConfiguration.TCPNotificationsSSLProtocol, out protocol))
+                                protocol = SslProtocols.Tls12;
+
                             // Do not require a client certificate.
-                            networkStream.AuthenticateAsServer(certificate, false,
-                                SslProtocols.Ssl3, true);
+                            networkStream.AuthenticateAsServer(certificate, false, protocol, true);
+
                             using (
                                 var streamReader = new StreamReader(networkStream,
                                     Encoding.UTF8))
                             {
-                                /*var receiveLine = CorradeAES.wasAESDecrypt(streamReader.ReadLine(),
-                                    corradeConfiguration.AESKey);*/
-
                                 var receiveLine = streamReader.ReadLine();
 
                                 using (
@@ -2008,10 +2009,21 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
-                            ex.Message);
+                        switch (ex.InnerException != null)
+                        {
+                            case true:
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
+                                    ex.Message, ex.InnerException.Message);
+                                break;
+                            default:
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
+                                    ex.Message);
+                                break;
+                        }
                     }
                     finally
                     {
@@ -4919,6 +4931,7 @@ namespace Corrade
                         Cache.MuteCache.UnionWith(mutes);
                     })
                     {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -6615,6 +6628,9 @@ namespace Corrade
             ServicePointManager.UseNagleAlgorithm = configuration.UseNaggle;
             ServicePointManager.Expect100Continue = configuration.UseExpect100Continue;
             ServicePointManager.MaxServicePointIdleTime = (int) configuration.ConnectionIdleTime;
+            // Do not use SSLv3 - POODLE
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 |
+                                                   SecurityProtocolType.Tls12;
 
             // Throttles.
             Client.Throttle.Total = configuration.ThrottleTotal;

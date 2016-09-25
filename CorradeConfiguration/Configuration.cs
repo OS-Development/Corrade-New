@@ -233,6 +233,7 @@ namespace CorradeConfiguration
         private string _TCPNotificationsCertificatePassword = string.Empty;
         private string _TCPNotificationsCertificatePath = string.Empty;
         private string _TCPNotificationsServerAddress = @"0.0.0.0";
+        private string _TCPNotificationsSSLProtocol = string.Empty;
         private uint _TCPNotificationsServerPort = 8095;
         private uint _TCPnotificationThrottle = 1000;
         private uint _throttleAsset = 2500000;
@@ -742,6 +743,24 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _TCPNotificationsCertificatePassword = value;
+                }
+            }
+        }
+
+        public string TCPNotificationsSSLProtocol
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _TCPNotificationsSSLProtocol;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _TCPNotificationsSSLProtocol = value;
                 }
             }
         }

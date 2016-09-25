@@ -275,9 +275,8 @@ namespace Corrade
                                                 }
                                             }
                                         }
-                                        catch (Exception ex)
+                                        catch (Exception)
                                         {
-                                            Feedback(ex.Message + ex.StackTrace);
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
                                         }

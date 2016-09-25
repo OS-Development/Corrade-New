@@ -27,13 +27,28 @@ namespace Corrade
             [Reflection.NameAttribute("time")] TIME
         }
 
-
         /// <summary>
         ///     Keys reconigzed by Corrade.
         /// </summary>
         public enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [CommandInputSyntax(
+                "<command=getavatarclassifieds>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarclassifieds")] [Reflection.NameAttribute("getavatarclassifieds")] GETAVATARCLASSIFIEDS,
+
+            [CommandInputSyntax(
+                "<command=getavatarpicks>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarpicks")] [Reflection.NameAttribute("getavatarpicks")] GETAVATARPICKS,
+
+            [CommandInputSyntax(
+                "<command=getavatarclassifieddata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<item=<UUID>>&<data=<ClassifiedAd[,ClassifiedAd...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarclassifieddata")] [Reflection.NameAttribute("getavatarclassifieddata")] GETAVATARCLASSIFIEDDATA,
+
+            [CommandInputSyntax(
+                "<command=getavatarpickdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<item=<UUID>>&<data=<ProfilePick[,ProfilePick...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarpickdata")] [Reflection.NameAttribute("getavatarpickdata")] GETAVATARPICKDATA,
 
             [CommandInputSyntax(
                 "<command=bayes>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<action=<train|classify|list|merge|untrain|export|import|remove|add|rename>>&action=train,classify,untrain,import:<data=<STRING>>&action=train,untrain,remove,add:<category=<STRING>>&action=merge,rename:<source=<STRING>>&action=merge,rename:<target=<STRING>>&[callback=<STRING>]"

@@ -11,6 +11,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -155,6 +156,16 @@ namespace Configurator
             mainForm.TCPNotificationsServerPort.Text = corradeConfiguration.TCPNotificationsServerPort.ToString();
             mainForm.TCPNotificationsServerCertificatePath.Text = corradeConfiguration.TCPNotificationsCertificatePath;
             mainForm.TCPNotificationsServerCertificatePassword.Text = corradeConfiguration.TCPNotificationsCertificatePassword;
+            switch (string.IsNullOrEmpty(corradeConfiguration.TCPNotificationsSSLProtocol))
+            {
+                case true:
+                    mainForm.TCPNotificationsServerSSLProtocol.Text = Enum.GetName(typeof (SslProtocols),
+                        SslProtocols.Tls12);
+                    break;
+                default:
+                    mainForm.TCPNotificationsServerSSLProtocol.Text = corradeConfiguration.TCPNotificationsSSLProtocol;
+                    break;
+            }
 
             // limits
             mainForm.LimitsRange.Text = corradeConfiguration.Range.ToString(CultureInfo.DefaultThreadCurrentCulture);
@@ -476,6 +487,16 @@ namespace Configurator
             }
             corradeConfiguration.TCPNotificationsCertificatePath = mainForm.TCPNotificationsServerCertificatePath.Text;
             corradeConfiguration.TCPNotificationsCertificatePassword = mainForm.TCPNotificationsServerCertificatePassword.Text;
+            switch (string.IsNullOrEmpty(mainForm.TCPNotificationsServerSSLProtocol.Text))
+            {
+                case true:
+                    corradeConfiguration.TCPNotificationsSSLProtocol = Enum.GetName(typeof (SslProtocols),
+                        SslProtocols.Tls12);
+                    break;
+                default:
+                    corradeConfiguration.TCPNotificationsSSLProtocol = mainForm.TCPNotificationsServerSSLProtocol.Text;
+                    break;
+            }
 
             // limits
             if (uint.TryParse(mainForm.LimitsRange.Text, out outUint))
@@ -1436,6 +1457,8 @@ namespace Configurator
                                         CORRADE_CONSTANTS
                                             .CONFIGURATOR_VERSION;
 
+
+                // add Horde data synchronization options.
                 foreach (var sync in Reflection.GetEnumNames<Configuration.HordeDataSynchronization>())
                 {
                     switch (Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(sync))
@@ -1447,6 +1470,13 @@ namespace Configurator
                             break;
                     }
                 }
+
+                // add TCP SSL protocols.
+                foreach (var protocol in Enum.GetNames(typeof (SslProtocols)))
+                {
+                    TCPNotificationsServerSSLProtocol.Items.Add(protocol);
+                }
+
             }));
 
             if (File.Exists("Corrade.ini"))

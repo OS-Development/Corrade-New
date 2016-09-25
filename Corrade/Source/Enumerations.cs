@@ -645,7 +645,13 @@ namespace Corrade
             [Command.StatusAttribute(64423)] [Reflection.DescriptionAttribute("timeout getting folder contents")] TIMEOUT_GETTING_FOLDER_CONTENTS,
             [Command.StatusAttribute(15964)] [Reflection.DescriptionAttribute("transfer would exceed maximum count")] TRANSFER_WOULD_EXCEED_MAXIMUM_COUNT,
             [Command.StatusAttribute(36616)] [Reflection.DescriptionAttribute("invalid item type")] INVALID_ITEM_TYPE,
-            [Command.StatusAttribute(38945)] [Reflection.DescriptionAttribute("no source specified")] NO_SOURCE_SPECIFIED
+            [Command.StatusAttribute(38945)] [Reflection.DescriptionAttribute("no source specified")] NO_SOURCE_SPECIFIED,
+            [Command.StatusAttribute(23716)] [Reflection.DescriptionAttribute("classified not found")] CLASSIFIED_NOT_FOUND,
+            [Command.StatusAttribute(49113)] [Reflection.DescriptionAttribute("pick not found")] PICK_NOT_FOUND,
+            [Command.StatusAttribute(22970)] [Reflection.DescriptionAttribute("timeout getting profile classified")] TIMEOUT_GETTING_PROFILE_CLASSIFIED,
+            [Command.StatusAttribute(07168)] [Reflection.DescriptionAttribute("timeout getting profile pick")] TIMEOUT_GETTING_PROFILE_PICK,
+            [Command.StatusAttribute(11979)] [Reflection.DescriptionAttribute("could not retrieve pick")] COULD_NOT_RETRIEVE_PICK,
+            [Command.StatusAttribute(25420)] [Reflection.DescriptionAttribute("could not retrieve classified")] COULD_NOT_RETRIEVE_CLASSIFIED
         }
 
 

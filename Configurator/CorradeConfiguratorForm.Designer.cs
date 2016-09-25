@@ -267,9 +267,16 @@
             this.ENIGMARotorSequence = new System.Windows.Forms.ListBox();
             this.TCPTabPage = new System.Windows.Forms.TabPage();
             this.groupBox78 = new System.Windows.Forms.GroupBox();
-            this.pictureBox84 = new System.Windows.Forms.PictureBox();
             this.pictureBox87 = new System.Windows.Forms.PictureBox();
+            this.groupBox9 = new System.Windows.Forms.GroupBox();
+            this.button15 = new System.Windows.Forms.Button();
+            this.pictureBox104 = new System.Windows.Forms.PictureBox();
+            this.TCPNotificationsServerCertificatePath = new System.Windows.Forms.TextBox();
             this.TCPNotificationsServerEnabled = new System.Windows.Forms.CheckBox();
+            this.groupBox8 = new System.Windows.Forms.GroupBox();
+            this.pictureBox89 = new System.Windows.Forms.PictureBox();
+            this.TCPNotificationsServerCertificatePassword = new System.Windows.Forms.TextBox();
+            this.pictureBox84 = new System.Windows.Forms.PictureBox();
             this.groupBox80 = new System.Windows.Forms.GroupBox();
             this.pictureBox86 = new System.Windows.Forms.PictureBox();
             this.TCPNotificationsServerPort = new System.Windows.Forms.TextBox();
@@ -429,14 +436,9 @@
             this.button11 = new System.Windows.Forms.Button();
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
-            this.groupBox8 = new System.Windows.Forms.GroupBox();
-            this.pictureBox89 = new System.Windows.Forms.PictureBox();
-            this.TCPNotificationsServerCertificatePassword = new System.Windows.Forms.TextBox();
-            this.groupBox9 = new System.Windows.Forms.GroupBox();
-            this.pictureBox104 = new System.Windows.Forms.PictureBox();
-            this.TCPNotificationsServerCertificatePath = new System.Windows.Forms.TextBox();
-            this.button15 = new System.Windows.Forms.Button();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.groupBox10 = new System.Windows.Forms.GroupBox();
+            this.TCPNotificationsServerSSLProtocol = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -572,8 +574,12 @@
             this.groupBox34.SuspendLayout();
             this.TCPTabPage.SuspendLayout();
             this.groupBox78.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox84)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox87)).BeginInit();
+            this.groupBox9.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox104)).BeginInit();
+            this.groupBox8.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox89)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox84)).BeginInit();
             this.groupBox80.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox86)).BeginInit();
             this.groupBox79.SuspendLayout();
@@ -652,10 +658,7 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.groupBox8.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox89)).BeginInit();
-            this.groupBox9.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox104)).BeginInit();
+            this.groupBox10.SuspendLayout();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -3441,6 +3444,7 @@
             // 
             // groupBox78
             // 
+            this.groupBox78.Controls.Add(this.groupBox10);
             this.groupBox78.Controls.Add(this.pictureBox87);
             this.groupBox78.Controls.Add(this.groupBox9);
             this.groupBox78.Controls.Add(this.TCPNotificationsServerEnabled);
@@ -3455,6 +3459,106 @@
             this.groupBox78.TabStop = false;
             this.groupBox78.Text = "TCP Notifications Server";
             // 
+            // pictureBox87
+            // 
+            this.pictureBox87.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox87.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox87.Image")));
+            this.pictureBox87.Location = new System.Drawing.Point(486, 43);
+            this.pictureBox87.Name = "pictureBox87";
+            this.pictureBox87.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox87.TabIndex = 9;
+            this.pictureBox87.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox87, "Whether to enable the TCP server. In case the TCP server\r\nis disabled through thi" +
+        "s option, Corrade will not even\r\nstart the TCP server, thereby sparing memory an" +
+        "d quite\r\nsome processing power.");
+            this.pictureBox87.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // groupBox9
+            // 
+            this.groupBox9.Controls.Add(this.button15);
+            this.groupBox9.Controls.Add(this.pictureBox104);
+            this.groupBox9.Controls.Add(this.TCPNotificationsServerCertificatePath);
+            this.groupBox9.Location = new System.Drawing.Point(111, 197);
+            this.groupBox9.Name = "groupBox9";
+            this.groupBox9.Size = new System.Drawing.Size(403, 52);
+            this.groupBox9.TabIndex = 8;
+            this.groupBox9.TabStop = false;
+            this.groupBox9.Text = "Certificate File";
+            // 
+            // button15
+            // 
+            this.button15.Location = new System.Drawing.Point(294, 17);
+            this.button15.Name = "button15";
+            this.button15.Size = new System.Drawing.Size(75, 23);
+            this.button15.TabIndex = 5;
+            this.button15.Text = "Load...";
+            this.button15.UseVisualStyleBackColor = true;
+            this.button15.Click += new System.EventHandler(this.LoadTCPNofitifcationsServerCertificateFileRequested);
+            // 
+            // pictureBox104
+            // 
+            this.pictureBox104.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox104.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox104.Image")));
+            this.pictureBox104.Location = new System.Drawing.Point(375, 19);
+            this.pictureBox104.Name = "pictureBox104";
+            this.pictureBox104.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox104.TabIndex = 4;
+            this.pictureBox104.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox104, "This is the path to the certificate PFX file to be\r\nused with the TCP notificatio" +
+        "ns server.");
+            this.pictureBox104.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // TCPNotificationsServerCertificatePath
+            // 
+            this.TCPNotificationsServerCertificatePath.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TCPNotificationsServerCertificatePath.Location = new System.Drawing.Point(6, 19);
+            this.TCPNotificationsServerCertificatePath.Name = "TCPNotificationsServerCertificatePath";
+            this.TCPNotificationsServerCertificatePath.Size = new System.Drawing.Size(282, 20);
+            this.TCPNotificationsServerCertificatePath.TabIndex = 1;
+            // 
+            // TCPNotificationsServerEnabled
+            // 
+            this.TCPNotificationsServerEnabled.AutoSize = true;
+            this.TCPNotificationsServerEnabled.Location = new System.Drawing.Point(420, 43);
+            this.TCPNotificationsServerEnabled.Name = "TCPNotificationsServerEnabled";
+            this.TCPNotificationsServerEnabled.Size = new System.Drawing.Size(60, 20);
+            this.TCPNotificationsServerEnabled.TabIndex = 0;
+            this.TCPNotificationsServerEnabled.Text = "Enable";
+            this.TCPNotificationsServerEnabled.UseVisualStyleBackColor = true;
+            this.TCPNotificationsServerEnabled.Click += new System.EventHandler(this.EnableTCPNotificationsServerRequested);
+            // 
+            // groupBox8
+            // 
+            this.groupBox8.Controls.Add(this.pictureBox89);
+            this.groupBox8.Controls.Add(this.TCPNotificationsServerCertificatePassword);
+            this.groupBox8.Location = new System.Drawing.Point(111, 133);
+            this.groupBox8.Name = "groupBox8";
+            this.groupBox8.Size = new System.Drawing.Size(403, 58);
+            this.groupBox8.TabIndex = 7;
+            this.groupBox8.TabStop = false;
+            this.groupBox8.Text = "Certificate Password";
+            // 
+            // pictureBox89
+            // 
+            this.pictureBox89.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox89.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox89.Image")));
+            this.pictureBox89.Location = new System.Drawing.Point(375, 22);
+            this.pictureBox89.Name = "pictureBox89";
+            this.pictureBox89.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox89.TabIndex = 8;
+            this.pictureBox89.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox89, "In case the certificate file is protected by a\r\npassword, you should enter the pa" +
+        "ssword here.");
+            this.pictureBox89.Click += new System.EventHandler(this.ShowToolTip);
+            // 
+            // TCPNotificationsServerCertificatePassword
+            // 
+            this.TCPNotificationsServerCertificatePassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TCPNotificationsServerCertificatePassword.Location = new System.Drawing.Point(6, 22);
+            this.TCPNotificationsServerCertificatePassword.Name = "TCPNotificationsServerCertificatePassword";
+            this.TCPNotificationsServerCertificatePassword.Size = new System.Drawing.Size(363, 20);
+            this.TCPNotificationsServerCertificatePassword.TabIndex = 0;
+            // 
             // pictureBox84
             // 
             this.pictureBox84.Cursor = System.Windows.Forms.Cursors.Help;
@@ -3467,36 +3571,11 @@
             this.toolTip1.SetToolTip(this.pictureBox84, resources.GetString("pictureBox84.ToolTip"));
             this.pictureBox84.Click += new System.EventHandler(this.ShowToolTip);
             // 
-            // pictureBox87
-            // 
-            this.pictureBox87.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox87.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox87.Image")));
-            this.pictureBox87.Location = new System.Drawing.Point(486, 82);
-            this.pictureBox87.Name = "pictureBox87";
-            this.pictureBox87.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox87.TabIndex = 9;
-            this.pictureBox87.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox87, "Whether to enable the TCP server. In case the TCP server\r\nis disabled through thi" +
-        "s option, Corrade will not even\r\nstart the TCP server, thereby sparing memory an" +
-        "d quite\r\nsome processing power.");
-            this.pictureBox87.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // TCPNotificationsServerEnabled
-            // 
-            this.TCPNotificationsServerEnabled.AutoSize = true;
-            this.TCPNotificationsServerEnabled.Location = new System.Drawing.Point(420, 82);
-            this.TCPNotificationsServerEnabled.Name = "TCPNotificationsServerEnabled";
-            this.TCPNotificationsServerEnabled.Size = new System.Drawing.Size(60, 20);
-            this.TCPNotificationsServerEnabled.TabIndex = 0;
-            this.TCPNotificationsServerEnabled.Text = "Enable";
-            this.TCPNotificationsServerEnabled.UseVisualStyleBackColor = true;
-            this.TCPNotificationsServerEnabled.Click += new System.EventHandler(this.EnableTCPNotificationsServerRequested);
-            // 
             // groupBox80
             // 
             this.groupBox80.Controls.Add(this.pictureBox86);
             this.groupBox80.Controls.Add(this.TCPNotificationsServerPort);
-            this.groupBox80.Location = new System.Drawing.Point(363, 108);
+            this.groupBox80.Location = new System.Drawing.Point(363, 69);
             this.groupBox80.Name = "groupBox80";
             this.groupBox80.Size = new System.Drawing.Size(151, 58);
             this.groupBox80.TabIndex = 1;
@@ -3528,7 +3607,7 @@
             // 
             this.groupBox79.Controls.Add(this.pictureBox85);
             this.groupBox79.Controls.Add(this.TCPNotificationsServerAddress);
-            this.groupBox79.Location = new System.Drawing.Point(111, 108);
+            this.groupBox79.Location = new System.Drawing.Point(111, 69);
             this.groupBox79.Name = "groupBox79";
             this.groupBox79.Size = new System.Drawing.Size(246, 58);
             this.groupBox79.TabIndex = 0;
@@ -5159,84 +5238,30 @@
             this.ExperienceLevel.TabIndex = 12;
             this.ExperienceLevel.SelectedIndexChanged += new System.EventHandler(this.ExperienceLevelChanged);
             // 
-            // groupBox8
-            // 
-            this.groupBox8.Controls.Add(this.pictureBox89);
-            this.groupBox8.Controls.Add(this.TCPNotificationsServerCertificatePassword);
-            this.groupBox8.Location = new System.Drawing.Point(111, 172);
-            this.groupBox8.Name = "groupBox8";
-            this.groupBox8.Size = new System.Drawing.Size(403, 58);
-            this.groupBox8.TabIndex = 7;
-            this.groupBox8.TabStop = false;
-            this.groupBox8.Text = "Certificate Password";
-            // 
-            // pictureBox89
-            // 
-            this.pictureBox89.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox89.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox89.Image")));
-            this.pictureBox89.Location = new System.Drawing.Point(375, 22);
-            this.pictureBox89.Name = "pictureBox89";
-            this.pictureBox89.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox89.TabIndex = 8;
-            this.pictureBox89.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox89, "In case the certificate file is protected by a\r\npassword, you should enter the pa" +
-        "ssword here.");
-            this.pictureBox89.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // TCPNotificationsServerCertificatePassword
-            // 
-            this.TCPNotificationsServerCertificatePassword.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.TCPNotificationsServerCertificatePassword.Location = new System.Drawing.Point(6, 22);
-            this.TCPNotificationsServerCertificatePassword.Name = "TCPNotificationsServerCertificatePassword";
-            this.TCPNotificationsServerCertificatePassword.Size = new System.Drawing.Size(363, 20);
-            this.TCPNotificationsServerCertificatePassword.TabIndex = 0;
-            // 
-            // groupBox9
-            // 
-            this.groupBox9.Controls.Add(this.button15);
-            this.groupBox9.Controls.Add(this.pictureBox104);
-            this.groupBox9.Controls.Add(this.TCPNotificationsServerCertificatePath);
-            this.groupBox9.Location = new System.Drawing.Point(111, 236);
-            this.groupBox9.Name = "groupBox9";
-            this.groupBox9.Size = new System.Drawing.Size(403, 52);
-            this.groupBox9.TabIndex = 8;
-            this.groupBox9.TabStop = false;
-            this.groupBox9.Text = "Certificate File";
-            // 
-            // pictureBox104
-            // 
-            this.pictureBox104.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox104.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox104.Image")));
-            this.pictureBox104.Location = new System.Drawing.Point(375, 19);
-            this.pictureBox104.Name = "pictureBox104";
-            this.pictureBox104.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox104.TabIndex = 4;
-            this.pictureBox104.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox104, "This is the path to the certificate PFX file to be\r\nused with the TCP notificatio" +
-        "ns server.");
-            this.pictureBox104.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // TCPNotificationsServerCertificatePath
-            // 
-            this.TCPNotificationsServerCertificatePath.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.TCPNotificationsServerCertificatePath.Location = new System.Drawing.Point(6, 19);
-            this.TCPNotificationsServerCertificatePath.Name = "TCPNotificationsServerCertificatePath";
-            this.TCPNotificationsServerCertificatePath.Size = new System.Drawing.Size(282, 20);
-            this.TCPNotificationsServerCertificatePath.TabIndex = 1;
-            // 
-            // button15
-            // 
-            this.button15.Location = new System.Drawing.Point(294, 17);
-            this.button15.Name = "button15";
-            this.button15.Size = new System.Drawing.Size(75, 23);
-            this.button15.TabIndex = 5;
-            this.button15.Text = "Load...";
-            this.button15.UseVisualStyleBackColor = true;
-            this.button15.Click += new System.EventHandler(this.LoadTCPNofitifcationsServerCertificateFileRequested);
-            // 
             // LoadTCPNotificationsServerCertificateFileDialog
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
+            // 
+            // groupBox10
+            // 
+            this.groupBox10.Controls.Add(this.TCPNotificationsServerSSLProtocol);
+            this.groupBox10.Location = new System.Drawing.Point(314, 255);
+            this.groupBox10.Name = "groupBox10";
+            this.groupBox10.Size = new System.Drawing.Size(200, 57);
+            this.groupBox10.TabIndex = 10;
+            this.groupBox10.TabStop = false;
+            this.groupBox10.Text = "SSL Protocol";
+            // 
+            // TCPNotificationsServerSSLProtocol
+            // 
+            this.TCPNotificationsServerSSLProtocol.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.TCPNotificationsServerSSLProtocol.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TCPNotificationsServerSSLProtocol.FormattingEnabled = true;
+            this.TCPNotificationsServerSSLProtocol.Location = new System.Drawing.Point(71, 21);
+            this.TCPNotificationsServerSSLProtocol.Name = "TCPNotificationsServerSSLProtocol";
+            this.TCPNotificationsServerSSLProtocol.Size = new System.Drawing.Size(121, 21);
+            this.TCPNotificationsServerSSLProtocol.TabIndex = 0;
+            this.toolTip1.SetToolTip(this.TCPNotificationsServerSSLProtocol, "The reflector to use.");
             // 
             // CorradeConfiguratorForm
             // 
@@ -5435,8 +5460,14 @@
             this.TCPTabPage.ResumeLayout(false);
             this.groupBox78.ResumeLayout(false);
             this.groupBox78.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox84)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox87)).EndInit();
+            this.groupBox9.ResumeLayout(false);
+            this.groupBox9.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox104)).EndInit();
+            this.groupBox8.ResumeLayout(false);
+            this.groupBox8.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox89)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox84)).EndInit();
             this.groupBox80.ResumeLayout(false);
             this.groupBox80.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox86)).EndInit();
@@ -5548,12 +5579,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox8.ResumeLayout(false);
-            this.groupBox8.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox89)).EndInit();
-            this.groupBox9.ResumeLayout(false);
-            this.groupBox9.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox104)).EndInit();
+            this.groupBox10.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -5968,6 +5994,8 @@
         private System.Windows.Forms.PictureBox pictureBox89;
         private System.Windows.Forms.TextBox TCPNotificationsServerCertificatePassword;
         private System.Windows.Forms.OpenFileDialog LoadTCPNotificationsServerCertificateFileDialog;
+        private System.Windows.Forms.GroupBox groupBox10;
+        private System.Windows.Forms.ComboBox TCPNotificationsServerSSLProtocol;
     }
 }
 
