@@ -158,6 +158,15 @@ namespace Corrade
         private static readonly object InstantMessageLogFileLock = new object();
         private static readonly object ConferenceMessageLogFileLock = new object();
 
+        private static readonly object GroupMembersStateFileLock = new object();
+        private static readonly object GroupSoftBansStateFileLock = new object();
+        private static readonly object GroupSchedulesStateFileLock = new object();
+        private static readonly object GroupNotificationsStateFileLock = new object();
+        private static readonly object MovementStateFileLock = new object();
+        private static readonly object ConferencesStateFileLock = new object();
+        private static readonly object GroupFeedsStateFileLock = new object();
+        private static readonly object GroupCookiesStateFileLock = new object();
+
         private static readonly TimedThrottle TimedTeleportThrottle =
             new TimedThrottle(wasOpenMetaverse.Constants.TELEPORTS.THROTTLE.MAX_TELEPORTS,
                 wasOpenMetaverse.Constants.TELEPORTS.THROTTLE.GRACE_SECONDS);
@@ -833,7 +842,7 @@ namespace Corrade
         {
             try
             {
-                lock (GroupMembersLock)
+                lock (GroupMembersStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -846,7 +855,10 @@ namespace Corrade
                                 new XmlSerializer(
                                     typeof (
                                         Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>));
-                            serializer.Serialize(writer, GroupMembers);
+                            lock (GroupMembersLock)
+                            {
+                                serializer.Serialize(writer, GroupMembers);
+                            }
                             writer.Flush();
                         }
                     }
@@ -872,38 +884,42 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(groupMembersStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (GroupMembersStateFileLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(groupMembersStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                            ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
-                                new XmlSerializer(
-                                    typeof (
-                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>))
-                                    .Deserialize(streamReader))
-                                .AsParallel()
-                                .Where(
-                                    o => groups.Contains(o.Key))
-                                .ForAll(o =>
-                                {
-                                    lock (GroupMembersLock)
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                                ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
+                                    new XmlSerializer(
+                                        typeof (
+                                            Collections.SerializableDictionary
+                                                <UUID, Collections.ObservableHashSet<UUID>>))
+                                        .Deserialize(streamReader))
+                                    .AsParallel()
+                                    .Where(
+                                        o => groups.Contains(o.Key))
+                                    .ForAll(o =>
                                     {
-                                        switch (!GroupMembers.ContainsKey(o.Key))
+                                        lock (GroupMembersLock)
                                         {
-                                            case true:
-                                                GroupMembers.Add(o.Key, new Collections.ObservableHashSet<UUID>());
-                                                GroupMembers[o.Key].CollectionChanged += HandleGroupMemberJoinPart;
-                                                GroupMembers[o.Key].UnionWith(o.Value);
-                                                break;
-                                            default:
-                                                GroupMembers[o.Key].UnionWith(o.Value);
-                                                break;
+                                            switch (!GroupMembers.ContainsKey(o.Key))
+                                            {
+                                                case true:
+                                                    GroupMembers.Add(o.Key, new Collections.ObservableHashSet<UUID>());
+                                                    GroupMembers[o.Key].CollectionChanged += HandleGroupMemberJoinPart;
+                                                    GroupMembers[o.Key].UnionWith(o.Value);
+                                                    break;
+                                                default:
+                                                    GroupMembers[o.Key].UnionWith(o.Value);
+                                                    break;
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                            }
                         }
                     }
                 }
@@ -925,7 +941,7 @@ namespace Corrade
             GroupSoftBansWatcher.EnableRaisingEvents = false;
             try
             {
-                lock (GroupSoftBansLock)
+                lock (GroupSoftBansStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -938,7 +954,10 @@ namespace Corrade
                                 new XmlSerializer(
                                     typeof (
                                         Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>));
-                            serializer.Serialize(writer, GroupSoftBans);
+                            lock (GroupSoftBansLock)
+                            {
+                                serializer.Serialize(writer, GroupSoftBans);
+                            }
                             writer.Flush();
                         }
                     }
@@ -965,39 +984,43 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(groupSoftBansStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (GroupSoftBansStateFileLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(groupSoftBansStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                            ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
-                                new XmlSerializer(
-                                    typeof (
-                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>))
-                                    .Deserialize(streamReader))
-                                .AsParallel()
-                                .Where(
-                                    o => groups.Contains(o.Key))
-                                .ForAll(o =>
-                                {
-                                    lock (GroupSoftBansLock)
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                                ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
+                                    new XmlSerializer(
+                                        typeof (
+                                            Collections.SerializableDictionary
+                                                <UUID, Collections.ObservableHashSet<UUID>>))
+                                        .Deserialize(streamReader))
+                                    .AsParallel()
+                                    .Where(
+                                        o => groups.Contains(o.Key))
+                                    .ForAll(o =>
                                     {
-                                        switch (!GroupSoftBans.ContainsKey(o.Key))
+                                        lock (GroupSoftBansLock)
                                         {
-                                            case true:
-                                                GroupSoftBans.Add(o.Key,
-                                                    new Collections.ObservableHashSet<UUID>());
-                                                GroupSoftBans[o.Key].CollectionChanged += HandleGroupSoftBansChanged;
-                                                GroupSoftBans[o.Key].UnionWith(o.Value);
-                                                break;
-                                            default:
-                                                GroupSoftBans[o.Key].UnionWith(o.Value);
-                                                break;
+                                            switch (!GroupSoftBans.ContainsKey(o.Key))
+                                            {
+                                                case true:
+                                                    GroupSoftBans.Add(o.Key,
+                                                        new Collections.ObservableHashSet<UUID>());
+                                                    GroupSoftBans[o.Key].CollectionChanged += HandleGroupSoftBansChanged;
+                                                    GroupSoftBans[o.Key].UnionWith(o.Value);
+                                                    break;
+                                                default:
+                                                    GroupSoftBans[o.Key].UnionWith(o.Value);
+                                                    break;
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                            }
                         }
                     }
                 }
@@ -1019,7 +1042,7 @@ namespace Corrade
             SchedulesWatcher.EnableRaisingEvents = false;
             try
             {
-                lock (GroupSchedulesLock)
+                lock (GroupSchedulesStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1029,7 +1052,10 @@ namespace Corrade
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
                             var serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
-                            serializer.Serialize(writer, GroupSchedules);
+                            lock (GroupSchedulesLock)
+                            {
+                                serializer.Serialize(writer, GroupSchedules);
+                            }
                             writer.Flush();
                         }
                     }
@@ -1057,34 +1083,37 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (GroupSchedulesStateFileLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            var groups =
-                                new HashSet<UUID>(
-                                    corradeConfiguration.Groups
-                                        .AsParallel()
-                                        .Where(
-                                            o =>
-                                                !o.Schedules.Equals(0) &&
-                                                o.PermissionMask.IsMaskFlagSet(Configuration.Permissions.Schedule))
-                                        .Select(o => o.UUID));
-                            ((HashSet<GroupSchedule>)
-                                new XmlSerializer(typeof (HashSet<GroupSchedule>)).Deserialize(streamReader))
-                                .AsParallel()
-                                .Where(o => groups.Contains(o.Group.UUID)).ForAll(o =>
-                                {
-                                    lock (GroupSchedulesLock)
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                var groups =
+                                    new HashSet<UUID>(
+                                        corradeConfiguration.Groups
+                                            .AsParallel()
+                                            .Where(
+                                                o =>
+                                                    !o.Schedules.Equals(0) &&
+                                                    o.PermissionMask.IsMaskFlagSet(Configuration.Permissions.Schedule))
+                                            .Select(o => o.UUID));
+                                ((HashSet<GroupSchedule>)
+                                    new XmlSerializer(typeof (HashSet<GroupSchedule>)).Deserialize(streamReader))
+                                    .AsParallel()
+                                    .Where(o => groups.Contains(o.Group.UUID)).ForAll(o =>
                                     {
-                                        if (!GroupSchedules.Contains(o))
+                                        lock (GroupSchedulesLock)
                                         {
-                                            GroupSchedules.Add(o);
+                                            if (!GroupSchedules.Contains(o))
+                                            {
+                                                GroupSchedules.Add(o);
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                            }
                         }
                     }
                 }
@@ -1107,7 +1136,7 @@ namespace Corrade
             NotificationsWatcher.EnableRaisingEvents = false;
             try
             {
-                lock (GroupNotificationsLock)
+                lock (GroupNotificationsStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1117,8 +1146,12 @@ namespace Corrade
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
                             var serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                            serializer.Serialize(writer, GroupNotifications);
+                            lock (GroupNotificationsLock)
+                            {
+                                serializer.Serialize(writer, GroupNotifications);
+                            }
                             writer.Flush();
+
                         }
                     }
                 }
@@ -1146,7 +1179,7 @@ namespace Corrade
                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                 try
                 {
-                    lock (GroupNotificationsLock)
+                    lock (GroupNotificationsStateFileLock)
                     {
                         using (
                             var fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
@@ -1161,9 +1194,12 @@ namespace Corrade
                                         o => groups.Contains(o.GroupUUID))
                                     .ForAll(o =>
                                     {
-                                        if (!GroupNotifications.Contains(o))
+                                        lock (GroupNotificationsLock)
                                         {
-                                            GroupNotifications.Add(o);
+                                            if (!GroupNotifications.Contains(o))
+                                            {
+                                                GroupNotifications.Add(o);
+                                            }
                                         }
                                     });
                             }
@@ -1211,7 +1247,7 @@ namespace Corrade
         {
             try
             {
-                lock (Locks.ClientInstanceSelfLock)
+                lock (MovementStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1222,20 +1258,23 @@ namespace Corrade
                         {
                             var serializer = new XmlSerializer(typeof (AgentMovement));
 
-                            serializer.Serialize(writer, new AgentMovement
+                            lock (Locks.ClientInstanceSelfLock)
                             {
-                                AlwaysRun = Client.Self.Movement.AlwaysRun,
-                                AutoResetControls = Client.Self.Movement.AutoResetControls,
-                                Away = Client.Self.Movement.Away,
-                                BodyRotation = Client.Self.Movement.BodyRotation,
-                                Flags = Client.Self.Movement.Flags,
-                                Fly = Client.Self.Movement.Fly,
-                                HeadRotation = Client.Self.Movement.HeadRotation,
-                                Mouselook = Client.Self.Movement.Mouselook,
-                                SitOnGround = Client.Self.Movement.SitOnGround,
-                                StandUp = Client.Self.Movement.StandUp,
-                                State = Client.Self.Movement.State
-                            });
+                                serializer.Serialize(writer, new AgentMovement
+                                {
+                                    AlwaysRun = Client.Self.Movement.AlwaysRun,
+                                    AutoResetControls = Client.Self.Movement.AutoResetControls,
+                                    Away = Client.Self.Movement.Away,
+                                    BodyRotation = Client.Self.Movement.BodyRotation,
+                                    Flags = Client.Self.Movement.Flags,
+                                    Fly = Client.Self.Movement.Fly,
+                                    HeadRotation = Client.Self.Movement.HeadRotation,
+                                    Mouselook = Client.Self.Movement.Mouselook,
+                                    SitOnGround = Client.Self.Movement.SitOnGround,
+                                    StandUp = Client.Self.Movement.StandUp,
+                                    State = Client.Self.Movement.State
+                                });
+                            }
                             writer.Flush();
                         }
                     }
@@ -1261,28 +1300,31 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (MovementStateFileLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            var serializer = new XmlSerializer(typeof (AgentMovement));
-                            var movement = (AgentMovement) serializer.Deserialize(streamReader);
-                            lock (Locks.ClientInstanceSelfLock)
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
-                                Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
-                                Client.Self.Movement.Away = movement.Away;
-                                Client.Self.Movement.BodyRotation = movement.BodyRotation;
-                                Client.Self.Movement.Flags = movement.Flags;
-                                Client.Self.Movement.Fly = movement.Fly;
-                                Client.Self.Movement.HeadRotation = movement.HeadRotation;
-                                Client.Self.Movement.Mouselook = movement.Mouselook;
-                                Client.Self.Movement.SitOnGround = movement.SitOnGround;
-                                Client.Self.Movement.StandUp = movement.StandUp;
-                                Client.Self.Movement.State = movement.State;
-                                Client.Self.Movement.SendUpdate(true);
+                                var serializer = new XmlSerializer(typeof (AgentMovement));
+                                var movement = (AgentMovement) serializer.Deserialize(streamReader);
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
+                                    Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
+                                    Client.Self.Movement.Away = movement.Away;
+                                    Client.Self.Movement.BodyRotation = movement.BodyRotation;
+                                    Client.Self.Movement.Flags = movement.Flags;
+                                    Client.Self.Movement.Fly = movement.Fly;
+                                    Client.Self.Movement.HeadRotation = movement.HeadRotation;
+                                    Client.Self.Movement.Mouselook = movement.Mouselook;
+                                    Client.Self.Movement.SitOnGround = movement.SitOnGround;
+                                    Client.Self.Movement.StandUp = movement.StandUp;
+                                    Client.Self.Movement.State = movement.State;
+                                    Client.Self.Movement.SendUpdate(true);
+                                }
                             }
                         }
                     }
@@ -1304,7 +1346,7 @@ namespace Corrade
         {
             try
             {
-                lock (ConferencesLock)
+                lock (ConferencesStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1314,7 +1356,10 @@ namespace Corrade
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
                             var serializer = new XmlSerializer(typeof (HashSet<Conference>));
-                            serializer.Serialize(writer, Conferences);
+                            lock (ConferencesLock)
+                            {
+                                serializer.Serialize(writer, Conferences);
+                            }
                             writer.Flush();
                         }
                     }
@@ -1340,51 +1385,54 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(conferenceStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (ConferencesStateFileLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(conferenceStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            var serializer = new XmlSerializer(typeof (HashSet<Conference>));
-                            ((HashSet<Conference>) serializer.Deserialize(streamReader)).AsParallel()
-                                .ForAll(o =>
-                                {
-                                    try
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                var serializer = new XmlSerializer(typeof (HashSet<Conference>));
+                                ((HashSet<Conference>) serializer.Deserialize(streamReader)).AsParallel()
+                                    .ForAll(o =>
                                     {
-                                        // Attempt to rejoin the conference.
-                                        lock (Locks.ClientInstanceSelfLock)
+                                        try
                                         {
-                                            if (!Client.Self.GroupChatSessions.ContainsKey(o.Session))
-                                                Client.Self.ChatterBoxAcceptInvite(o.Session);
-                                        }
-                                        // Add the conference to the list of conferences.
-                                        lock (ConferencesLock)
-                                        {
-                                            if (!Conferences.AsParallel()
-                                                .Any(
-                                                    p =>
-                                                        p.Name.Equals(o.Name, StringComparison.Ordinal) &&
-                                                        p.Session.Equals(o.Session)))
+                                            // Attempt to rejoin the conference.
+                                            lock (Locks.ClientInstanceSelfLock)
                                             {
-                                                Conferences.Add(new Conference
+                                                if (!Client.Self.GroupChatSessions.ContainsKey(o.Session))
+                                                    Client.Self.ChatterBoxAcceptInvite(o.Session);
+                                            }
+                                            // Add the conference to the list of conferences.
+                                            lock (ConferencesLock)
+                                            {
+                                                if (!Conferences.AsParallel()
+                                                    .Any(
+                                                        p =>
+                                                            p.Name.Equals(o.Name, StringComparison.Ordinal) &&
+                                                            p.Session.Equals(o.Session)))
                                                 {
-                                                    Name = o.Name,
-                                                    Session = o.Session,
-                                                    Restored = true
-                                                });
+                                                    Conferences.Add(new Conference
+                                                    {
+                                                        Name = o.Name,
+                                                        Session = o.Session,
+                                                        Restored = true
+                                                    });
+                                                }
                                             }
                                         }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                Enumerations.ConsoleMessage.UNABLE_TO_RESTORE_CONFERENCE),
-                                            o.Name,
-                                            ex.Message);
-                                    }
-                                });
+                                        catch (Exception ex)
+                                        {
+                                            Feedback(
+                                                Reflection.GetDescriptionFromEnumValue(
+                                                    Enumerations.ConsoleMessage.UNABLE_TO_RESTORE_CONFERENCE),
+                                                o.Name,
+                                                ex.Message);
+                                        }
+                                    });
+                            }
                         }
                     }
                 }
@@ -1409,27 +1457,30 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(groupCookiesStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (GroupCookiesStateFileLock)
                     {
-                        var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                        var serializer = new BinaryFormatter();
-                        ((Dictionary<UUID, CookieContainer>)
-                            serializer.Deserialize(fileStream)).AsParallel()
-                            .Where(o => groups.Contains(o.Key))
-                            .ForAll(o =>
-                            {
-                                lock (GroupCookieContainersLock)
+                        using (
+                            var fileStream = File.Open(groupCookiesStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
+                        {
+                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                            var serializer = new BinaryFormatter();
+                            ((Dictionary<UUID, CookieContainer>)
+                                serializer.Deserialize(fileStream)).AsParallel()
+                                .Where(o => groups.Contains(o.Key))
+                                .ForAll(o =>
                                 {
-                                    if (!GroupCookieContainers.Contains(o))
+                                    lock (GroupCookieContainersLock)
                                     {
-                                        GroupCookieContainers.Add(o.Key, o.Value);
-                                        return;
+                                        if (!GroupCookieContainers.Contains(o))
+                                        {
+                                            GroupCookieContainers.Add(o.Key, o.Value);
+                                            return;
+                                        }
+                                        GroupCookieContainers[o.Key] = o.Value;
                                     }
-                                    GroupCookieContainers[o.Key] = o.Value;
-                                }
-                            });
+                                });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1449,7 +1500,7 @@ namespace Corrade
         {
             try
             {
-                lock (GroupCookieContainersLock)
+                lock (GroupCookiesStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1457,8 +1508,10 @@ namespace Corrade
                             FileAccess.Write, FileShare.None))
                     {
                         var serializer = new BinaryFormatter();
-
-                        serializer.Serialize(fileStream, GroupCookieContainers);
+                        lock (GroupCookieContainersLock)
+                        {
+                            serializer.Serialize(fileStream, GroupCookieContainers);
+                        }
                     }
                 }
             }
@@ -1479,7 +1532,7 @@ namespace Corrade
             GroupFeedWatcher.EnableRaisingEvents = false;
             try
             {
-                lock (GroupFeedsLock)
+                lock (GroupFeedsStateFileLock)
                 {
                     using (
                         var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1492,8 +1545,10 @@ namespace Corrade
                                 new XmlSerializer(
                                     typeof (Collections.SerializableDictionary
                                         <string, Collections.SerializableDictionary<UUID, string>>));
-
-                            serializer.Serialize(writer, GroupFeeds);
+                            lock (GroupFeedsLock)
+                            {
+                                serializer.Serialize(writer, GroupFeeds);
+                            }
                             writer.Flush();
                         }
                     }
@@ -1520,41 +1575,44 @@ namespace Corrade
             {
                 try
                 {
-                    using (
-                        var fileStream = File.Open(feedStateFile, FileMode.Open, FileAccess.Read,
-                            FileShare.Read))
+                    lock (GroupFeedsStateFileLock)
                     {
-                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        using (
+                            var fileStream = File.Open(feedStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read))
                         {
-                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                            var serializer =
-                                new XmlSerializer(
-                                    typeof (Collections.SerializableDictionary
-                                        <string, Collections.SerializableDictionary<UUID, string>>));
-                            ((Collections.SerializableDictionary
-                                <string, Collections.SerializableDictionary<UUID, string>>)
-                                serializer.Deserialize(streamReader)).AsParallel()
-                                .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
-                                .ForAll(o =>
-                                {
-                                    lock (GroupFeedsLock)
+                            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                            {
+                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                                var serializer =
+                                    new XmlSerializer(
+                                        typeof (Collections.SerializableDictionary
+                                            <string, Collections.SerializableDictionary<UUID, string>>));
+                                ((Collections.SerializableDictionary
+                                    <string, Collections.SerializableDictionary<UUID, string>>)
+                                    serializer.Deserialize(streamReader)).AsParallel()
+                                    .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
+                                    .ForAll(o =>
                                     {
-                                        if (!GroupFeeds.ContainsKey(o.Key))
+                                        lock (GroupFeedsLock)
                                         {
-                                            GroupFeeds.Add(o.Key, o.Value);
-                                            return;
-                                        }
-                                        GroupFeeds[o.Key].Clone().AsParallel().ForAll(p =>
-                                        {
-                                            if (!GroupFeeds[o.Key].ContainsKey(p.Key))
+                                            if (!GroupFeeds.ContainsKey(o.Key))
                                             {
-                                                GroupFeeds[o.Key].Add(p.Key, p.Value);
+                                                GroupFeeds.Add(o.Key, o.Value);
                                                 return;
                                             }
-                                            GroupFeeds[o.Key][p.Key] = p.Value;
-                                        });
-                                    }
-                                });
+                                            GroupFeeds[o.Key].Clone().AsParallel().ForAll(p =>
+                                            {
+                                                if (!GroupFeeds[o.Key].ContainsKey(p.Key))
+                                                {
+                                                    GroupFeeds[o.Key].Add(p.Key, p.Value);
+                                                    return;
+                                                }
+                                                GroupFeeds[o.Key][p.Key] = p.Value;
+                                            });
+                                        }
+                                    });
+                            }
                         }
                     }
                 }
