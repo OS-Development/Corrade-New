@@ -73,13 +73,8 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                         if (!string.IsNullOrEmpty(permissions))
                         {
-                            if (
-                                !Inventory.wasSetInventoryItemPermissions(Client, inventoryBase as InventoryItem,
-                                    permissions,
-                                    corradeConfiguration.ServicesTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
-                            }
+                            (inventoryBase as InventoryItem).Permissions = Inventory.wasStringToPermissions(permissions);
+                            Client.Inventory.RequestUpdateItem(inventoryBase as InventoryItem);
                         }
                     }
                     // If the requested item is a folder.

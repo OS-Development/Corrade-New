@@ -136,13 +136,8 @@ namespace Corrade
                                         corradeCommandParameters.Message));
                                 if (!string.IsNullOrEmpty(permissions))
                                 {
-                                    if (
-                                        !Inventory.wasSetInventoryItemPermissions(Client, inventoryItem, permissions,
-                                            corradeConfiguration.ServicesTimeout))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
-                                    }
+                                    inventoryItem.Permissions = Inventory.wasStringToPermissions(permissions);
+                                    Client.Inventory.RequestUpdateItem(inventoryItem);
                                 }
                                 notice.AttachmentID = inventoryItem.UUID;
                             }

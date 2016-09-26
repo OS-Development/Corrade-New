@@ -89,7 +89,7 @@ namespace Corrade
                                 return null;
                         }
 
-                        if (!(next is InventoryFolder))
+                        if (next is InventoryItem)
                         {
                             return next;
                         }
@@ -299,7 +299,7 @@ namespace Corrade
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store[item.ParentUUID] as InventoryFolder,
                                     corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception)
@@ -347,7 +347,7 @@ namespace Corrade
                                 case true:
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
-                                        if (Client.Inventory.Store.GetContents(
+                                        /*if (Client.Inventory.Store.GetContents(
                                             item.UUID)
                                             .OfType<InventoryItem>()
                                             .Any(
@@ -357,22 +357,29 @@ namespace Corrade
                                         {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
-                                        }
+                                        }*/
+                                        Client.Inventory.Store.GetContents(item.UUID).OfType<InventoryItem>().AsParallel().ForAll(o =>
+                                        {
+                                            o.Permissions = Inventory.wasStringToPermissions(itemPermissions);
+                                            Client.Inventory.RequestUpdateItem(o);
+                                        });
                                     }
                                     break;
                                 default:
-                                    if (
+                                    /*if (
                                         !Inventory.wasSetInventoryItemPermissions(Client, item as InventoryItem,
                                             itemPermissions, corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.SETTING_PERMISSIONS_FAILED);
-                                    }
+                                    }*/
+                                    (item as InventoryItem).Permissions = Inventory.wasStringToPermissions(itemPermissions);
+                                    Client.Inventory.RequestUpdateItem(item as InventoryItem);
                                     break;
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store[item.ParentUUID] as InventoryFolder, 
                                     corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception)
@@ -425,7 +432,7 @@ namespace Corrade
                             }
                             try
                             {
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store[item.ParentUUID] as InventoryFolder,
                                     corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception)

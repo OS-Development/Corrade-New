@@ -11,6 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
+using OpenMetaverse.Packets;
 using wasSharp;
 
 namespace wasOpenMetaverse
@@ -816,52 +817,6 @@ namespace wasOpenMetaverse
             return new Permissions(segment(permissions.Substring(0, 6)),
                 segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
                 segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sets permissions on inventory items using the [WaS] permission mask format.
-        /// </summary>
-        /// <param name="Client">the grid client to use to set permissions</param>
-        /// <param name="inventoryItem">an inventory item</param>
-        /// <param name="wasPermissions">the string permissions to set</param>
-        /// <param name="millisecondsTimeout">the services timeout</param>
-        /// <returns>true in case the permissions were set successfully</returns>
-        public static bool wasSetInventoryItemPermissions(GridClient Client, InventoryItem inventoryItem,
-            string wasPermissions, uint millisecondsTimeout)
-        {
-            // Update the object.
-            var permissions = wasStringToPermissions(wasPermissions);
-            inventoryItem.Permissions = permissions;
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                Client.Inventory.RequestUpdateItem(inventoryItem);
-            }
-            // Now check that the permissions were set.
-            var succeeded = false;
-            var ItemReceivedEvent = new ManualResetEvent(false);
-            EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
-                (sender, args) =>
-                {
-                    if (!args.Item.UUID.Equals(inventoryItem.UUID)) return;
-                    succeeded = args.Item.Permissions.Equals(permissions);
-                    ItemReceivedEvent.Set();
-                };
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                Client.Inventory.ItemReceived += ItemReceivedEventHandler;
-                Client.Inventory.RequestFetchInventory(inventoryItem.UUID, inventoryItem.OwnerID);
-                if (
-                    !ItemReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
-                    succeeded = false;
-                }
-                Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
-            }
-            return succeeded;
         }
 
         ///////////////////////////////////////////////////////////////////////////
