@@ -6,7 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -20,7 +20,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> renameitem =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> renameitem =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -36,24 +36,25 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    InventoryItem inventoryItem;
+                    InventoryBase inventoryBase = null;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            inventoryItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID,
-                                    corradeConfiguration.ServicesTimeout
-                                    ).FirstOrDefault() as InventoryItem;
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                if (Client.Inventory.Store.Contains(itemUUID))
+                                {
+                                    inventoryBase = Client.Inventory.Store[itemUUID];
+                                }
+                            }
                             break;
                         default:
-                            inventoryItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                    corradeConfiguration.ServicesTimeout)
-                                    .FirstOrDefault() as InventoryItem;
+                            inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                             break;
                     }
-                    if (inventoryItem == null)
+                    if (inventoryBase == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
@@ -64,18 +65,18 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
                     }
-                    switch (inventoryItem.AssetType)
+                    switch (inventoryBase is InventoryFolder)
                     {
-                        case AssetType.Folder:
+                        case true:
                             lock (Locks.ClientInstanceInventoryLock)
                             {
-                                Client.Inventory.MoveFolder(inventoryItem.UUID, inventoryItem.ParentUUID, name);
+                                Client.Inventory.MoveFolder(inventoryBase.UUID, inventoryBase.ParentUUID, name);
                             }
                             break;
                         default:
                             lock (Locks.ClientInstanceInventoryLock)
                             {
-                                Client.Inventory.MoveItem(inventoryItem.UUID, inventoryItem.ParentUUID, name);
+                                Client.Inventory.MoveItem(inventoryBase.UUID, inventoryBase.ParentUUID, name);
                             }
                             break;
                     }

@@ -18,7 +18,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getnetworkdata =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getnetworkdata =
                 (corradeCommandParameters, result) =>
                 {
                     if (

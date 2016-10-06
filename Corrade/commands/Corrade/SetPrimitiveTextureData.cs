@@ -19,126 +19,129 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setprimitivetexturedata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                setprimitivetexturedata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    float range;
-                    if (
-                        !float.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)),
-                            out range))
-                    {
-                        range = corradeConfiguration.Range;
-                    }
-                    Primitive primitive = null;
-                    var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                        corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(item))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
-                    UUID itemUUID;
-                    switch (UUID.TryParse(item, out itemUUID))
-                    {
-                        case true:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    itemUUID,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-                        default:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    item,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-                    }
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator = Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                    }
-                    if (simulator == null)
-                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    var face =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
+                                    corradeCommandParameters.Message)),
+                                out range))
+                        {
+                            range = corradeConfiguration.Range;
+                        }
+                        Primitive primitive = null;
+                        var item = wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
-                    int i;
-                    switch (!int.TryParse(face, out i))
-                    {
-                        case true:
-                            switch (face.ToLowerInvariant())
-                            {
-                                case "all":
-                                    i = primitive.Textures.FaceTextures.Count() - 1;
-                                    do
-                                    {
-                                        if (primitive.Textures.FaceTextures[i] == null)
+                        if (string.IsNullOrEmpty(item))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
+                        }
+                        UUID itemUUID;
+                        switch (UUID.TryParse(item, out itemUUID))
+                        {
+                            case true:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        itemUUID,
+                                        range,
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                                break;
+                            default:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        item,
+                                        range,
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                                break;
+                        }
+                        Simulator simulator;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            simulator = Client.Network.Simulators.AsParallel()
+                                .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                        }
+                        if (simulator == null)
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                        var face =
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
+                                corradeCommandParameters.Message));
+                        int i;
+                        switch (!int.TryParse(face, out i))
+                        {
+                            case true:
+                                switch (face.ToLowerInvariant())
+                                {
+                                    case "all":
+                                        i = primitive.Textures.FaceTextures.Count() - 1;
+                                        do
                                         {
-                                            primitive.Textures.FaceTextures[i] =
-                                                primitive.Textures.CreateFace((uint) i);
-                                        }
-                                        primitive.Textures.FaceTextures[i].wasCSVToStructure(Client,
+                                            if (primitive.Textures.FaceTextures[i] == null)
+                                            {
+                                                primitive.Textures.FaceTextures[i] =
+                                                    primitive.Textures.CreateFace((uint) i);
+                                            }
+                                            primitive.Textures.FaceTextures[i].wasCSVToStructure(Client,
+                                                corradeConfiguration.ServicesTimeout,
+                                                wasInput(
+                                                    KeyValue.Get(
+                                                        wasOutput(
+                                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                                        corradeCommandParameters.Message)));
+                                        } while (--i > -1);
+                                        break;
+                                    case "default":
+                                        primitive.Textures.DefaultTexture.wasCSVToStructure(Client,
                                             corradeConfiguration.ServicesTimeout,
                                             wasInput(
                                                 KeyValue.Get(
                                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                     corradeCommandParameters.Message)));
-                                    } while (--i > -1);
-                                    break;
-                                case "default":
-                                    primitive.Textures.DefaultTexture.wasCSVToStructure(Client,
-                                        corradeConfiguration.ServicesTimeout,
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                                corradeCommandParameters.Message)));
-                                    break;
-                                default:
+                                        break;
+                                    default:
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
+                                }
+                                break;
+                            default:
+                                if (i < 0 || i > Primitive.TextureEntry.MAX_FACES)
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
-                            }
-                            break;
-                        default:
-                            if (i < 0 || i > Primitive.TextureEntry.MAX_FACES)
-                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
-                            if (primitive.Textures.FaceTextures[i] == null)
-                            {
-                                primitive.Textures.FaceTextures[i] = primitive.Textures.CreateFace((uint) i);
-                            }
-                            primitive.Textures.FaceTextures[i].wasCSVToStructure(Client,
-                                corradeConfiguration.ServicesTimeout,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
-                            break;
-                    }
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.SetTextures(simulator,
-                            primitive.LocalID, primitive.Textures);
-                    }
-                };
+                                if (primitive.Textures.FaceTextures[i] == null)
+                                {
+                                    primitive.Textures.FaceTextures[i] = primitive.Textures.CreateFace((uint) i);
+                                }
+                                primitive.Textures.FaceTextures[i].wasCSVToStructure(Client,
+                                    corradeConfiguration.ServicesTimeout,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                            corradeCommandParameters.Message)));
+                                break;
+                        }
+                        lock (Locks.ClientInstanceObjectsLock)
+                        {
+                            Client.Objects.SetTextures(simulator,
+                                primitive.LocalID, primitive.Textures);
+                        }
+                    };
         }
     }
 }

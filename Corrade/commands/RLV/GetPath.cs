@@ -19,133 +19,128 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getpath = (message, rule, senderUUID) =>
-            {
-                int channel;
-                if (!int.TryParse(rule.Param, out channel) || channel < 1)
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getpath =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                var RLVFolder =
-                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
-                        .AsParallel()
-                        .FirstOrDefault(o => o.Data is InventoryFolder);
-                if (RLVFolder == null)
-                {
-                    lock (Locks.ClientInstanceSelfLock)
+                    int channel;
+                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
                     {
-                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        return;
                     }
-                    return;
-                }
-                // General variables
-                InventoryBase inventoryBase = null;
-                KeyValuePair<Primitive, AttachmentPoint> attachment;
-                switch (!string.IsNullOrEmpty(rule.Option))
-                {
-                    case true:
-                        // Try attachments
-                        var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
-                            o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        if (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
-                        {
-                            attachment =
-                                Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                                    .AsParallel()
-                                    .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
-                            switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                            {
-                                case true:
-                                    inventoryBase = Inventory.FindInventory<InventoryBase>(Client,
-                                        RLVFolder, attachment.Key.Properties.ItemID,
-                                        corradeConfiguration.ServicesTimeout
-                                        )
-                                        .AsParallel().FirstOrDefault(
-                                            p =>
-                                                p is InventoryItem &&
-                                                ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                    break;
-                                default:
-                                    return;
-                            }
-                            break;
-                        }
-                        var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel().FirstOrDefault(
-                            o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
-                        if (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
-                        {
-                            var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
-                                                                               BindingFlags.Static)
-                                .AsParallel().FirstOrDefault(
-                                    p =>
-                                        p.Name.Equals(rule.Option,
-                                            StringComparison.InvariantCultureIgnoreCase));
-                            if (wearTypeInfo == null)
-                            {
-                                return;
-                            }
-                            InventoryBase wearable =
-                                Inventory.GetWearables(Client, RLVFolder.Data as InventoryFolder)
-                                    .AsParallel()
-                                    .FirstOrDefault(
-                                        o =>
-                                            (o as InventoryWearable).Equals((WearableType) wearTypeInfo.GetValue(null)));
-                            if (wearable != null)
-                            {
-                                inventoryBase = wearable;
-                            }
-                        }
-                        break;
-                    default:
-                        attachment =
-                            Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                                .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
-                        switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                        {
-                            case true:
-                                inventoryBase = Inventory.FindInventory<InventoryBase>(Client,
-                                    Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID,
-                                    corradeConfiguration.ServicesTimeout
-                                    )
-                                    .AsParallel().FirstOrDefault(
-                                        p =>
-                                            p is InventoryItem &&
-                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                break;
-                        }
-                        break;
-                }
-                if (inventoryBase == null)
-                {
-                    lock (Locks.ClientInstanceSelfLock)
+                    var RLVFolder = Inventory.FindInventory<InventoryFolder>(Client,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_PATH,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout,
+                        Client.Inventory.Store.RootFolder);
+                    if (RLVFolder == null)
                     {
-                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                    }
-                    return;
-                }
-                var path =
-                    Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder, inventoryBase.Name,
-                        new LinkedList<string>()).FirstOrDefault();
-                switch (!path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))
-                {
-                    case true:
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(
-                                string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()),
-                                channel,
-                                ChatType.Normal);
-                        }
-                        break;
-                    default:
                         lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                         }
                         return;
-                }
-            };
+                    }
+                    // General variables
+                    InventoryBase inventoryBase = null;
+                    KeyValuePair<Primitive, AttachmentPoint> attachment;
+                    switch (!string.IsNullOrEmpty(rule.Option))
+                    {
+                        case true:
+                            // Try attachments
+                            var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
+                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                            if (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
+                            {
+                                attachment =
+                                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
+                                switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                {
+                                    case true:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
+                                            {
+                                                inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
+                                            }
+                                        }
+                                        break;
+                                    default:
+                                        return;
+                                }
+                                break;
+                            }
+                            var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel().FirstOrDefault(
+                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                            if (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
+                            {
+                                var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
+                                                                                   BindingFlags.Static)
+                                    .AsParallel().FirstOrDefault(
+                                        p =>
+                                            p.Name.Equals(rule.Option,
+                                                StringComparison.InvariantCultureIgnoreCase));
+                                if (wearTypeInfo == null)
+                                {
+                                    return;
+                                }
+                                InventoryBase wearable =
+                                    Inventory.GetWearables(Client, RLVFolder)
+                                        .AsParallel()
+                                        .FirstOrDefault(
+                                            o =>
+                                                (o as InventoryWearable).Equals(
+                                                    (WearableType) wearTypeInfo.GetValue(null)));
+                                if (wearable != null)
+                                {
+                                    inventoryBase = wearable;
+                                }
+                            }
+                            break;
+                        default:
+                            attachment =
+                                Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
+                                    .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
+                            switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                            {
+                                case true:
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
+                                        {
+                                            inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
+                                        }
+                                    }
+                                    break;
+                            }
+                            break;
+                    }
+                    if (inventoryBase == null)
+                    {
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        }
+                        return;
+                    }
+                    var path = inventoryBase.GetInventoryPath(Client, RLVFolder,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR);
+                    switch (string.IsNullOrEmpty(path))
+                    {
+                        case true:
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            }
+                            break;
+                        default:
+                            lock (Locks.ClientInstanceSelfLock)
+                            {
+                                Client.Self.Chat(path, channel, ChatType.Normal);
+                            }
+                            break;
+                    }
+                };
         }
     }
 }

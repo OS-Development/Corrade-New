@@ -19,54 +19,59 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getregionterraintextures
-                =
-                (corradeCommandParameters, result) =>
-                {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getregionterraintextures
+                    =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var region =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
-                                corradeCommandParameters.Message));
-                    Simulator simulator;
-                    switch (!string.IsNullOrEmpty(region))
-                    {
-                        case true:
-                            lock (Locks.ClientInstanceNetworkLock)
-                            {
-                                simulator =
-                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.Name.Equals(
-                                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                                StringComparison.OrdinalIgnoreCase));
-                            }
-                            if (simulator == null)
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                            }
-                            break;
-                        default:
-                            simulator = Client.Network.CurrentSim;
-                            break;
-                    }
-                    List<UUID> data;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        data = new List<UUID>
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Land))
                         {
-                            simulator.TerrainDetail0,
-                            simulator.TerrainDetail1,
-                            simulator.TerrainDetail2,
-                            simulator.TerrainDetail3
-                        };
-                    }
-                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                        CSV.FromEnumerable(data.Select(o => o.ToString())));
-                };
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        var region =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                    corradeCommandParameters.Message));
+                        Simulator simulator;
+                        switch (!string.IsNullOrEmpty(region))
+                        {
+                            case true:
+                                lock (Locks.ClientInstanceNetworkLock)
+                                {
+                                    simulator =
+                                        Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                            o =>
+                                                o.Name.Equals(
+                                                    string.IsNullOrEmpty(region)
+                                                        ? Client.Network.CurrentSim.Name
+                                                        : region,
+                                                    StringComparison.OrdinalIgnoreCase));
+                                }
+                                if (simulator == null)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                                }
+                                break;
+                            default:
+                                simulator = Client.Network.CurrentSim;
+                                break;
+                        }
+                        List<UUID> data;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            data = new List<UUID>
+                            {
+                                simulator.TerrainDetail0,
+                                simulator.TerrainDetail1,
+                                simulator.TerrainDetail2,
+                                simulator.TerrainDetail3
+                            };
+                        }
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            CSV.FromEnumerable(data.Select(o => o.ToString())));
+                    };
         }
     }
 }

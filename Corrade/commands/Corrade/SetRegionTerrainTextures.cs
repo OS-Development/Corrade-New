@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -20,73 +21,78 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setregionterraintextures
-                =
-                (corradeCommandParameters, result) =>
-                {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                setregionterraintextures
+                    =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    if (!Client.Network.CurrentSim.IsEstateManager)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                    }
-                    List<UUID> simTextures;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simTextures = new List<UUID>
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Land))
                         {
-                            Client.Network.CurrentSim.TerrainDetail0,
-                            Client.Network.CurrentSim.TerrainDetail1,
-                            Client.Network.CurrentSim.TerrainDetail2,
-                            Client.Network.CurrentSim.TerrainDetail3
-                        };
-                    }
-                    var setTextures = new UUID[4];
-                    var data = CSV.ToEnumerable(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))).ToList();
-                    Enumerable.Range(0, 4).AsParallel().ForAll(
-                        o =>
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            switch (data.ElementAtOrDefault(o) != null)
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
+                        }
+                        List<UUID> simTextures;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            simTextures = new List<UUID>
                             {
-                                case true:
-                                    UUID textureUUID;
-                                    switch (UUID.TryParse(data[o], out textureUUID))
-                                    {
-                                        case true:
-                                            setTextures[o] = textureUUID;
-                                            break;
-                                        default:
-                                            var inventoryBaseItem =
-                                                Inventory.FindInventory<InventoryBase>(Client,
-                                                    Client.Inventory.Store.RootNode, data[o],
-                                                    corradeConfiguration.ServicesTimeout
-                                                    ).FirstOrDefault();
-                                            switch (inventoryBaseItem is InventoryTexture)
-                                            {
-                                                case true:
-                                                    setTextures[o] = (inventoryBaseItem as InventoryTexture).AssetUUID;
-                                                    break;
-                                                default:
-                                                    setTextures[o] = simTextures[o];
-                                                    break;
-                                            }
-                                            break;
-                                    }
-                                    break;
-                                default:
-                                    setTextures[o] = simTextures[o];
-                                    break;
-                            }
-                        });
-                    lock (Locks.ClientInstanceEstateLock)
-                    {
-                        Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2], setTextures[3]);
-                    }
-                };
+                                Client.Network.CurrentSim.TerrainDetail0,
+                                Client.Network.CurrentSim.TerrainDetail1,
+                                Client.Network.CurrentSim.TerrainDetail2,
+                                Client.Network.CurrentSim.TerrainDetail3
+                            };
+                        }
+                        var setTextures = new UUID[4];
+                        var data = CSV.ToEnumerable(
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message))).ToList();
+                        Enumerable.Range(0, 4).AsParallel().ForAll(
+                            o =>
+                            {
+                                switch (data.ElementAtOrDefault(o) != null)
+                                {
+                                    case true:
+                                        UUID textureUUID;
+                                        switch (UUID.TryParse(data[o], out textureUUID))
+                                        {
+                                            case true:
+                                                setTextures[o] = textureUUID;
+                                                break;
+                                            default:
+                                                var inventoryBaseItem =
+                                                    Inventory.FindInventory<InventoryBase>(Client,
+                                                        data[o],
+                                                        CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                        corradeConfiguration.ServicesTimeout);
+                                                switch (inventoryBaseItem is InventoryTexture)
+                                                {
+                                                    case true:
+                                                        setTextures[o] =
+                                                            (inventoryBaseItem as InventoryTexture).AssetUUID;
+                                                        break;
+                                                    default:
+                                                        setTextures[o] = simTextures[o];
+                                                        break;
+                                                }
+                                                break;
+                                        }
+                                        break;
+                                    default:
+                                        setTextures[o] = simTextures[o];
+                                        break;
+                                }
+                            });
+                        lock (Locks.ClientInstanceEstateLock)
+                        {
+                            Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2],
+                                setTextures[3]);
+                        }
+                    };
         }
     }
 }

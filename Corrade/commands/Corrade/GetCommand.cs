@@ -16,7 +16,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getcommand =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getcommand =
                 (corradeCommandParameters, result) =>
                 {
                     var name =
@@ -41,7 +41,7 @@ namespace Corrade
                     if (corradeCommandParameters.Group == null ||
                         corradeCommandParameters.Group.Equals(default(Configuration.Group)))
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    
+
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(

@@ -556,27 +556,10 @@ namespace wasOpenMetaverse
                 {
                     UUID UUIDData;
                     if (!UUID.TryParse(d.Value, out UUIDData))
-                    {
-                        InventoryItem item;
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            item = Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                d.Value, millisecondsTimeout).FirstOrDefault() as InventoryItem;
-                        }
-                        if (item == null)
-                        {
-                            return;
-                        }
-                        UUIDData = item.UUID;
-                    }
-                    switch (!UUIDData.Equals(UUID.Zero))
-                    {
-                        case true:
-                            wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, UUIDData);
-                            return;
-                        default:
-                            return;
-                    }
+                        return;
+
+                    wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, UUIDData);
+                    return;
                 }
                 if (data is Vector3)
                 {

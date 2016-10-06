@@ -18,7 +18,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getwearables =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getwearables =
                 (corradeCommandParameters, result) =>
                 {
                     if (

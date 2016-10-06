@@ -115,7 +115,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "feed")] [Reflection.NameAttribute("feed")] Feed = 4294967296uL,
             [XmlEnum(Name = "sound")] [Reflection.NameAttribute("sound")] Sound = 8589934592uL,
             [XmlEnum(Name = "conference")] [Reflection.NameAttribute("conference")] Conference = 17179869184ul,
-            [XmlEnum(Name = "preload")] [Reflection.NameAttribute("preload")] Preload = 34359738368ul
+            [XmlEnum(Name = "preload")] [Reflection.NameAttribute("preload")] Preload = 34359738368ul,
+            [XmlEnum(Name = "teleport")] [Reflection.NameAttribute("teleport")] Teleport = 68719476736ul
         }
 
         /// <summary>

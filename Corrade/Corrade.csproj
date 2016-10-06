@@ -227,6 +227,9 @@
     <Compile Include="commands\Corrade\Shoot.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Teleport.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Preload.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -253,6 +256,7 @@
     <Compile Include="Source\Structures\GroupMessage.cs" />
     <Compile Include="Source\Structures\GroupNotice.cs" />
     <Compile Include="Source\Structures\InstantMessage.cs" />
+    <Compile Include="Source\Structures\InventoryOffer.cs" />
     <Compile Include="Source\Structures\LocalMessage.cs" />
     <Compile Include="Source\Structures\Effects\LookAtEffect.cs" />
     <Compile Include="Source\Structures\Effects\PointAtEffect.cs" />
@@ -1646,6 +1650,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\local.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\teleport.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\lure.xml">

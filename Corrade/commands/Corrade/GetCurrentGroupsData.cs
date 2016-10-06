@@ -19,45 +19,47 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getcurrentgroupsdata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getcurrentgroupsdata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var currentGroups = Enumerable.Empty<UUID>();
-                    if (
-                        !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
-                            ref currentGroups))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
-                    var data = new List<string>();
-                    var LockObject = new object();
-                    currentGroups.AsParallel().ForAll(o =>
-                    {
-                        var dataGroup = new Group();
-                        if (!Services.RequestGroup(Client, o, corradeConfiguration.ServicesTimeout, ref dataGroup))
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Group))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        var groupData = dataGroup.GetStructuredData(wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
-                        lock (LockObject)
+                        var currentGroups = Enumerable.Empty<UUID>();
+                        if (
+                            !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
+                                ref currentGroups))
                         {
-                            data.AddRange(groupData);
+                            throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                         }
-                    });
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        var data = new List<string>();
+                        var LockObject = new object();
+                        currentGroups.AsParallel().ForAll(o =>
+                        {
+                            var dataGroup = new Group();
+                            if (!Services.RequestGroup(Client, o, corradeConfiguration.ServicesTimeout, ref dataGroup))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
+                            }
+                            var groupData = dataGroup.GetStructuredData(wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
+                            lock (LockObject)
+                            {
+                                data.AddRange(groupData);
+                            }
+                        });
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

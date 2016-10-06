@@ -18,41 +18,42 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setconfigurationdata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.System))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                setconfigurationdata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    lock (ConfigurationFileLock)
-                    {
-                        /*Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.System))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        lock (ConfigurationFileLock)
+                        {
+                            /*Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)), ref corradeConfiguration);*/
-                        corradeConfiguration.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
-                        UpdateDynamicConfiguration(corradeConfiguration);
-                        ConfigurationWatcher.EnableRaisingEvents = false;
-                        try
-                        {
-                            corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                            corradeConfiguration.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
+                            UpdateDynamicConfiguration(corradeConfiguration);
+                            ConfigurationWatcher.EnableRaisingEvents = false;
+                            try
+                            {
+                                corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                            }
+                            catch (Exception)
+                            {
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
+                            }
+                            ConfigurationWatcher.EnableRaisingEvents = true;
                         }
-                        catch (Exception)
-                        {
-                            throw new Command.ScriptException(
-                                Enumerations.ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
-                        }
-                        ConfigurationWatcher.EnableRaisingEvents = true;
-                    }
-                };
+                    };
         }
     }
 }

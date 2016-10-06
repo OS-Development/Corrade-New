@@ -18,7 +18,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> relax =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> relax =
                 (corradeCommandParameters, result) =>
                 {
                     if (

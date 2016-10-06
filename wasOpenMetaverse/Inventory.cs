@@ -11,7 +11,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
-using OpenMetaverse.Packets;
 using wasSharp;
 
 namespace wasOpenMetaverse
@@ -155,6 +154,8 @@ namespace wasOpenMetaverse
                             {
                                 if (success)
                                 {
+                                    Client.Inventory.Store.GetNodeFor(item.ParentUUID).NeedsUpdate = true;
+                                    Client.Inventory.RequestUpdateItem(item);
                                     Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
                                 }
                             });
@@ -175,12 +176,15 @@ namespace wasOpenMetaverse
             var contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
             lock (Locks.ClientInstanceInventoryLock)
             {
+                var parentUUID = item.ParentUUID;
                 Client.Inventory.Remove(
                     contents
                         .AsParallel()
                         .Where(o => o.AssetUUID.Equals(item.UUID))
                         .Select(o => o.UUID)
                         .ToList(), null);
+                Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
+                Client.Inventory.RequestUpdateItem(item);
             }
         }
 
@@ -197,12 +201,16 @@ namespace wasOpenMetaverse
         public static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(GridClient Client,
             uint dataTimeout)
         {
-            var selectedPrimitives =
-                new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
+            var selectedPrimitives = new HashSet<Primitive>();
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                selectedPrimitives.UnionWith(Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsPrimitives)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o)
                     .Where(o => o.ParentID.Equals(Client.Self.LocalID)));
+            }
+
             if (!selectedPrimitives.Any() || !Services.UpdatePrimitives(Client, ref selectedPrimitives, dataTimeout))
                 return Enumerable.Empty<KeyValuePair<Primitive, AttachmentPoint>>();
             return selectedPrimitives
@@ -210,6 +218,27 @@ namespace wasOpenMetaverse
                 .Select(o => new KeyValuePair<Primitive, AttachmentPoint>(o,
                     (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
                                        ((o.PrimData.State & ~0xF0) << 4))));
+        }
+
+        /// <summary>
+        ///     Get the inventory item from an attached primitive.
+        /// </summary>
+        /// <param name="Client">the GridClient to use</param>
+        /// <param name="prim">Prim to check</param>
+        /// <returns>the inventory item if found or null otherwise</returns>
+        public static InventoryItem GetAttachedInventoryItem(GridClient Client, Primitive prim)
+        {
+            if (prim.NameValues == null) return null;
+
+            for (var i = 0; i < prim.NameValues.Length; i++)
+            {
+                if (prim.NameValues[i].Name.Equals("AttachItemID")) continue;
+                lock (Locks.ClientInstanceInventoryLock)
+                {
+                    return Client.Inventory.Store[(UUID) prim.NameValues[i].Value.ToString()] as InventoryItem;
+                }
+            }
+            return null;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -233,148 +262,158 @@ namespace wasOpenMetaverse
         }
 
         ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-        /// ///
         /// <summary>
-        ///     Fetches items by searching the inventory starting with an inventory
-        ///     node where the search criteria finds:
-        ///     - name as string
-        ///     - name as Regex
-        ///     - UUID as UUID
+        ///     Find an inventory item or inventory folder by path.
         /// </summary>
+        /// <param name="root">the directory from which to start searching</param>
         /// <param name="Client">the grid client to use</param>
-        /// <param name="root">the node to start the search from</param>
-        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
-        /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
-        /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, string criteria,
-            uint millisecondsTimeout)
+        /// <param name="path">the full path to the item</param>
+        /// <param name="separator">the path separator</param>
+        /// <param name="millisecondsTimeout">the time in milliseconds for requesting folder items</param>
+        /// <param name="comparison">which string comparison to use for named path parts</param>
+        /// <returns>an inventory base item if found or null otherwise</returns>
+        /// <remarks>in case the path is ambiguous, the function returns null</remarks>
+        private static InventoryBase directFindInventory(GridClient Client, string path, char separator,
+            uint millisecondsTimeout, InventoryBase root = null, StringComparison comparison = StringComparison.Ordinal)
         {
-            var rootFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
-            if (rootFolder == null)
-                yield break;
-            var inventoryFolders = new HashSet<InventoryFolder>();
-            foreach (var item in Client.Inventory.Store.GetContents(rootFolder))
+            if (string.IsNullOrEmpty(path)) return root;
+
+            // Split all paths.
+            var unpack = path.Split(separator);
+            // Pop first item to process.
+            var first = unpack.First();
+
+            // Avoid preceeding slashes.
+            if (string.IsNullOrEmpty(first)) goto CONTINUE;
+
+            // If root is null assume that the starting point is above both inventory and library folder.
+            if (root == null)
             {
-                if (Strings.Equals(criteria, item.Name, StringComparison.Ordinal))
+                UUID firstUUID;
+                switch (UUID.TryParse(first, out firstUUID))
                 {
-                    if (typeof (T) == typeof (InventoryNode))
-                    {
-                        yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
-                    }
-                    if (typeof (T) == typeof (InventoryBase))
-                    {
-                        yield return (T) (object) item;
-                    }
+                    case true: // There is no root and first of the path is an UUID, hmm...
+                        // If the first part of the path is the inventory folder...
+                        if (Client.Inventory.Store.RootFolder.UUID.Equals(firstUUID))
+                        {
+                            // ..set the root to the inventory folder.
+                            root = Client.Inventory.Store.RootFolder;
+                            break;
+                        }
+                        // If the first part of the path is the library folder...
+                        if (Client.Inventory.Store.LibraryFolder.UUID.Equals(firstUUID))
+                        {
+                            // .. set the root to the library folder.
+                            root = Client.Inventory.Store.LibraryFolder;
+                            break;
+                        }
+                        // If not, the path is phony!
+                        return null;
+                    default: // There is no root and the first of the path is a name, hmm...
+                        if (Strings.Equals(Client.Inventory.Store.RootFolder.Name, first, comparison))
+                        {
+                            // ..set the root to the inventory folder.
+                            root = Client.Inventory.Store.RootFolder;
+                            break;
+                        }
+                        if (Strings.Equals(Client.Inventory.Store.LibraryFolder.Name, first, comparison))
+                        {
+                            // .. set the root to the library folder.
+                            root = Client.Inventory.Store.LibraryFolder;
+                            break;
+                        }
+                        // If not, the path is phony!
+                        return null;
                 }
-                if (item is InventoryFolder)
-                {
-                    inventoryFolders.Add(item as InventoryFolder);
-                }
+
+                goto CONTINUE;
             }
-            foreach (var folder in inventoryFolders)
+
+            var rootNode = Client.Inventory.Store.GetNodeFor(root.UUID);
+            if (rootNode == null)
+                return null;
+            var contents = new HashSet<InventoryBase>();
+            switch (rootNode.NeedsUpdate)
             {
-                var folderNode = Client.Inventory.Store.GetNodeFor(folder.UUID);
-                if (folderNode == null)
-                    continue;
-                if (folderNode.NeedsUpdate)
-                {
-                    var FolderUpdatedEvent = new ManualResetEvent(false);
-                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) => FolderUpdatedEvent.Set();
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    FolderUpdatedEvent.Reset();
-                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                }
-                foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
-                {
-                    yield return o;
-                }
+                case true:
+                    contents.UnionWith(Client.Inventory.FolderContents(root.UUID, root.OwnerID, true, true,
+                        InventorySortOrder.ByDate, (int) millisecondsTimeout));
+                    break;
+                default:
+                    contents.UnionWith(Client.Inventory.Store.GetContents(root.UUID));
+                    break;
             }
+
+            UUID itemUUID;
+            switch (!UUID.TryParse(first, out itemUUID))
+            {
+                case true:
+                    try
+                    {
+                        root = contents.SingleOrDefault(q => Strings.Equals(q.Name, first, comparison));
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        // ambiguous path
+                        return null;
+                    }
+                default:
+                    root = contents.FirstOrDefault(q => q.UUID.Equals(itemUUID));
+                    break;
+            }
+
+            if (root is InventoryItem)
+            {
+                return root;
+            }
+
+            if (root == null)
+            {
+                return null;
+            }
+
+            CONTINUE:
+            return directFindInventory(Client, string.Join(separator.ToString(), unpack.Skip(1)), separator,
+                millisecondsTimeout,
+                root, comparison);
         }
 
-        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, string criteria,
-            uint millisecondsTimeout)
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Find an inventory item or inventory folder by path.
+        /// </summary>
+        /// <typeparam name="T">the type of inventory to find</typeparam>
+        /// <param name="root">the directory from which to start searching</param>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="path">the full path to the item</param>
+        /// <param name="separator">the path separator</param>
+        /// <param name="millisecondsTimeout">the time in milliseconds for requesting folder items</param>
+        /// <param name="comparison">what comparison to use on string type path parts</param>
+        /// <returns>an inventory item of type T</returns>
+        /// <remarks>in case the path is ambiguous, the function returns null</remarks>
+        public static T FindInventory<T>(GridClient Client, string path, char separator,
+            uint millisecondsTimeout, InventoryFolder root = null,
+            StringComparison comparison = StringComparison.Ordinal)
         {
+            InventoryBase inventoryBase;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                return directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
+                inventoryBase = directFindInventory(Client, path, separator, millisecondsTimeout, root, comparison);
             }
-        }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// ///
-        /// <summary>
-        ///     Fetches items by searching the inventory starting with an inventory
-        ///     node where the search criteria finds:
-        ///     - name as string
-        ///     - name as Regex
-        ///     - UUID as UUID
-        /// </summary>
-        /// <param name="Client">the grid client to use</param>
-        /// <param name="root">the node to start the search from</param>
-        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
-        /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
-        /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> directFindInventory<T>(GridClient Client, InventoryNode root, UUID criteria,
-            uint millisecondsTimeout)
-        {
-            var rootFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
-            if (rootFolder == null)
-                yield break;
-            var inventoryFolders = new HashSet<InventoryFolder>();
-            foreach (var item in Client.Inventory.Store.GetContents(rootFolder))
-            {
-                if (criteria.Equals(item.UUID))
-                {
-                    if (typeof (T) == typeof (InventoryNode))
-                    {
-                        yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
-                    }
-                    if (typeof (T) == typeof (InventoryBase))
-                    {
-                        yield return (T) (object) item;
-                    }
-                }
-                if (item is InventoryFolder)
-                {
-                    inventoryFolders.Add(item as InventoryFolder);
-                }
-            }
-            foreach (var folder in inventoryFolders)
-            {
-                var folderNode = Client.Inventory.Store.GetNodeFor(folder.UUID);
-                if (folderNode == null)
-                    continue;
-                if (folderNode.NeedsUpdate)
-                {
-                    var FolderUpdatedEvent = new ManualResetEvent(false);
-                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) => FolderUpdatedEvent.Set();
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    FolderUpdatedEvent.Reset();
-                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                }
-                foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
-                {
-                    yield return o;
-                }
-            }
-        }
+            if (inventoryBase == null)
+                return default(T);
 
-        public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, UUID criteria,
-            uint millisecondsTimeout)
-        {
+            if (typeof (T) != typeof (InventoryNode)) return (T) (object) inventoryBase;
+
             lock (Locks.ClientInstanceInventoryLock)
             {
-                return directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
+                return (T) (object) Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
             }
         }
 
@@ -456,57 +495,6 @@ namespace wasOpenMetaverse
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
         ///     Fetches items and their full path from the inventory starting with
-        ///     an inventory node where the search criteria is a string.
-        /// </summary>
-        /// <param name="Client">the grid client to use</param>
-        /// <param name="root">the node to start the search from</param>
-        /// <param name="criteria">the name of the item to find</param>
-        /// <param name="prefix">any prefix to append to the found paths</param>
-        /// <returns>items matching criteria and their full inventoy path</returns>
-        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> directFindInventoryPath<T>(GridClient Client,
-            InventoryNode root, string criteria, LinkedList<string> prefix)
-        {
-            if (Strings.Equals(criteria, root.Data.Name, StringComparison.Ordinal))
-            {
-                if (typeof (T) == typeof (InventoryBase))
-                {
-                    yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
-                            new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
-                }
-                if (typeof (T) == typeof (InventoryNode))
-                {
-                    yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
-                            new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
-                }
-            }
-            foreach (
-                var o in
-                    root.Nodes.Values.AsParallel()
-                        .SelectMany(o => directFindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] {root.Data.Name})))))
-            {
-                yield return o;
-            }
-        }
-
-        public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
-            InventoryNode root, string criteria, LinkedList<string> prefix)
-        {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return directFindInventoryPath<T>(Client, root, criteria, prefix);
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Fetches items and their full path from the inventory starting with
         ///     an inventory node where the search criteria is an UUID.
         /// </summary>
         /// <param name="Client">the grid client to use</param>
@@ -554,6 +542,7 @@ namespace wasOpenMetaverse
                 return directFindInventoryPath<T>(Client, root, criteria, prefix);
             }
         }
+
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -607,62 +596,191 @@ namespace wasOpenMetaverse
         }
 
         ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Updates the inventory starting from a folder recursively.
+        ///     Get the path to an inventory item starting with a root folder.
         /// </summary>
+        /// <param name="item">the item to which to get the path</param>
         /// <param name="Client">the grid client to use</param>
-        /// <param name="o">the folder to use as the root</param>
-        /// <param name="millisecondsTimeout">the timeout for each folder update in milliseconds</param>
-        public static void UpdateInventoryRecursive(GridClient Client, InventoryFolder o, uint millisecondsTimeout)
+        /// <param name="root">the root folder</param>
+        /// <param name="separator">the separator to use for the path</param>
+        /// <returns>the path to the item or the empty string</returns>
+        public static string GetInventoryPath(this InventoryBase item, GridClient Client, InventoryFolder root,
+            char separator)
         {
-            // Check if CAPS is connected or wait a while.
-            if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
-            {
-                // Wait for CAPs.
-                var EventQueueRunningEvent = new ManualResetEvent(false);
-                EventHandler<EventQueueRunningEventArgs> EventQueueRunningEventHandler =
-                    (p, q) => { EventQueueRunningEvent.Set(); };
-                Client.Network.EventQueueRunning += EventQueueRunningEventHandler;
-                EventQueueRunningEvent.WaitOne((int) millisecondsTimeout, false);
-                Client.Network.EventQueueRunning -= EventQueueRunningEventHandler;
-            }
+            if (item == null) return string.Empty;
 
+            var path = new List<string>();
+
+            do
+            {
+                path.Insert(0, item.Name);
+
+                if (item.ParentUUID.Equals(UUID.Zero))
+                    break;
+
+                item = Client.Inventory.Store[item.ParentUUID];
+            } while (item != null);
+
+            return path.Contains(root.Name)
+                ? string.Join(separator.ToString(), path.Skip(path.IndexOf(root.Name) + 1))
+                : string.Empty;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns a list of inventory items or inventory folders by searching recursively starting from a folder.
+        /// </summary>
+        /// <param name="root">the root folder from where to start the search</param>
+        /// <param name="Client">the grid client to use for the search</param>
+        /// <param name="millisecondsTimeout">the timeout in milliseconds for requesting folder contents</param>
+        /// <returns>a list of inventory items and folders</returns>
+        public static IEnumerable<InventoryBase> GetInventoryRecursive(this InventoryFolder root, GridClient Client,
+            uint millisecondsTimeout)
+        {
             // Create the queue of folders.
             var inventoryFolders = new BlockingQueue<InventoryFolder>();
             // Enqueue the first folder (root).
-            inventoryFolders.Enqueue(o);
+            inventoryFolders.Enqueue(root);
 
-            var FolderUpdatedEvent = new ManualResetEvent(false);
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+            UUID clientUUID;
+            lock (Locks.ClientInstanceSelfLock)
             {
-                // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(q.FolderID)
-                    .AsParallel()
-                    .Where(r => r is InventoryFolder)
-                    .ForAll(r => { inventoryFolders.Enqueue(r as InventoryFolder); });
-                FolderUpdatedEvent.Set();
-            };
+                clientUUID = Client.Self.AgentID;
+            }
 
             do
             {
                 // Dequeue folder.
-                var folder = inventoryFolders.Dequeue();
-                // Check if the node exists and if it does not need and update then continue.
-                var node = Client.Inventory.Store.GetNodeFor(folder.UUID);
-                if (node != null && !node.NeedsUpdate)
-                    continue;
+                var queueFolder = inventoryFolders.Dequeue();
+                var contents = new HashSet<InventoryBase>();
                 lock (Locks.ClientInstanceInventoryLock)
                 {
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    FolderUpdatedEvent.Reset();
-                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                    contents.UnionWith(Client.Inventory.FolderContents(queueFolder.UUID, clientUUID, true, true,
+                        InventorySortOrder.ByDate, (int) millisecondsTimeout));
+                }
+                foreach (var item in contents)
+                {
+                    if (item is InventoryFolder)
+                        inventoryFolders.Enqueue(item as InventoryFolder);
+
+                    yield return item;
                 }
             } while (inventoryFolders.Any());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Update inventory nodes recursively starting from a node.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the root folder from where to start updating</param>
+        /// <param name="millisecondsTimeout">the timeout for updating folders in milliseconds</param>
+        /// <param name="force">true if the node status should be ignored</param>
+        private static void directUpdateInventoryRecursive(GridClient Client, InventoryNode root,
+            uint millisecondsTimeout, bool force = false)
+        {
+            var inventoryFolders = new List<InventoryNode>();
+            if (root.Nodes.Values.Any(node => node.Data is InventoryFolder && node.NeedsUpdate) || root.NeedsUpdate ||
+                !force)
+            {
+                var FolderUpdatedEvent = new AutoResetEvent(false);
+                var LockObject = new object();
+                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                {
+                    if (!q.FolderID.Equals(root.Data.UUID)) return;
+
+                    lock (LockObject)
+                    {
+                        inventoryFolders.AddRange(
+                            Client.Inventory.Store.GetContents(q.FolderID)
+                                .AsParallel()
+                                .Where(o => o is InventoryFolder)
+                                .Select(o => Client.Inventory.Store.GetNodeFor(o.UUID)));
+                    }
+                    FolderUpdatedEvent.Set();
+                };
+
+                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                Client.Inventory.RequestFolderContents(root.Data.UUID, root.Data.OwnerID, true, true,
+                    InventorySortOrder.ByDate);
+                FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+            }
+
+            // Radegast does this with 6 threads, any reason?
+            inventoryFolders.AsParallel()
+                .ForAll(o => { directUpdateInventoryRecursive(Client, o, millisecondsTimeout); });
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Update all inventory items starting from a folder.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the root folder from where to start updating</param>
+        /// <param name="millisecondsTimeout">the timeout for updating folders in milliseconds</param>
+        /// <param name="force">true if the node status should be ignored</param>
+        public static void UpdateInventoryRecursive(GridClient Client, InventoryFolder root,
+            uint millisecondsTimeout, bool force = false)
+        {
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                // Wait for CAPs.
+                if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
+                {
+                    var EventQueueRunningEvent = new AutoResetEvent(false);
+                    EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
+                    Client.Network.EventQueueRunning += handler;
+                    EventQueueRunningEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Network.EventQueueRunning -= handler;
+                }
+            }
+
+            lock (Locks.ClientInstanceInventoryLock)
+            {
+                directUpdateInventoryRecursive(Client, Client.Inventory.Store.GetNodeFor(root.UUID), millisecondsTimeout,
+                    force);
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Update all inventory items starting from a folder.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="root">the root folder from where to start updating</param>
+        /// <param name="millisecondsTimeout">the timeout for updating folders in milliseconds</param>
+        /// <param name="force">true if the node status should be ignored</param>
+        public static void UpdateInventoryRecursive(GridClient Client, InventoryNode root,
+            uint millisecondsTimeout, bool force = false)
+        {
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                // Wait for CAPs.
+                if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
+                {
+                    var EventQueueRunningEvent = new AutoResetEvent(false);
+                    EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
+                    Client.Network.EventQueueRunning += handler;
+                    EventQueueRunningEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Network.EventQueueRunning -= handler;
+                }
+            }
+
+            lock (Locks.ClientInstanceInventoryLock)
+            {
+                directUpdateInventoryRecursive(Client, root, millisecondsTimeout, force);
+            }
         }
 
 
@@ -904,6 +1022,27 @@ namespace wasOpenMetaverse
             }
 
             return null;
+        }
+
+        /// <summary>
+        ///     A wrapper that locks the inventory in order to retrieve folder contents.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="folder">the folder UUID</param>
+        /// <param name="owner">the UUID of the owner of the folder</param>
+        /// <param name="folders">whether to retrieive folders</param>
+        /// <param name="items">whether to retrieve items</param>
+        /// <param name="sortOrder">the sort order to return</param>
+        /// <param name="millisecondTimeout">the timeout for the request in milliseconds</param>
+        /// <returns>a list of inventory items contained in the folder</returns>
+        public static List<InventoryBase> FolderContents(GridClient Client, UUID folder, UUID owner, bool folders,
+            bool items,
+            InventorySortOrder sortOrder, int millisecondTimeout)
+        {
+            lock (Locks.ClientInstanceInventoryLock)
+            {
+                return Client.Inventory.FolderContents(folder, owner, folders, items, sortOrder, millisecondTimeout);
+            }
         }
     }
 }

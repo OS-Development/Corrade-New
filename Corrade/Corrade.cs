@@ -179,9 +179,7 @@ namespace Corrade
         private static readonly Dictionary<Configuration.Notifications, HashSet<Notification>> GroupNotificationsCache =
             new Dictionary<Configuration.Notifications, HashSet<Notification>>();
 
-        private static readonly Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
-            InventoryOffers =
-                new Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+        private static readonly HashSet<InventoryOffer> InventoryOffers = new HashSet<InventoryOffer>();
 
         private static readonly object InventoryOffersLock = new object();
 
@@ -282,6 +280,8 @@ namespace Corrade
         private static string CorradePOSTMediaType;
 
         private static readonly AES CorradeAES = new AES();
+
+        private static readonly object RLVInventoryLock = new object();
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -499,7 +499,8 @@ namespace Corrade
             lock (Locks.ClientInstanceAppearanceLock)
             {
                 var AppearanceSetEvent = new ManualResetEvent(false);
-                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
+                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet =
+                    (sender, args) => { AppearanceSetEvent.Set(); };
                 Client.Appearance.AppearanceSet += HandleAppearanceSet;
                 Client.Appearance.RequestSetAppearance(true);
                 AppearanceSetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
@@ -895,9 +896,8 @@ namespace Corrade
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                                 ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
                                     new XmlSerializer(
-                                        typeof (
-                                            Collections.SerializableDictionary
-                                                <UUID, Collections.ObservableHashSet<UUID>>))
+                                        typeof (Collections.SerializableDictionary
+                                            <UUID, Collections.ObservableHashSet<UUID>>))
                                         .Deserialize(streamReader))
                                     .AsParallel()
                                     .Where(
@@ -995,9 +995,8 @@ namespace Corrade
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                                 ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
                                     new XmlSerializer(
-                                        typeof (
-                                            Collections.SerializableDictionary
-                                                <UUID, Collections.ObservableHashSet<UUID>>))
+                                        typeof (Collections.SerializableDictionary
+                                            <UUID, Collections.ObservableHashSet<UUID>>))
                                         .Deserialize(streamReader))
                                     .AsParallel()
                                     .Where(
@@ -1151,7 +1150,6 @@ namespace Corrade
                                 serializer.Serialize(writer, GroupNotifications);
                             }
                             writer.Flush();
-
                         }
                     }
                 }
@@ -2827,6 +2825,9 @@ namespace Corrade
             // Smoother movement for autopilot.
             Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
             Client.Settings.ENABLE_CAPS = true;
+            // Inventory settings.
+            Client.Settings.FETCH_MISSING_INVENTORY = true;
+            Client.Settings.HTTP_INVENTORY = true;
             // Set the asset cache directory.
             Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
@@ -2834,7 +2835,6 @@ namespace Corrade
             Client.Assets.Cache.AutoPruneEnabled = false;
             // More precision for object and avatar tracking updates.
             Client.Settings.USE_INTERPOLATION_TIMER = true;
-            Client.Settings.FETCH_MISSING_INVENTORY = true;
             // Transfer textures over HTTP if possible.
             Client.Settings.USE_HTTP_TEXTURES = true;
             // Needed for commands dealing with terrain height.
@@ -3384,8 +3384,8 @@ namespace Corrade
             {
                 InventoryOffers.AsParallel().ForAll(o =>
                 {
-                    o.Key.Accept = false;
-                    o.Value.Set();
+                    o.Args.Accept = false;
+                    o.Event.Set();
                 });
             }
             // Logout
@@ -4696,11 +4696,15 @@ namespace Corrade
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
         {
             // We need to block until we get a reply from a script.
-            var wait = new ManualResetEvent(false);
-            // Add the inventory offer to the list of inventory items.
+            var inventoryOffer = new InventoryOffer
+            {
+                Args = e,
+                Event = new ManualResetEvent(false)
+            };
+            // Add the inventory offer to the list of inventory offers.
             lock (InventoryOffersLock)
             {
-                InventoryOffers.Add(e, wait);
+                InventoryOffers.Add(inventoryOffer);
             }
 
             // Accept anything from master avatars.
@@ -4744,18 +4748,14 @@ namespace Corrade
             }
 
             // Find the item in the inventory.
-            InventoryBase inventoryBaseItem;
+            InventoryBase inventoryBaseItem = null;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                inventoryBaseItem =
-                    Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                        ((Func<string>) (() =>
-                        {
-                            var groups =
-                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
-                            return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
-                        }))(), corradeConfiguration.ServicesTimeout
-                        ).FirstOrDefault();
+                var itemUUID = new UUID(e.Offer.BinaryBucket, 1);
+                if (Client.Inventory.Store.Contains(itemUUID))
+                {
+                    inventoryBaseItem = Client.Inventory.Store[itemUUID];
+                }
             }
 
             if (inventoryBaseItem != null)
@@ -4768,6 +4768,21 @@ namespace Corrade
                         Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
                             InventoryFolder);
                 }
+                try
+                {
+                    // Update trash folder contents.
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data
+                            as
+                            InventoryFolder,
+                        corradeConfiguration.ServicesTimeout);
+                }
+                catch (Exception)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                }
             }
 
             // Send notification
@@ -4776,49 +4791,107 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
 
             // Wait for a reply.
-            wait.WaitOne(Timeout.Infinite);
+            inventoryOffer.Event.WaitOne(Timeout.Infinite);
 
-            if (!e.Accept) return;
+            if (inventoryBaseItem == null) return;
+
+            switch (e.Accept)
+            {
+                case false: // if the item is to be discarded, then remove the item from inventory
+                    switch (inventoryBaseItem is InventoryFolder)
+                    {
+                        case true:
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.RemoveFolder(inventoryBaseItem.UUID);
+                            }
+                            break;
+                        default:
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.RemoveItem(inventoryBaseItem.UUID);
+                            }
+                            break;
+                    }
+                    try
+                    {
+                        // Update trash folder contents.
+                        Inventory.UpdateInventoryRecursive(Client,
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data
+                                as
+                                InventoryFolder,
+                            corradeConfiguration.ServicesTimeout);
+                    }
+                    catch (Exception)
+                    {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                    }
+                    return;
+            }
 
             // If no folder UUID was specified, move it to the default folder for the asset type.
-            if (inventoryBaseItem != null)
+            switch (!e.FolderID.Equals(UUID.Zero))
             {
-                switch (!e.FolderID.Equals(UUID.Zero))
-                {
-                    case true:
-                        InventoryBase inventoryBaseFolder;
-                        lock (Locks.ClientInstanceInventoryLock)
+                case true:
+                    InventoryBase inventoryBaseFolder;
+                    lock (Locks.ClientInstanceInventoryLock)
+                    {
+                        inventoryBaseFolder = Client.Inventory.Store.Items[e.FolderID].Data as InventoryFolder;
+                    }
+                    if (inventoryBaseFolder != null)
+                    {
+                        switch (inventoryBaseItem is InventoryFolder)
                         {
-                            // Locate the folder and move.
-                            inventoryBaseFolder =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    e.FolderID, corradeConfiguration.ServicesTimeout
-                                    ).FirstOrDefault();
-                            if (inventoryBaseFolder != null)
-                            {
-                                Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
-                            }
+                            case true: // folders
+                                // if a name was specified, rename the item as well.
+                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
+                                {
+                                    case false:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
+                                                inventoryBaseFolder.UUID, inventoryOffer.Name);
+                                        }
+                                        break;
+                                    default:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
+                                                inventoryBaseFolder.UUID);
+                                        }
+                                        break;
+                                }
+                                break;
+                            default: // all other items
+                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
+                                {
+                                    case false:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Inventory.Move(inventoryBaseItem,
+                                                inventoryBaseFolder as InventoryFolder, inventoryOffer.Name);
+                                            Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
+                                        }
+                                        break;
+                                    default:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Inventory.Move(inventoryBaseItem,
+                                                inventoryBaseFolder as InventoryFolder);
+                                        }
+                                        break;
+                                }
+                                break;
                         }
-                        if (inventoryBaseFolder != null)
+                    }
+                    if (inventoryBaseFolder != null)
+                    {
+                        try
                         {
                             Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
                                 corradeConfiguration.ServicesTimeout);
-                        }
-                        break;
-                    default:
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            Client.Inventory.Move(
-                                inventoryBaseItem,
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                    InventoryFolder);
-                        }
-                        try
-                        {
-                            Inventory.UpdateInventoryRecursive(Client,
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data
-                                    as
-                                    InventoryFolder, corradeConfiguration.ServicesTimeout);
                         }
                         catch (Exception)
                         {
@@ -4826,8 +4899,73 @@ namespace Corrade
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                         }
-                        break;
-                }
+                    }
+                    break;
+                default:
+                    switch (inventoryBaseItem is InventoryFolder)
+                    {
+                        case true: // move inventory folders into the root
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                // if a name was specified, rename the item as well.
+                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
+                                {
+                                    case false:
+                                        Client.Inventory.MoveFolder(
+                                            inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID,
+                                            inventoryOffer.Name);
+                                        break;
+                                    default:
+                                        Client.Inventory.MoveFolder(
+                                            inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID);
+                                        break;
+                                }
+                            }
+                            break;
+                        default:
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
+                                {
+                                    case false:
+                                        Client.Inventory.Move(inventoryBaseItem,
+                                            Client.Inventory.Store.Items[
+                                                Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                                InventoryFolder, inventoryOffer.Name);
+                                        Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
+                                        break;
+                                    default:
+                                        Client.Inventory.Move(inventoryBaseItem,
+                                            Client.Inventory.Store.Items[
+                                                Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                                InventoryFolder);
+                                        break;
+                                }
+                            }
+                            break;
+                    }
+                    try
+                    {
+                        switch (inventoryBaseItem is InventoryFolder)
+                        {
+                            case true:
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                                break;
+                            default:
+                                Inventory.UpdateInventoryRecursive(Client,
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)]
+                                        .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                                break;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                    }
+                    break;
             }
         }
 
@@ -4944,6 +5082,9 @@ namespace Corrade
                             // Update the inventory.
                             Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
                                 corradeConfiguration.ServicesTimeout);
+                            // Update the library.
+                            Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.LibraryFolder,
+                                corradeConfiguration.ServicesTimeout);
                             // Get COF.
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -5053,6 +5194,11 @@ namespace Corrade
 
         private static void HandleTeleportProgress(object sender, TeleportEventArgs e)
         {
+            // Send teleport notifications
+            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.Teleport, e),
+                corradeConfiguration.MaximumNotificationThreads);
+
             switch (e.Status)
             {
                 case TeleportStatus.Finished:

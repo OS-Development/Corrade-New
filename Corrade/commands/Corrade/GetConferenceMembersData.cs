@@ -19,71 +19,73 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getconferencemembersdata
-                =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Talk))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getconferencemembersdata
+                    =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    UUID agentUUID;
-                    if (
-                        !UUID.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
-                                corradeCommandParameters.Message)),
-                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
-                    UUID sessionUUID;
-                    // Get the session UUID
-                    if (!UUID.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
-                            corradeCommandParameters.Message)), out sessionUUID))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                    }
-                    List<ChatSessionMember> members;
-                    if (!Client.Self.GroupChatSessions.TryGetValue(sessionUUID, out members))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
-                    }
-
-                    var data = new List<string>();
-                    var LockObject = new object();
-                    members.AsParallel().ForAll(o =>
-                    {
-                        var chatSessionMemberData =
-                            o.GetStructuredData(
-                                wasInput(
-                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
-                        lock (LockObject)
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Talk))
                         {
-                            data.AddRange(chatSessionMemberData);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                    });
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        UUID agentUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
+                                    corradeCommandParameters.Message)),
+                                out agentUUID) && !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref agentUUID))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
+                        }
+                        UUID sessionUUID;
+                        // Get the session UUID
+                        if (!UUID.TryParse(wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
+                                corradeCommandParameters.Message)), out sessionUUID))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
+                        }
+                        List<ChatSessionMember> members;
+                        if (!Client.Self.GroupChatSessions.TryGetValue(sessionUUID, out members))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
+                        }
+
+                        var data = new List<string>();
+                        var LockObject = new object();
+                        members.AsParallel().ForAll(o =>
+                        {
+                            var chatSessionMemberData =
+                                o.GetStructuredData(
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                            corradeCommandParameters.Message)));
+                            lock (LockObject)
+                            {
+                                data.AddRange(chatSessionMemberData);
+                            }
+                        });
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

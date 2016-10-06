@@ -19,102 +19,103 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getavatarpositions =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getavatarpositions =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    Vector3 position;
-                    if (
-                        !Vector3.TryParse(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
-                                    corradeCommandParameters.Message)),
-                            out position))
-                    {
-                        position = Client.Self.SimPosition;
-                    }
-                    var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                corradeCommandParameters.Message))
-                            .ToLowerInvariant());
-                    var region =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
-                                corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
-                    }
-                    if (simulator == null)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
-                    Parcel parcel = null;
-                    switch (entity)
-                    {
-                        case Enumerations.Entity.REGION:
-                            break;
-                        case Enumerations.Entity.PARCEL:
-                            if (
-                                !Services.GetParcelAtPosition(Client, simulator, position,
-                                    corradeConfiguration.ServicesTimeout, ref parcel))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                            }
-                            break;
-                        default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
-                    }
-                    var csv = new List<string>();
-                    var avatarPositions = new Dictionary<UUID, Vector3>();
-                    simulator.AvatarPositions.ForEach(o => avatarPositions.Add(o.Key, o.Value));
-                    var LockObject = new object();
-                    avatarPositions.AsParallel().ForAll(p =>
-                    {
-                        var name = string.Empty;
                         if (
-                            !Resolvers.AgentUUIDToName(Client, p.Key, corradeConfiguration.ServicesTimeout,
-                                ref name))
-                            return;
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
+                                        corradeCommandParameters.Message)),
+                                out position))
+                        {
+                            position = Client.Self.SimPosition;
+                        }
+                        var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                    corradeCommandParameters.Message))
+                                .ToLowerInvariant());
+                        var region =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                    corradeCommandParameters.Message));
+                        Simulator simulator;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            simulator =
+                                Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                    o =>
+                                        o.Name.Equals(
+                                            string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                            StringComparison.OrdinalIgnoreCase));
+                        }
+                        if (simulator == null)
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                        }
+                        Parcel parcel = null;
                         switch (entity)
                         {
                             case Enumerations.Entity.REGION:
                                 break;
                             case Enumerations.Entity.PARCEL:
-                                Parcel avatarParcel = null;
                                 if (
-                                    !Services.GetParcelAtPosition(Client, simulator, p.Value,
-                                        corradeConfiguration.ServicesTimeout, ref avatarParcel))
-                                    return;
-                                if (!avatarParcel.LocalID.Equals(parcel.LocalID)) return;
+                                    !Services.GetParcelAtPosition(Client, simulator, position,
+                                        corradeConfiguration.ServicesTimeout, ref parcel))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
+                                }
                                 break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }
-                        lock (LockObject)
+                        var csv = new List<string>();
+                        var avatarPositions = new Dictionary<UUID, Vector3>();
+                        simulator.AvatarPositions.ForEach(o => avatarPositions.Add(o.Key, o.Value));
+                        var LockObject = new object();
+                        avatarPositions.AsParallel().ForAll(p =>
                         {
-                            csv.Add(name);
-                            csv.Add(p.Key.ToString());
-                            csv.Add(p.Value.ToString());
+                            var name = string.Empty;
+                            if (
+                                !Resolvers.AgentUUIDToName(Client, p.Key, corradeConfiguration.ServicesTimeout,
+                                    ref name))
+                                return;
+                            switch (entity)
+                            {
+                                case Enumerations.Entity.REGION:
+                                    break;
+                                case Enumerations.Entity.PARCEL:
+                                    Parcel avatarParcel = null;
+                                    if (
+                                        !Services.GetParcelAtPosition(Client, simulator, p.Value,
+                                            corradeConfiguration.ServicesTimeout, ref avatarParcel))
+                                        return;
+                                    if (!avatarParcel.LocalID.Equals(parcel.LocalID)) return;
+                                    break;
+                            }
+                            lock (LockObject)
+                            {
+                                csv.Add(name);
+                                csv.Add(p.Key.ToString());
+                                csv.Add(p.Value.ToString());
+                            }
+                        });
+                        if (csv.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(csv));
                         }
-                    });
-                    if (csv.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(csv));
-                    }
-                };
+                    };
         }
     }
 }

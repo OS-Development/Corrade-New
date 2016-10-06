@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Corrade.Constants;
 using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -22,7 +23,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> attach =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> attach =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -102,6 +103,8 @@ namespace Corrade
                             break;
                     }
 
+                    var currentAttachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout);
+
                     items.AsParallel().ForAll(o =>
                         typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
@@ -109,22 +112,24 @@ namespace Corrade
                                     Strings.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
-                                            InventoryItem inventoryItem;
+                                            InventoryItem inventoryItem = null;
                                             UUID itemUUID;
                                             switch (UUID.TryParse(o.Value, out itemUUID))
                                             {
                                                 case true:
-                                                    inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
-                                                        Client.Inventory.Store.RootNode, itemUUID,
-                                                        corradeConfiguration.ServicesTimeout
-                                                        ).FirstOrDefault() as InventoryItem;
+                                                    lock (Locks.ClientInstanceInventoryLock)
+                                                    {
+                                                        if (Client.Inventory.Store.Contains(itemUUID))
+                                                        {
+                                                            inventoryItem =
+                                                                Client.Inventory.Store[itemUUID] as InventoryItem;
+                                                        }
+                                                    }
                                                     break;
                                                 default:
-                                                    inventoryItem =
-                                                        Inventory.FindInventory<InventoryBase>(Client,
-                                                            Client.Inventory.Store.RootNode, o.Value,
-                                                            corradeConfiguration.ServicesTimeout)
-                                                            .FirstOrDefault() as InventoryItem;
+                                                    inventoryItem = Inventory.FindInventory<InventoryItem>(
+                                                        Client, o.Value, CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                        corradeConfiguration.ServicesTimeout);
                                                     break;
                                             }
                                             if (inventoryItem == null)
@@ -136,9 +141,7 @@ namespace Corrade
                                                     inventoryItem,
                                                     (AttachmentPoint) q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
-                                                var slot = Inventory.GetAttachments(
-                                                    Client,
-                                                    corradeConfiguration.DataTimeout)
+                                                var slot = currentAttachments
                                                     .ToArray()
                                                     .AsParallel()
                                                     .Where(

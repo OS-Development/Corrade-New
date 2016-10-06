@@ -50,7 +50,7 @@ namespace Corrade.Constants
         public const string AGENT_CACHE_FILE = @"Agent.cache";
         public const string GROUP_CACHE_FILE = @"Group.cache";
         public const string REGION_CACHE_FILE = @"Region.cache";
-        public const string PATH_SEPARATOR = @"/";
+        public const char PATH_SEPARATOR = '/';
         public const string ERROR_SEPARATOR = @" : ";
         public const string CACHE_DIRECTORY = @"cache";
         public const string ASSET_CACHE_DIRECTORY = @"assets";

@@ -19,89 +19,92 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> remoutfit = (message, rule, senderUUID) =>
-            {
-                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE))
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> remoutfit =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                switch (!string.IsNullOrEmpty(rule.Option))
-                {
-                    case true: // A single wearable
-                        var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(
-                                p => Strings.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
-                        if (wearTypeInfo == null)
-                        {
+                    if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE))
+                    {
+                        return;
+                    }
+                    switch (!string.IsNullOrEmpty(rule.Option))
+                    {
+                        case true: // A single wearable
+                            var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
+                                .AsParallel().FirstOrDefault(
+                                    p =>
+                                        Strings.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
+                            if (wearTypeInfo == null)
+                            {
+                                break;
+                            }
+                            var wearable =
+                                Inventory.GetWearables(Client, CurrentOutfitFolder)
+                                    .ToArray()
+                                    .AsParallel()
+                                    .FirstOrDefault(
+                                        o =>
+                                            !Inventory.IsBodyPart(Client, o) &&
+                                            (o as InventoryWearable).WearableType.Equals(
+                                                (WearableType) wearTypeInfo.GetValue(null)));
+                            if (wearable != null)
+                            {
+                                CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                                    () => SendNotification(
+                                        Configuration.Notifications.OutfitChanged,
+                                        new OutfitEventArgs
+                                        {
+                                            Action = Enumerations.Action.UNWEAR,
+                                            Name = wearable.Name,
+                                            Description = wearable.Description,
+                                            Item = wearable.UUID,
+                                            Asset = wearable.AssetUUID,
+                                            Entity = wearable.AssetType,
+                                            Creator = wearable.CreatorID,
+                                            Permissions =
+                                                Inventory.wasPermissionsToString(
+                                                    wearable.Permissions),
+                                            Inventory = wearable.InventoryType,
+                                            Slot = (wearable as InventoryWearable).WearableType.ToString()
+                                        }),
+                                    corradeConfiguration.MaximumNotificationThreads);
+                                Inventory.UnWear(Client, CurrentOutfitFolder, wearable,
+                                    corradeConfiguration.ServicesTimeout);
+                            }
                             break;
-                        }
-                        var wearable =
+                        default:
                             Inventory.GetWearables(Client, CurrentOutfitFolder)
-                                .ToArray()
                                 .AsParallel()
-                                .FirstOrDefault(
+                                .Where(o => !Inventory.IsBodyPart(Client, o as InventoryWearable))
+                                .ForAll(
                                     o =>
-                                        !Inventory.IsBodyPart(Client, o) &&
-                                        (o as InventoryWearable).WearableType.Equals(
-                                            (WearableType) wearTypeInfo.GetValue(null)));
-                        if (wearable != null)
-                        {
-                            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(
-                                    Configuration.Notifications.OutfitChanged,
-                                    new OutfitEventArgs
                                     {
-                                        Action = Enumerations.Action.UNWEAR,
-                                        Name = wearable.Name,
-                                        Description = wearable.Description,
-                                        Item = wearable.UUID,
-                                        Asset = wearable.AssetUUID,
-                                        Entity = wearable.AssetType,
-                                        Creator = wearable.CreatorID,
-                                        Permissions =
-                                            Inventory.wasPermissionsToString(
-                                                wearable.Permissions),
-                                        Inventory = wearable.InventoryType,
-                                        Slot = (wearable as InventoryWearable).WearableType.ToString()
-                                    }),
-                                corradeConfiguration.MaximumNotificationThreads);
-                            Inventory.UnWear(Client, CurrentOutfitFolder, wearable, corradeConfiguration.ServicesTimeout);
-                        }
-                        break;
-                    default:
-                        Inventory.GetWearables(Client, CurrentOutfitFolder)
-                            .AsParallel()
-                            .Where(o => !Inventory.IsBodyPart(Client, o as InventoryWearable))
-                            .ForAll(
-                                o =>
-                                {
-                                    CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                                        () => SendNotification(
-                                            Configuration.Notifications.OutfitChanged,
-                                            new OutfitEventArgs
-                                            {
-                                                Action = Enumerations.Action.UNWEAR,
-                                                Name = o.Name,
-                                                Description = o.Description,
-                                                Item = o.UUID,
-                                                Asset = o.AssetUUID,
-                                                Entity = o.AssetType,
-                                                Creator = o.CreatorID,
-                                                Permissions =
-                                                    Inventory.wasPermissionsToString(
-                                                        o.Permissions),
-                                                Inventory = o.InventoryType,
-                                                Slot = (o as InventoryWearable).WearableType.ToString()
-                                            }),
-                                        corradeConfiguration.MaximumNotificationThreads);
-                                    Inventory.UnWear(Client, CurrentOutfitFolder, o,
-                                        corradeConfiguration.ServicesTimeout);
-                                });
-                        break;
-                }
-                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
-            };
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action = Enumerations.Action.UNWEAR,
+                                                    Name = o.Name,
+                                                    Description = o.Description,
+                                                    Item = o.UUID,
+                                                    Asset = o.AssetUUID,
+                                                    Entity = o.AssetType,
+                                                    Creator = o.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            o.Permissions),
+                                                    Inventory = o.InventoryType,
+                                                    Slot = (o as InventoryWearable).WearableType.ToString()
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
+                                        Inventory.UnWear(Client, CurrentOutfitFolder, o,
+                                            corradeConfiguration.ServicesTimeout);
+                                    });
+                            break;
+                    }
+                    RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
+                };
         }
     }
 }

@@ -14,7 +14,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> logout =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> logout =
                 (corradeCommandParameters, result) =>
                 {
                     if (

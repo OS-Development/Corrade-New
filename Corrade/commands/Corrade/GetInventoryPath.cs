@@ -21,7 +21,8 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getinventorypath =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getinventorypath
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -72,7 +73,7 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray()));
+                                csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR.ToString(), o.ToArray()));
                             }
                         });
                     if (csv.Any())

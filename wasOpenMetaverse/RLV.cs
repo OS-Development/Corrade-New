@@ -11,7 +11,7 @@ using OpenMetaverse;
 
 namespace wasOpenMetaverse
 {
-    public class RLV
+    public static class RLV
     {
         /// <summary>
         ///     RLV Attachments.
@@ -118,6 +118,9 @@ namespace wasOpenMetaverse
             }
         }
 
+        /// <summary>
+        ///     A structure holding all the commands of a RLV behaviour.
+        /// </summary>
         public struct RLVRule
         {
             public string Behaviour;
@@ -151,14 +154,14 @@ namespace wasOpenMetaverse
             public const string DOT_MARKER = @".";
             public const string TILDE_MARKER = @"~";
             public const string PROPORTION_SEPARATOR = @"|";
-            public const string SHARED_FOLDER_NAME = @"#RLV";
+            public const string SHARED_FOLDER_PATH = @"#RLV";
             public const string AND_OPERATOR = @"&&";
-            public const string PATH_SEPARATOR = @"/";
+            public const char PATH_SEPARATOR = '/';
             public const string Y = @"y";
             public const string ADD = @"add";
             public const string N = @"n";
             public const string REM = @"rem";
-            public const string STATUS_SEPARATOR = @";";
+            public const char STATUS_SEPARATOR = ';';
 
             /// <summary>
             ///     Regex used to match RLV commands.
@@ -174,6 +177,30 @@ namespace wasOpenMetaverse
         {
             public AttachmentPoint AttachmentPoint;
             public string Name;
+        }
+
+        /// <summary>
+        ///     Gets items descending from a root node.
+        /// </summary>
+        /// <param name="root">the node to search from</param>
+        /// <param name="items">a reference to a list where the items will be stored</param>
+        public static IEnumerable<InventoryItem> GetInventoryItems(this InventoryNode root)
+        {
+            foreach (var node in root.Nodes.Values.Where(n => !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)))
+            {
+                switch (node.Data is InventoryFolder)
+                {
+                    case true:
+                        foreach (var item in GetInventoryItems(node))
+                        {
+                            yield return item;
+                        }
+                        break;
+                    default:
+                        yield return node.Data as InventoryItem;
+                        break;
+                }
+            }
         }
     }
 }

@@ -6,6 +6,7 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using Corrade.Constants;
 using OpenMetaverse;
 using wasSharp;

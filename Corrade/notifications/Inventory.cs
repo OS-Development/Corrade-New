@@ -12,6 +12,7 @@ using Corrade.Constants;
 using Corrade.Helpers;
 using OpenMetaverse;
 using wasSharp;
+using Corrade.Structures;
 
 namespace Corrade
 {
@@ -43,27 +44,27 @@ namespace Corrade
                             instantMessageEventArgs
                         };
 
-                        var inventoryObjectOfferedEventArgs =
-                            new KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+                        InventoryOffer inventoryOffer = new InventoryOffer();
                         switch (instantMessageEventArgs.IM.Dialog)
                         {
                             case InstantMessageDialog.TaskInventoryOffered:
                             case InstantMessageDialog.InventoryOffered:
                                 lock (InventoryOffersLock)
                                 {
-                                    inventoryObjectOfferedEventArgs =
-                                        InventoryOffers.AsParallel().FirstOrDefault(p =>
-                                            p.Key.Offer.IMSessionID.Equals(
-                                                instantMessageEventArgs.IM.IMSessionID));
-                                    if (
-                                        !inventoryObjectOfferedEventArgs.Equals(
-                                            default(
-                                                KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                    inventoryOffer =
+                                        InventoryOffers.AsParallel()
+                                            .FirstOrDefault(
+                                                p =>
+                                                    p.Args.Offer.IMSessionID.Equals(
+                                                        instantMessageEventArgs.IM.IMSessionID));
+                                    if (inventoryOffer != null)
                                     {
-                                        objects.Add(inventoryObjectOfferedEventArgs.Key);
+                                        objects.Add(inventoryOffer.Args);
                                         var groups =
                                             CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                                inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
+                                                string.IsNullOrEmpty(inventoryOffer.Name)
+                                                    ? inventoryOffer.Args.Offer.Message
+                                                    : inventoryOffer.Name).Groups;
                                         if (groups.Count > 1)
                                         {
                                             objects.Add(groups[1]);
@@ -89,14 +90,11 @@ namespace Corrade
                         {
                             case InstantMessageDialog.TaskInventoryOffered:
                             case InstantMessageDialog.InventoryOffered:
-                                if (
-                                    !inventoryObjectOfferedEventArgs.Equals(
-                                        default(
-                                            KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                if (inventoryOffer != null)
                                 {
                                     lock (InventoryOffersLock)
                                     {
-                                        InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
+                                        InventoryOffers.Remove(inventoryOffer);
                                     }
                                 }
                                 break;

@@ -15,32 +15,33 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getgroup = (message, rule, senderUUID) =>
-            {
-                int channel;
-                if (!int.TryParse(rule.Param, out channel) || channel < 1)
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getgroup =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                var groupUUID = Client.Self.ActiveGroup;
-                var currentGroups = Enumerable.Empty<UUID>();
-                if (
-                    !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
-                        ref currentGroups))
-                    return;
-                var groupName = string.Empty;
-                if (
-                    !Resolvers.GroupUUIDToName(Client,
-                        currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)),
-                        corradeConfiguration.ServicesTimeout, ref groupName))
-                {
-                    return;
-                }
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.Chat(groupName, channel, ChatType.Normal);
-                }
-            };
+                    int channel;
+                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
+                    {
+                        return;
+                    }
+                    var groupUUID = Client.Self.ActiveGroup;
+                    var currentGroups = Enumerable.Empty<UUID>();
+                    if (
+                        !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
+                            ref currentGroups))
+                        return;
+                    var groupName = string.Empty;
+                    if (
+                        !Resolvers.GroupUUIDToName(Client,
+                            currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)),
+                            corradeConfiguration.ServicesTimeout, ref groupName))
+                    {
+                        return;
+                    }
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(groupName, channel, ChatType.Normal);
+                    }
+                };
         }
     }
 }

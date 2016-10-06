@@ -13,24 +13,25 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> clear = (message, rule, senderUUID) =>
-            {
-                switch (!string.IsNullOrEmpty(rule.Option))
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> clear =
+                (message, rule, senderUUID) =>
                 {
-                    case true:
-                        lock (RLV.RLVRulesLock)
-                        {
-                            RLVRules.RemoveWhere(o => o.Behaviour.Contains(rule.Behaviour));
-                        }
-                        break;
-                    case false:
-                        lock (RLV.RLVRulesLock)
-                        {
-                            RLVRules.RemoveWhere(o => o.ObjectUUID.Equals(senderUUID));
-                        }
-                        break;
-                }
-            };
+                    switch (!string.IsNullOrEmpty(rule.Option))
+                    {
+                        case true:
+                            lock (RLV.RLVRulesLock)
+                            {
+                                RLVRules.RemoveWhere(o => o.Behaviour.Contains(rule.Behaviour));
+                            }
+                            break;
+                        case false:
+                            lock (RLV.RLVRulesLock)
+                            {
+                                RLVRules.RemoveWhere(o => o.ObjectUUID.Equals(senderUUID));
+                            }
+                            break;
+                    }
+                };
         }
     }
 }

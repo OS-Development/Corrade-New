@@ -7,8 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -19,72 +17,54 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> findfolder = (message, rule, senderUUID) =>
-            {
-                int channel;
-                if (!int.TryParse(rule.Param, out channel) || channel < 1)
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> findfolder =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                if (string.IsNullOrEmpty(rule.Option))
-                {
-                    lock (Locks.ClientInstanceSelfLock)
+                    int channel;
+                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
+                    {
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(rule.Option))
+                    {
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        }
+                        return;
+                    }
+                    var RLVFolder = Inventory.FindInventory<InventoryFolder>(Client,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_PATH,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout,
+                        Client.Inventory.Store.RootFolder);
+                    if (RLVFolder == null)
                     {
                         Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        return;
                     }
-                    return;
-                }
-                var RLVFolder =
-                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
+                    var parts =
+                        new HashSet<string>(rule.Option.Split(new[] {wasOpenMetaverse.RLV.RLV_CONSTANTS.AND_OPERATOR},
+                            StringSplitOptions.RemoveEmptyEntries));
+                    var folders = RLVFolder.GetInventoryRecursive(Client, corradeConfiguration.ServicesTimeout)
                         .ToArray()
                         .AsParallel()
-                        .FirstOrDefault(o => o.Data is InventoryFolder);
-                if (RLVFolder == null)
-                {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                    return;
-                }
-                var folders = new List<string>();
-                var parts =
-                    new HashSet<string>(rule.Option.Split(wasOpenMetaverse.RLV.RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
-                var LockObject = new object();
-                Inventory.FindInventoryPath<InventoryBase>(Client, RLVFolder,
-                    CORRADE_CONSTANTS.OneOrMoRegex,
-                    new LinkedList<string>())
-                    .ToArray()
-                    .AsParallel().Where(
-                        o =>
-                            o.Key is InventoryFolder &&
-                            !o.Key.Name.Substring(1).Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
-                            !o.Key.Name.Substring(1).Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.TILDE_MARKER))
-                    .ForAll(o =>
+                        .Where(
+                            o =>
+                                o is InventoryFolder &&
+                                !o.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
+                                !o.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.TILDE_MARKER) &&
+                                parts.All(p => o.Name.Contains(p))).Select(o => o.Name).ToArray();
+                    if (folders.Any())
                     {
-                        var count = 0;
-                        parts.AsParallel().ForAll(p => o.Value.AsParallel().ForAll(q =>
+                        lock (Locks.ClientInstanceSelfLock)
                         {
-                            if (q.Contains(p))
-                            {
-                                Interlocked.Increment(ref count);
-                            }
-                        }));
-                        if (!count.Equals(parts.Count)) return;
-                        lock (LockObject)
-                        {
-                            folders.Add(o.Key.Name);
+                            Client.Self.Chat(
+                                string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR.ToString(), folders),
+                                channel,
+                                ChatType.Normal);
                         }
-                    });
-                if (folders.Any())
-                {
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(
-                            string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
-                            channel,
-                            ChatType.Normal);
                     }
-                }
-            };
+                };
         }
     }
 }

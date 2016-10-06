@@ -16,51 +16,52 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getinventoryoffers =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getinventoryoffers =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var LockObject = new object();
-                    var csv = new List<string>();
-                    lock (InventoryOffersLock)
-                    {
-                        InventoryOffers.AsParallel().ForAll(o =>
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Inventory))
                         {
-                            var name =
-                                new List<string>(
-                                    wasOpenMetaverse.Helpers.GetAvatarNames(o.Key.Offer.FromAgentName));
-                            lock (LockObject)
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        var LockObject = new object();
+                        var csv = new List<string>();
+                        lock (InventoryOffersLock)
+                        {
+                            InventoryOffers.AsParallel().ForAll(o =>
                             {
-                                csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), name.First()});
-                                csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), name.Last()});
-                                csv.AddRange(new[]
+                                var name =
+                                    new List<string>(
+                                        wasOpenMetaverse.Helpers.GetAvatarNames(o.Args.Offer.FromAgentName));
+                                lock (LockObject)
                                 {
-                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),
-                                    o.Key.AssetType.ToString()
-                                });
-                                csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE), o.Key.Offer.Message});
-                                csv.AddRange(new[]
-                                {
-                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION),
-                                    o.Key.Offer.IMSessionID.ToString()
-                                });
-                            }
-                        });
-                    }
-                    if (csv.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(csv));
-                    }
-                };
+                                    csv.AddRange(new[]
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), name.First()});
+                                    csv.AddRange(new[]
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), name.Last()});
+                                    csv.AddRange(new[]
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),
+                                        o.Args.AssetType.ToString()
+                                    });
+                                    csv.AddRange(new[]
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE), o.Args.Offer.Message});
+                                    csv.AddRange(new[]
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION),
+                                        o.Args.Offer.IMSessionID.ToString()
+                                    });
+                                }
+                            });
+                        }
+                        if (csv.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(csv));
+                        }
+                    };
         }
     }
 }

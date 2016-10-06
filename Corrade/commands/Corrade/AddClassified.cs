@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -22,7 +23,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> addclassified =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> addclassified =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -53,9 +54,8 @@ namespace Corrade
                         // if the item is an UUID, trust the sender otherwise search the inventory
                         if (!UUID.TryParse(item, out textureUUID))
                         {
-                            var inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                    corradeConfiguration.ServicesTimeout).FirstOrDefault();
+                            var inventoryBaseItem = Inventory.FindInventory<InventoryBase>(Client, item,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                             if (!(inventoryBaseItem is InventoryTexture))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);

@@ -19,57 +19,62 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getregionterrainheights =
-                (corradeCommandParameters, result) =>
-                {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getregionterrainheights =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var region =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
-                                corradeCommandParameters.Message));
-                    Simulator simulator;
-                    switch (!string.IsNullOrEmpty(region))
-                    {
-                        case true:
-                            lock (Locks.ClientInstanceNetworkLock)
-                            {
-                                simulator =
-                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.Name.Equals(
-                                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                                StringComparison.OrdinalIgnoreCase));
-                            }
-                            if (simulator == null)
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                            }
-                            break;
-                        default:
-                            simulator = Client.Network.CurrentSim;
-                            break;
-                    }
-                    List<float> data;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        data = new List<float>
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Land))
                         {
-                            simulator.TerrainStartHeight00, // Low SW
-                            simulator.TerrainHeightRange00, // High SW
-                            simulator.TerrainStartHeight01, // Low NW
-                            simulator.TerrainHeightRange01, // High NW
-                            simulator.TerrainStartHeight10, // Low SE
-                            simulator.TerrainHeightRange10, // High SE
-                            simulator.TerrainStartHeight11, // Low NE
-                            simulator.TerrainHeightRange11 // High NE
-                        };
-                    }
-                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                        CSV.FromEnumerable(data.Select(o => o.ToString(Utils.EnUsCulture))));
-                };
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        var region =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                    corradeCommandParameters.Message));
+                        Simulator simulator;
+                        switch (!string.IsNullOrEmpty(region))
+                        {
+                            case true:
+                                lock (Locks.ClientInstanceNetworkLock)
+                                {
+                                    simulator =
+                                        Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                            o =>
+                                                o.Name.Equals(
+                                                    string.IsNullOrEmpty(region)
+                                                        ? Client.Network.CurrentSim.Name
+                                                        : region,
+                                                    StringComparison.OrdinalIgnoreCase));
+                                }
+                                if (simulator == null)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                                }
+                                break;
+                            default:
+                                simulator = Client.Network.CurrentSim;
+                                break;
+                        }
+                        List<float> data;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            data = new List<float>
+                            {
+                                simulator.TerrainStartHeight00, // Low SW
+                                simulator.TerrainHeightRange00, // High SW
+                                simulator.TerrainStartHeight01, // Low NW
+                                simulator.TerrainHeightRange01, // High NW
+                                simulator.TerrainStartHeight10, // Low SE
+                                simulator.TerrainHeightRange10, // High SE
+                                simulator.TerrainStartHeight11, // Low NE
+                                simulator.TerrainHeightRange11 // High NE
+                            };
+                        }
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            CSV.FromEnumerable(data.Select(o => o.ToString(Utils.EnUsCulture))));
+                    };
         }
     }
 }

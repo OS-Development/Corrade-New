@@ -19,57 +19,58 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getmapavatarpositions =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getmapavatarpositions =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var region =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
-                                corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(region))
-                    {
-                        lock (Locks.ClientInstanceNetworkLock)
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
                         {
-                            region = Client.Network.CurrentSim.Name;
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                    }
-                    ulong regionHandle = 0;
-                    if (
-                        !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
-                            ref regionHandle))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
-                    var mapItems = new HashSet<MapItem>();
-                    lock (Locks.ClientInstanceGridLock)
-                    {
-                        mapItems.UnionWith(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
-                            GridLayerType.Objects, (int) corradeConfiguration.ServicesTimeout));
-                    }
-                    if (!mapItems.Any())
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_MAP_ITEMS_FOUND);
-                    }
-                    var data =
-                        mapItems.AsParallel()
-                            .Where(o => o as MapAgentLocation != null)
-                            .Select(o => new[]
+                        var region =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                    corradeCommandParameters.Message));
+                        if (string.IsNullOrEmpty(region))
+                        {
+                            lock (Locks.ClientInstanceNetworkLock)
                             {
-                                ((MapAgentLocation) o).AvatarCount.ToString(Utils.EnUsCulture),
-                                new Vector3(o.LocalX, o.LocalY, 0).ToString()
-                            }).SelectMany(o => o).ToList();
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                                region = Client.Network.CurrentSim.Name;
+                            }
+                        }
+                        ulong regionHandle = 0;
+                        if (
+                            !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
+                                ref regionHandle))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                        }
+                        var mapItems = new HashSet<MapItem>();
+                        lock (Locks.ClientInstanceGridLock)
+                        {
+                            mapItems.UnionWith(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
+                                GridLayerType.Objects, (int) corradeConfiguration.ServicesTimeout));
+                        }
+                        if (!mapItems.Any())
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_MAP_ITEMS_FOUND);
+                        }
+                        var data =
+                            mapItems.AsParallel()
+                                .Where(o => o as MapAgentLocation != null)
+                                .Select(o => new[]
+                                {
+                                    ((MapAgentLocation) o).AvatarCount.ToString(Utils.EnUsCulture),
+                                    new Vector3(o.LocalX, o.LocalY, 0).ToString()
+                                }).SelectMany(o => o).ToList();
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

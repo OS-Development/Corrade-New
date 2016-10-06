@@ -15,20 +15,21 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> setrot = (message, rule, senderUUID) =>
-            {
-                double rotation;
-                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) ||
-                    !double.TryParse(rule.Option, NumberStyles.Float, Utils.EnUsCulture,
-                        out rotation))
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> setrot =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
-                }
-            };
+                    double rotation;
+                    if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) ||
+                        !double.TryParse(rule.Option, NumberStyles.Float, Utils.EnUsCulture,
+                            out rotation))
+                    {
+                        return;
+                    }
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
+                    }
+                };
         }
     }
 }

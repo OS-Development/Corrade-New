@@ -20,61 +20,62 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getavatarclassifieds =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getavatarclassifieds =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    UUID agentUUID;
-                    if (
-                        !UUID.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
-                                corradeCommandParameters.Message)),
-                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
-                    var AvatarClassifiedsReplyEvent = new ManualResetEvent(false);
-                    var classifieds = new Dictionary<UUID, string>();
-                    EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
-                        (sender, args) =>
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
                         {
-                            classifieds = args.Classifieds;
-                            AvatarClassifiedsReplyEvent.Set();
-                        };
-                    lock (Locks.ClientInstanceAvatarsLock)
-                    {
-                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                        Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (!AvatarClassifiedsReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                    }
-                    if (classifieds.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromDictionary(classifieds));
-                    }
-                };
+                        UUID agentUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
+                                    corradeCommandParameters.Message)),
+                                out agentUUID) && !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref agentUUID))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
+                        }
+                        var AvatarClassifiedsReplyEvent = new ManualResetEvent(false);
+                        var classifieds = new Dictionary<UUID, string>();
+                        EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
+                            (sender, args) =>
+                            {
+                                classifieds = args.Classifieds;
+                                AvatarClassifiedsReplyEvent.Set();
+                            };
+                        lock (Locks.ClientInstanceAvatarsLock)
+                        {
+                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                            Client.Avatars.RequestAvatarClassified(agentUUID);
+                            if (!AvatarClassifiedsReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
+                            }
+                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                        }
+                        if (classifieds.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromDictionary(classifieds));
+                        }
+                    };
         }
     }
 }

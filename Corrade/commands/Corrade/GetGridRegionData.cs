@@ -20,82 +20,88 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getgridregiondata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getgridregiondata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var region =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
-                                corradeCommandParameters.Message));
-                    UUID regionUUID;
-                    switch (UUID.TryParse(region, out regionUUID))
-                    {
-                        case true:
-                            ulong regionHandle = 0;
-                            if (
-                                !Resolvers.RegionUUIDToHandle(Client, regionUUID, corradeConfiguration.ServicesTimeout,
-                                    ref regionHandle))
-                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                            var parcelUUID = Client.Parcels.RequestRemoteParcelID(new Vector3(128, 128, 0), regionHandle,
-                                UUID.Zero);
-                            if (parcelUUID.Equals(UUID.Zero))
-                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                            var parcelInfo = new ParcelInfo();
-                            if (
-                                !Services.GetParcelInfo(Client, parcelUUID, corradeConfiguration.ServicesTimeout,
-                                    ref parcelInfo))
-                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
-                            region = parcelInfo.SimName;
-                            break;
-                        default:
-                            if (string.IsNullOrEmpty(region))
-                            {
-                                lock (Locks.ClientInstanceNetworkLock)
-                                {
-                                    region = Client.Network.CurrentSim.Name;
-                                }
-                            }
-                            break;
-                    }
-                    var GridRegionEvent = new ManualResetEvent(false);
-                    var gridRegion = new GridRegion();
-                    EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
-                    {
-                        if (!Strings.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
-                            return;
-                        gridRegion = args.Region;
-                        GridRegionEvent.Set();
-                    };
-                    lock (Locks.ClientInstanceGridLock)
-                    {
-                        Client.Grid.GridRegion += GridRegionEventHandler;
-                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                        if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Land))
                         {
-                            Client.Grid.GridRegion -= GridRegionEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_REGION);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        Client.Grid.GridRegion -= GridRegionEventHandler;
-                    }
-                    switch (!gridRegion.Equals(default(GridRegion)))
-                    {
-                        case false:
-                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
-                    var data =
-                        gridRegion.GetStructuredData(
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message))).ToList();
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        var region =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                    corradeCommandParameters.Message));
+                        UUID regionUUID;
+                        switch (UUID.TryParse(region, out regionUUID))
+                        {
+                            case true:
+                                ulong regionHandle = 0;
+                                if (
+                                    !Resolvers.RegionUUIDToHandle(Client, regionUUID,
+                                        corradeConfiguration.ServicesTimeout,
+                                        ref regionHandle))
+                                    throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                                var parcelUUID = Client.Parcels.RequestRemoteParcelID(new Vector3(128, 128, 0),
+                                    regionHandle,
+                                    UUID.Zero);
+                                if (parcelUUID.Equals(UUID.Zero))
+                                    throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
+                                var parcelInfo = new ParcelInfo();
+                                if (
+                                    !Services.GetParcelInfo(Client, parcelUUID, corradeConfiguration.ServicesTimeout,
+                                        ref parcelInfo))
+                                    throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
+                                region = parcelInfo.SimName;
+                                break;
+                            default:
+                                if (string.IsNullOrEmpty(region))
+                                {
+                                    lock (Locks.ClientInstanceNetworkLock)
+                                    {
+                                        region = Client.Network.CurrentSim.Name;
+                                    }
+                                }
+                                break;
+                        }
+                        var GridRegionEvent = new ManualResetEvent(false);
+                        var gridRegion = new GridRegion();
+                        EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
+                        {
+                            if (!Strings.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                                return;
+                            gridRegion = args.Region;
+                            GridRegionEvent.Set();
+                        };
+                        lock (Locks.ClientInstanceGridLock)
+                        {
+                            Client.Grid.GridRegion += GridRegionEventHandler;
+                            Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
+                            if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Client.Grid.GridRegion -= GridRegionEventHandler;
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_REGION);
+                            }
+                            Client.Grid.GridRegion -= GridRegionEventHandler;
+                        }
+                        switch (!gridRegion.Equals(default(GridRegion)))
+                        {
+                            case false:
+                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                        }
+                        var data =
+                            gridRegion.GetStructuredData(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message))).ToList();
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

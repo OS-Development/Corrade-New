@@ -18,50 +18,51 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> terminatefriendship =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Friendship))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                terminatefriendship =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    UUID agentUUID;
-                    if (
-                        !UUID.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
-                                corradeCommandParameters.Message)),
-                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
-                    FriendInfo friend;
-                    lock (Locks.ClientInstanceFriendsLock)
-                    {
-                        friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
-                    }
-                    if (friend == null)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_NOT_FOUND);
-                    }
-                    lock (Locks.ClientInstanceFriendsLock)
-                    {
-                        Client.Friends.TerminateFriendship(agentUUID);
-                    }
-                };
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Friendship))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        UUID agentUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
+                                    corradeCommandParameters.Message)),
+                                out agentUUID) && !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref agentUUID))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
+                        }
+                        FriendInfo friend;
+                        lock (Locks.ClientInstanceFriendsLock)
+                        {
+                            friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
+                        }
+                        if (friend == null)
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_NOT_FOUND);
+                        }
+                        lock (Locks.ClientInstanceFriendsLock)
+                        {
+                            Client.Friends.TerminateFriendship(agentUUID);
+                        }
+                    };
         }
     }
 }

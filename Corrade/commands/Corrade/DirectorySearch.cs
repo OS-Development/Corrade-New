@@ -19,7 +19,8 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> directorysearch =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> directorysearch
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (

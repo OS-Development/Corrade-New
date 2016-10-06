@@ -19,69 +19,72 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> estateteleportusershome =
-                (corradeCommandParameters, result) =>
-                {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                estateteleportusershome =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Land))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                    }
-                    var avatars =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
-                                corradeCommandParameters.Message));
-                    // if no avatars were specified, teleport all users home
-                    if (string.IsNullOrEmpty(avatars))
-                    {
-                        Client.Estate.TeleportHomeAllUsers();
-                        return;
-                    }
-                    var data = new HashSet<string>();
-                    CSV.ToEnumerable(avatars).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
-                    {
-                        UUID agentUUID;
-                        switch (!UUID.TryParse(o, out agentUUID))
+                        lock (Locks.ClientInstanceNetworkLock)
                         {
-                            case true:
-                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
-                                switch (
-                                    !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
-                                        corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
-                                {
-                                    case true: // the name could not be resolved to an UUID so add it to the return
-                                        data.Add(o);
-                                        break;
-                                    default: // the name could be resolved so send them home
-                                        lock (Locks.ClientInstanceEstateLock)
-                                        {
-                                            Client.Estate.TeleportHomeUser(agentUUID);
-                                        }
-                                        break;
-                                }
-                                break;
-                            default:
-                                lock (Locks.ClientInstanceEstateLock)
-                                {
-                                    Client.Estate.TeleportHomeUser(agentUUID);
-                                }
-                                break;
+                            if (!Client.Network.CurrentSim.IsEstateManager)
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
+                            }
                         }
-                    });
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        var avatars =
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
+                                    corradeCommandParameters.Message));
+                        // if no avatars were specified, teleport all users home
+                        if (string.IsNullOrEmpty(avatars))
+                        {
+                            Client.Estate.TeleportHomeAllUsers();
+                            return;
+                        }
+                        var data = new HashSet<string>();
+                        CSV.ToEnumerable(avatars).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                        {
+                            UUID agentUUID;
+                            switch (!UUID.TryParse(o, out agentUUID))
+                            {
+                                case true:
+                                    var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
+                                    switch (
+                                        !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                            corradeConfiguration.ServicesTimeout,
+                                            corradeConfiguration.DataTimeout,
+                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
+                                    {
+                                        case true: // the name could not be resolved to an UUID so add it to the return
+                                            data.Add(o);
+                                            break;
+                                        default: // the name could be resolved so send them home
+                                            lock (Locks.ClientInstanceEstateLock)
+                                            {
+                                                Client.Estate.TeleportHomeUser(agentUUID);
+                                            }
+                                            break;
+                                    }
+                                    break;
+                                default:
+                                    lock (Locks.ClientInstanceEstateLock)
+                                    {
+                                        Client.Estate.TeleportHomeUser(agentUUID);
+                                    }
+                                    break;
+                            }
+                        });
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

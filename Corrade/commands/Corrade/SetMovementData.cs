@@ -17,7 +17,8 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setmovementdata =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setmovementdata
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (

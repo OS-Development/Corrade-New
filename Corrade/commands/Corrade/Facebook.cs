@@ -10,6 +10,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Corrade.Constants;
 using CorradeConfiguration;
 using Facebook;
 using OpenMetaverse;
@@ -26,7 +27,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> facebook =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> facebook =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -105,9 +106,9 @@ namespace Corrade
                                 switch (!UUID.TryParse(item, out itemUUID))
                                 {
                                     case true:
-                                        var inventoryItem = Inventory.FindInventory<InventoryBase>(Client,
-                                            Client.Inventory.Store.RootNode, item, corradeConfiguration.ServicesTimeout)
-                                            .FirstOrDefault() as InventoryItem;
+                                        var inventoryItem =
+                                            Inventory.FindInventory<InventoryItem>(Client, item,
+                                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                                         if (inventoryItem == null)
                                         {
                                             throw new Command.ScriptException(

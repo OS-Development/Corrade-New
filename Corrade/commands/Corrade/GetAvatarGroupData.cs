@@ -19,92 +19,94 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getavatargroupdata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getavatargroupdata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    UUID groupUUID;
-                    var target = wasInput(
-                        KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
-                            corradeCommandParameters.Message));
-                    switch (string.IsNullOrEmpty(target))
-                    {
-                        case false:
-                            if (!UUID.TryParse(target, out groupUUID) &&
-                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
-                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                            break;
-                        default:
-                            groupUUID = corradeCommandParameters.Group.UUID;
-                            break;
-                    }
-                    UUID agentUUID;
-                    if (
-                        !UUID.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
-                                corradeCommandParameters.Message)),
-                            out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
-                    var avatarGroup = new AvatarGroup();
-                    var AvatarGroupsReceivedEvent =
-                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-                    EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
-                    {
-                        AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
-                        var receivedAvatarGroup =
-                            args.Groups.AsParallel()
-                                .FirstOrDefault(o => o.GroupID.Equals(groupUUID));
-                        if (!receivedAvatarGroup.Equals(default(AvatarGroup)))
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
                         {
-                            avatarGroup = receivedAvatarGroup;
-                            AvatarGroupsReceivedEvent.Signal.Set();
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        UUID groupUUID;
+                        var target = wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
+                                corradeCommandParameters.Message));
+                        switch (string.IsNullOrEmpty(target))
+                        {
+                            case false:
+                                if (!UUID.TryParse(target, out groupUUID) &&
+                                    !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                    throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
+                                break;
+                            default:
+                                groupUUID = corradeCommandParameters.Group.UUID;
+                                break;
+                        }
+                        UUID agentUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
+                                    corradeCommandParameters.Message)),
+                                out agentUUID) && !Resolvers.AgentNameToUUID(Client,
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref agentUUID))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
+                        }
+                        var avatarGroup = new AvatarGroup();
+                        var AvatarGroupsReceivedEvent =
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
+                        EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
+                        {
+                            AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
+                            var receivedAvatarGroup =
+                                args.Groups.AsParallel()
+                                    .FirstOrDefault(o => o.GroupID.Equals(groupUUID));
+                            if (!receivedAvatarGroup.Equals(default(AvatarGroup)))
+                            {
+                                avatarGroup = receivedAvatarGroup;
+                                AvatarGroupsReceivedEvent.Signal.Set();
+                            }
+                        };
+                        lock (Locks.ClientInstanceAvatarsLock)
+                        {
+                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                            Client.Avatars.RequestAvatarProperties(agentUUID);
+                            if (
+                                !AvatarGroupsReceivedEvent.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    false))
+                            {
+                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
+                            }
+                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        }
+                        var data =
+                            avatarGroup.GetStructuredData(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message))).ToList();
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
                         }
                     };
-                    lock (Locks.ClientInstanceAvatarsLock)
-                    {
-                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                        Client.Avatars.RequestAvatarProperties(agentUUID);
-                        if (
-                            !AvatarGroupsReceivedEvent.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
-                                false))
-                        {
-                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                        }
-                        Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                    }
-                    var data =
-                        avatarGroup.GetStructuredData(
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message))).ToList();
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
         }
     }
 }

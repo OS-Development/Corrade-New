@@ -21,202 +21,212 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> changeprimitivelink =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                changeprimitivelink =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    float range;
-                    if (
-                        !float.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)),
-                            out range))
-                    {
-                        range = corradeConfiguration.Range;
-                    }
-                    var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                corradeCommandParameters.Message))
-                            .ToLowerInvariant());
-                    var items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                        corradeCommandParameters.Message)))
-                        .AsParallel()
-                        .Where(o => !string.IsNullOrEmpty(o)));
-                    if (!items.Any() || (action.Equals(Enumerations.Action.LINK) && items.Count < 2))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
-                    }
-                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
-                    {
-                        if (items.Count > wasOpenMetaverse.Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
                         {
-                            throw new Command.ScriptException(
-                                Enumerations.ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                    }
-
-                    var LockObject = new object();
-                    var updatePrimitives = Services.GetPrimitives(Client, range);
-
-                    // allow partial results
-                    Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
-
-                    var searchPrimitives = new Primitive[items.Count];
-                    var succeeded = true;
-                    Parallel.ForEach(Enumerable.Range(0, items.Count), (o, state) =>
-                    {
-                        Primitive primitive;
-                        UUID itemUUID;
-                        switch (UUID.TryParse(items[o], out itemUUID))
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
+                                    corradeCommandParameters.Message)),
+                                out range))
                         {
-                            case true:
-                                primitive = updatePrimitives.AsParallel().FirstOrDefault(p => p.ID.Equals(itemUUID));
-                                break;
-                            default:
-                                primitive =
-                                    updatePrimitives.AsParallel()
-                                        .Where(p => p.Properties != null)
-                                        .FirstOrDefault(p => p.Properties.Name.Equals(items[o]));
-                                break;
+                            range = corradeConfiguration.Range;
                         }
-                        switch (primitive != null)
+                        var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message))
+                                .ToLowerInvariant());
+                        var items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message)))
+                            .AsParallel()
+                            .Where(o => !string.IsNullOrEmpty(o)));
+                        if (!items.Any() || (action.Equals(Enumerations.Action.LINK) && items.Count < 2))
                         {
-                            case true:
-                                searchPrimitives[o] = primitive;
-                                break;
-                            default:
-                                succeeded = false;
-                                state.Break();
-                                break;
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
                         }
-                    });
-
-                    if (!succeeded) throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-
-                    var primitives = searchPrimitives.ToList();
-                    var rootPrimitive = primitives.First();
-                    if (!primitives.Skip(1).AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
-                        throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
-
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                            o => o.Handle.Equals(rootPrimitive.RegionHandle));
-                    }
-                    if (simulator == null)
-                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-
-                    var PrimChangeLinkEvent = new ManualResetEvent(false);
-                    var primitivesIDs = new HashSet<uint>();
-                    var linkedPrimitives = 0;
-                    EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
-                    {
-                        lock (LockObject)
+                        if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                         {
-                            if (!primitivesIDs.Contains(args.Prim.LocalID)) return;
-                            primitivesIDs.Remove(args.Prim.LocalID);
-                            if (primitivesIDs.Count - linkedPrimitives != 0) return;
-                            PrimChangeLinkEvent.Set();
-                        }
-                    };
-
-                    switch (action)
-                    {
-                        case Enumerations.Action.LINK:
-                            bool restructure;
-                            if (!bool.TryParse(wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RESTRUCTURE)),
-                                    corradeCommandParameters.Message)), out restructure))
+                            if (items.Count > wasOpenMetaverse.Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
                             {
-                                restructure = false;
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
                             }
-                            switch (restructure)
+                        }
+
+                        var LockObject = new object();
+                        var updatePrimitives = Services.GetPrimitives(Client, range);
+
+                        // allow partial results
+                        Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
+
+                        var searchPrimitives = new Primitive[items.Count];
+                        var succeeded = true;
+                        Parallel.ForEach(Enumerable.Range(0, items.Count), (o, state) =>
+                        {
+                            Primitive primitive;
+                            UUID itemUUID;
+                            switch (UUID.TryParse(items[o], out itemUUID))
                             {
                                 case true:
-                                    // If the links have to be restructured, then delink all the primitivws.
-                                    primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
-                                    lock (Locks.ClientInstanceObjectsLock)
-                                    {
-                                        Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                                        Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                        if (
-                                            !PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
-                                                false))
-                                        {
-                                            Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
-                                        }
-                                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                    }
+                                    primitive = updatePrimitives.AsParallel().FirstOrDefault(p => p.ID.Equals(itemUUID));
                                     break;
                                 default:
-                                    // If all primitives are linked to the root and no restructuring is requested then abandon.
-                                    if (
-                                        primitives.Skip(1)
-                                            .AsParallel()
-                                            .All(o => !o.ParentID.Equals(0) && o.ParentID.Equals(rootPrimitive.LocalID)))
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.PRIMITIVES_ALREADY_LINKED);
-                                    // If all primitives have a common parent then abandon.
-                                    if (
-                                        primitives.Skip(1)
-                                            .AsParallel()
-                                            .All(o => !o.ParentID.Equals(0) && o.ParentID.Equals(rootPrimitive.ParentID)))
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.PRIMITIVES_ARE_CHILDREN_OF_OBJECT);
+                                    primitive =
+                                        updatePrimitives.AsParallel()
+                                            .Where(p => p.Properties != null)
+                                            .FirstOrDefault(p => p.Properties.Name.Equals(items[o]));
                                     break;
                             }
-                            // Get the number of primitives that are already linked.
-                            linkedPrimitives = primitives.Count(o => !o.ParentID.Equals(0));
-                            // Get a hashset of primitive local IDs.
-                            primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
-                            PrimChangeLinkEvent.Reset();
-                            lock (Locks.ClientInstanceObjectsLock)
+                            switch (primitive != null)
                             {
-                                Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                                // Link the primitives.
-                                Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
-                                if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
-                                }
-                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                case true:
+                                    searchPrimitives[o] = primitive;
+                                    break;
+                                default:
+                                    succeeded = false;
+                                    state.Break();
+                                    break;
                             }
-                            break;
-                        case Enumerations.Action.DELINK:
-                            // If all primitives to delink are not linked to any other primitive then abandon.
-                            if (primitives.AsParallel().All(o => o.ParentID.Equals(0)))
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVES_ALREADY_DELINKED);
+                        });
 
-                            primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
-                            lock (Locks.ClientInstanceObjectsLock)
+                        if (!succeeded) throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+
+                        var primitives = searchPrimitives.ToList();
+                        var rootPrimitive = primitives.First();
+                        if (!primitives.Skip(1).AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
+                            throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
+
+                        Simulator simulator;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                o => o.Handle.Equals(rootPrimitive.RegionHandle));
+                        }
+                        if (simulator == null)
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+
+                        var PrimChangeLinkEvent = new ManualResetEvent(false);
+                        var primitivesIDs = new HashSet<uint>();
+                        var linkedPrimitives = 0;
+                        EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
+                        {
+                            lock (LockObject)
                             {
-                                Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                                Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
-                                }
-                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                if (!primitivesIDs.Contains(args.Prim.LocalID)) return;
+                                primitivesIDs.Remove(args.Prim.LocalID);
+                                if (primitivesIDs.Count - linkedPrimitives != 0) return;
+                                PrimChangeLinkEvent.Set();
                             }
-                            break;
-                        default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
-                    }
-                };
+                        };
+
+                        switch (action)
+                        {
+                            case Enumerations.Action.LINK:
+                                bool restructure;
+                                if (!bool.TryParse(wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RESTRUCTURE)),
+                                        corradeCommandParameters.Message)), out restructure))
+                                {
+                                    restructure = false;
+                                }
+                                switch (restructure)
+                                {
+                                    case true:
+                                        // If the links have to be restructured, then delink all the primitivws.
+                                        primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
+                                        lock (Locks.ClientInstanceObjectsLock)
+                                        {
+                                            Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                                            Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
+                                            if (
+                                                !PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                                    false))
+                                            {
+                                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                                throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
+                                            }
+                                            Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                        }
+                                        break;
+                                    default:
+                                        // If all primitives are linked to the root and no restructuring is requested then abandon.
+                                        if (
+                                            primitives.Skip(1)
+                                                .AsParallel()
+                                                .All(
+                                                    o =>
+                                                        !o.ParentID.Equals(0) &&
+                                                        o.ParentID.Equals(rootPrimitive.LocalID)))
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.PRIMITIVES_ALREADY_LINKED);
+                                        // If all primitives have a common parent then abandon.
+                                        if (
+                                            primitives.Skip(1)
+                                                .AsParallel()
+                                                .All(
+                                                    o =>
+                                                        !o.ParentID.Equals(0) &&
+                                                        o.ParentID.Equals(rootPrimitive.ParentID)))
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.PRIMITIVES_ARE_CHILDREN_OF_OBJECT);
+                                        break;
+                                }
+                                // Get the number of primitives that are already linked.
+                                linkedPrimitives = primitives.Count(o => !o.ParentID.Equals(0));
+                                // Get a hashset of primitive local IDs.
+                                primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
+                                PrimChangeLinkEvent.Reset();
+                                lock (Locks.ClientInstanceObjectsLock)
+                                {
+                                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                                    // Link the primitives.
+                                    Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
+                                    if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
+                                    }
+                                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                }
+                                break;
+                            case Enumerations.Action.DELINK:
+                                // If all primitives to delink are not linked to any other primitive then abandon.
+                                if (primitives.AsParallel().All(o => o.ParentID.Equals(0)))
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.PRIMITIVES_ALREADY_DELINKED);
+
+                                primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
+                                lock (Locks.ClientInstanceObjectsLock)
+                                {
+                                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                                    Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
+                                    if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
+                                    }
+                                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                }
+                                break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
+                        }
+                    };
         }
     }
 }

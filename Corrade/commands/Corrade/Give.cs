@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -21,7 +22,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> give =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> give =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -37,27 +38,32 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    InventoryBase inventoryBase;
+                    InventoryBase inventoryBase = null;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            inventoryBase =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, itemUUID,
-                                    corradeConfiguration.ServicesTimeout
-                                    ).FirstOrDefault();
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                if (Client.Inventory.Store.Contains(itemUUID))
+                                {
+                                    inventoryBase = Client.Inventory.Store[itemUUID];
+                                }
+                            }
                             break;
                         default:
-                            inventoryBase =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                    corradeConfiguration.ServicesTimeout)
-                                    .FirstOrDefault();
+                            inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                             break;
                     }
                     if (inventoryBase == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
+                    // Need to store parent folder for updates.
+                    var parentFolder = inventoryBase.ParentUUID.Equals(UUID.Zero)
+                        ? null
+                        : Client.Inventory.Store[inventoryBase.ParentUUID] as InventoryFolder;
                     // If the requested item is an inventory item.
                     if (inventoryBase is InventoryItem)
                     {
@@ -81,28 +87,43 @@ namespace Corrade
                     else if (inventoryBase is InventoryFolder)
                     {
                         // Keep track of all inventory items found.
-                        var folderContents = new HashSet<InventoryBase>();
+                        var items = new HashSet<InventoryBase>();
                         // Create the queue of folders.
                         var inventoryFolders = new BlockingQueue<InventoryFolder>();
                         // Enqueue the first folder (root).
                         inventoryFolders.Enqueue(inventoryBase as InventoryFolder);
 
+                        InventoryFolder currentFolder = null;
+
+                        var LockObject = new object();
                         var FolderUpdatedEvent = new ManualResetEvent(false);
                         EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                         {
-                            folderContents.UnionWith(Client.Inventory.Store.GetContents(q.FolderID));
+                            if (!q.FolderID.Equals(currentFolder.UUID)) return;
+
+                            var folderContents = Client.Inventory.Store.GetContents(q.FolderID);
+
+                            lock (LockObject)
+                            {
+                                items.UnionWith(folderContents);
+                            }
+
+                            folderContents.AsParallel()
+                                .Where(o => o is InventoryFolder)
+                                .ForAll(o => inventoryFolders.Enqueue(o as InventoryFolder));
                             FolderUpdatedEvent.Set();
                         };
 
                         do
                         {
                             // Dequeue folder.
-                            var folder = inventoryFolders.Dequeue();
+                            currentFolder = inventoryFolders.Dequeue();
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                                 FolderUpdatedEvent.Reset();
-                                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                                Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
+                                    true,
                                     InventorySortOrder.ByDate);
                                 if (!FolderUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
@@ -116,17 +137,18 @@ namespace Corrade
 
                         // Check that if we are in SecondLife we would not transfer more items than SecondLife allows.
                         if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
-                            folderContents.Count >
+                            items.Count >
                             wasOpenMetaverse.Constants.INVENTORY.MAXIMUM_FOLDER_TRANSFER_ITEM_COUNT)
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.TRANSFER_WOULD_EXCEED_MAXIMUM_COUNT);
 
                         // Check that all the items to be transferred have transfer permission.
-                        if (folderContents.AsParallel()
+                        if (items.AsParallel()
                             .Where(o => o is InventoryItem)
                             .Any(o => !(o as InventoryItem).Permissions.OwnerMask.HasFlag(PermissionMask.Transfer)))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
                     }
+
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(
@@ -159,15 +181,18 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                             }
-                            lock (Locks.ClientInstanceInventoryLock)
+                            if (inventoryBase is InventoryItem)
                             {
-                                if (inventoryBase is InventoryItem)
+                                lock (Locks.ClientInstanceInventoryLock)
                                 {
                                     Client.Inventory.GiveItem(inventoryBase.UUID, inventoryBase.Name,
                                         (inventoryBase as InventoryItem).AssetType, agentUUID, true);
                                     break;
                                 }
-                                if (inventoryBase is InventoryFolder)
+                            }
+                            if (inventoryBase is InventoryFolder)
+                            {
+                                lock (Locks.ClientInstanceInventoryLock)
                                 {
                                     Client.Inventory.GiveFolder(inventoryBase.UUID, inventoryBase.Name,
                                         AssetType.Folder, agentUUID, true);
@@ -229,6 +254,22 @@ namespace Corrade
                             break;
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                    }
+
+                    // Update parent folder in case no-copy items were deleted.
+                    if (parentFolder != null)
+                    {
+                        try
+                        {
+                            Inventory.UpdateInventoryRecursive(Client, parentFolder,
+                                corradeConfiguration.ServicesTimeout);
+                        }
+                        catch (Exception)
+                        {
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                        }
                     }
                 };
         }

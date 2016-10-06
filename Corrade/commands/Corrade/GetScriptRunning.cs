@@ -20,7 +20,8 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getscriptrunning =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getscriptrunning
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (

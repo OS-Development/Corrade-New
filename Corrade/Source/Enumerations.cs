@@ -680,7 +680,8 @@ namespace Corrade
             [Reflection.NameAttribute("name")] NAME,
             [Reflection.NameAttribute("UUID")] UUID,
             [Reflection.NameAttribute("xml")] XML,
-            [Reflection.NameAttribute("zip")] ZIP
+            [Reflection.NameAttribute("zip")] ZIP,
+            [Reflection.NameAttribute("path")] PATH
         }
 
         /// <summary>

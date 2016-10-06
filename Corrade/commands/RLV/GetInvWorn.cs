@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -19,152 +18,141 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getinvworn = (message, rule, senderUUID) =>
-            {
-                int channel;
-                if (!int.TryParse(rule.Param, out channel) || channel < 1)
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getinvworn =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                var RLVFolder =
-                    Inventory.FindInventory<InventoryNode>(Client, Client.Inventory.Store.RootNode,
-                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_NAME, corradeConfiguration.ServicesTimeout)
-                        .AsParallel()
-                        .FirstOrDefault(o => o.Data is InventoryFolder);
-                if (RLVFolder == null)
-                {
-                    lock (Locks.ClientInstanceSelfLock)
+                    int channel;
+                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
                     {
-                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        return;
                     }
-                    return;
-                }
-                var folderPath = Inventory.FindInventoryPath<InventoryNode>(
-                    Client,
-                    RLVFolder,
-                    CORRADE_CONSTANTS.OneOrMoRegex,
-                    new LinkedList<string>())
-                    .AsParallel().Where(o => o.Key.Data is InventoryFolder)
-                    .FirstOrDefault(
-                        o =>
-                            string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
-                                .Equals(rule.Option, StringComparison.InvariantCultureIgnoreCase));
-                switch (!folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
-                {
-                    case false:
+                    var RLVFolder = Inventory.FindInventory<InventoryFolder>(Client,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_PATH,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout,
+                        Client.Inventory.Store.RootFolder);
+                    if (RLVFolder == null)
+                    {
                         lock (Locks.ClientInstanceSelfLock)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                         }
                         return;
-                }
+                    }
 
-                var currentWearables =
-                    new HashSet<UUID>(Inventory.GetWearables(Client, CurrentOutfitFolder).Select(o => o.UUID));
-                var currentAttachments = new HashSet<UUID>(
-                    Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                        .Select(o => o.Key.Properties.ItemID));
+                    var currentWearables = new HashSet<UUID>();
+                    var currentAttachments = new HashSet<UUID>();
 
-                Func<InventoryNode, string> GetWornIndicator = node =>
-                {
-                    var myItemsCount = 0;
-                    var myItemsWornCount = 0;
+                    Func<InventoryNode, string> GetWornIndicator = node =>
+                    {
+                        var myItemsCount = 0;
+                        var myItemsWornCount = 0;
 
-                    node.Nodes.Values.AsParallel().Where(
-                        n =>
-                            !n.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
-                            n.Data is InventoryItem && Inventory.CanBeWorn(n.Data)
-                        ).ForAll(n =>
-                        {
-                            Interlocked.Increment(ref myItemsCount);
-                            var inventoryItem = Inventory.ResolveItemLink(Client, n.Data as InventoryItem);
-                            if (inventoryItem == null) return;
-                            var itemUUID = inventoryItem.UUID;
-                            var increment = false;
-                            switch (n.Data is InventoryWearable)
-                            {
-                                case true:
-                                    if (currentWearables.Contains(itemUUID))
-                                        increment = true;
-                                    break;
-                                default:
-                                    if (currentAttachments.Contains(itemUUID))
-                                        increment = true;
-                                    break;
-                            }
+                        node.Nodes.Values.Where(
+                            n =>
+                                Inventory.CanBeWorn(n.Data) &&
+                                !n.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
+                            .AsParallel()
+                            .ForAll(
+                                n =>
+                                {
+                                    Interlocked.Increment(ref myItemsCount);
+                                    if ((n.Data is InventoryWearable && currentWearables.Contains(n.Data.UUID)) ||
+                                        currentAttachments.Contains(n.Data.UUID))
+                                    {
+                                        Interlocked.Increment(ref myItemsWornCount);
+                                    }
+                                });
 
-                            if (increment == false) return;
+                        var allItemsCount = 0;
+                        var allItemsWornCount = 0;
 
-                            Interlocked.Increment(ref myItemsWornCount);
-                        });
-
-
-                    var allItemsCount = 0;
-                    var allItemsWornCount = 0;
-
-                    node.Nodes.Values.AsParallel().Where(
-                        n =>
-                            !n.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
-                            n.Data is InventoryFolder
-                        ).ForAll(
-                            n => n.Nodes.Values
-                                .AsParallel()
-                                .Where(o => !o.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
-                                .Where(
-                                    o =>
-                                        o.Data is InventoryItem && Inventory.CanBeWorn(o.Data) &&
-                                        !o.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
-                                .ForAll(p =>
+                        node.Nodes.Values.Where(
+                            n =>
+                                n.Data is InventoryFolder &&
+                                !n.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
+                            .SelectMany(o => o.GetInventoryItems())
+                            .Where(
+                                n =>
+                                    Inventory.CanBeWorn(n) &&
+                                    !n.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
+                            .AsParallel()
+                            .ForAll(
+                                n =>
                                 {
                                     Interlocked.Increment(ref allItemsCount);
-
-                                    Interlocked.Increment(ref myItemsCount);
-                                    var inventoryItem = Inventory.ResolveItemLink(Client,
-                                        p.Data as InventoryItem);
-                                    if (inventoryItem == null) return;
-                                    var itemUUID = inventoryItem.UUID;
-                                    var increment = false;
-                                    switch (p.Data is InventoryWearable)
+                                    if ((n is InventoryWearable && currentWearables.Contains(n.UUID)) ||
+                                        currentAttachments.Contains(n.UUID))
                                     {
-                                        case true:
-                                            if (currentWearables.Contains(itemUUID))
-                                                increment = true;
-                                            break;
-                                        default:
-                                            if (currentAttachments.Contains(itemUUID))
-                                                increment = true;
-                                            break;
+                                        Interlocked.Increment(ref allItemsWornCount);
                                     }
-
-                                    if (increment == false) return;
-
-                                    Interlocked.Increment(ref allItemsWornCount);
-                                }));
+                                });
 
 
-                    Func<int, int, string> WornIndicator =
-                        (all, one) => all > 0 ? (all.Equals(one) ? "3" : (one > 0 ? "2" : "1")) : "0";
+                        Func<int, int, string> WornIndicator =
+                            (all, one) => all > 0 ? (all.Equals(one) ? "3" : (one > 0 ? "2" : "1")) : "0";
 
-                    return WornIndicator(myItemsCount, myItemsWornCount) +
-                           WornIndicator(allItemsCount, allItemsWornCount);
+                        return WornIndicator(myItemsCount, myItemsWornCount) +
+                               WornIndicator(allItemsCount, allItemsWornCount);
+                    };
+
+                    string[] response = null;
+                    lock (RLVInventoryLock)
+                    {
+                        InventoryNode optionNode;
+                        switch (string.IsNullOrEmpty(rule.Option))
+                        {
+                            case true:
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    optionNode = Client.Inventory.Store.GetNodeFor(RLVFolder.UUID);
+                                }
+                                break;
+                            default:
+                                optionNode = Inventory.FindInventory<InventoryNode>(Client, rule.Option,
+                                    wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR,
+                                    corradeConfiguration.ServicesTimeout,
+                                    RLVFolder, StringComparison.OrdinalIgnoreCase);
+                                break;
+                        }
+
+                        currentWearables.UnionWith(Inventory.GetWearables(Client, CurrentOutfitFolder)
+                            .Select(o => o.UUID));
+                        currentAttachments.UnionWith(Inventory.GetAttachments(Client,
+                            corradeConfiguration.DataTimeout)
+                            .Select(o => o.Key.Properties.ItemID));
+
+                        lock (Locks.ClientInstanceInventoryLock)
+                        {
+                            if (optionNode != null)
+                            {
+                                response = new string[optionNode.Nodes.Values.Count + 1];
+                                response[0] =
+                                    $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(optionNode)}";
+                                optionNode.Nodes.Values.Select((node, index) => new {node, index = index + 1})
+                                    .AsParallel()
+                                    .Where(
+                                        o =>
+                                            o.node.Data is InventoryFolder &&
+                                            !o.node.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
+                                    .ForAll(o =>
+                                    {
+                                        response[o.index] =
+                                            $"{o.node.Data.Name}{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o.node)}";
+                                    });
+                            }
+                        }
+
+                        lock (Locks.ClientInstanceSelfLock)
+                        {
+                            Client.Self.Chat(
+                                response != null
+                                    ? string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, response)
+                                    : string.Empty,
+                                channel,
+                                ChatType.Normal);
+                        }
+                    }
                 };
-
-                var response = new List<string>();
-                response.Add(
-                    $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
-                response.AddRange(
-                    folderPath.Key.Nodes.Values.AsParallel().Where(o => o.Data is InventoryFolder)
-                        .Select(
-                            o =>
-                                $"{o.Data.Name}{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
-
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.Chat(string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
-                        channel,
-                        ChatType.Normal);
-                }
-            };
         }
     }
 }

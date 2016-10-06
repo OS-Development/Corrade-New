@@ -19,7 +19,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getmutes =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getmutes =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Mute))

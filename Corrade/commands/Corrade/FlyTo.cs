@@ -20,7 +20,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> flyto =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> flyto =
                 (corradeCommandParameters, result) =>
                 {
                     if (

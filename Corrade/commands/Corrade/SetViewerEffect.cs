@@ -21,7 +21,8 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setviewereffect =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setviewereffect
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (

@@ -7,11 +7,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Constants;
 using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -19,7 +22,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> unwear =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> unwear =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -39,20 +42,23 @@ namespace Corrade
                     CSV.ToEnumerable(
                         wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
-                            InventoryItem inventoryItem;
+                            InventoryItem inventoryItem = null;
                             UUID itemUUID;
                             switch (UUID.TryParse(o, out itemUUID))
                             {
                                 case true:
-                                    inventoryItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            itemUUID, corradeConfiguration.ServicesTimeout).FirstOrDefault() as
-                                            InventoryItem;
+                                    lock (Locks.ClientInstanceInventoryLock)
+                                    {
+                                        if (Client.Inventory.Store.Contains(itemUUID))
+                                        {
+                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                        }
+                                    }
                                     break;
                                 default:
                                     inventoryItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            o, corradeConfiguration.ServicesTimeout).FirstOrDefault() as InventoryItem;
+                                        Inventory.FindInventory<InventoryItem>(Client, o,
+                                            CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                                     break;
                             }
                             if (inventoryItem == null)

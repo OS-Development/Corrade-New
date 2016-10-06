@@ -16,7 +16,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> listcommands =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> listcommands =
                 (corradeCommandParameters, result) =>
                 {
                     var data = new HashSet<string>();

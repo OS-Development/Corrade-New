@@ -24,7 +24,7 @@ namespace Corrade
             /// <remarks>
             ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.
             /// </remarks>
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> setparcellist =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setparcellist =
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))

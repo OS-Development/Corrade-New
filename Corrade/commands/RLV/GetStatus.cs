@@ -16,56 +16,58 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getstatus = (message, rule, senderUUID) =>
-            {
-                int channel;
-                if (!int.TryParse(rule.Param, out channel) || channel < 1)
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> getstatus =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                var separator = wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR;
-                var filter = string.Empty;
-                if (!string.IsNullOrEmpty(rule.Option))
-                {
-                    var parts = rule.Option.Split(wasOpenMetaverse.RLV.RLV_CONSTANTS.STATUS_SEPARATOR[0]);
-                    if (parts.Length > 1 && parts[1].Length > 0)
+                    int channel;
+                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
                     {
-                        separator = parts[1].Substring(0, 1);
+                        return;
                     }
-                    if (parts.Length > 0 && parts[0].Length > 0)
+                    var separator = wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR.ToString();
+                    var filter = string.Empty;
+                    if (!string.IsNullOrEmpty(rule.Option))
                     {
-                        filter = parts[0].ToLowerInvariant();
-                    }
-                }
-                var response = new StringBuilder();
-                lock (RLV.RLVRulesLock)
-                {
-                    var LockObject = new object();
-                    RLVRules.AsParallel().Where(o =>
-                        o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
-                        ).ForAll(o =>
+                        var parts = rule.Option.Split(wasOpenMetaverse.RLV.RLV_CONSTANTS.STATUS_SEPARATOR);
+                        if (parts.Length > 1 && parts[1].Length > 0)
                         {
-                            lock (LockObject)
-                            {
-                                response.AppendFormat("{0}{1}", separator, o.Behaviour);
-                            }
-                            if (!string.IsNullOrEmpty(o.Option))
+                            separator = parts[1].Substring(0, 1);
+                        }
+                        if (parts.Length > 0 && parts[0].Length > 0)
+                        {
+                            filter = parts[0].ToLowerInvariant();
+                        }
+                    }
+                    var response = new StringBuilder();
+                    lock (RLV.RLVRulesLock)
+                    {
+                        var LockObject = new object();
+                        RLVRules.AsParallel().Where(o =>
+                            o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
+                            ).ForAll(o =>
                             {
                                 lock (LockObject)
                                 {
-                                    response.AppendFormat("{0}{1}", wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR,
-                                        o.Option);
+                                    response.AppendFormat("{0}{1}", separator, o.Behaviour);
                                 }
-                            }
-                        });
-                }
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.Chat(response.ToString(),
-                        channel,
-                        ChatType.Normal);
-                }
-            };
+                                if (!string.IsNullOrEmpty(o.Option))
+                                {
+                                    lock (LockObject)
+                                    {
+                                        response.AppendFormat("{0}{1}",
+                                            wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR,
+                                            o.Option);
+                                    }
+                                }
+                            });
+                    }
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(response.ToString(),
+                            channel,
+                            ChatType.Normal);
+                    }
+                };
         }
     }
 }

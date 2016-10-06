@@ -16,61 +16,62 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> sit = (message, rule, senderUUID) =>
-            {
-                UUID sitTarget;
-                if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) ||
-                    !UUID.TryParse(rule.Option, out sitTarget) ||
-                    sitTarget.Equals(UUID.Zero))
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> sit =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                Primitive primitive = null;
-                if (
-                    !Services.FindPrimitive(Client, sitTarget,
-                        wasOpenMetaverse.Constants.LSL.SENSOR_RANGE,
-                        ref primitive, corradeConfiguration.DataTimeout))
-                {
-                    return;
-                }
-                var SitEvent = new ManualResetEvent(false);
-                EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler =
-                    (sender, args) =>
-                        SitEvent.Set();
-                EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) => SitEvent.Set();
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                    UUID sitTarget;
+                    if (!rule.Param.Equals(wasOpenMetaverse.RLV.RLV_CONSTANTS.FORCE) ||
+                        !UUID.TryParse(rule.Option, out sitTarget) ||
+                        sitTarget.Equals(UUID.Zero))
                     {
-                        Client.Self.Stand();
+                        return;
                     }
-                }
-                // stop all non-built-in animations
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.SignaledAnimations.Copy()
-                        .Keys.AsParallel()
-                        .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
-                        .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                }
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.AvatarSitResponse += AvatarSitEventHandler;
-                    Client.Self.AlertMessage += AlertMessageEventHandler;
-                    Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                    SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
-                    Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
-                    Client.Self.AlertMessage -= AlertMessageEventHandler;
-                }
-                // Set the camera on the avatar.
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
-                }
-            };
+                    Primitive primitive = null;
+                    if (
+                        !Services.FindPrimitive(Client, sitTarget,
+                            wasOpenMetaverse.Constants.LSL.SENSOR_RANGE,
+                            ref primitive, corradeConfiguration.DataTimeout))
+                    {
+                        return;
+                    }
+                    var SitEvent = new ManualResetEvent(false);
+                    EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler =
+                        (sender, args) =>
+                            SitEvent.Set();
+                    EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) => SitEvent.Set();
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                        {
+                            Client.Self.Stand();
+                        }
+                    }
+                    // stop all non-built-in animations
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.SignaledAnimations.Copy()
+                            .Keys.AsParallel()
+                            .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                            .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                    }
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.AvatarSitResponse += AvatarSitEventHandler;
+                        Client.Self.AlertMessage += AlertMessageEventHandler;
+                        Client.Self.RequestSit(primitive.ID, Vector3.Zero);
+                        SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                        Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
+                        Client.Self.AlertMessage -= AlertMessageEventHandler;
+                    }
+                    // Set the camera on the avatar.
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
+                    }
+                };
         }
     }
 }

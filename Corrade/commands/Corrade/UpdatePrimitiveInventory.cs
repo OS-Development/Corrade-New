@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -20,161 +21,176 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> updateprimitiveinventory
-                =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                updateprimitiveinventory
+                    =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    float range;
-                    if (
-                        !float.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)),
-                            out range))
-                    {
-                        range = corradeConfiguration.Range;
-                    }
-                    Primitive primitive = null;
-                    var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                        corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(item))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
-                    UUID itemUUID;
-                    switch (UUID.TryParse(item, out itemUUID))
-                    {
-                        case true:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    itemUUID,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-                        default:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    item,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-                    }
-                    var entity =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                corradeCommandParameters.Message));
-                    UUID entityUUID;
-                    if (!UUID.TryParse(entity, out entityUUID))
-                    {
-                        if (string.IsNullOrEmpty(entity))
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        entityUUID = UUID.Zero;
-                    }
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator = Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                    }
-                    if (simulator == null)
-                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    InventoryBase inventoryBaseItem;
-                    switch (
-                        Reflection.GetEnumValueFromName<Enumerations.Action>(
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
+                                    corradeCommandParameters.Message)),
+                                out range))
+                        {
+                            range = corradeConfiguration.Range;
+                        }
+                        Primitive primitive = null;
+                        var item = wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
+                        if (string.IsNullOrEmpty(item))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
+                        }
+                        UUID itemUUID;
+                        switch (UUID.TryParse(item, out itemUUID))
+                        {
+                            case true:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        itemUUID,
+                                        range,
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                                break;
+                            default:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        item,
+                                        range,
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                                break;
+                        }
+                        var entity =
                             wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                    corradeCommandParameters.Message)).ToLowerInvariant()))
-                    {
-                        case Enumerations.Action.ADD:
-                            inventoryBaseItem =
-                                Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                    !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity
-                                    , corradeConfiguration.ServicesTimeout).FirstOrDefault();
-                            if (inventoryBaseItem == null)
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                    corradeCommandParameters.Message));
+                        UUID entityUUID;
+                        if (!UUID.TryParse(entity, out entityUUID))
+                        {
+                            if (string.IsNullOrEmpty(entity))
                             {
-                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                             }
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID,
-                                    inventoryBaseItem as InventoryItem);
-                            }
-                            break;
-                        case Enumerations.Action.REMOVE:
-                            if (entityUUID.Equals(UUID.Zero))
-                            {
-                                inventoryBaseItem = Client.Inventory.GetTaskInventory(primitive.ID,
-                                    primitive.LocalID,
-                                    (int) corradeConfiguration.ServicesTimeout)
-                                    .AsParallel()
-                                    .FirstOrDefault(o => o.Name.Equals(entity));
+                            entityUUID = UUID.Zero;
+                        }
+                        Simulator simulator;
+                        lock (Locks.ClientInstanceNetworkLock)
+                        {
+                            simulator = Client.Network.Simulators.AsParallel()
+                                .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                        }
+                        if (simulator == null)
+                            throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                        InventoryBase inventoryBaseItem = null;
+                        switch (
+                            Reflection.GetEnumValueFromName<Enumerations.Action>(
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                        corradeCommandParameters.Message)).ToLowerInvariant()))
+                        {
+                            case Enumerations.Action.ADD:
+                                switch (entityUUID.Equals(UUID.Zero))
+                                {
+                                    case true:
+                                        inventoryBaseItem =
+                                            Inventory.FindInventory<InventoryBase>(Client, entity,
+                                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
+                                        break;
+                                    default:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            if (Client.Inventory.Store.Contains(entityUUID))
+                                            {
+                                                inventoryBaseItem = Client.Inventory.Store[itemUUID];
+                                            }
+                                        }
+                                        break;
+                                }
                                 if (inventoryBaseItem == null)
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                                 }
-                                entityUUID = inventoryBaseItem.UUID;
-                            }
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID, simulator);
-                            }
-                            break;
-                        case Enumerations.Action.TAKE:
-                            inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
-                                ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                    (int) corradeConfiguration.ServicesTimeout)
-                                    .AsParallel()
-                                    .FirstOrDefault(o => o.UUID.Equals(entityUUID))
-                                : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                    (int) corradeConfiguration.ServicesTimeout)
-                                    .AsParallel()
-                                    .FirstOrDefault(o => o.Name.Equals(entity));
-                            var inventoryItem = inventoryBaseItem as InventoryItem;
-                            if (inventoryItem == null)
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
-                            UUID folderUUID;
-                            var folder =
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
-                                        corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
-                            {
-                                folderUUID =
-                                    Client.Inventory.Store.Items[
-                                        Client.Inventory.FindFolderForType(inventoryItem.AssetType)].Data
-                                        .UUID;
-                            }
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
-                                    simulator);
-                            }
-                            break;
-                        default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
-                    }
-                };
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Client.Inventory.UpdateTaskInventory(primitive.LocalID,
+                                        inventoryBaseItem as InventoryItem);
+                                }
+                                break;
+                            case Enumerations.Action.REMOVE:
+                                if (entityUUID.Equals(UUID.Zero))
+                                {
+                                    inventoryBaseItem = Client.Inventory.GetTaskInventory(primitive.ID,
+                                        primitive.LocalID,
+                                        (int) corradeConfiguration.ServicesTimeout)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Name.Equals(entity));
+                                    if (inventoryBaseItem == null)
+                                    {
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                    }
+                                    entityUUID = inventoryBaseItem.UUID;
+                                }
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID, simulator);
+                                }
+                                break;
+                            case Enumerations.Action.TAKE:
+                                inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
+                                    ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                        (int) corradeConfiguration.ServicesTimeout)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.UUID.Equals(entityUUID))
+                                    : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                        (int) corradeConfiguration.ServicesTimeout)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Name.Equals(entity));
+                                var inventoryItem = inventoryBaseItem as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                }
+                                UUID folderUUID;
+                                var folder =
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
+                                            corradeCommandParameters.Message));
+                                if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                                {
+                                    folderUUID =
+                                        Client.Inventory.Store.Items[
+                                            Client.Inventory.FindFolderForType(inventoryItem.AssetType)].Data
+                                            .UUID;
+                                }
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
+                                        simulator);
+                                }
+                                break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
+                        }
+                    };
         }
     }
 }

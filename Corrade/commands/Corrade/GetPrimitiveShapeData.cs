@@ -19,69 +19,71 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprimitiveshapedata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getprimitiveshapedata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    float range;
-                    if (
-                        !float.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)),
-                            out range))
-                    {
-                        range = corradeConfiguration.Range;
-                    }
-                    Primitive primitive = null;
-                    var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                        corradeCommandParameters.Message));
-                    if (string.IsNullOrEmpty(item))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
-                    UUID itemUUID;
-                    switch (UUID.TryParse(item, out itemUUID))
-                    {
-                        case true:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    itemUUID,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-                        default:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    item,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-                    }
-                    var data =
-                        primitive.PrimData.GetStructuredData(
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message))).ToList();
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Interact))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
+                                    corradeCommandParameters.Message)),
+                                out range))
+                        {
+                            range = corradeConfiguration.Range;
+                        }
+                        Primitive primitive = null;
+                        var item = wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
+                        if (string.IsNullOrEmpty(item))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
+                        }
+                        UUID itemUUID;
+                        switch (UUID.TryParse(item, out itemUUID))
+                        {
+                            case true:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        itemUUID,
+                                        range,
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                                break;
+                            default:
+                                if (
+                                    !Services.FindPrimitive(Client,
+                                        item,
+                                        range,
+                                        ref primitive,
+                                        corradeConfiguration.DataTimeout))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
+                                }
+                                break;
+                        }
+                        var data =
+                            primitive.PrimData.GetStructuredData(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message))).ToList();
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

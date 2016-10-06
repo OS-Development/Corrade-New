@@ -6,7 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -20,7 +20,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> deleteitem =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> deleteitem =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -36,54 +36,45 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
                     }
-                    var items =
-                        new HashSet<InventoryItem>();
+                    InventoryBase inventoryBase = null;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            items.UnionWith(Inventory
-                                .FindInventory<InventoryBase>(Client,
-                                    Client.Inventory.Store.RootNode,
-                                    itemUUID, corradeConfiguration.ServicesTimeout)
-                                .ToArray()
-                                .AsParallel()
-                                .OfType<InventoryItem>());
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                if (Client.Inventory.Store.Contains(itemUUID))
+                                {
+                                    inventoryBase = Client.Inventory.Store[itemUUID];
+                                }
+                            }
                             break;
                         default:
-                            items.UnionWith(
-                                Inventory
-                                    .FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                        corradeConfiguration.ServicesTimeout)
-                                    .ToArray()
-                                    .AsParallel()
-                                    .OfType<InventoryItem>());
+                            inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                             break;
                     }
-                    if (!items.Any())
+                    if (inventoryBase == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    items.AsParallel().ForAll(o =>
+                    switch (inventoryBase is InventoryFolder)
                     {
-                        switch (o.AssetType)
-                        {
-                            case AssetType.Folder:
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.MoveFolder(o.UUID,
-                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
-                                }
-                                break;
-                            default:
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.MoveItem(o.UUID,
-                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
-                                }
-                                break;
-                        }
-                    });
+                        case true:
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.MoveFolder(inventoryBase.UUID,
+                                    Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                            }
+                            break;
+                        default:
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                Client.Inventory.MoveItem(inventoryBase.UUID,
+                                    Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                            }
+                            break;
+                    }
                 };
         }
     }

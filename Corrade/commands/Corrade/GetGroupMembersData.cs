@@ -20,77 +20,79 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getgroupmembersdata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Group))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getgroupmembersdata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    UUID groupUUID;
-                    var target = wasInput(
-                        KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
-                            corradeCommandParameters.Message));
-                    switch (string.IsNullOrEmpty(target))
-                    {
-                        case false:
-                            if (!UUID.TryParse(target, out groupUUID) &&
-                                !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
-                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                            break;
-                        default:
-                            groupUUID = corradeCommandParameters.Group.UUID;
-                            break;
-                    }
-                    Dictionary<UUID, GroupMember> groupMembers = null;
-                    var groupMembersReceivedEvent = new ManualResetEvent(false);
-                    var groupMembersRequestUUID = UUID.Zero;
-                    EventHandler<GroupMembersReplyEventArgs> GroupMembersReplyEventHandler = (sender, args) =>
-                    {
-                        if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
-                        groupMembers = args.Members;
-                        groupMembersReceivedEvent.Set();
-                    };
-                    Client.Groups.GroupMembersReply += GroupMembersReplyEventHandler;
-                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (
-                        !groupMembersReceivedEvent.WaitOne(
-                            (int) corradeConfiguration.ServicesTimeout, false))
-                    {
-                        Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
-                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                    }
-                    Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
-
-                    if (groupMembers == null)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
-                    var data = new List<string>();
-                    var LockObject = new object();
-                    groupMembers.Values.AsParallel().ForAll(o =>
-                    {
-                        var groupMemberData =
-                            o.GetStructuredData(
-                                wasInput(
-                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
-                        lock (LockObject)
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Group))
                         {
-                            data.AddRange(groupMemberData);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                    });
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        UUID groupUUID;
+                        var target = wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
+                                corradeCommandParameters.Message));
+                        switch (string.IsNullOrEmpty(target))
+                        {
+                            case false:
+                                if (!UUID.TryParse(target, out groupUUID) &&
+                                    !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                    throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
+                                break;
+                            default:
+                                groupUUID = corradeCommandParameters.Group.UUID;
+                                break;
+                        }
+                        Dictionary<UUID, GroupMember> groupMembers = null;
+                        var groupMembersReceivedEvent = new ManualResetEvent(false);
+                        var groupMembersRequestUUID = UUID.Zero;
+                        EventHandler<GroupMembersReplyEventArgs> GroupMembersReplyEventHandler = (sender, args) =>
+                        {
+                            if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
+                            groupMembers = args.Members;
+                            groupMembersReceivedEvent.Set();
+                        };
+                        Client.Groups.GroupMembersReply += GroupMembersReplyEventHandler;
+                        groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                        if (
+                            !groupMembersReceivedEvent.WaitOne(
+                                (int) corradeConfiguration.ServicesTimeout, false))
+                        {
+                            Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
+                        }
+                        Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
+
+                        if (groupMembers == null)
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
+                        }
+                        var data = new List<string>();
+                        var LockObject = new object();
+                        groupMembers.Values.AsParallel().ForAll(o =>
+                        {
+                            var groupMemberData =
+                                o.GetStructuredData(
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                            corradeCommandParameters.Message)));
+                            lock (LockObject)
+                            {
+                                data.AddRange(groupMemberData);
+                            }
+                        });
+                        if (data.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

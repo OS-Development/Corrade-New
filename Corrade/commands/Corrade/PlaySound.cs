@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Constants;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -20,7 +21,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> playsound =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> playsound =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -86,10 +87,8 @@ namespace Corrade
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
                     if (!UUID.TryParse(item, out itemUUID))
                     {
-                        var inventoryItem =
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                corradeConfiguration.ServicesTimeout)
-                                .FirstOrDefault() as InventoryItem;
+                        var inventoryItem = Inventory.FindInventory<InventoryItem>(Client, item,
+                            CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                         if (inventoryItem == null)
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);

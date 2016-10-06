@@ -17,31 +17,32 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> getconfigurationdata =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.System))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                getconfigurationdata =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var data = new List<string>();
-                    lock (ConfigurationFileLock)
-                    {
-                        data.AddRange(Reflection.GetStructuredData(corradeConfiguration,
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)))
-                            );
-                    }
-                    if (data.Any())
-                    {
-                        result.Add(wasSharp.Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.System))
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        var data = new List<string>();
+                        lock (ConfigurationFileLock)
+                        {
+                            data.AddRange(Reflection.GetStructuredData(corradeConfiguration,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)))
+                                );
+                        }
+                        if (data.Any())
+                        {
+                            result.Add(wasSharp.Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                        }
+                    };
         }
     }
 }

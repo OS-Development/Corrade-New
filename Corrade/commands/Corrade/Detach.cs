@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Corrade.Constants;
 using Corrade.Events;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -22,7 +23,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> detach =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> detach =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -91,34 +92,34 @@ namespace Corrade
                                             attached.AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
                                         if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                         {
-                                            inventoryItem =
-                                                Inventory.FindInventory<InventoryBase>(Client,
-                                                    Client.Inventory.Store.RootNode,
-                                                    attachment.Key.Properties.ItemID,
-                                                    corradeConfiguration.ServicesTimeout
-                                                    )
-                                                    .AsParallel().FirstOrDefault(
-                                                        p =>
-                                                            p is InventoryItem &&
-                                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object)) as
-                                                    InventoryItem;
+                                            lock (Locks.ClientInstanceInventoryLock)
+                                            {
+                                                if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
+                                                {
+                                                    inventoryItem =
+                                                        Client.Inventory.Store[attachment.Key.Properties.ItemID] as
+                                                            InventoryItem;
+                                                }
+                                            }
                                         }
                                     }
                                     break;
-                                case Enumerations.Type.NAME:
+                                case Enumerations.Type.PATH:
                                     inventoryItem =
-                                        Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode,
-                                            o, corradeConfiguration.ServicesTimeout).FirstOrDefault() as InventoryItem;
+                                        Inventory.FindInventory<InventoryItem>(Client, o,
+                                            CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                                     break;
                                 case Enumerations.Type.UUID:
                                     UUID itemUUID;
                                     if (UUID.TryParse(o, out itemUUID))
                                     {
-                                        inventoryItem =
-                                            Inventory.FindInventory<InventoryBase>(Client,
-                                                Client.Inventory.Store.RootNode,
-                                                itemUUID, corradeConfiguration.ServicesTimeout
-                                                ).FirstOrDefault() as InventoryItem;
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            if (Client.Inventory.Store.Contains(itemUUID))
+                                            {
+                                                inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                            }
+                                        }
                                     }
                                     break;
                             }

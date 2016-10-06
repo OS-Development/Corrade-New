@@ -12,6 +12,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using Corrade.Constants;
 using CorradeConfiguration;
 using ImageMagick;
 using NAudio.Lame;
@@ -32,7 +33,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> download =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> download =
                 (corradeCommandParameters, result) =>
                 {
                     if (
@@ -69,9 +70,8 @@ namespace Corrade
                     if (!UUID.TryParse(item, out itemUUID))
                     {
                         inventoryItem =
-                            Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, item,
-                                corradeConfiguration.ServicesTimeout)
-                                .FirstOrDefault() as InventoryItem;
+                            Inventory.FindInventory<InventoryItem>(Client, item,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
                         if (inventoryItem == null)
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
@@ -125,10 +125,13 @@ namespace Corrade
                                     }
                                     if (inventoryItem == null)
                                     {
-                                        inventoryItem =
-                                            Inventory.FindInventory<InventoryBase>(Client,
-                                                Client.Inventory.Store.RootNode, itemUUID,
-                                                corradeConfiguration.ServicesTimeout).FirstOrDefault() as InventoryItem;
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            if (Client.Inventory.Store.Contains(itemUUID))
+                                            {
+                                                inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                            }
+                                        }
                                         if (inventoryItem == null)
                                         {
                                             throw new Command.ScriptException(

@@ -14,18 +14,19 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> versionnum = (message, rule, senderUUID) =>
-            {
-                int channel;
-                if (!int.TryParse(rule.Param, out channel) || channel < 1)
+            public static readonly Action<string, wasOpenMetaverse.RLV.RLVRule, UUID> versionnum =
+                (message, rule, senderUUID) =>
                 {
-                    return;
-                }
-                lock (Locks.ClientInstanceSelfLock)
-                {
-                    Client.Self.Chat(wasOpenMetaverse.RLV.RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
-                }
-            };
+                    int channel;
+                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
+                    {
+                        return;
+                    }
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Chat(wasOpenMetaverse.RLV.RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
+                    }
+                };
         }
     }
 }

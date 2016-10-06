@@ -21,7 +21,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Command.CorradeCommandParameters, Dictionary<string, string>> softban =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> softban =
                 (corradeCommandParameters, result) =>
                 {
                     if (

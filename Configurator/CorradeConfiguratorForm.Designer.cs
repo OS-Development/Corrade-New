@@ -267,6 +267,8 @@
             this.ENIGMARotorSequence = new System.Windows.Forms.ListBox();
             this.TCPTabPage = new System.Windows.Forms.TabPage();
             this.groupBox78 = new System.Windows.Forms.GroupBox();
+            this.groupBox10 = new System.Windows.Forms.GroupBox();
+            this.TCPNotificationsServerSSLProtocol = new System.Windows.Forms.ComboBox();
             this.pictureBox87 = new System.Windows.Forms.PictureBox();
             this.groupBox9 = new System.Windows.Forms.GroupBox();
             this.button15 = new System.Windows.Forms.Button();
@@ -437,8 +439,6 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.groupBox10 = new System.Windows.Forms.GroupBox();
-            this.TCPNotificationsServerSSLProtocol = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -574,6 +574,7 @@
             this.groupBox34.SuspendLayout();
             this.TCPTabPage.SuspendLayout();
             this.groupBox78.SuspendLayout();
+            this.groupBox10.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox87)).BeginInit();
             this.groupBox9.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox104)).BeginInit();
@@ -658,7 +659,6 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.groupBox10.SuspendLayout();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -1506,7 +1506,8 @@
             "feed",
             "sound",
             "conference",
-            "preload"});
+            "preload",
+            "teleport"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -3459,6 +3460,27 @@
             this.groupBox78.TabStop = false;
             this.groupBox78.Text = "TCP Notifications Server";
             // 
+            // groupBox10
+            // 
+            this.groupBox10.Controls.Add(this.TCPNotificationsServerSSLProtocol);
+            this.groupBox10.Location = new System.Drawing.Point(314, 255);
+            this.groupBox10.Name = "groupBox10";
+            this.groupBox10.Size = new System.Drawing.Size(200, 57);
+            this.groupBox10.TabIndex = 10;
+            this.groupBox10.TabStop = false;
+            this.groupBox10.Text = "SSL Protocol";
+            // 
+            // TCPNotificationsServerSSLProtocol
+            // 
+            this.TCPNotificationsServerSSLProtocol.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.TCPNotificationsServerSSLProtocol.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TCPNotificationsServerSSLProtocol.FormattingEnabled = true;
+            this.TCPNotificationsServerSSLProtocol.Location = new System.Drawing.Point(71, 21);
+            this.TCPNotificationsServerSSLProtocol.Name = "TCPNotificationsServerSSLProtocol";
+            this.TCPNotificationsServerSSLProtocol.Size = new System.Drawing.Size(121, 21);
+            this.TCPNotificationsServerSSLProtocol.TabIndex = 0;
+            this.toolTip1.SetToolTip(this.TCPNotificationsServerSSLProtocol, "The reflector to use.");
+            // 
             // pictureBox87
             // 
             this.pictureBox87.Cursor = System.Windows.Forms.Cursors.Help;
@@ -5242,27 +5264,6 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // groupBox10
-            // 
-            this.groupBox10.Controls.Add(this.TCPNotificationsServerSSLProtocol);
-            this.groupBox10.Location = new System.Drawing.Point(314, 255);
-            this.groupBox10.Name = "groupBox10";
-            this.groupBox10.Size = new System.Drawing.Size(200, 57);
-            this.groupBox10.TabIndex = 10;
-            this.groupBox10.TabStop = false;
-            this.groupBox10.Text = "SSL Protocol";
-            // 
-            // TCPNotificationsServerSSLProtocol
-            // 
-            this.TCPNotificationsServerSSLProtocol.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.TCPNotificationsServerSSLProtocol.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.TCPNotificationsServerSSLProtocol.FormattingEnabled = true;
-            this.TCPNotificationsServerSSLProtocol.Location = new System.Drawing.Point(71, 21);
-            this.TCPNotificationsServerSSLProtocol.Name = "TCPNotificationsServerSSLProtocol";
-            this.TCPNotificationsServerSSLProtocol.Size = new System.Drawing.Size(121, 21);
-            this.TCPNotificationsServerSSLProtocol.TabIndex = 0;
-            this.toolTip1.SetToolTip(this.TCPNotificationsServerSSLProtocol, "The reflector to use.");
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -5460,6 +5461,7 @@
             this.TCPTabPage.ResumeLayout(false);
             this.groupBox78.ResumeLayout(false);
             this.groupBox78.PerformLayout();
+            this.groupBox10.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox87)).EndInit();
             this.groupBox9.ResumeLayout(false);
             this.groupBox9.PerformLayout();
@@ -5579,7 +5581,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox10.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
