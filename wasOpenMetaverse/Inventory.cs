@@ -270,18 +270,19 @@ namespace wasOpenMetaverse
         /// <param name="root">the directory from which to start searching</param>
         /// <param name="Client">the grid client to use</param>
         /// <param name="path">the full path to the item</param>
-        /// <param name="separator">the path separator</param>
+        /// <param name="separator">the path separator character</param>
+        /// <param name="escape">the path escape character</param>
         /// <param name="millisecondsTimeout">the time in milliseconds for requesting folder items</param>
         /// <param name="comparison">which string comparison to use for named path parts</param>
         /// <returns>an inventory base item if found or null otherwise</returns>
         /// <remarks>in case the path is ambiguous, the function returns null</remarks>
-        private static InventoryBase directFindInventory(GridClient Client, string path, char separator,
+        private static InventoryBase directFindInventory(GridClient Client, string path, char separator, char? escape,
             uint millisecondsTimeout, InventoryBase root = null, StringComparison comparison = StringComparison.Ordinal)
         {
             if (string.IsNullOrEmpty(path)) return root;
 
             // Split all paths.
-            var unpack = path.Split(separator);
+            var unpack = new List<string>(path.PathSplit(separator, escape));
             // Pop first item to process.
             var first = unpack.First();
 
@@ -376,7 +377,10 @@ namespace wasOpenMetaverse
             }
 
             CONTINUE:
-            return directFindInventory(Client, string.Join(separator.ToString(), unpack.Skip(1)), separator,
+            return directFindInventory(Client,
+                string.Join(separator.ToString(),
+                    unpack.Skip(1).Select(o => string.Join(escape?.ToString() + separator.ToString(), o.Split('/')))),
+                separator, escape,
                 millisecondsTimeout,
                 root, comparison);
         }
@@ -391,19 +395,20 @@ namespace wasOpenMetaverse
         /// <param name="root">the directory from which to start searching</param>
         /// <param name="Client">the grid client to use</param>
         /// <param name="path">the full path to the item</param>
-        /// <param name="separator">the path separator</param>
+        /// <param name="separator">the path separator character</param>
+        /// <param name="escape">the path escape character</param>
         /// <param name="millisecondsTimeout">the time in milliseconds for requesting folder items</param>
         /// <param name="comparison">what comparison to use on string type path parts</param>
         /// <returns>an inventory item of type T</returns>
         /// <remarks>in case the path is ambiguous, the function returns null</remarks>
-        public static T FindInventory<T>(GridClient Client, string path, char separator,
+        public static T FindInventory<T>(GridClient Client, string path, char separator, char? escape,
             uint millisecondsTimeout, InventoryFolder root = null,
             StringComparison comparison = StringComparison.Ordinal)
         {
             InventoryBase inventoryBase;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                inventoryBase = directFindInventory(Client, path, separator, millisecondsTimeout, root, comparison);
+                inventoryBase = directFindInventory(Client, path, separator, escape, millisecondsTimeout, root, comparison);
             }
 
             if (inventoryBase == null)
@@ -416,7 +421,7 @@ namespace wasOpenMetaverse
                 return (T) (object) Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
             }
         }
-
+        
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -542,8 +547,7 @@ namespace wasOpenMetaverse
                 return directFindInventoryPath<T>(Client, root, criteria, prefix);
             }
         }
-
-
+        
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////

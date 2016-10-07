@@ -53,7 +53,7 @@ namespace Corrade
                             break;
                         default:
                             inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
                             break;
                     }
                     if (inventoryBase == null)

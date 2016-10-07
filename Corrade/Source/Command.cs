@@ -35,6 +35,14 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=removeitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("removeitem")] [Reflection.NameAttribute("removeitem")] REMOVEITEM,
+
+            [CommandInputSyntax(
+                "<command=getheartbeatdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<HeartBeat[,HeartBeat...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("getheartbeatdata")] [Reflection.NameAttribute("getheartbeatdata")] GETHEARTBEATDATA,
+
+            [CommandInputSyntax(
                 "<command=getavatarclassifieds>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("getavatarclassifieds")] [Reflection.NameAttribute("getavatarclassifieds")] GETAVATARCLASSIFIEDS,
 
@@ -1107,8 +1115,9 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("give")] [Reflection.NameAttribute("give")] GIVE,
 
             [CommandInputSyntax(
-                "<command=deleteitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("deleteitem")] [Reflection.NameAttribute("deleteitem")] DELETEITEM,
+                "<command=trashitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("trashitem")] [Reflection.NameAttribute("trashitem")] TRASHITEM,
+
             [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("emptytrash")] [Reflection.NameAttribute("emptytrash")] EMPTYTRASH,
 
             [CommandInputSyntax(

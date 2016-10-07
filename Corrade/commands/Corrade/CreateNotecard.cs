@@ -98,6 +98,8 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM);
                     }
+                    var inventoryItemUUID = UUID.Zero;
+                    var inventoryAssetUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(text))
                     {
                         var notecard = new AssetNotecard
@@ -113,6 +115,8 @@ namespace Corrade
                                 delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
                                 {
                                     succeeded = completed;
+                                    inventoryItemUUID = itemUUID;
+                                    inventoryAssetUUID = assetUUID;
                                     UploadNotecardDataEvent.Set();
                                 });
                             if (!UploadNotecardDataEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
@@ -125,6 +129,14 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA);
                         }
                     }
+
+                    // Return the item and asset UUID.
+                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                        CSV.FromEnumerable(new[]
+                        {
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)), inventoryItemUUID.ToString(),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)), inventoryAssetUUID.ToString()
+                        }));
                 };
         }
     }

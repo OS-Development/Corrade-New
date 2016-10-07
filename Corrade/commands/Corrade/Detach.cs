@@ -107,7 +107,7 @@ namespace Corrade
                                 case Enumerations.Type.PATH:
                                     inventoryItem =
                                         Inventory.FindInventory<InventoryItem>(Client, o,
-                                            CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
+                                            CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
                                     break;
                                 case Enumerations.Type.UUID:
                                     UUID itemUUID;

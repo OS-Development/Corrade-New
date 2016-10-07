@@ -7,12 +7,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using Corrade.Constants;
 using Corrade.Helpers;
 using OpenMetaverse;
+using wasOpenMetaverse;
 using wasSharp;
-using Corrade.Structures;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -33,9 +32,9 @@ namespace Corrade
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
-                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(
-                                    instantMessageEventArgs,
-                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                                CSV.FromEnumerable(
+                                    instantMessageEventArgs.GetStructuredData(
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
 
@@ -44,34 +43,13 @@ namespace Corrade
                             instantMessageEventArgs
                         };
 
-                        InventoryOffer inventoryOffer = new InventoryOffer();
-                        switch (instantMessageEventArgs.IM.Dialog)
+                        var itemUUID = new UUID(instantMessageEventArgs.IM.BinaryBucket, 1);
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
-                            case InstantMessageDialog.TaskInventoryOffered:
-                            case InstantMessageDialog.InventoryOffered:
-                                lock (InventoryOffersLock)
-                                {
-                                    inventoryOffer =
-                                        InventoryOffers.AsParallel()
-                                            .FirstOrDefault(
-                                                p =>
-                                                    p.Args.Offer.IMSessionID.Equals(
-                                                        instantMessageEventArgs.IM.IMSessionID));
-                                    if (inventoryOffer != null)
-                                    {
-                                        objects.Add(inventoryOffer.Args);
-                                        var groups =
-                                            CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                                string.IsNullOrEmpty(inventoryOffer.Name)
-                                                    ? inventoryOffer.Args.Offer.Message
-                                                    : inventoryOffer.Name).Groups;
-                                        if (groups.Count > 1)
-                                        {
-                                            objects.Add(groups[1]);
-                                        }
-                                    }
-                                }
-                                break;
+                            if (Client.Inventory.Store.Contains(itemUUID))
+                            {
+                                objects.Add(Client.Inventory.Store[itemUUID]);
+                            }
                         }
 
                         var LockObject = new object();
@@ -90,12 +68,10 @@ namespace Corrade
                         {
                             case InstantMessageDialog.TaskInventoryOffered:
                             case InstantMessageDialog.InventoryOffered:
-                                if (inventoryOffer != null)
+                                lock (InventoryOffersLock)
                                 {
-                                    lock (InventoryOffersLock)
-                                    {
-                                        InventoryOffers.Remove(inventoryOffer);
-                                    }
+                                    InventoryOffers.RemoveWhere(o => o.Args.Offer.IMSessionID.Equals(
+                                        instantMessageEventArgs.IM.IMSessionID));
                                 }
                                 break;
                         }
@@ -111,7 +87,7 @@ namespace Corrade
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                 CSV.FromEnumerable(
-                                    wasOpenMetaverse.Reflection.GetStructuredData(inventoryObjectOfferedEventArgs,
+                                    inventoryObjectOfferedEventArgs.GetStructuredData(
                                         CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                             return;
                         }
@@ -121,12 +97,13 @@ namespace Corrade
                             inventoryObjectOfferedEventArgs
                         };
 
-                        var groups =
-                            CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                inventoryObjectOfferedEventArgs.Offer.Message).Groups;
-                        if (groups.Count > 1)
+                        var itemUUID = new UUID(inventoryObjectOfferedEventArgs.Offer.BinaryBucket, 1);
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
-                            objects.Add(groups[1]);
+                            if (Client.Inventory.Store.Contains(itemUUID))
+                            {
+                                objects.Add(Client.Inventory.Store[itemUUID]);
+                            }
                         }
 
                         var LockObject = new object();

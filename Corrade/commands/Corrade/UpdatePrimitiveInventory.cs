@@ -111,7 +111,7 @@ namespace Corrade
                                     case true:
                                         inventoryBaseItem =
                                             Inventory.FindInventory<InventoryBase>(Client, entity,
-                                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
+                                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
                                         break;
                                     default:
                                         lock (Locks.ClientInstanceInventoryLock)

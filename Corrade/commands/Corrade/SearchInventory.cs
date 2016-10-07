@@ -73,17 +73,34 @@ namespace Corrade
                         .ForAll(
                             o =>
                             {
-                                var inventoryItem = o as InventoryItem;
-                                if (inventoryItem == null) return;
-                                if (assetTypes.Any() && !assetTypes.Contains(inventoryItem.AssetType))
-                                    return;
+                                var assetType = string.Empty;
+                                var name = string.Empty;
+                                var itemUUID = UUID.Zero;
+                                if (o is InventoryItem)
+                                {
+                                    var inventoryItem = o as InventoryItem;
+                                    if (assetTypes.Any() && !assetTypes.Contains(inventoryItem.AssetType))
+                                        return;
+                                    assetType = Enum.GetName(typeof (AssetType), inventoryItem.AssetType);
+                                    name = inventoryItem.Name;
+                                    itemUUID = inventoryItem.UUID;
+                                }
+                                if (o is InventoryFolder)
+                                {
+                                    var inventoryFolder = o as InventoryFolder;
+                                    if (assetTypes.Any() && !assetTypes.Contains(inventoryFolder.PreferredType))
+                                        return;
+                                    assetType = Enum.GetName(typeof(AssetType), inventoryFolder.PreferredType);
+                                    name = inventoryFolder.Name;
+                                    itemUUID = inventoryFolder.UUID;
+                                }
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
                                     {
-                                        Enum.GetName(typeof (AssetType), inventoryItem.AssetType),
-                                        inventoryItem.Name,
-                                        inventoryItem.AssetUUID.ToString()
+                                        assetType,
+                                        name,
+                                        itemUUID.ToString()
                                     });
                                 }
                             });

@@ -53,7 +53,7 @@ namespace Corrade
                         if (!UUID.TryParse(item, out textureUUID))
                         {
                             var inventoryBaseItem = Inventory.FindInventory<InventoryBase>(Client, item,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout);
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
                             if (!(inventoryBaseItem is InventoryTexture))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);

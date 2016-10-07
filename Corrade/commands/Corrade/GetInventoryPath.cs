@@ -68,7 +68,17 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
                     var csv = new List<string>();
+                    // Search inventory.
                     Inventory.FindInventoryPath<InventoryBase>(Client, Client.Inventory.Store.RootNode,
+                        search, new LinkedList<string>()).AsParallel().Select(o => o.Value).ForAll(o =>
+                        {
+                            lock (LockObject)
+                            {
+                                csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR.ToString(), o.ToArray()));
+                            }
+                        });
+                    // Search library.
+                    Inventory.FindInventoryPath<InventoryBase>(Client, Client.Inventory.Store.LibraryRootNode,
                         search, new LinkedList<string>()).AsParallel().Select(o => o.Value).ForAll(o =>
                         {
                             lock (LockObject)

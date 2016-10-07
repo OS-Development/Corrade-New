@@ -27,7 +27,7 @@ namespace Corrade
                     }
                     var RLVFolder = Inventory.FindInventory<InventoryFolder>(Client,
                         wasOpenMetaverse.RLV.RLV_CONSTANTS.SHARED_FOLDER_PATH,
-                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout,
+                        wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null, corradeConfiguration.ServicesTimeout,
                         Client.Inventory.Store.RootFolder);
                     if (RLVFolder == null)
                     {
@@ -45,7 +45,7 @@ namespace Corrade
                             break;
                         default:
                             optionFolder = Inventory.FindInventory<InventoryFolder>(Client, rule.Option,
-                                wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, corradeConfiguration.ServicesTimeout,
+                                wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null, corradeConfiguration.ServicesTimeout,
                                 RLVFolder,
                                 StringComparison.OrdinalIgnoreCase);
                             if (optionFolder == null)

@@ -76,8 +76,16 @@ namespace Corrade.Helpers
             {
                 case false:
                     var arg = o.Type != null
-                        ? args.AsParallel().FirstOrDefault(a => Equals(a.GetType().FullName, o.Type))
-                        : args.AsParallel().FirstOrDefault(a => Equals(a.GetType().FullName, type));
+                        ? args.AsParallel()
+                            .FirstOrDefault(
+                                a =>
+                                    Equals(a.GetType().FullName, o.Type) ||
+                                    a.GetType().GetBaseTypes().AsParallel().Any(t => Equals(t.FullName, o.Type)))
+                        : args.AsParallel()
+                            .FirstOrDefault(
+                                a =>
+                                    Equals(a.GetType().FullName, type) ||
+                                    a.GetType().GetBaseTypes().AsParallel().Any(t => Equals(t.FullName, o.Type)));
 
                     if (arg == null)
                         return;

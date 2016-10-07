@@ -134,6 +134,9 @@ namespace Corrade
 
             try
             {
+                // Increment heartbeat behaviours.
+                Interlocked.Increment(ref Corrade.CorradeHeartbeat.ExecutingRLVBehaviours);
+
                 // Find RLV behaviour.
                 var RLVBehaviour = Reflection.GetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
                 if (RLVBehaviour.Equals(default(RLVBehaviour)))
@@ -147,6 +150,8 @@ namespace Corrade
 
                 // Execute the command.
                 execute.RLVBehaviour.Invoke(message, RLVrule, senderUUID);
+                Interlocked.Increment(ref Corrade.CorradeHeartbeat.ProcessedRLVBehaviours);
+
             }
             catch (Exception ex)
             {
@@ -154,6 +159,10 @@ namespace Corrade
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
                     RLVrule.Behaviour,
                     ex.Message);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref Corrade.CorradeHeartbeat.ExecutingRLVBehaviours);
             }
 
             CONTINUE:

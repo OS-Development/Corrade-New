@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cryptography\AES.cs" />
+    <Compile Include="Process.cs" />
     <Compile Include="Reflection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

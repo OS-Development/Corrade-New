@@ -62,7 +62,7 @@ namespace Corrade
                                 }
                             }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
@@ -172,7 +172,7 @@ namespace Corrade
                                 }
                             }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
@@ -204,7 +204,7 @@ namespace Corrade
                                 }
                             }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
@@ -248,7 +248,7 @@ namespace Corrade
                                 }
                             }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
@@ -296,7 +296,7 @@ namespace Corrade
                                 }
                             }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
@@ -347,7 +347,7 @@ namespace Corrade
                                 }
                             }
                             sourceItem = Inventory.FindInventory<InventoryBase>(Client, lnSourcePath,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, sourceItem as InventoryFolder);
                             if (sourceItem == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
@@ -355,7 +355,7 @@ namespace Corrade
                             var parentSource = Inventory.FindInventory<InventoryBase>(Client,
                                 string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR.ToString(),
                                     sourceSegments.Take(sourceSegments.Length - 1)),
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, sourceItem as InventoryFolder);
                             switch (action)
                             {
@@ -383,7 +383,7 @@ namespace Corrade
                             }
                             var targetName = sourceItem.Name;
                             var parentTarget = Inventory.FindInventory<InventoryBase>(Client, lnTargetPath,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, targetItem as InventoryFolder);
                             switch (parentTarget is InventoryFolder)
                             {
@@ -392,7 +392,7 @@ namespace Corrade
                                     parentTarget = Inventory.FindInventory<InventoryBase>(Client,
                                         string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR.ToString(),
                                             pathSegments.Take(pathSegments.Length - 1)),
-                                        CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                        CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                         corradeConfiguration.ServicesTimeout, targetItem as InventoryFolder);
                                     if (!(parentTarget is InventoryFolder))
                                         throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);

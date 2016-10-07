@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using wasSharp;
 
 namespace wasSharp
 {
@@ -218,6 +219,26 @@ namespace wasSharp
                     : memberType.GetRuntimeProperty(path);
 
             return null;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Enumerate all the base types recursively starting from a type.
+        /// </summary>
+        /// <param name="type">the type</param>
+        /// <returns>an enumeration of all base types</returns>
+        public static IEnumerable<Type> GetBaseTypes(this Type type)
+        {
+            var baseType = type.GetTypeInfo().BaseType;
+            if(baseType == null)
+                yield break;
+            yield return baseType;
+            foreach (var t in GetBaseTypes(baseType))
+            {
+                yield return t;
+            }
         }
 
         /// <summary>

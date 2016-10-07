@@ -215,7 +215,13 @@
     <Compile Include="commands\Corrade\GetAvatarPickData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetHeartbeatData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetRemoteParcelInfoData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\RemoveItem.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\RenameItem.cs">
@@ -225,6 +231,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Shoot.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Heartbeat.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="notifications\Teleport.cs">
@@ -241,6 +250,7 @@
     <Compile Include="Source\Events\FeedEventArgs.cs" />
     <Compile Include="Source\Events\GroupMembershipEventArgs.cs" />
     <Compile Include="Source\Events\GroupMessageEventArgs.cs" />
+    <Compile Include="Source\Events\HeartbeatEventArgs.cs" />
     <Compile Include="Source\Events\OutfitEventArgs.cs" />
     <Compile Include="Source\Events\TypingEventArgs.cs" />
     <Compile Include="Source\Helpers\Utilities.cs" />
@@ -255,6 +265,7 @@
     <Compile Include="Source\Structures\GroupInvite.cs" />
     <Compile Include="Source\Structures\GroupMessage.cs" />
     <Compile Include="Source\Structures\GroupNotice.cs" />
+    <Compile Include="Source\Structures\Heartbeat.cs" />
     <Compile Include="Source\Structures\InstantMessage.cs" />
     <Compile Include="Source\Structures\InventoryOffer.cs" />
     <Compile Include="Source\Structures\LocalMessage.cs" />
@@ -390,7 +401,7 @@
     <Compile Include="commands\Corrade\DeleteFromRole.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="commands\Corrade\DeleteItem.cs">
+    <Compile Include="commands\Corrade\TrashItem.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\DeletePick.cs">
@@ -1641,6 +1652,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\group.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\heartbeat.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\inventory.xml">

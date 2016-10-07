@@ -283,6 +283,39 @@ namespace Corrade
 
         private static readonly object RLVInventoryLock = new object();
 
+        public static readonly Heartbeat CorradeHeartbeat = new Heartbeat();
+
+        /// <summary>
+        ///     Heartbeat timer.
+        /// </summary>
+        private static readonly Time.Timer CorradeHeartBeatTimer = new Time.Timer(o =>
+        {
+            // Send notification.
+            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.Heartbeat, new HeartbeatEventArgs
+                {
+                    ExecutingCommands = CorradeHeartbeat.ExecutingCommands,
+                    ExecutingRLVBehaviours = CorradeHeartbeat.ExecutingRLVBehaviours,
+                    ProcessedCommands = CorradeHeartbeat.ProcessedCommands,
+                    ProcessedRLVBehaviours = CorradeHeartbeat.ProcessedRLVBehaviours,
+                    AverageCPUUsage = CorradeHeartbeat.AverageCPUUsage,
+                    AverageRAMUsage = CorradeHeartbeat.AverageRAMUsage,
+                    Heartbeats = CorradeHeartbeat.Heartbeats,
+                    Uptime = CorradeHeartbeat.Uptime,
+                    Version = CorradeHeartbeat.Version
+                }),
+                corradeConfiguration.MaximumNotificationThreads);
+
+            // Log heartbeat data.
+            Feedback("Heartbeat",
+                string.Format("CPU: {0}% RAM: {1:0.}MiB Uptime: {2}d:{3}h:{4}m Commands: {5} Behaviours: {6}",
+                    CorradeHeartbeat.AverageCPUUsage,
+                    CorradeHeartbeat.AverageRAMUsage/1024/1024, TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Days,
+                    TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours,
+                    TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes, CorradeHeartbeat.ProcessedCommands,
+                    CorradeHeartbeat.ProcessedRLVBehaviours));
+        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+
         /// <summary>
         ///     The various types of threads created by Corrade.
         /// </summary>
@@ -5952,7 +5985,9 @@ namespace Corrade
                 // Execute the command.
                 try
                 {
+                    Interlocked.Increment(ref CorradeHeartbeat.ExecutingCommands);
                     execute.CorradeCommand.Invoke(corradeCommandParameters, result);
+                    Interlocked.Increment(ref CorradeHeartbeat.ProcessedCommands);
                     // Sifting was requested so apply the filters in order.
                     var sift =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
@@ -6029,6 +6064,10 @@ namespace Corrade
                     result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), sx.Message);
                     result.Add(Reflection.GetNameFromEnumValue(ResultKeys.STATUS),
                         sx.Status.ToString());
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref CorradeHeartbeat.ExecutingCommands);
                 }
             }
             catch (Exception ex)

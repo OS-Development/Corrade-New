@@ -55,9 +55,14 @@
             <Value>reply</Value>
           </Parameter>
           <Parameter>
-            <Path>Value</Path>
+            <Path>Name</Path>
             <Name>item</Name>
-            <Type>System.Text.RegularExpressions.Group</Type>
+            <Type>OpenMetaverse.InventoryBase</Type>
+          </Parameter>
+          <Parameter>
+            <Path>UUID</Path>
+            <Name>inventory</Name>
+            <Type>OpenMetaverse.InventoryBase</Type>
           </Parameter>
         </ArrayOfParameter>
       </Value>
@@ -87,9 +92,14 @@
             <Name>asset</Name>
           </Parameter>
           <Parameter>
-            <Path>Value</Path>
+            <Path>Name</Path>
             <Name>item</Name>
-            <Type>System.Text.RegularExpressions.Group</Type>
+            <Type>OpenMetaverse.InventoryBase</Type>
+          </Parameter>
+          <Parameter>
+            <Path>UUID</Path>
+            <Name>inventory</Name>
+            <Type>OpenMetaverse.InventoryBase</Type>
           </Parameter>
           <Parameter>
             <Path>Offer.IMSessionID</Path>

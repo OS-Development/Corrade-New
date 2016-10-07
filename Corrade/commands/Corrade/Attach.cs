@@ -128,7 +128,7 @@ namespace Corrade
                                                     break;
                                                 default:
                                                     inventoryItem = Inventory.FindInventory<InventoryItem>(
-                                                        Client, o.Value, CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                        Client, o.Value, CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                                         corradeConfiguration.ServicesTimeout);
                                                     break;
                                             }

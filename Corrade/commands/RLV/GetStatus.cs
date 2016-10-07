@@ -55,7 +55,7 @@ namespace Corrade
                                     lock (LockObject)
                                     {
                                         response.AppendFormat("{0}{1}",
-                                            wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR,
+                                            wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null,
                                             o.Option);
                                     }
                                 }
