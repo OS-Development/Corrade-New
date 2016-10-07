@@ -10,39 +10,39 @@
         <ArrayOfParameter>
           <Parameter>
             <Path>ExecutingCommands</Path>
-            <Name>Executing</Name>
+            <Name>executing</Name>
           </Parameter>
           <Parameter>
             <Path>ExecutingRLVBehaviours</Path>
-            <Name>ExecutingRLV</Name>
+            <Name>executingrlv</Name>
           </Parameter>
           <Parameter>
             <Path>ProcessedCommands</Path>
-            <Name>TotalCommands</Name>
+            <Name>totalcommands</Name>
           </Parameter>
           <Parameter>
             <Path>ProcessedRLVBehaviours</Path>
-            <Name>TotalRLV</Name>
+            <Name>totalrlv</Name>
           </Parameter>
           <Parameter>
             <Path>AverageCPUUsage</Path>
-            <Name>CPU</Name>
+            <Name>cpu</Name>
           </Parameter>
           <Parameter>
             <Path>AverageRAMUsage</Path>
-            <Name>RAM</Name>
+            <Name>ram</Name>
           </Parameter>
           <Parameter>
             <Path>Heartbeats</Path>
-            <Name>Beats</Name>
+            <Name>beats</Name>
           </Parameter>
           <Parameter>
             <Path>Uptime</Path>
-            <Name>Uptime</Name>
+            <Name>uptime</Name>
           </Parameter>
           <Parameter>
             <Path>Version</Path>
-            <Name>Version</Name>
+            <Name>version</Name>
           </Parameter>
         </ArrayOfParameter>
       </Value>
