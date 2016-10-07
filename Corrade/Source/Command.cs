@@ -35,6 +35,22 @@ namespace Corrade
             [Reflection.NameAttribute("none")] NONE = 0,
 
             [CommandInputSyntax(
+                "<command=removeconfigurationgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<target=<STRING|UUID>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
+            [CorradeCommand("removeconfigurationgroup")]
+            [Reflection.NameAttribute("removeconfigurationgroup")]
+            REMOVECONFIGURATIONGROUP,
+
+            [CommandInputSyntax(
+                "<command=addconfigurationgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<target=<STRING|UUID>>&<secret=<STRING>>&<workers=<INTEGER>>&<schedules=<INTEGER>>&[database=<STRING>]&[logs=<BOOL>]&[path=<STRING>]&[permissions=<STRING,[STRING...]>]&[notifications=<STRING,[STRING...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("addconfigurationgroup")] [Reflection.NameAttribute("addconfigurationgroup")] ADDCONFIGURATIONGROUP,
+
+            [Reflection.NameAttribute("notifications")] NOTIFICATIONS,
+            [Reflection.NameAttribute("schedules")] SCHEDULES,
+            [Reflection.NameAttribute("workers")] WORKERS,
+
+            [CommandInputSyntax(
                 "<command=removeitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("removeitem")] [Reflection.NameAttribute("removeitem")] REMOVEITEM,
 

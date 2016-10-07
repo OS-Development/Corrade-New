@@ -197,6 +197,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="commands\Corrade\AddConfigurationGroup.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Bayes.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -219,6 +222,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetRemoteParcelInfoData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\RemoveConfigurationGroup.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\RemoveItem.cs">

@@ -651,7 +651,12 @@ namespace Corrade
             [Command.StatusAttribute(22970)] [Reflection.DescriptionAttribute("timeout getting profile classified")] TIMEOUT_GETTING_PROFILE_CLASSIFIED,
             [Command.StatusAttribute(07168)] [Reflection.DescriptionAttribute("timeout getting profile pick")] TIMEOUT_GETTING_PROFILE_PICK,
             [Command.StatusAttribute(11979)] [Reflection.DescriptionAttribute("could not retrieve pick")] COULD_NOT_RETRIEVE_PICK,
-            [Command.StatusAttribute(25420)] [Reflection.DescriptionAttribute("could not retrieve classified")] COULD_NOT_RETRIEVE_CLASSIFIED
+            [Command.StatusAttribute(25420)] [Reflection.DescriptionAttribute("could not retrieve classified")] COULD_NOT_RETRIEVE_CLASSIFIED,
+            [Command.StatusAttribute(61317)] [Reflection.DescriptionAttribute("invalid workers provided")] INVALID_WORKERS_PROVIDED,
+            [Command.StatusAttribute(23570)] [Reflection.DescriptionAttribute("invalid schedules provided")] INVALID_SCHEDULES_PROVIDED,
+            [Command.StatusAttribute(09703)] [Reflection.DescriptionAttribute("group not configured")] GROUP_NOT_CONFIGURED,
+            [Command.StatusAttribute(31868)] [Reflection.DescriptionAttribute("no database path provided")] NO_DATABASE_PATH_PROVIDED,
+            [Command.StatusAttribute(13030)] [Reflection.DescriptionAttribute("no chatlog path provided")] NO_CHATLOG_PATH_PROVIDED
         }
 
 
