@@ -28,7 +28,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var csv =
-                        Inventory.GetWearables(Client, CurrentOutfitFolder)
+                        Inventory.GetWearables(Client, CurrentOutfitFolder, corradeConfiguration.ServicesTimeout)
                             .Select(o => new[]
                             {
                                 (o as InventoryWearable).WearableType.ToString(),

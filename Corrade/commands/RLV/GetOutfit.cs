@@ -28,7 +28,8 @@ namespace Corrade
                         return;
                     }
                     var wearables =
-                        new HashSet<InventoryBase>(Inventory.GetWearables(Client, CurrentOutfitFolder));
+                        new HashSet<InventoryBase>(Inventory.GetWearables(Client, CurrentOutfitFolder,
+                            corradeConfiguration.ServicesTimeout));
                     var response = new StringBuilder();
                     switch (!string.IsNullOrEmpty(rule.Option))
                     {

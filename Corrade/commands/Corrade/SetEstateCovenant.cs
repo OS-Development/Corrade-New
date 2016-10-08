@@ -48,7 +48,8 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             var inventoryItem = Inventory.FindInventory<InventoryItem>(Client, item,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                corradeConfiguration.ServicesTimeout);
                             if (inventoryItem == null)
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);

@@ -64,7 +64,8 @@ namespace Corrade
                                 default:
                                     inventoryFolder =
                                         Inventory.FindInventory<InventoryFolder>(Client, folder,
-                                            CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
+                                            CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                            corradeConfiguration.ServicesTimeout);
                                     break;
                             }
                             if (inventoryFolder == null)

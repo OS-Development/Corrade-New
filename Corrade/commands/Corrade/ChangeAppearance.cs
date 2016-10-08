@@ -56,7 +56,8 @@ namespace Corrade
                         default:
                             inventoryFolder =
                                 Inventory.FindInventory<InventoryFolder>(Client, folder,
-                                    CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
+                                    CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                    corradeConfiguration.ServicesTimeout);
                             break;
                     }
                     if (inventoryFolder == null)
@@ -105,7 +106,8 @@ namespace Corrade
                     var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
                         .ToDictionary(o => o.Key, o => o.Value);
-                    new List<InventoryItem>(Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder))
+                    new List<InventoryItem>(Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder,
+                        corradeConfiguration.ServicesTimeout))
                         .AsParallel().ForAll(
                             o =>
                             {
@@ -186,7 +188,8 @@ namespace Corrade
                     // Add links to new items.
                     foreach (var inventoryItem in equipItems)
                     {
-                        Inventory.AddLink(Client, inventoryItem, CurrentOutfitFolder);
+                        Inventory.AddLink(Client, inventoryItem, CurrentOutfitFolder,
+                            corradeConfiguration.ServicesTimeout);
                     }
 
 
@@ -197,15 +200,9 @@ namespace Corrade
                     }
 
                     // Update inventory.
-                    try
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
-                        Inventory.UpdateInventoryRecursive(Client, CurrentOutfitFolder,
-                            corradeConfiguration.ServicesTimeout);
-                    }
-                    catch (Exception)
-                    {
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                        Client.Inventory.Store.GetNodeFor(CurrentOutfitFolder.UUID).NeedsUpdate = true;
                     }
 
                     attachments = Inventory.GetAttachments(Client,

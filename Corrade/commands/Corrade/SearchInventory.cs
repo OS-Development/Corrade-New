@@ -90,7 +90,7 @@ namespace Corrade
                                     var inventoryFolder = o as InventoryFolder;
                                     if (assetTypes.Any() && !assetTypes.Contains(inventoryFolder.PreferredType))
                                         return;
-                                    assetType = Enum.GetName(typeof(AssetType), inventoryFolder.PreferredType);
+                                    assetType = Enum.GetName(typeof (AssetType), inventoryFolder.PreferredType);
                                     name = inventoryFolder.Name;
                                     itemUUID = inventoryFolder.UUID;
                                 }

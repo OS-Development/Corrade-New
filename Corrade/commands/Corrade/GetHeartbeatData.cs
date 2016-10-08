@@ -18,12 +18,13 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getheartbeatdata =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getheartbeatdata
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }

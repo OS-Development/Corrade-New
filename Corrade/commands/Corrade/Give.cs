@@ -53,17 +53,40 @@ namespace Corrade
                             break;
                         default:
                             inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
-                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, corradeConfiguration.ServicesTimeout);
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                corradeConfiguration.ServicesTimeout);
                             break;
                     }
                     if (inventoryBase == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    // Need to store parent folder for updates.
-                    var parentFolder = inventoryBase.ParentUUID.Equals(UUID.Zero)
-                        ? null
-                        : Client.Inventory.Store[inventoryBase.ParentUUID] as InventoryFolder;
+                    // Store the parent UUID for updates later on.
+                    var parentUUID = UUID.Zero;
+                    switch (inventoryBase.ParentUUID.Equals(UUID.Zero))
+                    {
+                        case true:
+                            UUID rootFolderUUID;
+                            UUID libraryFolderUUID;
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                                libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                            }
+                            if (inventoryBase.UUID.Equals(rootFolderUUID))
+                            {
+                                parentUUID = rootFolderUUID;
+                                break;
+                            }
+                            if (inventoryBase.UUID.Equals(libraryFolderUUID))
+                            {
+                                parentUUID = libraryFolderUUID;
+                            }
+                            break;
+                        default:
+                            parentUUID = inventoryBase.ParentUUID;
+                            break;
+                    }
                     // If the requested item is an inventory item.
                     if (inventoryBase is InventoryItem)
                     {
@@ -256,19 +279,12 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
 
-                    // Update parent folder in case no-copy items were deleted.
-                    if (parentFolder != null)
+                    // Mark parent folder as needing an update.
+                    if (!parentUUID.Equals(UUID.Zero))
                     {
-                        try
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
-                            Inventory.UpdateInventoryRecursive(Client, parentFolder,
-                                corradeConfiguration.ServicesTimeout);
-                        }
-                        catch (Exception)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                            Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
                         }
                     }
                 };

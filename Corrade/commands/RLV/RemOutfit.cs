@@ -39,7 +39,7 @@ namespace Corrade
                                 break;
                             }
                             var wearable =
-                                Inventory.GetWearables(Client, CurrentOutfitFolder)
+                                Inventory.GetWearables(Client, CurrentOutfitFolder, corradeConfiguration.ServicesTimeout)
                                     .ToArray()
                                     .AsParallel()
                                     .FirstOrDefault(
@@ -73,7 +73,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            Inventory.GetWearables(Client, CurrentOutfitFolder)
+                            Inventory.GetWearables(Client, CurrentOutfitFolder, corradeConfiguration.ServicesTimeout)
                                 .AsParallel()
                                 .Where(o => !Inventory.IsBodyPart(Client, o as InventoryWearable))
                                 .ForAll(

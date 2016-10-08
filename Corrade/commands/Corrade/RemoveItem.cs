@@ -60,6 +60,33 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                         }
+                        // Get the parent UUID.
+                        var parentUUID = UUID.Zero;
+                        switch (inventoryBase.ParentUUID.Equals(UUID.Zero))
+                        {
+                            case true:
+                                UUID rootFolderUUID;
+                                UUID libraryFolderUUID;
+                                lock (Locks.ClientInstanceInventoryLock)
+                                {
+                                    rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                                    libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                                }
+                                if (inventoryBase.UUID.Equals(rootFolderUUID))
+                                {
+                                    parentUUID = rootFolderUUID;
+                                    break;
+                                }
+                                if (inventoryBase.UUID.Equals(libraryFolderUUID))
+                                {
+                                    parentUUID = libraryFolderUUID;
+                                }
+                                break;
+                            default:
+                                parentUUID = inventoryBase.ParentUUID;
+                                break;
+                        }
+                        // Remove the item or folder.
                         switch (inventoryBase is InventoryFolder)
                         {
                             case true:
@@ -74,6 +101,11 @@ namespace Corrade
                                     Client.Inventory.RemoveItem(inventoryBase.UUID);
                                 }
                                 break;
+                        }
+                        // Mark the parent as needing an update.
+                        lock (Locks.ClientInstanceInventoryLock)
+                        {
+                            Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
                         }
                     };
         }

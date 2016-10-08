@@ -134,8 +134,10 @@ namespace Corrade
                     result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                         CSV.FromEnumerable(new[]
                         {
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)), inventoryItemUUID.ToString(),
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)), inventoryAssetUUID.ToString()
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                            inventoryItemUUID.ToString(),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)),
+                            inventoryAssetUUID.ToString()
                         }));
                 };
         }

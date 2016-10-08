@@ -85,7 +85,7 @@ namespace Corrade
                                     return;
                                 }
                                 InventoryBase wearable =
-                                    Inventory.GetWearables(Client, RLVFolder)
+                                    Inventory.GetWearables(Client, RLVFolder, corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(
                                             o =>

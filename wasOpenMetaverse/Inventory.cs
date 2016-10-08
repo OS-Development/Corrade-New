@@ -50,15 +50,17 @@ namespace wasOpenMetaverse
         /// </summary>
         /// <param name="Client">the grid client to use</param>
         /// <param name="outfitFolder">the outfit folder to return items from</param>
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
         /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
         public static IEnumerable<InventoryItem> GetCurrentOutfitFolderLinks(GridClient Client,
-            InventoryFolder outfitFolder)
+            InventoryFolder outfitFolder, uint millisecondsTimeout)
         {
+            UpdateInventoryRecursive(Client, outfitFolder, millisecondsTimeout, true);
             lock (Locks.ClientInstanceInventoryLock)
             {
                 return Client.Inventory.Store.GetContents(outfitFolder)
                     .AsParallel()
-                    .Where(o => CanBeWorn(o) && ((InventoryItem) o).AssetType == AssetType.Link)
+                    .Where(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
                     .Select(o => o as InventoryItem);
             }
         }
@@ -70,10 +72,39 @@ namespace wasOpenMetaverse
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             lock (Locks.ClientInstanceAppearanceLock)
             {
-                Client.Appearance.Attach(realItem, point, replace);
+                var objectAttachedEvent = new ManualResetEvent(false);
+                EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
+                {
+                    Primitive prim;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        if (
+                            !Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.Prim.LocalID,
+                                out prim))
+                            return;
+                    }
+
+                    if (Client.Self.LocalID.Equals(0) || prim.NameValues == null)
+                        return;
+
+                    if (!prim.NameValues.AsParallel()
+                        .Where(o => Equals(o.Name, "AttachItemID"))
+                        .Any(o => Strings.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                            StringComparison.OrdinalIgnoreCase))) return;
+
+                    objectAttachedEvent.Set();
+                };
+
+                lock (Locks.ClientInstanceObjectsLock)
+                {
+                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                    Client.Appearance.Attach(realItem, point, replace);
+                    objectAttachedEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                }
             }
-            AddLink(Client, realItem, CurrentOutfitFolder);
-            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout);
+            AddLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
+            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
 
         public static void Detach(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item,
@@ -81,12 +112,41 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
-            RemoveLink(Client, realItem, CurrentOutfitFolder);
+            RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             lock (Locks.ClientInstanceAppearanceLock)
             {
-                Client.Appearance.Detach(realItem);
+                var objectDetachedEvent = new ManualResetEvent(false);
+                EventHandler<KillObjectEventArgs> KillObjectEventHandler = (sender, args) =>
+                {
+                    Primitive prim;
+                    lock (Locks.ClientInstanceNetworkLock)
+                    {
+                        if (
+                            !Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.ObjectLocalID,
+                                out prim))
+                            return;
+                    }
+
+                    if (Client.Self.LocalID.Equals(0) || prim.NameValues == null)
+                        return;
+
+                    if (!prim.NameValues.AsParallel()
+                        .Where(o => Equals(o.Name, "AttachItemID"))
+                        .Any(o => Strings.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                            StringComparison.OrdinalIgnoreCase))) return;
+
+                    objectDetachedEvent.Set();
+                };
+
+                lock (Locks.ClientInstanceObjectsLock)
+                {
+                    Client.Objects.KillObject += KillObjectEventHandler;
+                    Client.Appearance.Detach(realItem);
+                    objectDetachedEvent.WaitOne((int) millisecondsTimeout, false);
+                    Client.Objects.KillObject -= KillObjectEventHandler;
+                }
             }
-            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout);
+            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
 
         public static void Wear(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item, bool replace,
@@ -98,8 +158,8 @@ namespace wasOpenMetaverse
             {
                 Client.Appearance.AddToOutfit(realItem, replace);
             }
-            AddLink(Client, realItem, CurrentOutfitFolder);
-            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout);
+            AddLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
+            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
 
         public static void UnWear(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item,
@@ -111,8 +171,8 @@ namespace wasOpenMetaverse
             {
                 Client.Appearance.RemoveFromOutfit(realItem);
             }
-            RemoveLink(Client, realItem, CurrentOutfitFolder);
-            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout);
+            RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
+            UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
 
         /// <summary>
@@ -138,12 +198,16 @@ namespace wasOpenMetaverse
         /// <param name="Client">the grid client to use</param>
         /// <param name="item">item to be linked</param>
         /// <param name="outfitFolder">the outfit folder</param>
-        public static void AddLink(GridClient Client, InventoryItem item, InventoryFolder outfitFolder)
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
+        public static void AddLink(GridClient Client, InventoryItem item, InventoryFolder outfitFolder,
+            uint millisecondsTimeout)
         {
             if (outfitFolder == null) return;
 
-            var contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
-            if (!contents.AsParallel().Any(o => o.AssetUUID.Equals(item.UUID)))
+            if (
+                !GetCurrentOutfitFolderLinks(Client, outfitFolder, millisecondsTimeout)
+                    .AsParallel()
+                    .Any(o => o.AssetUUID.Equals(item.UUID)))
             {
                 lock (Locks.ClientInstanceInventoryLock)
                 {
@@ -154,11 +218,10 @@ namespace wasOpenMetaverse
                             {
                                 if (success)
                                 {
-                                    Client.Inventory.Store.GetNodeFor(item.ParentUUID).NeedsUpdate = true;
-                                    Client.Inventory.RequestUpdateItem(item);
                                     Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
                                 }
                             });
+                    Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
                 }
             }
         }
@@ -169,22 +232,23 @@ namespace wasOpenMetaverse
         /// <param name="Client">the grid client to use</param>
         /// <param name="item">the item whose link should be removed</param>
         /// <param name="outfitFolder">the outfit folder</param>
-        private static void RemoveLink(GridClient Client, InventoryItem item, InventoryFolder outfitFolder)
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
+        private static void RemoveLink(GridClient Client, InventoryItem item, InventoryFolder outfitFolder,
+            uint millisecondsTimeout)
         {
             if (outfitFolder == null) return;
 
-            var contents = new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder));
+            var contents =
+                new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder, millisecondsTimeout));
             lock (Locks.ClientInstanceInventoryLock)
             {
-                var parentUUID = item.ParentUUID;
                 Client.Inventory.Remove(
                     contents
                         .AsParallel()
                         .Where(o => o.AssetUUID.Equals(item.UUID))
                         .Select(o => o.UUID)
                         .ToList(), null);
-                Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
-                Client.Inventory.RequestUpdateItem(item);
+                Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
             }
         }
 
@@ -249,11 +313,13 @@ namespace wasOpenMetaverse
         /// </summary>
         /// <param name="Client">the grid client to use</param>
         /// <param name="outfitFolder">the folder to start the search from</param>
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
         /// <returns>the worn inventory itemse</returns>
-        public static IEnumerable<InventoryItem> GetWearables(GridClient Client, InventoryFolder outfitFolder)
+        public static IEnumerable<InventoryItem> GetWearables(GridClient Client, InventoryFolder outfitFolder,
+            uint millisecondsTimeout)
         {
             return outfitFolder != null
-                ? GetCurrentOutfitFolderLinks(Client, outfitFolder)
+                ? GetCurrentOutfitFolderLinks(Client, outfitFolder, millisecondsTimeout)
                     .AsParallel()
                     .Select(o => ResolveItemLink(Client, o))
                     .Where(o => o is InventoryWearable)
@@ -379,7 +445,8 @@ namespace wasOpenMetaverse
             CONTINUE:
             return directFindInventory(Client,
                 string.Join(separator.ToString(),
-                    unpack.Skip(1).Select(o => string.Join(escape?.ToString() + separator.ToString(), o.Split('/')))),
+                    unpack.Skip(1)
+                        .Select(o => string.Join(escape?.ToString() + separator.ToString(), o.Split(separator)))),
                 separator, escape,
                 millisecondsTimeout,
                 root, comparison);
@@ -408,7 +475,8 @@ namespace wasOpenMetaverse
             InventoryBase inventoryBase;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                inventoryBase = directFindInventory(Client, path, separator, escape, millisecondsTimeout, root, comparison);
+                inventoryBase = directFindInventory(Client, path, separator, escape, millisecondsTimeout, root,
+                    comparison);
             }
 
             if (inventoryBase == null)
@@ -421,7 +489,7 @@ namespace wasOpenMetaverse
                 return (T) (object) Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
             }
         }
-        
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -547,7 +615,7 @@ namespace wasOpenMetaverse
                 return directFindInventoryPath<T>(Client, root, criteria, prefix);
             }
         }
-        
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////

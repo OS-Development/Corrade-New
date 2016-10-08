@@ -67,7 +67,8 @@ namespace Corrade
                                                 var inventoryBaseItem =
                                                     Inventory.FindInventory<InventoryBase>(Client,
                                                         data[o],
-                                                        CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                                        CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                        CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                                         corradeConfiguration.ServicesTimeout);
                                                 switch (inventoryBaseItem is InventoryTexture)
                                                 {

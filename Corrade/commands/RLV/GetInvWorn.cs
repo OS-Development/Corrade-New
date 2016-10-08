@@ -115,7 +115,8 @@ namespace Corrade
                                 break;
                         }
 
-                        currentWearables.UnionWith(Inventory.GetWearables(Client, CurrentOutfitFolder)
+                        currentWearables.UnionWith(Inventory.GetWearables(Client, CurrentOutfitFolder,
+                            corradeConfiguration.ServicesTimeout)
                             .Select(o => o.UUID));
                         currentAttachments.UnionWith(Inventory.GetAttachments(Client,
                             corradeConfiguration.DataTimeout)

@@ -4748,17 +4748,40 @@ namespace Corrade
             {
                 e.Accept = true;
                 // It is accepted, so update the inventory.
-                try
+                InventoryNode node;
+                // Find the node.
+                lock (Locks.ClientInstanceInventoryLock)
                 {
-                    Inventory.UpdateInventoryRecursive(Client,
-                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                            InventoryFolder, corradeConfiguration.ServicesTimeout);
+                    node = Client.Inventory.Store.GetNodeFor(e.FolderID.Equals(UUID.Zero)
+                        ? Client.Inventory.FindFolderForType(e.AssetType)
+                        : e.FolderID);
                 }
-                catch (Exception)
+                if (node != null)
                 {
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                    // Set the node to be updated.
+                    node.NeedsUpdate = true;
+                    // Update the inventory.
+                    try
+                    {
+                        switch (node.Data is InventoryFolder)
+                        {
+                            case true:
+                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                                    corradeConfiguration.ServicesTimeout);
+                                break;
+                            default:
+                                Inventory.UpdateInventoryRecursive(Client,
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)]
+                                        .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                                break;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                    }
                 }
                 // Send notification
                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -4768,16 +4791,12 @@ namespace Corrade
             }
 
             // It is temporary, so update the inventory.
-            try
+            lock (Locks.ClientInstanceInventoryLock)
             {
-                Inventory.UpdateInventoryRecursive(Client,
-                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                        InventoryFolder, corradeConfiguration.ServicesTimeout);
-            }
-            catch (Exception)
-            {
-                Feedback(
-                    Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                Client.Inventory.Store.GetNodeFor(e.FolderID.Equals(UUID.Zero)
+                    ? Client.Inventory.FindFolderForType(e.AssetType)
+                    : e.FolderID).NeedsUpdate =
+                    true;
             }
 
             // Find the item in the inventory.
@@ -4801,20 +4820,11 @@ namespace Corrade
                         Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
                             InventoryFolder);
                 }
-                try
+                lock (Locks.ClientInstanceInventoryLock)
                 {
-                    // Update trash folder contents.
-                    Inventory.UpdateInventoryRecursive(Client,
-                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data
-                            as
-                            InventoryFolder,
-                        corradeConfiguration.ServicesTimeout);
-                }
-                catch (Exception)
-                {
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                    Client.Inventory.Store.GetNodeFor(inventoryBaseItem.ParentUUID).NeedsUpdate = true;
+                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
+                        .NeedsUpdate = true;
                 }
             }
 
@@ -4827,6 +4837,32 @@ namespace Corrade
             inventoryOffer.Event.WaitOne(Timeout.Infinite);
 
             if (inventoryBaseItem == null) return;
+
+            var itemParentUUID = UUID.Zero;
+            switch (inventoryBaseItem.ParentUUID.Equals(UUID.Zero))
+            {
+                case true:
+                    UUID rootFolderUUID;
+                    UUID libraryFolderUUID;
+                    lock (Locks.ClientInstanceInventoryLock)
+                    {
+                        rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                        libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                    }
+                    if (inventoryBaseItem.UUID.Equals(rootFolderUUID))
+                    {
+                        itemParentUUID = rootFolderUUID;
+                        break;
+                    }
+                    if (inventoryBaseItem.UUID.Equals(libraryFolderUUID))
+                    {
+                        itemParentUUID = libraryFolderUUID;
+                    }
+                    break;
+                default:
+                    itemParentUUID = inventoryBaseItem.ParentUUID;
+                    break;
+            }
 
             switch (e.Accept)
             {
@@ -4846,20 +4882,11 @@ namespace Corrade
                             }
                             break;
                     }
-                    try
+                    lock (Locks.ClientInstanceInventoryLock)
                     {
-                        // Update trash folder contents.
-                        Inventory.UpdateInventoryRecursive(Client,
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data
-                                as
-                                InventoryFolder,
-                            corradeConfiguration.ServicesTimeout);
-                    }
-                    catch (Exception)
-                    {
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                        Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                        Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
+                            .NeedsUpdate = true;
                     }
                     return;
             }
@@ -4868,31 +4895,36 @@ namespace Corrade
             switch (!e.FolderID.Equals(UUID.Zero))
             {
                 case true:
-                    InventoryBase inventoryBaseFolder;
+                    InventoryFolder inventoryFolder = null;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
-                        inventoryBaseFolder = Client.Inventory.Store.Items[e.FolderID].Data as InventoryFolder;
+                        var node = Client.Inventory.Store.GetNodeFor(e.FolderID);
+                        if (node != null)
+                        {
+                            inventoryFolder = node.Data as InventoryFolder;
+                        }
                     }
-                    if (inventoryBaseFolder != null)
+                    if (inventoryFolder != null)
                     {
                         switch (inventoryBaseItem is InventoryFolder)
                         {
                             case true: // folders
                                 // if a name was specified, rename the item as well.
+
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
                                     case false:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
                                             Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
-                                                inventoryBaseFolder.UUID, inventoryOffer.Name);
+                                                inventoryFolder.UUID, inventoryOffer.Name);
                                         }
                                         break;
                                     default:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
                                             Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
-                                                inventoryBaseFolder.UUID);
+                                                inventoryFolder.UUID);
                                         }
                                         break;
                                 }
@@ -4903,34 +4935,24 @@ namespace Corrade
                                     case false:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
-                                            Client.Inventory.Move(inventoryBaseItem,
-                                                inventoryBaseFolder as InventoryFolder, inventoryOffer.Name);
+                                            Client.Inventory.Move(inventoryBaseItem, inventoryFolder,
+                                                inventoryOffer.Name);
                                             Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
                                         }
                                         break;
                                     default:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
-                                            Client.Inventory.Move(inventoryBaseItem,
-                                                inventoryBaseFolder as InventoryFolder);
+                                            Client.Inventory.Move(inventoryBaseItem, inventoryFolder);
                                         }
                                         break;
                                 }
                                 break;
                         }
-                    }
-                    if (inventoryBaseFolder != null)
-                    {
-                        try
+                        lock (Locks.ClientInstanceInventoryLock)
                         {
-                            Inventory.UpdateInventoryRecursive(Client, inventoryBaseFolder as InventoryFolder,
-                                corradeConfiguration.ServicesTimeout);
-                        }
-                        catch (Exception)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                            Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                            Client.Inventory.Store.GetNodeFor(inventoryFolder.UUID).NeedsUpdate = true;
                         }
                     }
                     break;
@@ -4953,52 +4975,62 @@ namespace Corrade
                                             inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID);
                                         break;
                                 }
+                                Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                                Client.Inventory.Store.GetNodeFor(Client.Inventory.Store.RootFolder.UUID).NeedsUpdate =
+                                    true;
                             }
                             break;
                         default:
                             lock (Locks.ClientInstanceInventoryLock)
                             {
-                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
+                                InventoryFolder destinationFolder = null;
+                                var node =
+                                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(e.AssetType));
+                                if (node != null)
                                 {
-                                    case false:
-                                        Client.Inventory.Move(inventoryBaseItem,
-                                            Client.Inventory.Store.Items[
-                                                Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                                InventoryFolder, inventoryOffer.Name);
-                                        Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
-                                        break;
-                                    default:
-                                        Client.Inventory.Move(inventoryBaseItem,
-                                            Client.Inventory.Store.Items[
-                                                Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                                InventoryFolder);
-                                        break;
+                                    destinationFolder = node.Data as InventoryFolder;
+                                }
+                                if (destinationFolder != null)
+                                {
+                                    switch (string.IsNullOrEmpty(inventoryOffer.Name))
+                                    {
+                                        case false:
+                                            Client.Inventory.Move(inventoryBaseItem, destinationFolder,
+                                                inventoryOffer.Name);
+                                            Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
+                                            break;
+                                        default:
+                                            Client.Inventory.Move(inventoryBaseItem, destinationFolder);
+                                            break;
+                                    }
+                                    Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                                    Client.Inventory.Store.GetNodeFor(destinationFolder.UUID).NeedsUpdate = true;
                                 }
                             }
                             break;
                     }
-                    try
-                    {
-                        switch (inventoryBaseItem is InventoryFolder)
-                        {
-                            case true:
-                                Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                                    corradeConfiguration.ServicesTimeout);
-                                break;
-                            default:
-                                Inventory.UpdateInventoryRecursive(Client,
-                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)]
-                                        .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
-                                break;
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
-                    }
                     break;
+            }
+            try
+            {
+                switch (inventoryBaseItem is InventoryFolder)
+                {
+                    case true:
+                        Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
+                            corradeConfiguration.ServicesTimeout);
+                        break;
+                    default:
+                        Inventory.UpdateInventoryRecursive(Client,
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)]
+                                .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                        break;
+                }
+            }
+            catch (Exception)
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
             }
         }
 
