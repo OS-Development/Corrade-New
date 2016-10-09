@@ -60,7 +60,7 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
     <RunCodeAnalysis>false</RunCodeAnalysis>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BayesSharp, Version=0.1.1.0, Culture=neutral, processorArchitecture=MSIL">
@@ -1261,34 +1261,6 @@
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="..\mono\Mono.Data.Sqlite\libsqlite3-arm.so">
-      <Link>libsqlite3-arm.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\mono\Mono.Data.Sqlite\libsqlite3-freebsd.so">
-      <Link>libsqlite3-freebsd.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\mono\Mono.Data.Sqlite\libsqlite3-x86_64-freebsd.so">
-      <Link>libsqlite3-x86_64-freebsd.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\mono\Mono.Data.Sqlite\libsqlite3-x86_64.so">
-      <Link>libsqlite3-x86_64.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\mono\Mono.Data.Sqlite\libsqlite3.dylib">
-      <Link>libsqlite3.dylib</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\mono\Mono.Data.Sqlite\libsqlite3.so">
-      <Link>libsqlite3.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\mono\Mono.Data.Sqlite\Mono.Data.Sqlite.dll.config">
-      <Link>Mono.Data.Sqlite.dll.config</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="..\SIML\Corrade.simlpk">
       <Link>SIML\Corrade.simlpk</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1569,6 +1541,34 @@
       <Link>SIML\Corrade\Websites.siml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\sqlite\libsqlite3-arm.so">
+      <Link>libsqlite3-arm.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\sqlite\libsqlite3-freebsd.so">
+      <Link>libsqlite3-freebsd.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\sqlite\libsqlite3-x86_64-freebsd.so">
+      <Link>libsqlite3-x86_64-freebsd.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\sqlite\libsqlite3-x86_64.so">
+      <Link>libsqlite3-x86_64.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\sqlite\libsqlite3.dylib">
+      <Link>libsqlite3.dylib</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\sqlite\libsqlite3.so">
+      <Link>libsqlite3.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\sqlite\Mono.Data.Sqlite.dll.config">
+      <Link>Mono.Data.Sqlite.dll.config</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="app.config" />
     <None Include="Corrade.ini">
       <SubType>Designer</SubType>
@@ -1609,6 +1609,14 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\sqlite\sqlite3-x86_64.dll">
+      <Link>sqlite3-x86_64.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\sqlite\sqlite3.dll">
+      <Link>sqlite3.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="libmp3lame.32.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -2021,14 +2029,6 @@
     </Content>
     <Content Include="..\libopenmetaverse\bin\zlib.net.dll">
       <Link>zlib.net.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\mono\Mono.Data.Sqlite\sqlite3-x86_64.dll">
-      <Link>sqlite3-x86_64.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\mono\Mono.Data.Sqlite\sqlite3.dll">
-      <Link>sqlite3.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\packages\NTextCat.0.2.1.30\Core14.profile.xml">

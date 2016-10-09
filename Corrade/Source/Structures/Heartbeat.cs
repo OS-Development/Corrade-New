@@ -8,7 +8,6 @@ using System;
 using System.Diagnostics;
 using Corrade.Constants;
 using wasSharp;
-using wasSharpNET;
 
 namespace Corrade.Structures
 {
@@ -32,9 +31,6 @@ namespace Corrade.Structures
         /// </summary>
         private Time.Timer HeartbeatTimer;
 
-        private PerformanceCounter CPUCounter;
-        private PerformanceCounter RAMCounter;
-
         /// <summary>
         ///     The total number of processed Corrade commands.
         /// </summary>
@@ -50,27 +46,30 @@ namespace Corrade.Structures
             // Set the Corrade version.
             Version = CORRADE_CONSTANTS.CORRADE_VERSION;
 
-            // Get instance name and start time.
-            string processInstanceName;
-            using (var process = System.Diagnostics.Process.GetCurrentProcess())
+            // Compute intitial performance values.
+            using (var CurrentProcess = Process.GetCurrentProcess())
             {
-                processInstanceName = process.GetProcessInstanceName();
-                StartTime = process.StartTime;
+                StartTime = CurrentProcess.StartTime.ToUniversalTime();
+                AverageCPUUsage =
+                    (uint)
+                        (100*CurrentProcess.TotalProcessorTime.Ticks/
+                         (Environment.ProcessorCount*DateTime.UtcNow.Subtract(StartTime).Ticks));
+                AverageRAMUsage = CurrentProcess.PrivateMemorySize64;
             }
-
-            // Initialize the performance counters.
-            CPUCounter = new PerformanceCounter("Process", "% Processor Time", processInstanceName, true);
-            AverageCPUUsage = (uint) CPUCounter.NextValue();
-            RAMCounter = new PerformanceCounter("Process", "Working Set", processInstanceName, true);
-            AverageRAMUsage = (uint) RAMCounter.NextValue();
 
             // Start the heartbeat timer.
             HeartbeatTimer = new Time.Timer(o =>
             {
                 Heartbeats += 1;
                 Uptime += 1;
-                AverageCPUUsage = (AverageCPUUsage + (uint) CPUCounter.NextValue())/2;
-                AverageRAMUsage = (AverageRAMUsage + (uint) RAMCounter.NextValue())/2;
+                using (var CurrentProcess = Process.GetCurrentProcess())
+                {
+                    AverageCPUUsage = (AverageCPUUsage +
+                                       (uint) (100*CurrentProcess.TotalProcessorTime.Ticks/
+                                               (Environment.ProcessorCount*DateTime.UtcNow.Subtract(StartTime).Ticks)))/
+                                      2;
+                    AverageRAMUsage = (AverageRAMUsage + CurrentProcess.PrivateMemorySize64)/2;
+                }
             }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
 
@@ -122,16 +121,6 @@ namespace Corrade.Structures
                 HeartbeatTimer.Change(0, 0);
                 HeartbeatTimer.Dispose();
                 HeartbeatTimer = null;
-            }
-            if (CPUCounter != null)
-            {
-                CPUCounter.Dispose();
-                CPUCounter = null;
-            }
-            if (RAMCounter != null)
-            {
-                RAMCounter.Dispose();
-                RAMCounter = null;
             }
         }
     }
