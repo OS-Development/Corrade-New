@@ -41,10 +41,24 @@ namespace Configurator
             mainForm.Lastname.Text = corradeConfiguration.LastName;
             mainForm.Password.Text = corradeConfiguration.Password;
             mainForm.LoginURL.Text = corradeConfiguration.LoginURL;
-            mainForm.StartLocation.Text = corradeConfiguration.StartLocation;
+
+            // start location
+            mainForm.StartLocations.Items.Clear();
+            foreach (var location in corradeConfiguration.StartLocations)
+            {
+                mainForm.StartLocations.Items.Add(new ListViewItem
+                {
+                    Text = location,
+                    Tag = location
+                });
+            }
+            mainForm.StartLocations.DisplayMember = "Text";
+
             mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
             mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
             mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
+            mainForm.AutoPruneCache.Checked = corradeConfiguration.CacheEnableAutoPrune;
+            mainForm.AutoPruneCacheInterval.Text = corradeConfiguration.CacheAutoPruneInterval.ToString();
             mainForm.GroupCreateFee.Text = corradeConfiguration.GroupCreateFee.ToString();
             mainForm.ExpectedExitCode.Value = corradeConfiguration.ExitCodeExpected < -100 ||
                                               corradeConfiguration.ExitCodeExpected > 100
@@ -155,11 +169,12 @@ namespace Configurator
             mainForm.TCPNotificationsServerAddress.Text = corradeConfiguration.TCPNotificationsServerAddress;
             mainForm.TCPNotificationsServerPort.Text = corradeConfiguration.TCPNotificationsServerPort.ToString();
             mainForm.TCPNotificationsServerCertificatePath.Text = corradeConfiguration.TCPNotificationsCertificatePath;
-            mainForm.TCPNotificationsServerCertificatePassword.Text = corradeConfiguration.TCPNotificationsCertificatePassword;
+            mainForm.TCPNotificationsServerCertificatePassword.Text =
+                corradeConfiguration.TCPNotificationsCertificatePassword;
             switch (string.IsNullOrEmpty(corradeConfiguration.TCPNotificationsSSLProtocol))
             {
                 case true:
-                    mainForm.TCPNotificationsServerSSLProtocol.Text = Enum.GetName(typeof (SslProtocols),
+                    mainForm.TCPNotificationsServerSSLProtocol.Text = Enum.GetName(typeof(SslProtocols),
                         SslProtocols.Tls12);
                     break;
                 default:
@@ -195,7 +210,6 @@ namespace Configurator
             mainForm.LimitsHTTPServerTimeout.Text = corradeConfiguration.HTTPServerTimeout.ToString();
             mainForm.LimitsServicesTimeout.Text = corradeConfiguration.ServicesTimeout.ToString();
             mainForm.LimitsServicesRebake.Text = corradeConfiguration.RebakeDelay.ToString();
-            mainForm.LimitsServicesActivate.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
             mainForm.LimitsDataDecay.Text = Reflection.GetNameFromEnumValue(corradeConfiguration.DataDecayType);
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
@@ -267,6 +281,7 @@ namespace Configurator
                             mainForm.LimitsTabPage.Enabled = false;
                             /* Hide non-basic experience group boxes. */
                             mainForm.AutoActivateGroupBox.Visible = false;
+                            mainForm.AutoPruneCacheBox.Visible = false;
                             mainForm.GroupCreateFeeBox.Visible = false;
                             mainForm.ClientIdentificationTagBox.Visible = false;
                             mainForm.ExpectedExitCodeBox.Visible = false;
@@ -289,6 +304,7 @@ namespace Configurator
                             mainForm.LimitsTabPage.Enabled = false;
                             /* Hide non-advanced experience group boxes. */
                             mainForm.AutoActivateGroupBox.Visible = true;
+                            mainForm.AutoPruneCacheBox.Visible = true;
                             mainForm.GroupCreateFeeBox.Visible = false;
                             mainForm.ClientIdentificationTagBox.Visible = false;
                             mainForm.ExpectedExitCodeBox.Visible = false;
@@ -311,6 +327,7 @@ namespace Configurator
                             mainForm.LimitsTabPage.Enabled = true;
                             /* Show everything. */
                             mainForm.AutoActivateGroupBox.Visible = true;
+                            mainForm.AutoPruneCacheBox.Visible = true;
                             mainForm.GroupCreateFeeBox.Visible = true;
                             mainForm.ClientIdentificationTagBox.Visible = true;
                             mainForm.ExpectedExitCodeBox.Visible = true;
@@ -349,7 +366,9 @@ namespace Configurator
                     break;
             }
             corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
-            corradeConfiguration.StartLocation = mainForm.StartLocation.Text;
+            // start locations
+            corradeConfiguration.StartLocations =
+                new List<string>(mainForm.StartLocations.Items.Cast<ListViewItem>().Select(o => o.Tag.ToString()));
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
             UUID outUUID;
             if (UUID.TryParse(mainForm.ClientIdentificationTag.Text, out outUUID))
@@ -361,6 +380,12 @@ namespace Configurator
             if (uint.TryParse(mainForm.AutoActivateGroupDelay.Text, out outUint))
             {
                 corradeConfiguration.AutoActivateGroupDelay = outUint;
+            }
+            corradeConfiguration.CacheEnableAutoPrune = mainForm.AutoPruneCache.Checked;
+            double outDouble;
+            if (double.TryParse(mainForm.AutoPruneCacheInterval.Text, out outDouble))
+            {
+                corradeConfiguration.CacheAutoPruneInterval = outDouble;
             }
             if (uint.TryParse(mainForm.GroupCreateFee.Text, out outUint))
             {
@@ -486,11 +511,12 @@ namespace Configurator
                 corradeConfiguration.TCPNotificationsServerPort = outUint;
             }
             corradeConfiguration.TCPNotificationsCertificatePath = mainForm.TCPNotificationsServerCertificatePath.Text;
-            corradeConfiguration.TCPNotificationsCertificatePassword = mainForm.TCPNotificationsServerCertificatePassword.Text;
+            corradeConfiguration.TCPNotificationsCertificatePassword =
+                mainForm.TCPNotificationsServerCertificatePassword.Text;
             switch (string.IsNullOrEmpty(mainForm.TCPNotificationsServerSSLProtocol.Text))
             {
                 case true:
-                    corradeConfiguration.TCPNotificationsSSLProtocol = Enum.GetName(typeof (SslProtocols),
+                    corradeConfiguration.TCPNotificationsSSLProtocol = Enum.GetName(typeof(SslProtocols),
                         SslProtocols.Tls12);
                     break;
                 default:
@@ -606,10 +632,6 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsServicesRebake.Text, out outUint))
             {
                 corradeConfiguration.RebakeDelay = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsServicesActivate.Text, out outUint))
-            {
-                corradeConfiguration.AutoActivateGroupDelay = outUint;
             }
             if (uint.TryParse(mainForm.LimitsDataTimeout.Text, out outUint))
             {
@@ -848,7 +870,7 @@ namespace Configurator
                 for (var i = 0; i < GroupPermissions.Items.Count; ++i)
                 {
                     switch (
-                        @group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                        group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
                             (string) GroupPermissions.Items[i])))
                     {
                         case true:
@@ -864,7 +886,7 @@ namespace Configurator
                 for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
                     switch (
-                        @group.NotificationMask.IsMaskFlagSet(Reflection
+                        group.NotificationMask.IsMaskFlagSet(Reflection
                             .GetEnumValueFromName<Configuration.Notifications>(
                                 (string) GroupNotifications.Items[i]))
                         /*!(group.NotificationMask &
@@ -1472,11 +1494,10 @@ namespace Configurator
                 }
 
                 // add TCP SSL protocols.
-                foreach (var protocol in Enum.GetNames(typeof (SslProtocols)))
+                foreach (var protocol in Enum.GetNames(typeof(SslProtocols)))
                 {
                     TCPNotificationsServerSSLProtocol.Items.Add(protocol);
                 }
-
             }));
 
             if (File.Exists("Corrade.ini"))
@@ -1683,7 +1704,7 @@ namespace Configurator
                             {
                                 throw new Exception("error in client section");
                             }
-                            corradeConfiguration.StartLocation = client.InnerText;
+                            corradeConfiguration.StartLocations = new List<string>(new[] {client.InnerText});
                             break;
                     }
             }
@@ -3394,6 +3415,331 @@ namespace Configurator
             HordeSynchronizationDataGridView.CommitEdit(DataGridViewDataErrorContexts.Commit);
         }
 
+        private void LoadTCPNofitifcationsServerCertificateFileRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                mainForm.LoadTCPNotificationsServerCertificateFileDialog.InitialDirectory =
+                    Directory.GetCurrentDirectory();
+                switch (mainForm.LoadTCPNotificationsServerCertificateFileDialog.ShowDialog())
+                {
+                    case DialogResult.OK:
+                        var file = mainForm.LoadTCPNotificationsServerCertificateFileDialog.FileName;
+                        new Thread(() =>
+                        {
+                            mainForm.BeginInvoke((MethodInvoker) (() =>
+                            {
+                                try
+                                {
+                                    mainForm.StatusText.Text = @"loading TCP notifications server certificate...";
+                                    mainForm.StatusProgress.Value = 0;
+                                    mainForm.TCPNotificationsServerCertificatePath.Text = file;
+                                    mainForm.StatusText.Text = @"TCP notifications certificate loaded";
+                                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
+                                    mainForm.StatusProgress.Value = 100;
+                                }
+                                catch (Exception ex)
+                                {
+                                    mainForm.StatusText.Text = ex.Message;
+                                }
+                            }));
+                        })
+                        {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+                        break;
+                }
+            }));
+        }
+
+        private void EnableTCPNotificationsServerRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerAddress.Text))
+                    {
+                        mainForm.TCPNotificationsServerEnabled.Checked = false;
+                        mainForm.TCPNotificationsServerAddress.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    mainForm.TCPNotificationsServerAddress.BackColor = Color.Empty;
+
+                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerPort.Text))
+                    {
+                        mainForm.TCPNotificationsServerEnabled.Checked = false;
+                        mainForm.TCPNotificationsServerPort.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    mainForm.TCPNotificationsServerPort.BackColor = Color.Empty;
+
+                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerCertificatePath.Text))
+                    {
+                        mainForm.TCPNotificationsServerEnabled.Checked = false;
+                        mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
+                }));
+        }
+
+        private void StartLocationSelected(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    var listViewItem = StartLocations.SelectedItem as ListViewItem;
+                    if (listViewItem == null)
+                        return;
+                    var location = listViewItem.Tag.ToString();
+                    mainForm.StartLocationTextBox.Text = location;
+                }));
+        }
+
+        private void StartLocationChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = StartLocations.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+
+                if (string.IsNullOrEmpty(StartLocationTextBox.Text))
+                {
+                    StartLocationTextBox.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                StartLocationTextBox.BackColor = Color.Empty;
+
+                var location = listViewItem.Tag.ToString();
+                corradeConfiguration.StartLocations.Remove(location);
+                location = StartLocationTextBox.Text;
+                corradeConfiguration.StartLocations.Add(location);
+
+                StartLocations.Items[StartLocations.SelectedIndex] = new ListViewItem
+                {
+                    Text = location,
+                    Tag = location
+                };
+            }));
+        }
+
+        private void LocationsClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                if (e.Y < StartLocations.ItemHeight*StartLocations.Items.Count)
+                    return;
+                StartLocations.ClearSelected();
+                StartLocationTextBox.Text = string.Empty;
+            }));
+        }
+
+        private void CorradeConfiguratorClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                StartLocations.ClearSelected();
+                StartLocationTextBox.Text = string.Empty;
+
+                Masters.ClearSelected();
+                MasterFirstName.Text = string.Empty;
+                MasterLastName.Text = string.Empty;
+            }));
+        }
+
+        private void TabsClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                StartLocations.ClearSelected();
+                StartLocationTextBox.Text = string.Empty;
+
+                Masters.ClearSelected();
+                MasterFirstName.Text = string.Empty;
+                MasterLastName.Text = string.Empty;
+            }));
+        }
+
+        private void ClientTabPageClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                StartLocations.ClearSelected();
+                StartLocationTextBox.Text = string.Empty;
+            }));
+        }
+
+        private void MastersTabPageClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                Masters.ClearSelected();
+                MasterFirstName.Text = string.Empty;
+                MasterLastName.Text = string.Empty;
+            }));
+        }
+
+        private void AddStartLocationRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                if (string.IsNullOrEmpty(StartLocationTextBox.Text))
+                {
+                    StartLocationTextBox.BackColor = Color.MistyRose;
+                    return;
+                }
+                var location = StartLocationTextBox.Text;
+                StartLocationTextBox.BackColor = Color.Empty;
+                StartLocations.Items.Add(new ListViewItem
+                {
+                    Text = location,
+                    Tag = location
+                });
+                corradeConfiguration.StartLocations.Add(location);
+            }));
+        }
+
+        private void DeleteStartLocationRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = StartLocations.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                {
+                    StartLocations.BackColor = Color.MistyRose;
+                    return;
+                }
+                StartLocations.BackColor = Color.Empty;
+                corradeConfiguration.StartLocations.Remove(
+                    ((ListViewItem) StartLocations.Items[StartLocations.SelectedIndex]).Tag.ToString());
+                StartLocations.Items.RemoveAt(StartLocations.SelectedIndex);
+            }));
+        }
+
+        private void UpArrowMouseUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    StartLocationsUpArrowButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.up.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void UpArrowMouseDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    StartLocationsUpArrowButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.up-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void DownArrowMouseDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    StartLocationsDownArrowButton.Image =
+                        new Bitmap(
+                            Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.down-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void DownArrowMouseUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    StartLocationsDownArrowButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.down.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void MoveStartLocationUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = StartLocations.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                {
+                    StartLocations.BackColor = Color.MistyRose;
+                    return;
+                }
+                StartLocations.BackColor = Color.Empty;
+
+                var clickIndex = StartLocations.SelectedIndex;
+                if (clickIndex <= 0)
+                    return;
+
+                var clickItem = (ListViewItem) StartLocations.Items[clickIndex];
+                var aboveItem = (ListViewItem) StartLocations.Items[clickIndex - 1];
+
+                corradeConfiguration.StartLocations[clickIndex - 1] = clickItem.Tag.ToString();
+                StartLocations.Items[clickIndex - 1] = clickItem;
+
+                corradeConfiguration.StartLocations[clickIndex] = aboveItem.Tag.ToString();
+                StartLocations.Items[clickIndex] = aboveItem;
+
+                StartLocations.SelectedIndex = clickIndex - 1;
+            }));
+        }
+
+        private void MoveStartLocationDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                var listViewItem = StartLocations.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                {
+                    StartLocations.BackColor = Color.MistyRose;
+                    return;
+                }
+                StartLocations.BackColor = Color.Empty;
+
+                var clickIndex = StartLocations.SelectedIndex;
+                if (clickIndex >= StartLocations.Items.Count - 1)
+                    return;
+
+                var clickItem = (ListViewItem) StartLocations.Items[clickIndex];
+                var belowItem = (ListViewItem) StartLocations.Items[clickIndex + 1];
+
+                corradeConfiguration.StartLocations[clickIndex + 1] = clickItem.Tag.ToString();
+                StartLocations.Items[clickIndex + 1] = clickItem;
+
+                corradeConfiguration.StartLocations[clickIndex] = belowItem.Tag.ToString();
+                StartLocations.Items[clickIndex] = belowItem;
+
+                StartLocations.SelectedIndex = clickIndex + 1;
+            }));
+        }
+
         /// <summary>
         ///     Constants used by Corrade.
         /// </summary>
@@ -3516,73 +3862,6 @@ namespace Configurator
             public const string BODY = @"body";
             public const string HEADER = @"header";
             public const string QUEUE = @"queue";
-        }
-
-        private void LoadTCPNofitifcationsServerCertificateFileRequested(object sender, EventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                mainForm.LoadTCPNotificationsServerCertificateFileDialog.InitialDirectory = Directory.GetCurrentDirectory();
-                switch (mainForm.LoadTCPNotificationsServerCertificateFileDialog.ShowDialog())
-                {
-                    case DialogResult.OK:
-                        var file = mainForm.LoadTCPNotificationsServerCertificateFileDialog.FileName;
-                        new Thread(() =>
-                        {
-                            mainForm.BeginInvoke((MethodInvoker)(() =>
-                            {
-                                try
-                                {
-                                    mainForm.StatusText.Text = @"loading TCP notifications server certificate...";
-                                    mainForm.StatusProgress.Value = 0;
-                                    mainForm.TCPNotificationsServerCertificatePath.Text = file;
-                                    mainForm.StatusText.Text = @"TCP notifications certificate loaded";
-                                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
-                                    mainForm.StatusProgress.Value = 100;
-                                }
-                                catch (Exception ex)
-                                {
-                                    mainForm.StatusText.Text = ex.Message;
-                                }
-                            }));
-                        })
-                        { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
-                        break;
-                }
-            }));
-        }
-
-        private void EnableTCPNotificationsServerRequested(object sender, EventArgs e)
-        {
-
-            mainForm.BeginInvoke(
-                (Action)(() =>
-                {
-                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerAddress.Text))
-                    {
-                        mainForm.TCPNotificationsServerEnabled.Checked = false;
-                        mainForm.TCPNotificationsServerAddress.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    mainForm.TCPNotificationsServerAddress.BackColor = Color.Empty;
-
-                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerPort.Text))
-                    {
-                        mainForm.TCPNotificationsServerEnabled.Checked = false;
-                        mainForm.TCPNotificationsServerPort.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    mainForm.TCPNotificationsServerPort.BackColor = Color.Empty;
-
-                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerCertificatePath.Text))
-                    {
-                        mainForm.TCPNotificationsServerEnabled.Checked = false;
-                        mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
-                }));
-
         }
     }
 }

@@ -33,6 +33,11 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Tabs = new System.Windows.Forms.TabControl();
             this.ClientTabPage = new System.Windows.Forms.TabPage();
+            this.AutoPruneCacheBox = new System.Windows.Forms.GroupBox();
+            this.pictureBox105 = new System.Windows.Forms.PictureBox();
+            this.AutoPruneCacheInterval = new System.Windows.Forms.TextBox();
+            this.pictureBox106 = new System.Windows.Forms.PictureBox();
+            this.AutoPruneCache = new System.Windows.Forms.CheckBox();
             this.ClientIdentificationTagBox = new System.Windows.Forms.GroupBox();
             this.pictureBox12 = new System.Windows.Forms.PictureBox();
             this.ClientIdentificationTag = new System.Windows.Forms.TextBox();
@@ -54,8 +59,13 @@
             this.pictureBox8 = new System.Windows.Forms.PictureBox();
             this.TOS = new System.Windows.Forms.CheckBox();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.StartLocationsDownArrowButton = new System.Windows.Forms.PictureBox();
+            this.StartLocationsUpArrowButton = new System.Windows.Forms.PictureBox();
+            this.StartLocations = new System.Windows.Forms.ListBox();
+            this.StartLocationTextBox = new System.Windows.Forms.TextBox();
+            this.button16 = new System.Windows.Forms.Button();
             this.pictureBox6 = new System.Windows.Forms.PictureBox();
-            this.StartLocation = new System.Windows.Forms.TextBox();
+            this.button17 = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.pictureBox5 = new System.Windows.Forms.PictureBox();
             this.LoginURL = new System.Windows.Forms.TextBox();
@@ -341,11 +351,8 @@
             this.LimitsDataTimeout = new System.Windows.Forms.TextBox();
             this.LimitsDataDecay = new System.Windows.Forms.ComboBox();
             this.groupBox67 = new System.Windows.Forms.GroupBox();
-            this.pictureBox69 = new System.Windows.Forms.PictureBox();
             this.pictureBox68 = new System.Windows.Forms.PictureBox();
             this.pictureBox67 = new System.Windows.Forms.PictureBox();
-            this.label21 = new System.Windows.Forms.Label();
-            this.LimitsServicesActivate = new System.Windows.Forms.TextBox();
             this.label20 = new System.Windows.Forms.Label();
             this.LimitsServicesRebake = new System.Windows.Forms.TextBox();
             this.label19 = new System.Windows.Forms.Label();
@@ -442,6 +449,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
+            this.AutoPruneCacheBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox105)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox106)).BeginInit();
             this.ClientIdentificationTagBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).BeginInit();
             this.AbnormalExitCodeBox.SuspendLayout();
@@ -458,6 +468,8 @@
             this.TOSBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox8)).BeginInit();
             this.groupBox5.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.StartLocationsDownArrowButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.StartLocationsUpArrowButton)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox6)).BeginInit();
             this.groupBox4.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).BeginInit();
@@ -615,7 +627,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox60)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox59)).BeginInit();
             this.groupBox67.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox68)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox67)).BeginInit();
             this.groupBox65.SuspendLayout();
@@ -693,9 +704,11 @@
             this.Tabs.SelectedIndex = 0;
             this.Tabs.Size = new System.Drawing.Size(680, 392);
             this.Tabs.TabIndex = 1;
+            this.Tabs.MouseClick += new System.Windows.Forms.MouseEventHandler(this.TabsClicked);
             // 
             // ClientTabPage
             // 
+            this.ClientTabPage.Controls.Add(this.AutoPruneCacheBox);
             this.ClientTabPage.Controls.Add(this.ClientIdentificationTagBox);
             this.ClientTabPage.Controls.Add(this.AbnormalExitCodeBox);
             this.ClientTabPage.Controls.Add(this.ExpectedExitCodeBox);
@@ -713,12 +726,69 @@
             this.ClientTabPage.TabIndex = 0;
             this.ClientTabPage.Text = "Client";
             this.ClientTabPage.UseVisualStyleBackColor = true;
+            this.ClientTabPage.MouseClick += new System.Windows.Forms.MouseEventHandler(this.ClientTabPageClicked);
+            // 
+            // AutoPruneCacheBox
+            // 
+            this.AutoPruneCacheBox.Controls.Add(this.pictureBox105);
+            this.AutoPruneCacheBox.Controls.Add(this.AutoPruneCacheInterval);
+            this.AutoPruneCacheBox.Controls.Add(this.pictureBox106);
+            this.AutoPruneCacheBox.Controls.Add(this.AutoPruneCache);
+            this.AutoPruneCacheBox.Location = new System.Drawing.Point(303, 146);
+            this.AutoPruneCacheBox.Name = "AutoPruneCacheBox";
+            this.AutoPruneCacheBox.Size = new System.Drawing.Size(126, 80);
+            this.AutoPruneCacheBox.TabIndex = 11;
+            this.AutoPruneCacheBox.TabStop = false;
+            this.AutoPruneCacheBox.Text = "Auto-Prune Cache";
+            // 
+            // pictureBox105
+            // 
+            this.pictureBox105.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox105.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox105.Image")));
+            this.pictureBox105.Location = new System.Drawing.Point(90, 46);
+            this.pictureBox105.Name = "pictureBox105";
+            this.pictureBox105.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox105.TabIndex = 12;
+            this.pictureBox105.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox105, "The interval at which Corrade should purge stale\r\ncache items.");
+            // 
+            // AutoPruneCacheInterval
+            // 
+            this.AutoPruneCacheInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AutoPruneCacheInterval.Location = new System.Drawing.Point(16, 48);
+            this.AutoPruneCacheInterval.Name = "AutoPruneCacheInterval";
+            this.AutoPruneCacheInterval.Size = new System.Drawing.Size(68, 20);
+            this.AutoPruneCacheInterval.TabIndex = 11;
+            // 
+            // pictureBox106
+            // 
+            this.pictureBox106.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox106.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox106.Image")));
+            this.pictureBox106.Location = new System.Drawing.Point(90, 20);
+            this.pictureBox106.Name = "pictureBox106";
+            this.pictureBox106.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox106.TabIndex = 11;
+            this.pictureBox106.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox106, "Corrade accumulates cache in the \"cache\" sub-\r\ndirectory as it performs various a" +
+        "ctions. This \r\nfeature will make Corrade clear stale cache items\r\nat a specified" +
+        " regular interval.\r\n");
+            // 
+            // AutoPruneCache
+            // 
+            this.AutoPruneCache.AutoSize = true;
+            this.AutoPruneCache.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AutoPruneCache.Location = new System.Drawing.Point(16, 21);
+            this.AutoPruneCache.Name = "AutoPruneCache";
+            this.AutoPruneCache.Size = new System.Drawing.Size(68, 17);
+            this.AutoPruneCache.TabIndex = 0;
+            this.AutoPruneCache.Text = "Enabled";
+            this.AutoPruneCache.UseVisualStyleBackColor = true;
             // 
             // ClientIdentificationTagBox
             // 
             this.ClientIdentificationTagBox.Controls.Add(this.pictureBox12);
             this.ClientIdentificationTagBox.Controls.Add(this.ClientIdentificationTag);
-            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(36, 240);
+            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(12, 297);
             this.ClientIdentificationTagBox.Name = "ClientIdentificationTagBox";
             this.ClientIdentificationTagBox.Size = new System.Drawing.Size(267, 55);
             this.ClientIdentificationTagBox.TabIndex = 10;
@@ -753,9 +823,9 @@
             // 
             this.AbnormalExitCodeBox.Controls.Add(this.pictureBox10);
             this.AbnormalExitCodeBox.Controls.Add(this.AbnomalExitCode);
-            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(488, 219);
+            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(158, 241);
             this.AbnormalExitCodeBox.Name = "AbnormalExitCodeBox";
-            this.AbnormalExitCodeBox.Size = new System.Drawing.Size(145, 58);
+            this.AbnormalExitCodeBox.Size = new System.Drawing.Size(126, 50);
             this.AbnormalExitCodeBox.TabIndex = 9;
             this.AbnormalExitCodeBox.TabStop = false;
             this.AbnormalExitCodeBox.Text = "Abnormal Exit Code";
@@ -764,7 +834,7 @@
             // 
             this.pictureBox10.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox10.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox10.Image")));
-            this.pictureBox10.Location = new System.Drawing.Point(119, 20);
+            this.pictureBox10.Location = new System.Drawing.Point(95, 20);
             this.pictureBox10.Name = "pictureBox10";
             this.pictureBox10.Size = new System.Drawing.Size(20, 20);
             this.pictureBox10.TabIndex = 11;
@@ -776,23 +846,23 @@
             // AbnomalExitCode
             // 
             this.AbnomalExitCode.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.AbnomalExitCode.Location = new System.Drawing.Point(7, 20);
+            this.AbnomalExitCode.Location = new System.Drawing.Point(6, 20);
             this.AbnomalExitCode.Minimum = new decimal(new int[] {
             100,
             0,
             0,
             -2147483648});
             this.AbnomalExitCode.Name = "AbnomalExitCode";
-            this.AbnomalExitCode.Size = new System.Drawing.Size(106, 20);
+            this.AbnomalExitCode.Size = new System.Drawing.Size(85, 20);
             this.AbnomalExitCode.TabIndex = 0;
             // 
             // ExpectedExitCodeBox
             // 
             this.ExpectedExitCodeBox.Controls.Add(this.pictureBox11);
             this.ExpectedExitCodeBox.Controls.Add(this.ExpectedExitCode);
-            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(488, 155);
+            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(12, 241);
             this.ExpectedExitCodeBox.Name = "ExpectedExitCodeBox";
-            this.ExpectedExitCodeBox.Size = new System.Drawing.Size(145, 58);
+            this.ExpectedExitCodeBox.Size = new System.Drawing.Size(126, 50);
             this.ExpectedExitCodeBox.TabIndex = 8;
             this.ExpectedExitCodeBox.TabStop = false;
             this.ExpectedExitCodeBox.Text = "Expected Exit Code";
@@ -801,7 +871,7 @@
             // 
             this.pictureBox11.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox11.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox11.Image")));
-            this.pictureBox11.Location = new System.Drawing.Point(119, 19);
+            this.pictureBox11.Location = new System.Drawing.Point(95, 19);
             this.pictureBox11.Name = "pictureBox11";
             this.pictureBox11.Size = new System.Drawing.Size(20, 20);
             this.pictureBox11.TabIndex = 11;
@@ -812,21 +882,21 @@
             // ExpectedExitCode
             // 
             this.ExpectedExitCode.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ExpectedExitCode.Location = new System.Drawing.Point(6, 19);
+            this.ExpectedExitCode.Location = new System.Drawing.Point(7, 19);
             this.ExpectedExitCode.Minimum = new decimal(new int[] {
             100,
             0,
             0,
             -2147483648});
             this.ExpectedExitCode.Name = "ExpectedExitCode";
-            this.ExpectedExitCode.Size = new System.Drawing.Size(107, 20);
+            this.ExpectedExitCode.Size = new System.Drawing.Size(82, 20);
             this.ExpectedExitCode.TabIndex = 9;
             // 
             // GroupCreateFeeBox
             // 
             this.GroupCreateFeeBox.Controls.Add(this.pictureBox9);
             this.GroupCreateFeeBox.Controls.Add(this.GroupCreateFee);
-            this.GroupCreateFeeBox.Location = new System.Drawing.Point(300, 155);
+            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 241);
             this.GroupCreateFeeBox.Name = "GroupCreateFeeBox";
             this.GroupCreateFeeBox.Size = new System.Drawing.Size(126, 57);
             this.GroupCreateFeeBox.TabIndex = 7;
@@ -859,7 +929,7 @@
             this.AutoActivateGroupBox.Controls.Add(this.AutoActivateGroupDelay);
             this.AutoActivateGroupBox.Controls.Add(this.pictureBox7);
             this.AutoActivateGroupBox.Controls.Add(this.AutoActivateGroup);
-            this.AutoActivateGroupBox.Location = new System.Drawing.Point(167, 154);
+            this.AutoActivateGroupBox.Location = new System.Drawing.Point(158, 146);
             this.AutoActivateGroupBox.Name = "AutoActivateGroupBox";
             this.AutoActivateGroupBox.Size = new System.Drawing.Size(126, 80);
             this.AutoActivateGroupBox.TabIndex = 6;
@@ -913,7 +983,7 @@
             // 
             this.TOSBox.Controls.Add(this.pictureBox8);
             this.TOSBox.Controls.Add(this.TOS);
-            this.TOSBox.Location = new System.Drawing.Point(35, 155);
+            this.TOSBox.Location = new System.Drawing.Point(12, 146);
             this.TOSBox.Name = "TOSBox";
             this.TOSBox.Size = new System.Drawing.Size(126, 58);
             this.TOSBox.TabIndex = 5;
@@ -945,43 +1015,125 @@
             // 
             // groupBox5
             // 
+            this.groupBox5.Controls.Add(this.StartLocationsDownArrowButton);
+            this.groupBox5.Controls.Add(this.StartLocationsUpArrowButton);
+            this.groupBox5.Controls.Add(this.StartLocations);
+            this.groupBox5.Controls.Add(this.StartLocationTextBox);
+            this.groupBox5.Controls.Add(this.button16);
             this.groupBox5.Controls.Add(this.pictureBox6);
-            this.groupBox5.Controls.Add(this.StartLocation);
-            this.groupBox5.Location = new System.Drawing.Point(370, 91);
+            this.groupBox5.Controls.Add(this.button17);
+            this.groupBox5.Location = new System.Drawing.Point(435, 84);
             this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(263, 58);
+            this.groupBox5.Size = new System.Drawing.Size(223, 206);
             this.groupBox5.TabIndex = 4;
             this.groupBox5.TabStop = false;
-            this.groupBox5.Text = "Start Location";
+            this.groupBox5.Text = "Start Locations";
+            // 
+            // StartLocationsDownArrowButton
+            // 
+            this.StartLocationsDownArrowButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.StartLocationsDownArrowButton.Image = ((System.Drawing.Image)(resources.GetObject("StartLocationsDownArrowButton.Image")));
+            this.StartLocationsDownArrowButton.Location = new System.Drawing.Point(197, 47);
+            this.StartLocationsDownArrowButton.Name = "StartLocationsDownArrowButton";
+            this.StartLocationsDownArrowButton.Size = new System.Drawing.Size(20, 20);
+            this.StartLocationsDownArrowButton.TabIndex = 16;
+            this.StartLocationsDownArrowButton.TabStop = false;
+            this.toolTip1.SetToolTip(this.StartLocationsDownArrowButton, "This is the start location of Corrade. Valid values are: \r\n  - home, \r\n  - last\r\n" +
+        "\r\nor a string such as: \r\n\r\nPuguet Sound/128/152/17\r\n");
+            this.StartLocationsDownArrowButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MoveStartLocationDown);
+            this.StartLocationsDownArrowButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.DownArrowMouseDown);
+            this.StartLocationsDownArrowButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.DownArrowMouseUp);
+            // 
+            // StartLocationsUpArrowButton
+            // 
+            this.StartLocationsUpArrowButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.StartLocationsUpArrowButton.Image = ((System.Drawing.Image)(resources.GetObject("StartLocationsUpArrowButton.Image")));
+            this.StartLocationsUpArrowButton.Location = new System.Drawing.Point(197, 21);
+            this.StartLocationsUpArrowButton.Name = "StartLocationsUpArrowButton";
+            this.StartLocationsUpArrowButton.Size = new System.Drawing.Size(20, 20);
+            this.StartLocationsUpArrowButton.TabIndex = 15;
+            this.StartLocationsUpArrowButton.TabStop = false;
+            this.StartLocationsUpArrowButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MoveStartLocationUp);
+            this.StartLocationsUpArrowButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.UpArrowMouseDown);
+            this.StartLocationsUpArrowButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.UpArrowMouseUp);
+            // 
+            // StartLocations
+            // 
+            this.StartLocations.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.StartLocations.FormattingEnabled = true;
+            this.StartLocations.Items.AddRange(new object[] {
+            "last",
+            "home",
+            "Murray/119/32/30",
+            "Violet/162/101/26",
+            "Miramare/7/23/25",
+            "Grignano/3/244/25",
+            "Warmouth/31/136/94",
+            "Shamon/64/59/28",
+            "Help Island Public/128/127/26",
+            "Ambleside/51/205/20",
+            "Wengen/2/125/83",
+            "Dunai Sound/127/128/1",
+            "North Channel/105/128/20",
+            "Fuchsia/162/194/9",
+            "Wellfleet Harbor/196/142/12"});
+            this.StartLocations.Location = new System.Drawing.Point(5, 21);
+            this.StartLocations.Name = "StartLocations";
+            this.StartLocations.Size = new System.Drawing.Size(186, 121);
+            this.StartLocations.TabIndex = 14;
+            this.StartLocations.MouseClick += new System.Windows.Forms.MouseEventHandler(this.LocationsClicked);
+            this.StartLocations.SelectedIndexChanged += new System.EventHandler(this.StartLocationSelected);
+            // 
+            // StartLocationTextBox
+            // 
+            this.StartLocationTextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.StartLocationTextBox.Location = new System.Drawing.Point(5, 148);
+            this.StartLocationTextBox.Name = "StartLocationTextBox";
+            this.StartLocationTextBox.Size = new System.Drawing.Size(186, 20);
+            this.StartLocationTextBox.TabIndex = 12;
+            this.StartLocationTextBox.TextChanged += new System.EventHandler(this.StartLocationChanged);
+            // 
+            // button16
+            // 
+            this.button16.Location = new System.Drawing.Point(101, 174);
+            this.button16.Name = "button16";
+            this.button16.Size = new System.Drawing.Size(90, 23);
+            this.button16.TabIndex = 13;
+            this.button16.Text = "Delete";
+            this.toolTip1.SetToolTip(this.button16, "Delete the currently selected master.");
+            this.button16.UseVisualStyleBackColor = true;
+            this.button16.Click += new System.EventHandler(this.DeleteStartLocationRequested);
             // 
             // pictureBox6
             // 
             this.pictureBox6.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox6.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox6.Image")));
-            this.pictureBox6.Location = new System.Drawing.Point(237, 20);
+            this.pictureBox6.Location = new System.Drawing.Point(196, 148);
             this.pictureBox6.Name = "pictureBox6";
             this.pictureBox6.Size = new System.Drawing.Size(20, 20);
             this.pictureBox6.TabIndex = 2;
             this.pictureBox6.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox6, "This is the start location of Corrade. Valid values are: \r\n  - home, \r\n  - last\r\n" +
-        "\r\nor a string such as: \r\n\r\nPuguet Sound/128/152/17\r\n");
+            this.toolTip1.SetToolTip(this.pictureBox6, resources.GetString("pictureBox6.ToolTip"));
             this.pictureBox6.Click += new System.EventHandler(this.ShowToolTip);
             // 
-            // StartLocation
+            // button17
             // 
-            this.StartLocation.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.StartLocation.Location = new System.Drawing.Point(7, 20);
-            this.StartLocation.Name = "StartLocation";
-            this.StartLocation.Size = new System.Drawing.Size(224, 20);
-            this.StartLocation.TabIndex = 0;
+            this.button17.Location = new System.Drawing.Point(5, 174);
+            this.button17.Name = "button17";
+            this.button17.Size = new System.Drawing.Size(91, 23);
+            this.button17.TabIndex = 12;
+            this.button17.Text = "Add";
+            this.toolTip1.SetToolTip(this.button17, "Add a new master.");
+            this.button17.UseVisualStyleBackColor = true;
+            this.button17.Click += new System.EventHandler(this.AddStartLocationRequested);
             // 
             // groupBox4
             // 
             this.groupBox4.Controls.Add(this.pictureBox5);
             this.groupBox4.Controls.Add(this.LoginURL);
-            this.groupBox4.Location = new System.Drawing.Point(36, 91);
+            this.groupBox4.Location = new System.Drawing.Point(12, 82);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(328, 58);
+            this.groupBox4.Size = new System.Drawing.Size(417, 58);
             this.groupBox4.TabIndex = 3;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Login URL";
@@ -990,7 +1142,7 @@
             // 
             this.pictureBox5.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox5.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox5.Image")));
-            this.pictureBox5.Location = new System.Drawing.Point(302, 18);
+            this.pictureBox5.Location = new System.Drawing.Point(391, 18);
             this.pictureBox5.Name = "pictureBox5";
             this.pictureBox5.Size = new System.Drawing.Size(20, 20);
             this.pictureBox5.TabIndex = 11;
@@ -1004,14 +1156,14 @@
             this.LoginURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.LoginURL.Location = new System.Drawing.Point(7, 18);
             this.LoginURL.Name = "LoginURL";
-            this.LoginURL.Size = new System.Drawing.Size(289, 20);
+            this.LoginURL.Size = new System.Drawing.Size(378, 20);
             this.LoginURL.TabIndex = 0;
             // 
             // groupBox3
             // 
             this.groupBox3.Controls.Add(this.pictureBox4);
             this.groupBox3.Controls.Add(this.Password);
-            this.groupBox3.Location = new System.Drawing.Point(438, 27);
+            this.groupBox3.Location = new System.Drawing.Point(463, 18);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(195, 58);
             this.groupBox3.TabIndex = 2;
@@ -1047,7 +1199,7 @@
             // 
             this.groupBox2.Controls.Add(this.pictureBox3);
             this.groupBox2.Controls.Add(this.Lastname);
-            this.groupBox2.Location = new System.Drawing.Point(237, 27);
+            this.groupBox2.Location = new System.Drawing.Point(240, 18);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(195, 58);
             this.groupBox2.TabIndex = 1;
@@ -1079,7 +1231,7 @@
             // 
             this.groupBox1.Controls.Add(this.pictureBox2);
             this.groupBox1.Controls.Add(this.Firstname);
-            this.groupBox1.Location = new System.Drawing.Point(36, 27);
+            this.groupBox1.Location = new System.Drawing.Point(12, 18);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(195, 58);
             this.groupBox1.TabIndex = 0;
@@ -1118,6 +1270,7 @@
             this.MastersTabPage.TabIndex = 10;
             this.MastersTabPage.Text = "Masters";
             this.MastersTabPage.UseVisualStyleBackColor = true;
+            this.MastersTabPage.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MastersTabPageClicked);
             // 
             // MasterPasswordBox
             // 
@@ -1508,7 +1661,8 @@
             "conference",
             "preload",
             "teleport",
-            "heartbeat"});
+            "heartbeat",
+            "login"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -3860,7 +4014,7 @@
             this.groupBox86.Controls.Add(this.label32);
             this.groupBox86.Controls.Add(this.label33);
             this.groupBox86.Controls.Add(this.LimitsFeedsUpdate);
-            this.groupBox86.Location = new System.Drawing.Point(488, 213);
+            this.groupBox86.Location = new System.Drawing.Point(488, 186);
             this.groupBox86.Name = "groupBox86";
             this.groupBox86.Size = new System.Drawing.Size(181, 51);
             this.groupBox86.TabIndex = 16;
@@ -3912,7 +4066,7 @@
             this.groupBox82.Controls.Add(this.label31);
             this.groupBox82.Controls.Add(this.LimitsTCPNotificationsQueue);
             this.groupBox82.Controls.Add(this.LimitsTCPNotificationsThrottle);
-            this.groupBox82.Location = new System.Drawing.Point(488, 130);
+            this.groupBox82.Location = new System.Drawing.Point(488, 103);
             this.groupBox82.Name = "groupBox82";
             this.groupBox82.Size = new System.Drawing.Size(181, 77);
             this.groupBox82.TabIndex = 3;
@@ -4259,33 +4413,18 @@
             // 
             // groupBox67
             // 
-            this.groupBox67.Controls.Add(this.pictureBox69);
             this.groupBox67.Controls.Add(this.pictureBox68);
             this.groupBox67.Controls.Add(this.pictureBox67);
-            this.groupBox67.Controls.Add(this.label21);
-            this.groupBox67.Controls.Add(this.LimitsServicesActivate);
             this.groupBox67.Controls.Add(this.label20);
             this.groupBox67.Controls.Add(this.LimitsServicesRebake);
             this.groupBox67.Controls.Add(this.label19);
             this.groupBox67.Controls.Add(this.LimitsServicesTimeout);
             this.groupBox67.Location = new System.Drawing.Point(488, 4);
             this.groupBox67.Name = "groupBox67";
-            this.groupBox67.Size = new System.Drawing.Size(181, 120);
+            this.groupBox67.Size = new System.Drawing.Size(181, 93);
             this.groupBox67.TabIndex = 10;
             this.groupBox67.TabStop = false;
             this.groupBox67.Text = "Services";
-            // 
-            // pictureBox69
-            // 
-            this.pictureBox69.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox69.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox69.Image")));
-            this.pictureBox69.Location = new System.Drawing.Point(155, 79);
-            this.pictureBox69.Name = "pictureBox69";
-            this.pictureBox69.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox69.TabIndex = 12;
-            this.pictureBox69.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox69, "The amount of time after which to attempt to activate\r\nthe current land group.");
-            this.pictureBox69.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // pictureBox68
             // 
@@ -4311,23 +4450,6 @@
             this.toolTip1.SetToolTip(this.pictureBox67, "The amount of time allowed for querrying grid \r\nservices (agent, group lookups, e" +
         "tc...).");
             this.pictureBox67.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // label21
-            // 
-            this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(8, 82);
-            this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(50, 16);
-            this.label21.TabIndex = 5;
-            this.label21.Text = "Activate";
-            // 
-            // LimitsServicesActivate
-            // 
-            this.LimitsServicesActivate.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsServicesActivate.Location = new System.Drawing.Point(60, 79);
-            this.LimitsServicesActivate.Name = "LimitsServicesActivate";
-            this.LimitsServicesActivate.Size = new System.Drawing.Size(89, 20);
-            this.LimitsServicesActivate.TabIndex = 4;
             // 
             // label20
             // 
@@ -5288,9 +5410,14 @@
             this.Text = "Corrade Configurator";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SaveCheck);
             this.Shown += new System.EventHandler(this.CorradeConfiguratorShown);
+            this.MouseClick += new System.Windows.Forms.MouseEventHandler(this.CorradeConfiguratorClicked);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.Tabs.ResumeLayout(false);
             this.ClientTabPage.ResumeLayout(false);
+            this.AutoPruneCacheBox.ResumeLayout(false);
+            this.AutoPruneCacheBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox105)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox106)).EndInit();
             this.ClientIdentificationTagBox.ResumeLayout(false);
             this.ClientIdentificationTagBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).EndInit();
@@ -5312,6 +5439,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox8)).EndInit();
             this.groupBox5.ResumeLayout(false);
             this.groupBox5.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.StartLocationsDownArrowButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.StartLocationsUpArrowButton)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox6)).EndInit();
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
@@ -5520,7 +5649,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox59)).EndInit();
             this.groupBox67.ResumeLayout(false);
             this.groupBox67.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox68)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox67)).EndInit();
             this.groupBox65.ResumeLayout(false);
@@ -5597,7 +5725,6 @@
         private System.Windows.Forms.GroupBox TOSBox;
         private System.Windows.Forms.CheckBox TOS;
         private System.Windows.Forms.GroupBox groupBox5;
-        private System.Windows.Forms.TextBox StartLocation;
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.TextBox LoginURL;
         private System.Windows.Forms.GroupBox groupBox3;
@@ -5763,8 +5890,6 @@
         private System.Windows.Forms.GroupBox groupBox57;
         private System.Windows.Forms.TextBox LimitsRange;
         private System.Windows.Forms.GroupBox groupBox67;
-        private System.Windows.Forms.Label label21;
-        private System.Windows.Forms.TextBox LimitsServicesActivate;
         private System.Windows.Forms.Label label20;
         private System.Windows.Forms.TextBox LimitsServicesRebake;
         private System.Windows.Forms.Label label19;
@@ -5958,7 +6083,6 @@
         private System.Windows.Forms.PictureBox pictureBox42;
         private System.Windows.Forms.PictureBox pictureBox60;
         private System.Windows.Forms.PictureBox pictureBox59;
-        private System.Windows.Forms.PictureBox pictureBox69;
         private System.Windows.Forms.PictureBox pictureBox68;
         private System.Windows.Forms.PictureBox pictureBox67;
         private System.Windows.Forms.PictureBox pictureBox58;
@@ -5998,6 +6122,17 @@
         private System.Windows.Forms.OpenFileDialog LoadTCPNotificationsServerCertificateFileDialog;
         private System.Windows.Forms.GroupBox groupBox10;
         private System.Windows.Forms.ComboBox TCPNotificationsServerSSLProtocol;
+        private System.Windows.Forms.GroupBox AutoPruneCacheBox;
+        private System.Windows.Forms.PictureBox pictureBox105;
+        private System.Windows.Forms.TextBox AutoPruneCacheInterval;
+        private System.Windows.Forms.PictureBox pictureBox106;
+        private System.Windows.Forms.CheckBox AutoPruneCache;
+        private System.Windows.Forms.Button button16;
+        private System.Windows.Forms.Button button17;
+        private System.Windows.Forms.TextBox StartLocationTextBox;
+        private System.Windows.Forms.ListBox StartLocations;
+        private System.Windows.Forms.PictureBox StartLocationsDownArrowButton;
+        private System.Windows.Forms.PictureBox StartLocationsUpArrowButton;
     }
 }
 

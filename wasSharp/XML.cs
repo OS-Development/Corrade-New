@@ -163,7 +163,7 @@ namespace wasSharp
         /// <param name="rename">the name to replace with</param>
         public static void RenameNodes(XElement root, string name, string rename)
         {
-            if (Strings.Equals(root.Name.LocalName, name, StringComparison.Ordinal))
+            if (Strings.StringEquals(root.Name.LocalName, name, StringComparison.Ordinal))
             {
                 root.Name = rename;
             }

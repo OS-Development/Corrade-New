@@ -64,6 +64,13 @@ namespace Corrade
                             }
                             // We are training so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
+                            // broadcast the bayes data.
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                HandleDistributeBayes(corradeCommandParameters.Group.UUID,
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData(),
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                            }
                             break;
                         case Enumerations.Action.CLASSIFY:
                             data =
@@ -127,6 +134,13 @@ namespace Corrade
                             }
                             // We are merging so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
+                            // broadcast the bayes data.
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                HandleDistributeBayes(corradeCommandParameters.Group.UUID,
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData(),
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                            }
                             break;
                         case Enumerations.Action.UNTRAIN:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
@@ -152,6 +166,13 @@ namespace Corrade
                             }
                             // We are untraining so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
+                            // broadcast the bayes data.
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                HandleDistributeBayes(corradeCommandParameters.Group.UUID,
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData(),
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                            }
                             break;
                         case Enumerations.Action.IMPORT:
                             data =
@@ -207,6 +228,13 @@ namespace Corrade
                             }
                             // We are deleting so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
+                            // broadcast the bayes data.
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                HandleDistributeBayes(corradeCommandParameters.Group.UUID,
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData(),
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                            }
                             break;
                         case Enumerations.Action.ADD:
                             category = wasInput(
@@ -227,6 +255,13 @@ namespace Corrade
                             }
                             // We are deleting so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
+                            // broadcast the bayes data.
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                HandleDistributeBayes(corradeCommandParameters.Group.UUID,
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData(),
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                            }
                             break;
                         case Enumerations.Action.RENAME:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
@@ -254,6 +289,13 @@ namespace Corrade
                             }
                             // We are renaming so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
+                            // broadcast the bayes data.
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                HandleDistributeBayes(corradeCommandParameters.Group.UUID,
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData(),
+                                    Configuration.HordeDataSynchronizationOption.Add);
+                            }
                             break;
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);

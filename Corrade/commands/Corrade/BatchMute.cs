@@ -121,7 +121,7 @@ namespace Corrade
                                                 typeof (MuteFlags).GetFields(BindingFlags.Public |
                                                                              BindingFlags.Static)
                                                     .AsParallel()
-                                                    .Where(q => Strings.Equals(p, q.Name, StringComparison.Ordinal))
+                                                    .Where(q => Strings.StringEquals(p, q.Name, StringComparison.Ordinal))
                                                     .ForAll(
                                                         r =>
                                                         {

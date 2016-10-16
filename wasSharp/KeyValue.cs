@@ -25,7 +25,7 @@ namespace wasSharp
                 .AsParallel()
                 .Select(o => o.Split('='))
                 .Where(o => o.Length.Equals(2))
-                .Where(o => Strings.Equals(o[0], key, StringComparison.Ordinal))
+                .Where(o => Strings.StringEquals(o[0], key, StringComparison.Ordinal))
                 .Select(o => o[1])
                 .FirstOrDefault();
         }
@@ -46,7 +46,7 @@ namespace wasSharp
                 .AsParallel()
                 .Select(o => o.Split('='))
                 .Where(o => o.Length.Equals(2))
-                .Where(o => !Strings.Equals(o[0], key, StringComparison.Ordinal))
+                .Where(o => !Strings.StringEquals(o[0], key, StringComparison.Ordinal))
                 .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value));
         }
 
@@ -63,7 +63,7 @@ namespace wasSharp
                 .AsParallel()
                 .Select(o => o.Split('='))
                 .Where(o => o.Length.Equals(2))
-                .Where(o => !Strings.Equals(o[0], key, StringComparison.Ordinal))
+                .Where(o => !Strings.StringEquals(o[0], key, StringComparison.Ordinal))
                 .Select(o => string.Join("=", o[0], o[1]))
                 .ToArray());
         }

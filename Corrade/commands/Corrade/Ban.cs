@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Corrade.Constants;
+using Corrade.Structures;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -59,6 +61,14 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
                     if (
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
+                            GroupPowers.Eject,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
+                            GroupPowers.RemoveMember,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.GroupBanAccess,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
@@ -199,24 +209,36 @@ namespace Corrade
                                     switch (action)
                                     {
                                         case Enumerations.Action.BAN:
-                                            avatars.Keys.AsParallel().ForAll(o =>
+                                            avatars.AsParallel().ForAll(o =>
                                             {
+                                                var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(o.Value);
+                                                var softBan = new SoftBan
+                                                {
+                                                    Agent = o.Key,
+                                                    FirstName = fullName.First(),
+                                                    LastName = fullName.Last(),
+                                                    Timestamp =
+                                                        DateTime.UtcNow.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP),
+                                                    Last = DateTime.UtcNow.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP)
+                                                };
                                                 lock (GroupSoftBansLock)
                                                 {
                                                     switch (GroupSoftBans.ContainsKey(groupUUID))
                                                     {
                                                         case true:
-                                                            if (GroupSoftBans[groupUUID].Contains(o))
+                                                            if (
+                                                                GroupSoftBans[groupUUID].AsParallel()
+                                                                    .Any(p => p.Agent.Equals(o.Key)))
                                                                 return;
-                                                            GroupSoftBans[groupUUID].Add(o);
+                                                            GroupSoftBans[groupUUID].Add(softBan);
                                                             groupSoftBansModified = true;
                                                             break;
                                                         default:
                                                             GroupSoftBans.Add(groupUUID,
-                                                                new Collections.ObservableHashSet<UUID>());
+                                                                new Collections.ObservableHashSet<SoftBan>());
                                                             GroupSoftBans[groupUUID].CollectionChanged +=
                                                                 HandleGroupSoftBansChanged;
-                                                            GroupSoftBans[groupUUID].Add(o);
+                                                            GroupSoftBans[groupUUID].Add(softBan);
                                                             groupSoftBansModified = true;
                                                             break;
                                                     }
@@ -231,9 +253,11 @@ namespace Corrade
                                                     switch (GroupSoftBans.ContainsKey(groupUUID))
                                                     {
                                                         case true:
-                                                            if (!GroupSoftBans[groupUUID].Contains(o))
+                                                            if (
+                                                                !GroupSoftBans[groupUUID].AsParallel()
+                                                                    .Any(p => p.Agent.Equals(o)))
                                                                 return;
-                                                            GroupSoftBans[groupUUID].Remove(o);
+                                                            GroupSoftBans[groupUUID].RemoveWhere(p => p.Agent.Equals(o));
                                                             groupSoftBansModified = true;
                                                             break;
                                                     }
@@ -250,132 +274,130 @@ namespace Corrade
                             switch (action)
                             {
                                 case Enumerations.Action.BAN:
-                                    bool alsoeject;
-                                    if (bool.TryParse(
+                                    bool alsoEject;
+                                    if (!bool.TryParse(
                                         wasInput(
                                             KeyValue.Get(
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EJECT)),
                                                 corradeCommandParameters.Message)),
-                                        out alsoeject) && alsoeject)
+                                        out alsoEject) || alsoEject == false) break;
+
+                                    // Get the group members.
+                                    Dictionary<UUID, GroupMember> groupMembers = null;
+                                    var groupMembersReceivedEvent = new ManualResetEvent(false);
+                                    var groupMembersRequestUUID = UUID.Zero;
+                                    EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate =
+                                        (sender, args) =>
+                                        {
+                                            if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
+
+                                            groupMembers = args.Members;
+                                            groupMembersReceivedEvent.Set();
+                                        };
+
+                                    Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                                    if (
+                                        !groupMembersReceivedEvent.WaitOne(
+                                            (int) corradeConfiguration.ServicesTimeout, false))
                                     {
-                                        // Get the group members.
-                                        Dictionary<UUID, GroupMember> groupMembers = null;
-                                        var groupMembersReceivedEvent = new ManualResetEvent(false);
-                                        var groupMembersRequestUUID = UUID.Zero;
-                                        EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate =
-                                            (sender, args) =>
-                                            {
-                                                if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
-
-                                                groupMembers = args.Members;
-                                                groupMembersReceivedEvent.Set();
-                                            };
-
-                                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                                        groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                                        if (
-                                            !groupMembersReceivedEvent.WaitOne(
-                                                (int) corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                                        }
                                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-
-                                        var targetGroup = new Group();
-                                        if (
-                                            !Services.RequestGroup(Client, groupUUID,
-                                                corradeConfiguration.ServicesTimeout,
-                                                ref targetGroup))
-                                        {
-                                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                                        }
-                                        // Get roles members.
-                                        List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
-                                        var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
-                                        var groupRolesMembersRequestUUID = UUID.Zero;
-                                        EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
-                                            (sender, args) =>
-                                            {
-                                                if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
-                                                groupRolesMembers = args.RolesMembers;
-                                                GroupRoleMembersReplyEvent.Set();
-                                            };
-                                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                                        groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                                        if (
-                                            !GroupRoleMembersReplyEvent.WaitOne(
-                                                (int) corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
-                                        }
-                                        Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                        groupMembers
-                                            .AsParallel()
-                                            .Where(o => avatars.ContainsKey(o.Value.ID))
-                                            .ForAll(
-                                                o =>
-                                                {
-                                                    // Check their status.
-                                                    switch (
-                                                        !groupRolesMembers.AsParallel()
-                                                            .Any(
-                                                                p =>
-                                                                    p.Key.Equals(targetGroup.OwnerRole) &&
-                                                                    p.Value.Equals(o.Value.ID))
-                                                        )
-                                                    {
-                                                        case false: // cannot demote owners
-                                                            lock (LockObject)
-                                                            {
-                                                                if (!data.Contains(avatars[o.Value.ID]))
-                                                                {
-                                                                    data.Add(avatars[o.Value.ID]);
-                                                                }
-                                                            }
-                                                            return;
-                                                    }
-                                                    // Demote them.
-                                                    groupRolesMembers.AsParallel().Where(
-                                                        p => p.Value.Equals(o.Value.ID)).ForAll(p =>
-                                                            Client.Groups.RemoveFromRole(
-                                                                groupUUID, p.Key,
-                                                                o.Value.ID));
-                                                    var GroupEjectEvent = new ManualResetEvent(false);
-                                                    EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
-                                                        (sender, args) =>
-                                                        {
-                                                            succeeded = args.Success;
-                                                            GroupEjectEvent.Set();
-                                                        };
-                                                    lock (Locks.ClientInstanceGroupsLock)
-                                                    {
-                                                        Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                                                        Client.Groups.EjectUser(groupUUID,
-                                                            o.Value.ID);
-                                                        GroupEjectEvent.WaitOne(
-                                                            (int) corradeConfiguration.ServicesTimeout,
-                                                            false);
-                                                        Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                                    }
-                                                    // If the eject was not successful, add them to the output.
-                                                    switch (succeeded)
-                                                    {
-                                                        case false:
-                                                            lock (LockObject)
-                                                            {
-                                                                if (!data.Contains(avatars[o.Value.ID]))
-                                                                {
-                                                                    data.Add(avatars[o.Value.ID]);
-                                                                }
-                                                            }
-                                                            break;
-                                                    }
-                                                });
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                                     }
+                                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
+                                    var targetGroup = new Group();
+                                    if (
+                                        !Services.RequestGroup(Client, groupUUID,
+                                            corradeConfiguration.ServicesTimeout,
+                                            ref targetGroup))
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
+                                    }
+                                    // Get roles members.
+                                    List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
+                                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                                    var groupRolesMembersRequestUUID = UUID.Zero;
+                                    EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
+                                        (sender, args) =>
+                                        {
+                                            if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
+                                            groupRolesMembers = args.RolesMembers;
+                                            GroupRoleMembersReplyEvent.Set();
+                                        };
+                                    Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                                    groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                                    if (
+                                        !GroupRoleMembersReplyEvent.WaitOne(
+                                            (int) corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
+                                    }
+                                    Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                    groupMembers
+                                        .AsParallel()
+                                        .Where(o => avatars.ContainsKey(o.Value.ID))
+                                        .ForAll(
+                                            o =>
+                                            {
+                                                // Check their status.
+                                                if (
+                                                    groupRolesMembers.AsParallel()
+                                                        .Any(
+                                                            p =>
+                                                                p.Key.Equals(targetGroup.OwnerRole) &&
+                                                                p.Value.Equals(o.Value.ID)))
+                                                {
+                                                    lock (LockObject)
+                                                    {
+                                                        if (!data.Contains(avatars[o.Value.ID]))
+                                                        {
+                                                            data.Add(avatars[o.Value.ID]);
+                                                        }
+                                                    }
+                                                    return;
+                                                }
+                                                // Demote them.
+                                                groupRolesMembers.AsParallel().Where(
+                                                    p => p.Value.Equals(o.Value.ID)).ForAll(p =>
+                                                        Client.Groups.RemoveFromRole(
+                                                            groupUUID, p.Key,
+                                                            o.Value.ID));
+                                                var GroupEjectEvent = new ManualResetEvent(false);
+                                                EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
+                                                    (sender, args) =>
+                                                    {
+                                                        succeeded = args.Success;
+                                                        GroupEjectEvent.Set();
+                                                    };
+                                                lock (Locks.ClientInstanceGroupsLock)
+                                                {
+                                                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                                    Client.Groups.EjectUser(groupUUID,
+                                                        o.Value.ID);
+                                                    GroupEjectEvent.WaitOne(
+                                                        (int) corradeConfiguration.ServicesTimeout,
+                                                        false);
+                                                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                                }
+                                                // If the eject was not successful, add them to the output.
+                                                switch (succeeded)
+                                                {
+                                                    case false:
+                                                        lock (LockObject)
+                                                        {
+                                                            if (!data.Contains(avatars[o.Value.ID]))
+                                                            {
+                                                                data.Add(avatars[o.Value.ID]);
+                                                            }
+                                                        }
+                                                        break;
+                                                }
+                                            });
+
                                     break;
                             }
                             if (data.Any())
@@ -410,7 +432,7 @@ namespace Corrade
                                                     csv.Add(agentName);
                                                     csv.Add(o.Key.ToString());
                                                     csv.Add(
-                                                        o.Value.ToString(Utils.EnUsCulture));
+                                                        o.Value.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP));
                                                 }
                                                 break;
                                         }

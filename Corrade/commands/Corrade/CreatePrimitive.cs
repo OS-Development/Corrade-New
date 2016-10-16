@@ -173,7 +173,7 @@ namespace Corrade
                             o =>
                                 typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
                                         q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags) q.GetValue(null)); }));
 

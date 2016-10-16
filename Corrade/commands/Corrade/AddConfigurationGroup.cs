@@ -54,6 +54,11 @@ namespace Corrade
                                 break;
                         }
 
+                        if (
+                            corradeConfiguration.Groups.AsParallel()
+                                .Any(o => Strings.StringEquals(o.Name, groupName) || o.UUID.Equals(groupUUID)))
+                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_ALREADY_CONFIGURED);
+
                         // Fetch group password.
                         var groupSecret = wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SECRET)),

@@ -47,7 +47,7 @@ namespace Corrade
                         case true:
                             // Try attachments
                             var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
-                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.StringEquals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                             if (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                             {
                                 attachment =
@@ -71,7 +71,7 @@ namespace Corrade
                                 break;
                             }
                             var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel().FirstOrDefault(
-                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.StringEquals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                             if (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                             {
                                 var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
@@ -89,7 +89,7 @@ namespace Corrade
                                         .AsParallel()
                                         .FirstOrDefault(
                                             o =>
-                                                (o as InventoryWearable).Equals(
+                                                o.Equals(
                                                     (WearableType) wearTypeInfo.GetValue(null)));
                                 if (wearable != null)
                                 {

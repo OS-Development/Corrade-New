@@ -33,7 +33,7 @@ namespace Corrade
                                                                                BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     p =>
-                                        Strings.Equals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
+                                        Strings.StringEquals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
                             if (wearTypeInfo == null)
                             {
                                 break;

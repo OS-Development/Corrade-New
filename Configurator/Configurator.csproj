@@ -114,6 +114,13 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Configurator.ico" />
+    <Content Include="img\banner.png" />
+    <Content Include="img\Configurator.ico" />
+    <EmbeddedResource Include="img\down-state.png" />
+    <EmbeddedResource Include="img\down.png" />
+    <Content Include="img\questionmark.png" />
+    <EmbeddedResource Include="img\up-state.png" />
+    <EmbeddedResource Include="img\up.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

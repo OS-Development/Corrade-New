@@ -291,7 +291,7 @@ namespace Corrade
                                             BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 o =>
-                                                    Strings.Equals(o.Name, format, StringComparison.Ordinal));
+                                                    Strings.StringEquals(o.Name, format, StringComparison.Ordinal));
                                         if (formatProperty == null)
                                         {
                                             throw new Command.ScriptException(

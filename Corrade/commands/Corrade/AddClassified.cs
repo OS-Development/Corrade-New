@@ -84,7 +84,7 @@ namespace Corrade
                         classifiedCount = args.Classifieds.Count;
                         var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
-                                Strings.Equals(name, o.Value, StringComparison.Ordinal));
+                                Strings.StringEquals(name, o.Value, StringComparison.Ordinal));
                         if (!classified.Equals(default(KeyValuePair<UUID, string>)))
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();

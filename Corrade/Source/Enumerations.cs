@@ -93,7 +93,8 @@ namespace Corrade
             [Reflection.NameAttribute("classify")] CLASSIFY,
             [Reflection.NameAttribute("merge")] MERGE,
             [Reflection.NameAttribute("untrain")] UNTRAIN,
-            [Reflection.NameAttribute("rename")] RENAME
+            [Reflection.NameAttribute("rename")] RENAME,
+            [Reflection.NameAttribute("schedule")] SCHEDULE
         }
 
 
@@ -212,6 +213,7 @@ namespace Corrade
             [Reflection.DescriptionAttribute("group soft bans file modified")] GROUP_SOFT_BANS_FILE_MODIFIED,
             [Reflection.DescriptionAttribute("error setting up soft bans watcher")] ERROR_SETTING_UP_SOFT_BANS_WATCHER,
             [Reflection.DescriptionAttribute("unable to apply soft ban")] UNABLE_TO_APPLY_SOFT_BAN,
+            [Reflection.DescriptionAttribute("unable to lift hard soft ban")] UNABLE_TO_LIFT_HARD_SOFT_BAN,
             [Reflection.DescriptionAttribute("could not find notification file")] COULD_NOT_FIND_NOTIFICATION_FILE,
             [Reflection.DescriptionAttribute("unable to deserialize notification data")] UNABLE_TO_DESERIALIZE_NOTIFICATION_DATA,
             [Reflection.DescriptionAttribute("parameters for requested event not found")] PARAMETERS_FOR_REQUESTED_EVENT_NOT_FOUND,
@@ -656,7 +658,8 @@ namespace Corrade
             [Command.StatusAttribute(23570)] [Reflection.DescriptionAttribute("invalid schedules provided")] INVALID_SCHEDULES_PROVIDED,
             [Command.StatusAttribute(09703)] [Reflection.DescriptionAttribute("group not configured")] GROUP_NOT_CONFIGURED,
             [Command.StatusAttribute(31868)] [Reflection.DescriptionAttribute("no database path provided")] NO_DATABASE_PATH_PROVIDED,
-            [Command.StatusAttribute(13030)] [Reflection.DescriptionAttribute("no chatlog path provided")] NO_CHATLOG_PATH_PROVIDED
+            [Command.StatusAttribute(13030)] [Reflection.DescriptionAttribute("no chatlog path provided")] NO_CHATLOG_PATH_PROVIDED,
+            [Command.StatusAttribute(42140)] [Reflection.DescriptionAttribute("group already configured")] GROUP_ALREADY_CONFIGURED
         }
 
 
@@ -709,7 +712,8 @@ namespace Corrade
             [Reflection.NameAttribute("cache")] CACHE,
             [Reflection.NameAttribute("mute")] MUTE,
             [Reflection.NameAttribute("softban")] SOFTBAN,
-            [Reflection.NameAttribute("user")] USER
+            [Reflection.NameAttribute("user")] USER,
+            [Reflection.NameAttribute("bayes")] BAYES
         }
     }
 }

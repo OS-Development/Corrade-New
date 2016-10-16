@@ -79,13 +79,19 @@ namespace Corrade.Helpers
                         ? args.AsParallel()
                             .FirstOrDefault(
                                 a =>
-                                    Equals(a.GetType().FullName, o.Type) ||
-                                    a.GetType().GetBaseTypes().AsParallel().Any(t => Equals(t.FullName, o.Type)))
+                                    Strings.StringEquals(a.GetType().FullName, o.Type) ||
+                                    a.GetType()
+                                        .GetBaseTypes()
+                                        .AsParallel()
+                                        .Any(t => Strings.StringEquals(t.FullName, o.Type)))
                         : args.AsParallel()
                             .FirstOrDefault(
                                 a =>
-                                    Equals(a.GetType().FullName, type) ||
-                                    a.GetType().GetBaseTypes().AsParallel().Any(t => Equals(t.FullName, o.Type)));
+                                    Strings.StringEquals(a.GetType().FullName, type) ||
+                                    a.GetType()
+                                        .GetBaseTypes()
+                                        .AsParallel()
+                                        .Any(t => Strings.StringEquals(t.FullName, o.Type)));
 
                     if (arg == null)
                         return;
@@ -96,8 +102,8 @@ namespace Corrade.Helpers
                         if (
                             o.Condition.AsParallel()
                                 .Select(condition => new {condition, conditional = arg.GetFP(condition.Path)})
-                                .Where(@t => @t.conditional != null && !@t.conditional.Equals(@t.condition.Value))
-                                .Select(@t => @t.condition).Any())
+                                .Where(t => t.conditional != null && !t.conditional.Equals(t.condition.Value))
+                                .Select(t => t.condition).Any())
                             return;
                     }
 
@@ -160,7 +166,9 @@ namespace Corrade.Helpers
                                     arg =
                                         args.AsParallel()
                                             .FirstOrDefault(
-                                                a => Equals(a.GetType().FullName, process.ConditionalSubstitution.Type));
+                                                a =>
+                                                    Strings.StringEquals(a.GetType().FullName,
+                                                        process.ConditionalSubstitution.Type));
                                     if (arg != null)
                                     {
                                         l = arg.GetFP(process.ConditionalSubstitution.Path);
@@ -189,7 +197,9 @@ namespace Corrade.Helpers
                                     arg =
                                         args.AsParallel()
                                             .FirstOrDefault(
-                                                a => Equals(a.GetType().FullName, process.TernarySubstitution.Type));
+                                                a =>
+                                                    Strings.StringEquals(a.GetType().FullName,
+                                                        process.TernarySubstitution.Type));
                                     if (arg != null)
                                     {
                                         l = arg.GetFP(process.TernarySubstitution.Path);
@@ -345,7 +355,7 @@ namespace Corrade.Helpers
                     }
                     break;
                 default:
-                    if (!args.AsParallel().Any(a => Equals(a.GetType().FullName, type)))
+                    if (!args.AsParallel().Any(a => Strings.StringEquals(a.GetType().FullName, type)))
                         return;
                     value = o.Value;
                     break;

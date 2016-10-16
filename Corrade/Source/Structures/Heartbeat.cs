@@ -31,6 +31,9 @@ namespace Corrade.Structures
         /// </summary>
         private Time.Timer HeartbeatTimer;
 
+        private long LastTotalCPUTicks;
+        private long LastUpdateTicks;
+
         /// <summary>
         ///     The total number of processed Corrade commands.
         /// </summary>
@@ -55,6 +58,9 @@ namespace Corrade.Structures
                         (100*CurrentProcess.TotalProcessorTime.Ticks/
                          (Environment.ProcessorCount*DateTime.UtcNow.Subtract(StartTime).Ticks));
                 AverageRAMUsage = CurrentProcess.PrivateMemorySize64;
+
+                LastTotalCPUTicks = DateTime.FromFileTimeUtc(CurrentProcess.TotalProcessorTime.Ticks).Ticks;
+                LastUpdateTicks = DateTime.UtcNow.Ticks;
             }
 
             // Start the heartbeat timer.
@@ -64,10 +70,14 @@ namespace Corrade.Structures
                 Uptime += 1;
                 using (var CurrentProcess = Process.GetCurrentProcess())
                 {
+                    var totalCPUTime = DateTime.FromFileTimeUtc(CurrentProcess.TotalProcessorTime.Ticks).Ticks -
+                                       LastTotalCPUTicks;
+                    var updateTicks = DateTime.UtcNow.Ticks - LastUpdateTicks;
                     AverageCPUUsage = (AverageCPUUsage +
-                                       (uint) (100*CurrentProcess.TotalProcessorTime.Ticks/
-                                               (Environment.ProcessorCount*DateTime.UtcNow.Subtract(StartTime).Ticks)))/
-                                      2;
+                                       (uint) ((double) totalCPUTime/updateTicks*100f/Environment.ProcessorCount))/2;
+                    LastUpdateTicks = DateTime.UtcNow.Ticks;
+                    LastTotalCPUTicks = DateTime.FromFileTimeUtc(CurrentProcess.TotalProcessorTime.Ticks).Ticks;
+
                     AverageRAMUsage = (AverageRAMUsage + CurrentProcess.PrivateMemorySize64)/2;
                 }
             }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));

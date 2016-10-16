@@ -34,6 +34,9 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("note")]
+            NOTE,
+
             [CommandInputSyntax(
                 "<command=removeconfigurationgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<target=<STRING|UUID>>&[callback=<STRING>]"
                 )]

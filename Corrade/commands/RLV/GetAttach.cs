@@ -46,7 +46,7 @@ namespace Corrade
                     {
                         case true:
                             var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
-                                o => Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                o => Strings.StringEquals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                             switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                             {
                                 case true:

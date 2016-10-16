@@ -22,8 +22,8 @@ namespace Corrade
             public static Action<NotificationParameters, Dictionary<string, string>> inventory =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    var inventoryOfferedType = corradeNotificationParameters.Event.GetType();
-                    if (inventoryOfferedType == typeof (InstantMessageEventArgs))
+                    var inventoryEventType = corradeNotificationParameters.Event.GetType();
+                    if (inventoryEventType == typeof (InstantMessageEventArgs))
                     {
                         var instantMessageEventArgs =
                             (InstantMessageEventArgs) corradeNotificationParameters.Event;
@@ -77,7 +77,8 @@ namespace Corrade
                         }
                         return;
                     }
-                    if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
+
+                    if (inventoryEventType == typeof (InventoryObjectOfferedEventArgs))
                     {
                         var inventoryObjectOfferedEventArgs =
                             (InventoryObjectOfferedEventArgs) corradeNotificationParameters.Event;
@@ -114,6 +115,93 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     objects,
+                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
+                            }));
+                        return;
+                    }
+
+                    if(inventoryEventType == typeof(InventoryObjectAddedEventArgs))
+                    {
+                        var inventoryObjectAddedEventArgs =
+                            (InventoryObjectAddedEventArgs)corradeNotificationParameters.Event;
+                        // In case we should send specific data then query the structure and return.
+                        if (corradeNotificationParameters.Notification.Data != null &&
+                            corradeNotificationParameters.Notification.Data.Any())
+                        {
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    inventoryObjectAddedEventArgs.GetStructuredData(
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            return;
+                        }
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .Where(o => o.Key.Equals(typeof(InventoryObjectAddedEventArgs).FullName))
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> { inventoryObjectAddedEventArgs },
+                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
+                            }));
+                        return;
+                    }
+
+                    if (inventoryEventType == typeof(InventoryObjectRemovedEventArgs))
+                    {
+                        var inventoryObjectRemovedEventArgs =
+                            (InventoryObjectRemovedEventArgs)corradeNotificationParameters.Event;
+                        // In case we should send specific data then query the structure and return.
+                        if (corradeNotificationParameters.Notification.Data != null &&
+                            corradeNotificationParameters.Notification.Data.Any())
+                        {
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    inventoryObjectRemovedEventArgs.GetStructuredData(
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            return;
+                        }
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .Where(o => o.Key.Equals(typeof(InventoryObjectRemovedEventArgs).FullName))
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> { inventoryObjectRemovedEventArgs },
+                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
+                            }));
+                        return;
+                    }
+
+                    if (inventoryEventType == typeof(InventoryObjectUpdatedEventArgs))
+                    {
+                        var inventoryObjectUpdatedEventArgs =
+                            (InventoryObjectUpdatedEventArgs)corradeNotificationParameters.Event;
+                        // In case we should send specific data then query the structure and return.
+                        if (corradeNotificationParameters.Notification.Data != null &&
+                            corradeNotificationParameters.Notification.Data.Any())
+                        {
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(
+                                    inventoryObjectUpdatedEventArgs.GetStructuredData(
+                                        CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            return;
+                        }
+
+                        var LockObject = new object();
+                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .Where(o => o.Key.Equals(typeof(InventoryObjectUpdatedEventArgs).FullName))
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> { inventoryObjectUpdatedEventArgs },
                                     notificationData, LockObject, rankedLanguageIdentifier,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));

@@ -88,8 +88,8 @@ namespace wasOpenMetaverse
                         return;
 
                     if (!prim.NameValues.AsParallel()
-                        .Where(o => Equals(o.Name, "AttachItemID"))
-                        .Any(o => Strings.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                        .Where(o => Strings.StringEquals(o.Name, "AttachItemID"))
+                        .Any(o => Strings.StringEquals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
                     objectAttachedEvent.Set();
@@ -131,8 +131,8 @@ namespace wasOpenMetaverse
                         return;
 
                     if (!prim.NameValues.AsParallel()
-                        .Where(o => Equals(o.Name, "AttachItemID"))
-                        .Any(o => Strings.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                        .Where(o => Strings.StringEquals(o.Name, "AttachItemID"))
+                        .Any(o => Strings.StringEquals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
                     objectDetachedEvent.Set();
@@ -379,13 +379,13 @@ namespace wasOpenMetaverse
                         // If not, the path is phony!
                         return null;
                     default: // There is no root and the first of the path is a name, hmm...
-                        if (Strings.Equals(Client.Inventory.Store.RootFolder.Name, first, comparison))
+                        if (Strings.StringEquals(Client.Inventory.Store.RootFolder.Name, first, comparison))
                         {
                             // ..set the root to the inventory folder.
                             root = Client.Inventory.Store.RootFolder;
                             break;
                         }
-                        if (Strings.Equals(Client.Inventory.Store.LibraryFolder.Name, first, comparison))
+                        if (Strings.StringEquals(Client.Inventory.Store.LibraryFolder.Name, first, comparison))
                         {
                             // .. set the root to the library folder.
                             root = Client.Inventory.Store.LibraryFolder;
@@ -419,7 +419,7 @@ namespace wasOpenMetaverse
                 case true:
                     try
                     {
-                        root = contents.SingleOrDefault(q => Strings.Equals(q.Name, first, comparison));
+                        root = contents.SingleOrDefault(q => Strings.StringEquals(q.Name, first, comparison));
                         break;
                     }
                     catch (Exception)
@@ -482,7 +482,7 @@ namespace wasOpenMetaverse
             if (inventoryBase == null)
                 return default(T);
 
-            if (typeof (T) != typeof (InventoryNode)) return (T) (object) inventoryBase;
+            if (typeof(T) != typeof(InventoryNode)) return (T) (object) inventoryBase;
 
             lock (Locks.ClientInstanceInventoryLock)
             {
@@ -517,11 +517,11 @@ namespace wasOpenMetaverse
             {
                 if (criteria.IsMatch(item.Name))
                 {
-                    if (typeof (T) == typeof (InventoryNode))
+                    if (typeof(T) == typeof(InventoryNode))
                     {
                         yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
                     }
-                    if (typeof (T) == typeof (InventoryBase))
+                    if (typeof(T) == typeof(InventoryBase))
                     {
                         yield return (T) (object) item;
                     }
@@ -582,14 +582,14 @@ namespace wasOpenMetaverse
                 (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
                  (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))
             {
-                if (typeof (T) == typeof (InventoryBase))
+                if (typeof(T) == typeof(InventoryBase))
                 {
                     yield return
                         new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
                                 prefix.Concat(new[] {root.Data.Name})));
                 }
-                if (typeof (T) == typeof (InventoryNode))
+                if (typeof(T) == typeof(InventoryNode))
                 {
                     yield return
                         new KeyValuePair<T, LinkedList<string>>((T) (object) root,
@@ -633,14 +633,14 @@ namespace wasOpenMetaverse
         {
             if (criteria.IsMatch(root.Data.Name))
             {
-                if (typeof (T) == typeof (InventoryBase))
+                if (typeof(T) == typeof(InventoryBase))
                 {
                     yield return
                         new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
                                 prefix.Concat(new[] {root.Data.Name})));
                 }
-                if (typeof (T) == typeof (InventoryNode))
+                if (typeof(T) == typeof(InventoryNode))
                 {
                     yield return
                         new KeyValuePair<T, LinkedList<string>>((T) (object) root,

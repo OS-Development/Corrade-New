@@ -109,7 +109,9 @@ namespace Corrade
                     // Check if the avatar is soft-banned.
                     lock (GroupSoftBansLock)
                     {
-                        switch (GroupSoftBans.ContainsKey(groupUUID) && GroupSoftBans[groupUUID].Contains(agentUUID))
+                        switch (
+                            GroupSoftBans.ContainsKey(groupUUID) &&
+                            GroupSoftBans[groupUUID].AsParallel().Any(o => o.Agent.Equals(agentUUID)))
                         {
                             case true:
                                 // If the avatar is banned and soft is not true then do not invite the avatar.
@@ -120,7 +122,7 @@ namespace Corrade
                                         corradeCommandParameters.Message)), out soft) || !soft)
                                     throw new Command.ScriptException(Enumerations.ScriptError.AGENT_IS_SOFT_BANNED);
                                 // If soft is true then soft-unban the agent before inviting the avatar.
-                                GroupSoftBans[groupUUID].Remove(agentUUID);
+                                GroupSoftBans[groupUUID].RemoveWhere(o => o.Agent.Equals(agentUUID));
                                 SaveGroupSoftBansState.Invoke();
                                 break;
                         }

@@ -425,7 +425,7 @@ namespace wasOpenMetaverse
                             var attachmentPointFieldInfo =
                                 typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                    .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (attachmentPointFieldInfo == null) break;
                             attachmentPoint = (byte) attachmentPointFieldInfo.GetValue(null);
                             break;
@@ -442,7 +442,7 @@ namespace wasOpenMetaverse
                             var treeFieldInfo = typeof (Tree).GetFields(BindingFlags.Public |
                                                                         BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (treeFieldInfo == null) break;
                             tree = (byte) treeFieldInfo.GetValue(null);
                             break;
@@ -459,7 +459,7 @@ namespace wasOpenMetaverse
                             var materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
                                                                                 BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (materialFieldInfo == null) break;
                             material = (byte) materialFieldInfo.GetValue(null);
                             break;
@@ -476,7 +476,7 @@ namespace wasOpenMetaverse
                             var pathCurveFieldInfo = typeof (PathCurve).GetFields(BindingFlags.Public |
                                                                                   BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (pathCurveFieldInfo == null) break;
                             pathCurve = (byte) pathCurveFieldInfo.GetValue(null);
                             break;
@@ -492,7 +492,7 @@ namespace wasOpenMetaverse
                         case true:
                             var pCodeFieldInfo = typeof (PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (pCodeFieldInfo == null) break;
                             pCode = (byte) pCodeFieldInfo.GetValue(null);
                             break;
@@ -509,7 +509,7 @@ namespace wasOpenMetaverse
                             var profileCurveFieldInfo =
                                 typeof (ProfileCurve).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                    .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (profileCurveFieldInfo == null) break;
                             profileCurve = (byte) profileCurveFieldInfo.GetValue(null);
                             break;
@@ -526,7 +526,7 @@ namespace wasOpenMetaverse
                             var holeTypeFieldInfo = typeof (HoleType).GetFields(BindingFlags.Public |
                                                                                 BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (holeTypeFieldInfo == null) break;
                             holeType = (byte) holeTypeFieldInfo.GetValue(null);
                             break;
@@ -543,7 +543,7 @@ namespace wasOpenMetaverse
                             var sculptTypeFieldInfo = typeof (SculptType).GetFields(BindingFlags.Public |
                                                                                     BindingFlags.Static)
                                 .AsParallel()
-                                .FirstOrDefault(p => Strings.Equals(d.Value, p.Name, StringComparison.Ordinal));
+                                .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (sculptTypeFieldInfo == null) break;
                             sculptType = (byte) sculptTypeFieldInfo.GetValue(null);
                             break;

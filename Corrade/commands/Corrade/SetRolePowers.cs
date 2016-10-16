@@ -110,7 +110,7 @@ namespace Corrade
                             o =>
                                 typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .Where(p => Strings.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
                                         q =>
                                         {

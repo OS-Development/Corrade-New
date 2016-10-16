@@ -242,6 +242,9 @@
     <Compile Include="notifications\Heartbeat.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="notifications\Login.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Teleport.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -281,6 +284,7 @@
     <Compile Include="Source\Structures\ScriptDialog.cs" />
     <Compile Include="Source\Structures\ScriptPermissionRequest.cs" />
     <Compile Include="Source\Structures\Effects\SphereEffect.cs" />
+    <Compile Include="Source\Structures\SoftBan.cs" />
     <Compile Include="Source\Structures\TeleportLure.cs" />
     <Compile Include="Source\Threading\Enumerations.cs" />
     <Compile Include="Source\Threading\Thread.cs" />
@@ -1678,6 +1682,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\local.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\login.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\teleport.xml">

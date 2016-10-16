@@ -70,7 +70,7 @@ namespace Corrade
                         var gridRegion = new GridRegion();
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
-                            if (!Strings.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                            if (!Strings.StringEquals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
                                 return;
                             gridRegion = args.Region;
                             GridRegionEvent.Set();

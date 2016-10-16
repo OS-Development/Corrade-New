@@ -35,9 +35,23 @@ namespace wasSharp
         /// <param name="b">second string</param>
         /// <param name="comparison">string comparison to use</param>
         /// <returns>true if the strings are equal</returns>
-        public static bool Equals(string a, string b, StringComparison comparison)
+        public static bool StringEquals(string a, string b, StringComparison comparison)
         {
-            return a.Length == b.Length && string.Equals(a, b, comparison);
+            return (a == null && b == null) || (a.Length == b.Length && string.Equals(a, b, comparison));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Determines if two strings are equal.
+        /// </summary>
+        /// <param name="a">first string</param>
+        /// <param name="b">second string</param>
+        /// <returns>true if the strings are equal</returns>
+        public static bool StringEquals(string a, string b)
+        {
+            return (a == null && b == null) || (a != null && b != null && a.Length == b.Length && string.Equals(a, b));
         }
     }
 }

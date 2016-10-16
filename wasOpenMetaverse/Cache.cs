@@ -186,7 +186,7 @@ namespace wasOpenMetaverse
                     ObservableRegionCache.AsParallel().FirstOrDefault(
                         o =>
                             (!string.IsNullOrEmpty(region.Name) && !string.IsNullOrEmpty(o.Name) &&
-                             Strings.Equals(o.Name, region.Name, StringComparison.OrdinalIgnoreCase)) ||
+                             Strings.StringEquals(o.Name, region.Name, StringComparison.OrdinalIgnoreCase)) ||
                             o.Handle.Equals(region.Handle) || o.UUID.Equals(region.UUID));
                 // If the region exists...
                 if (!cachedRegion.Equals(default(Region)))
@@ -217,7 +217,7 @@ namespace wasOpenMetaverse
                         .FirstOrDefault(
                             o =>
                                 !string.IsNullOrEmpty(o.Name) &&
-                                Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                                Strings.StringEquals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
                                 handle.Equals(o.Handle));
             }
             if (region.Equals(default(Region)))
@@ -254,7 +254,7 @@ namespace wasOpenMetaverse
                         .FirstOrDefault(
                             o =>
                                 !string.IsNullOrEmpty(o.Name) &&
-                                Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase));
+                                Strings.StringEquals(name, o.Name, StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -309,7 +309,7 @@ namespace wasOpenMetaverse
                         .FirstOrDefault(
                             o =>
                                 muteUUID.Equals(o.ID) && flags.Equals(o.Flags) && type.Equals(o.Type) &&
-                                Strings.Equals(name, o.Name, StringComparison.Ordinal));
+                                Strings.StringEquals(name, o.Name, StringComparison.Ordinal));
             }
             if (mute == null || mute.Equals(default(MuteEntry)))
                 return false;
@@ -349,8 +349,8 @@ namespace wasOpenMetaverse
                     ObservableAgentCache.AsParallel()
                         .FirstOrDefault(
                             o =>
-                                Strings.Equals(firstName, o.FirstName, StringComparison.OrdinalIgnoreCase) &&
-                                Strings.Equals(lastName, o.LastName, StringComparison.OrdinalIgnoreCase) &&
+                                Strings.StringEquals(firstName, o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                Strings.StringEquals(lastName, o.LastName, StringComparison.OrdinalIgnoreCase) &&
                                 agentUUID.Equals(o.UUID));
             }
             if (agent.Equals(default(Agent)))
@@ -419,7 +419,7 @@ namespace wasOpenMetaverse
                     ObservableGroupCache.AsParallel()
                         .FirstOrDefault(
                             o =>
-                                Strings.Equals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                                Strings.StringEquals(name, o.Name, StringComparison.OrdinalIgnoreCase) &&
                                 groupUUID.Equals(o.UUID));
             }
             if (group.Equals(default(Group)))

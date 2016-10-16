@@ -37,7 +37,7 @@ namespace Corrade
                             var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        Strings.Equals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                        Strings.StringEquals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
                             switch (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                             {
                                 case true:

@@ -274,7 +274,7 @@ namespace Corrade
                                                     new HashSet<string>(
                                                         p.Value.AsParallel()
                                                             .Where(
-                                                                q => !Strings.Equals(url, q, StringComparison.Ordinal)));
+                                                                q => !Strings.StringEquals(url, q, StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)
                                                 {

@@ -216,7 +216,7 @@ namespace Corrade
                                     {
                                         switch (
                                             GroupSoftBans.ContainsKey(groupUUID) &&
-                                            GroupSoftBans[groupUUID].Contains(agentUUID))
+                                            GroupSoftBans[groupUUID].AsParallel().Any(p => p.Agent.Equals(agentUUID)))
                                         {
                                             case true:
                                                 // If the avatar is banned and soft is not true then do not invite the avatar.
@@ -234,7 +234,7 @@ namespace Corrade
                                                     return;
                                                 }
                                                 // If soft is true then soft-unban the agent before inviting the avatar.
-                                                GroupSoftBans[groupUUID].Remove(agentUUID);
+                                                GroupSoftBans[groupUUID].RemoveWhere(p => p.Agent.Equals(agentUUID));
                                                 SaveGroupSoftBansState.Invoke();
                                                 break;
                                         }

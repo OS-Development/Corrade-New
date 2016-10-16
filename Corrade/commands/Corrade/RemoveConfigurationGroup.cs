@@ -52,7 +52,7 @@ namespace Corrade
                     }
 
                     if (corradeConfiguration.Groups.RemoveWhere(
-                        o => Equals(groupName, o.Name) && groupUUID.Equals(o.UUID)).Equals(0))
+                        o => Strings.StringEquals(groupName, o.Name) && groupUUID.Equals(o.UUID)).Equals(0))
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_CONFIGURED);
 
                     lock (ConfigurationFileLock)

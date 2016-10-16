@@ -86,7 +86,7 @@ namespace Corrade
                                                                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
-                                    Strings.Equals(o.Name, wasInput(KeyValue.Get(
+                                    Strings.StringEquals(o.Name, wasInput(KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MATERIAL)),
                                         corradeCommandParameters.Message)),
                                         StringComparison.OrdinalIgnoreCase));

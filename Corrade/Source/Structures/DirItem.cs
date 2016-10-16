@@ -73,7 +73,7 @@ namespace Corrade.Structures
                                                                                            BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
-                                Strings.Equals(o.Name,
+                                Strings.StringEquals(o.Name,
                                     Enum.GetName(typeof (WearableType),
                                         (inventoryItem as InventoryWearable).WearableType),
                                     StringComparison.OrdinalIgnoreCase)).GetValue(null);

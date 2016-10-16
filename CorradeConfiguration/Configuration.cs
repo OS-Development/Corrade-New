@@ -48,7 +48,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "asset")] [Reflection.NameAttribute("asset")] Asset = 8uL,
             [XmlEnum(Name = "mute")] [Reflection.NameAttribute("mute")] Mute = 16uL,
             [XmlEnum(Name = "softban")] [Reflection.NameAttribute("softban")] SoftBan = 32uL,
-            [XmlEnum(Name = "user")] [Reflection.NameAttribute("user")] User = 64uL
+            [XmlEnum(Name = "user")] [Reflection.NameAttribute("user")] User = 64uL,
+            [XmlEnum(Name = "bayes")] [Reflection.NameAttribute("bayes")] Bayes = 128ul
         }
 
         /// <summary>
@@ -117,7 +118,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "conference")] [Reflection.NameAttribute("conference")] Conference = 17179869184ul,
             [XmlEnum(Name = "preload")] [Reflection.NameAttribute("preload")] Preload = 34359738368ul,
             [XmlEnum(Name = "teleport")] [Reflection.NameAttribute("teleport")] Teleport = 68719476736ul,
-            [XmlEnum(Name = "heartbeat")] [Reflection.NameAttribute("heartbeat")] Heartbeat = 137438953472ul
+            [XmlEnum(Name = "heartbeat")] [Reflection.NameAttribute("heartbeat")] Heartbeat = 137438953472ul,
+            [XmlEnum(Name = "login")] [Reflection.NameAttribute("login")] Login = 274877906944ul
         }
 
         /// <summary>
@@ -154,6 +156,8 @@ namespace CorradeConfiguration
         private bool _autoActivateGroup;
         private uint _autoActivateGroupDelay = 5000;
         private string _bindIPAddress = string.Empty;
+        private double _cacheAutoPruneinterval = 300000;
+        private bool _cacheEnableAutoPrune;
         private uint _callbackQueueLength = 100;
         private uint _callbackThrottle = 1000;
         private uint _callbackTimeout = 5000;
@@ -230,13 +234,13 @@ namespace CorradeConfiguration
         private uint _schedulerExpiration = 60000;
         private uint _schedulesResolution = 1000;
         private uint _servicesTimeout = 60000;
-        private string _startLocation = @"last";
+        private List<string> _startLocations = new List<string>();
         private uint _TCPnotificationQueueLength = 100;
         private string _TCPNotificationsCertificatePassword = string.Empty;
         private string _TCPNotificationsCertificatePath = string.Empty;
         private string _TCPNotificationsServerAddress = @"0.0.0.0";
-        private string _TCPNotificationsSSLProtocol = string.Empty;
         private uint _TCPNotificationsServerPort = 8095;
+        private string _TCPNotificationsSSLProtocol = string.Empty;
         private uint _TCPnotificationThrottle = 1000;
         private uint _throttleAsset = 2500000;
         private uint _throttleCloud = 2500000;
@@ -261,6 +265,42 @@ namespace CorradeConfiguration
                 }
             }
             set { }
+        }
+
+        public bool CacheEnableAutoPrune
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _cacheEnableAutoPrune;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _cacheEnableAutoPrune = value;
+                }
+            }
+        }
+
+        public double CacheAutoPruneInterval
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _cacheAutoPruneinterval;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _cacheAutoPruneinterval = value;
+                }
+            }
         }
 
         public string FirstName
@@ -1559,20 +1599,20 @@ namespace CorradeConfiguration
             }
         }
 
-        public string StartLocation
+        public List<string> StartLocations
         {
             get
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    return _startLocation;
+                    return _startLocations;
                 }
             }
             set
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    _startLocation = value;
+                    _startLocations = value;
                 }
             }
         }
@@ -1960,7 +2000,7 @@ namespace CorradeConfiguration
         {
             using (var writer = new StreamWriter(file, false, Encoding.UTF8))
             {
-                var serializer = new XmlSerializer(typeof (Configuration));
+                var serializer = new XmlSerializer(typeof(Configuration));
                 serializer.Serialize(writer, configuration);
                 writer.Flush();
             }
@@ -1971,7 +2011,7 @@ namespace CorradeConfiguration
             using (var stream = new StreamReader(file, Encoding.UTF8))
             {
                 var serializer =
-                    new XmlSerializer(typeof (Configuration));
+                    new XmlSerializer(typeof(Configuration));
                 var loadedConfiguration = (Configuration) serializer.Deserialize(stream);
                 configuration = loadedConfiguration;
             }
@@ -1979,7 +2019,7 @@ namespace CorradeConfiguration
 
         public void Load(Stream stream, ref Configuration configuration)
         {
-            var serializer = new XmlSerializer(typeof (Configuration));
+            var serializer = new XmlSerializer(typeof(Configuration));
             var loadedConfiguration = (Configuration) serializer.Deserialize(stream);
             configuration = loadedConfiguration;
         }
