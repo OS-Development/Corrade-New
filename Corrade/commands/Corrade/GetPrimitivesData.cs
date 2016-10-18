@@ -40,6 +40,7 @@ namespace Corrade
                         {
                             range = corradeConfiguration.Range;
                         }
+                        Dictionary<uint, Primitive> objectsPrimitives = null;
                         var updatePrimitives = new HashSet<Primitive>();
                         var LockObject = new object();
                         switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
@@ -49,7 +50,7 @@ namespace Corrade
                                 .ToLowerInvariant()))
                         {
                             case Enumerations.Entity.RANGE:
-                                updatePrimitives = Services.GetPrimitives(Client, range);
+                                updatePrimitives.UnionWith(Services.GetPrimitives(Client, range));
                                 break;
                             case Enumerations.Entity.WORLD:
                                 var avatars =
@@ -79,7 +80,9 @@ namespace Corrade
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                 }
-                                updatePrimitives = Services.GetPrimitives(Client, new[]
+                                objectsPrimitives = Services.GetPrimitives(Client, range)
+                                    .ToDictionary(o => o.LocalID, o => o);
+                                Services.GetPrimitives(Client, new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                     Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -87,7 +90,27 @@ namespace Corrade
                                         new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                     Vector3.Distance(Client.Self.SimPosition,
                                         new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                                }.Max());
+                                }.Max()).AsParallel().ForAll(o =>
+                                {
+                                    Primitive prim = null;
+                                    switch (!o.ParentID.Equals(0))
+                                    {
+                                        case true:
+                                            objectsPrimitives.TryGetValue(o.ParentID, out prim);
+                                            break;
+                                        default:
+                                            prim = o;
+                                            break;
+                                    }
+                                    if (prim == null || prim.Position.X < parcel.AABBMin.X ||
+                                        prim.Position.X > parcel.AABBMax.X || prim.Position.Y < parcel.AABBMin.Y ||
+                                        prim.Position.Y > parcel.AABBMax.Y)
+                                        return;
+                                    lock (LockObject)
+                                    {
+                                        updatePrimitives.Add(o);
+                                    }
+                                });
                                 break;
                             case Enumerations.Entity.REGION:
                                 // Get all sim parcels
@@ -153,30 +176,29 @@ namespace Corrade
                                     .FirstOrDefault(o => o.ID.Equals(agentUUID));
                                 if (avatar == null)
                                     throw new Command.ScriptException(Enumerations.ScriptError.AVATAR_NOT_IN_RANGE);
-                                var objectsPrimitives =
-                                    new HashSet<Primitive>(Services.GetPrimitives(Client, range));
+                                objectsPrimitives = Services.GetPrimitives(Client, range)
+                                    .ToDictionary(o => o.LocalID, o => o);
                                 objectsPrimitives.AsParallel().ForAll(
                                     o =>
                                     {
-                                        switch (!o.ParentID.Equals(avatar.LocalID))
+                                        switch (!o.Value.ParentID.Equals(avatar.LocalID))
                                         {
                                             case true:
-                                                var primitiveParent =
-                                                    objectsPrimitives.AsParallel()
-                                                        .FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
-                                                if (primitiveParent != null &&
+                                                Primitive primitiveParent = null;
+                                                if (
+                                                    objectsPrimitives.TryGetValue(o.Value.ParentID, out primitiveParent) &&
                                                     primitiveParent.ParentID.Equals(avatar.LocalID))
                                                 {
                                                     lock (LockObject)
                                                     {
-                                                        updatePrimitives.Add(o);
+                                                        updatePrimitives.Add(o.Value);
                                                     }
                                                 }
                                                 break;
                                             default:
                                                 lock (LockObject)
                                                 {
-                                                    updatePrimitives.Add(o);
+                                                    updatePrimitives.Add(o.Value);
                                                 }
                                                 break;
                                         }

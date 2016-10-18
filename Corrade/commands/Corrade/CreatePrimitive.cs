@@ -153,12 +153,7 @@ namespace Corrade
                             break;
                     }
                     // ... and overwrite with manual data settings.
-                    /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)),
-                        ref constructionData);*/
-                    constructionData.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                    constructionData = constructionData.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message)));
                     // Get any primitive flags.
                     PrimFlags primFlags = 0;

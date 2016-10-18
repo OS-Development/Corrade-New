@@ -32,8 +32,7 @@ namespace Corrade
                     {
                         camera = Client.Self.Movement.Camera;
                     }
-                    camera.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(
+                    camera = camera.wasCSVToStructure(wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                     lock (Locks.ClientInstanceSelfLock)

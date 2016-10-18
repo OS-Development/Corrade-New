@@ -30,13 +30,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var movement = Client.Self.Movement;
-                    /*Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(
-                            KeyValue.Get(wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)),
-                        ref movement);*/
-                    movement.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(
+                    movement = movement.wasCSVToStructure(wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                     lock (Locks.ClientInstanceSelfLock)

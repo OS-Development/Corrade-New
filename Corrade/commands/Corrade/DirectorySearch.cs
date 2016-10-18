@@ -50,14 +50,7 @@ namespace Corrade
                     {
                         case Enumerations.Type.CLASSIFIED:
                             var searchClassified = new DirectoryManager.Classified();
-                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)),
-                                ref searchClassified);*/
-                            searchClassified.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
+                            searchClassified = searchClassified.wasCSVToStructure(wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
@@ -122,14 +115,7 @@ namespace Corrade
                             break;
                         case Enumerations.Type.EVENT:
                             var searchEvent = new DirectoryManager.EventsSearchData();
-                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)),
-                                ref searchEvent);*/
-                            searchEvent.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
+                            searchEvent = searchEvent.wasCSVToStructure(wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
@@ -211,14 +197,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
                             var searchGroup = new DirectoryManager.GroupSearchData();
-                            /* wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)),
-                                ref searchGroup);*/
-                            searchGroup.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
+                            searchGroup = searchGroup.wasCSVToStructure(wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
@@ -295,14 +274,7 @@ namespace Corrade
                             break;
                         case Enumerations.Type.LAND:
                             var searchLand = new DirectoryManager.DirectoryParcel();
-                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)),
-                                ref searchLand);*/
-                            searchLand.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
+                            searchLand = searchLand.wasCSVToStructure(wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
@@ -462,14 +434,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SEARCH_TEXT_PROVIDED);
                             }
                             var searchPlaces = new DirectoryManager.PlacesSearchData();
-                            /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)),
-                                ref searchPlaces);*/
-                            searchPlaces.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
+                            searchPlaces = searchPlaces.wasCSVToStructure(wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));

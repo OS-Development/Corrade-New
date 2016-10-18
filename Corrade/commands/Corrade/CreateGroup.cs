@@ -57,12 +57,7 @@ namespace Corrade
                     {
                         Name = target
                     };
-                    /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)),
-                        ref targetGroup);*/
-                    targetGroup.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                    targetGroup = targetGroup.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message)));
                     var succeeded = false;
                     var GroupCreatedReplyEvent = new ManualResetEvent(false);

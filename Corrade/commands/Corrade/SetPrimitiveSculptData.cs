@@ -81,8 +81,7 @@ namespace Corrade
                         }
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        primitive.Sculpt.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                        primitive.Sculpt = primitive.Sculpt.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {

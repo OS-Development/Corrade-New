@@ -39,7 +39,7 @@ namespace Corrade
                     {
                         range = corradeConfiguration.Range;
                     }
-                    var updatePrimitives = new HashSet<Primitive>();
+                    var updateObjects = new HashSet<Primitive>();
                     var LockObject = new object();
                     switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
@@ -48,12 +48,12 @@ namespace Corrade
                             .ToLowerInvariant()))
                     {
                         case Enumerations.Entity.RANGE:
-                            updatePrimitives = Services.GetObjects(Client, range);
+                            updateObjects = Services.GetObjects(Client, range);
                             break;
                         case Enumerations.Entity.WORLD:
                             var avatars =
                                 new HashSet<uint>(Services.GetAvatars(Client, range).Select(o => o.LocalID));
-                            updatePrimitives =
+                            updateObjects =
                                 new HashSet<Primitive>(
                                     Services.GetObjects(Client, range)
                                         .AsParallel()
@@ -78,7 +78,7 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                             }
-                            updatePrimitives = Services.GetObjects(Client, new[]
+                            updateObjects.UnionWith(Services.GetObjects(Client, new[]
                             {
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
                                 Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
@@ -86,7 +86,11 @@ namespace Corrade
                                     new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                 Vector3.Distance(Client.Self.SimPosition,
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                            }.Max());
+                            }.Max())
+                                .AsParallel()
+                                .Where(o => o.Position.X >= parcel.AABBMin.X && o.Position.X <= parcel.AABBMax.X &&
+                                            o.Position.Y >= parcel.AABBMin.Y &&
+                                            o.Position.Y <= parcel.AABBMax.Y));
                             break;
                         case Enumerations.Entity.REGION:
                             // Get all sim parcels
@@ -110,7 +114,7 @@ namespace Corrade
                                 }
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             }
-                            updatePrimitives = Services.GetObjects(Client,
+                            updateObjects.UnionWith(Services.GetObjects(Client,
                                 Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
@@ -119,7 +123,7 @@ namespace Corrade
                                         new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
                                     Vector3.Distance(Client.Self.SimPosition,
                                         new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                }.Max()).Max());
+                                }.Max()).Max()));
                             break;
                         case Enumerations.Entity.AVATAR:
                             UUID agentUUID;
@@ -151,30 +155,28 @@ namespace Corrade
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                             if (avatar == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.AVATAR_NOT_IN_RANGE);
-                            var objectsPrimitives =
-                                new HashSet<Primitive>(Services.GetObjects(Client, range));
+                            var objectsPrimitives = Services.GetObjects(Client, range)
+                                .ToDictionary(o => o.LocalID, o => o);
                             objectsPrimitives.AsParallel().ForAll(
                                 o =>
                                 {
-                                    switch (!o.ParentID.Equals(avatar.LocalID))
+                                    switch (!o.Value.ParentID.Equals(avatar.LocalID))
                                     {
                                         case true:
-                                            var primitiveParent =
-                                                objectsPrimitives.AsParallel()
-                                                    .FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
-                                            if (primitiveParent != null &&
+                                            Primitive primitiveParent = null;
+                                            if (objectsPrimitives.TryGetValue(o.Value.ParentID, out primitiveParent) &&
                                                 primitiveParent.ParentID.Equals(avatar.LocalID))
                                             {
                                                 lock (LockObject)
                                                 {
-                                                    updatePrimitives.Add(o);
+                                                    updateObjects.Add(o.Value);
                                                 }
                                             }
                                             break;
                                         default:
                                             lock (LockObject)
                                             {
-                                                updatePrimitives.Add(o);
+                                                updateObjects.Add(o.Value);
                                             }
                                             break;
                                     }
@@ -185,13 +187,13 @@ namespace Corrade
                     }
 
                     // allow partial results
-                    Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
+                    Services.UpdatePrimitives(Client, ref updateObjects, corradeConfiguration.DataTimeout);
 
                     var data = new List<string>();
                     var dataQuery = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
-                    updatePrimitives.AsParallel().ForAll(o =>
+                    updateObjects.AsParallel().ForAll(o =>
                     {
                         var primitiveData = o.GetStructuredData(dataQuery).ToList();
                         if (primitiveData.Any())

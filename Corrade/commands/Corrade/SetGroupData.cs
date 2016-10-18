@@ -122,9 +122,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    /*wasOpenMetaverse.Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout, data,
-                        ref targetGroup);*/
-                    targetGroup.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout, data);
+                    targetGroup = targetGroup.wasCSVToStructure(data);
                     lock (Locks.ClientInstanceGroupsLock)
                     {
                         Client.Groups.SetGroupAcceptNotices(groupUUID,

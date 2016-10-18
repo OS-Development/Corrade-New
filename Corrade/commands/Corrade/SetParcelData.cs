@@ -69,8 +69,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
                     }
-                    parcel.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                    parcel = parcel.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message)));
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {

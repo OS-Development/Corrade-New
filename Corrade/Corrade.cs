@@ -308,7 +308,10 @@ namespace Corrade
                     Version = CorradeHeartbeat.Version
                 }),
                 corradeConfiguration.MaximumNotificationThreads);
+        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
+        private static readonly Time.Timer CorradeHeartBeatLogTimer = new Time.Timer(o =>
+        {
             // Log heartbeat data.
             Feedback("Heartbeat",
                 string.Format("CPU: {0}% RAM: {1:0.}MiB Uptime: {2}d:{3}h:{4}m Commands: {5} Behaviours: {6}",
@@ -317,7 +320,7 @@ namespace Corrade
                     TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours,
                     TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes, CorradeHeartbeat.ProcessedCommands,
                     CorradeHeartbeat.ProcessedRLVBehaviours));
-        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        }, null, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -6448,6 +6451,10 @@ namespace Corrade
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(
                     Enumerations.ConsoleMessage.UPDATING_CORRADE_CONFIGURATION));
+
+            // Setup heartbeat log timer.
+            CorradeHeartBeatLogTimer.Change(TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval),
+                TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval));
 
             // Set the content type based on chosen output filers
             switch (configuration.OutputFilters.LastOrDefault())

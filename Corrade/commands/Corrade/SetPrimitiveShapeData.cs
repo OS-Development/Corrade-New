@@ -106,8 +106,7 @@ namespace Corrade
                                 break;
                         }
                         // ... and overwrite with manual data settings.
-                        constructionData.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                        constructionData = constructionData.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {

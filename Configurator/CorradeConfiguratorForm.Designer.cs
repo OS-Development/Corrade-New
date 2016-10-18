@@ -446,6 +446,10 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.groupBox77 = new System.Windows.Forms.GroupBox();
+            this.pictureBox69 = new System.Windows.Forms.PictureBox();
+            this.label21 = new System.Windows.Forms.Label();
+            this.LimitsHeartbeatLogInterval = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -670,6 +674,8 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
+            this.groupBox77.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -3984,6 +3990,7 @@
             // 
             // LimitsTabPage
             // 
+            this.LimitsTabPage.Controls.Add(this.groupBox77);
             this.LimitsTabPage.Controls.Add(this.groupBox86);
             this.LimitsTabPage.Controls.Add(this.groupBox82);
             this.LimitsTabPage.Controls.Add(this.groupBox76);
@@ -5387,6 +5394,46 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
+            // groupBox77
+            // 
+            this.groupBox77.Controls.Add(this.pictureBox69);
+            this.groupBox77.Controls.Add(this.label21);
+            this.groupBox77.Controls.Add(this.LimitsHeartbeatLogInterval);
+            this.groupBox77.Location = new System.Drawing.Point(488, 243);
+            this.groupBox77.Name = "groupBox77";
+            this.groupBox77.Size = new System.Drawing.Size(181, 55);
+            this.groupBox77.TabIndex = 17;
+            this.groupBox77.TabStop = false;
+            this.groupBox77.Text = "Heartbeat Log";
+            // 
+            // pictureBox69
+            // 
+            this.pictureBox69.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox69.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox69.Image")));
+            this.pictureBox69.Location = new System.Drawing.Point(155, 21);
+            this.pictureBox69.Name = "pictureBox69";
+            this.pictureBox69.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox69.TabIndex = 9;
+            this.pictureBox69.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox69, "The interval in milliseconds between posting\r\nheartbeat data to the Corrade log.");
+            // 
+            // label21
+            // 
+            this.label21.AutoSize = true;
+            this.label21.Location = new System.Drawing.Point(6, 24);
+            this.label21.Name = "label21";
+            this.label21.Size = new System.Drawing.Size(45, 16);
+            this.label21.TabIndex = 1;
+            this.label21.Text = "Interval";
+            // 
+            // LimitsHeartbeatLogInterval
+            // 
+            this.LimitsHeartbeatLogInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsHeartbeatLogInterval.Location = new System.Drawing.Point(62, 21);
+            this.LimitsHeartbeatLogInterval.Name = "LimitsHeartbeatLogInterval";
+            this.LimitsHeartbeatLogInterval.Size = new System.Drawing.Size(87, 20);
+            this.LimitsHeartbeatLogInterval.TabIndex = 0;
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -5710,6 +5757,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.groupBox77.ResumeLayout(false);
+            this.groupBox77.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6133,6 +6183,10 @@
         private System.Windows.Forms.ListBox StartLocations;
         private System.Windows.Forms.PictureBox StartLocationsDownArrowButton;
         private System.Windows.Forms.PictureBox StartLocationsUpArrowButton;
+        private System.Windows.Forms.GroupBox groupBox77;
+        private System.Windows.Forms.PictureBox pictureBox69;
+        private System.Windows.Forms.Label label21;
+        private System.Windows.Forms.TextBox LimitsHeartbeatLogInterval;
     }
 }
 

@@ -356,10 +356,7 @@ namespace wasOpenMetaverse
         /// <typeparam name="T">the type of the structure</typeparam>
         /// <param name="kvp">a CSV string</param>
         /// <param name="structure">the structure to set the fields and properties for</param>
-        /// <param name="Client">a grid client object</param>
-        /// <param name="millisecondsTimeout">a timeout in milliseconds</param>
-        public static void wasCSVToStructure<T>(this T structure, GridClient Client, uint millisecondsTimeout,
-            string kvp)
+        public static T wasCSVToStructure<T>(this T structure, string kvp)
         {
             CSV.ToKeyValue(kvp).AsParallel().ForAll(d =>
             {
@@ -393,6 +390,7 @@ namespace wasOpenMetaverse
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, parcelFlags);
                     return;
                 }
+
                 if (data is GroupPowers)
                 {
                     GroupPowers groupPowers;
@@ -702,6 +700,8 @@ namespace wasOpenMetaverse
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, d.Value);
                 }
             });
+
+            return structure;
         }
 
         ///////////////////////////////////////////////////////////////////////////

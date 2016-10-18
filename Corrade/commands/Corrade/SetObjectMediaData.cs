@@ -108,8 +108,7 @@ namespace Corrade
                                     }
                                 });
                         }
-                        faceMediaEntries[face].wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                        faceMediaEntries[face] = faceMediaEntries[face].wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {

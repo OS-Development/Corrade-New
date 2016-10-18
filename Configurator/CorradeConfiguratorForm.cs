@@ -215,6 +215,7 @@ namespace Configurator
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
             mainForm.LimitsFeedsUpdate.Text = corradeConfiguration.FeedsUpdateInterval.ToString();
             mainForm.LimitsLogoutTimeout.Text = corradeConfiguration.LogoutGrace.ToString();
+            mainForm.LimitsHeartbeatLogInterval.Text = corradeConfiguration.HeartbeatLogInterval.ToString();
 
             // masters
             mainForm.Masters.Items.Clear();
@@ -650,6 +651,10 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, out outUint))
             {
                 corradeConfiguration.LogoutGrace = outUint;
+            }
+            if(uint.TryParse(mainForm.LimitsHeartbeatLogInterval.Text, out outUint))
+            {
+                corradeConfiguration.HeartbeatLogInterval = outUint;
             }
 
             // Hash the group passwords using SHA1

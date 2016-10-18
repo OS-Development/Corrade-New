@@ -189,6 +189,7 @@ namespace CorradeConfiguration
         private int _exitCodeAbnormal = -2;
         private int _exitCodeExpected = -1;
         private uint _feedsUpdateInterval = 60000;
+        private uint _heartbeatLogInterval = 3600000;
         private string _firstName = string.Empty;
         private uint _groupCreateFee = 100;
         private HashSet<Group> _groups = new HashSet<Group>();
@@ -299,6 +300,24 @@ namespace CorradeConfiguration
                 lock (ClientInstanceConfigurationLock)
                 {
                     _cacheAutoPruneinterval = value;
+                }
+            }
+        }
+
+        public uint HeartbeatLogInterval
+        {
+            get
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    return _heartbeatLogInterval;
+                }
+            }
+            set
+            {
+                lock (ClientInstanceConfigurationLock)
+                {
+                    _heartbeatLogInterval = value;
                 }
             }
         }

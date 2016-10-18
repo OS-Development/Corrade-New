@@ -99,9 +99,7 @@ namespace Corrade
                                                 primitive.Textures.FaceTextures[i] =
                                                     primitive.Textures.CreateFace((uint) i);
                                             }
-                                            primitive.Textures.FaceTextures[i].wasCSVToStructure(Client,
-                                                corradeConfiguration.ServicesTimeout,
-                                                wasInput(
+                                            primitive.Textures.FaceTextures[i] = primitive.Textures.FaceTextures[i].wasCSVToStructure(wasInput(
                                                     KeyValue.Get(
                                                         wasOutput(
                                                             Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
@@ -109,9 +107,7 @@ namespace Corrade
                                         } while (--i > -1);
                                         break;
                                     case "default":
-                                        primitive.Textures.DefaultTexture.wasCSVToStructure(Client,
-                                            corradeConfiguration.ServicesTimeout,
-                                            wasInput(
+                                        primitive.Textures.DefaultTexture = primitive.Textures.DefaultTexture.wasCSVToStructure(wasInput(
                                                 KeyValue.Get(
                                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                     corradeCommandParameters.Message)));
@@ -128,9 +124,7 @@ namespace Corrade
                                 {
                                     primitive.Textures.FaceTextures[i] = primitive.Textures.CreateFace((uint) i);
                                 }
-                                primitive.Textures.FaceTextures[i].wasCSVToStructure(Client,
-                                    corradeConfiguration.ServicesTimeout,
-                                    wasInput(
+                                primitive.Textures.FaceTextures[i] = primitive.Textures.FaceTextures[i].wasCSVToStructure(wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message)));

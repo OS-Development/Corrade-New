@@ -66,7 +66,7 @@ namespace Corrade
                     var fields =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
-                    properties.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout, fields);
+                    properties = properties.wasCSVToStructure(fields);
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         if (Encoding.UTF8.GetByteCount(properties.AboutText) >
@@ -80,7 +80,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.FIRST_LIFE_TEXT_TOO_LARGE);
                         }
                     }
-                    interests.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout, fields);
+                    interests = interests.wasCSVToStructure(fields);
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.UpdateProfile(properties);

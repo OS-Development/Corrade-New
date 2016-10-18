@@ -30,13 +30,7 @@ namespace Corrade
                         }
                         lock (ConfigurationFileLock)
                         {
-                            /*Reflection.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)), ref corradeConfiguration);*/
-                            corradeConfiguration.wasCSVToStructure(Client, corradeConfiguration.ServicesTimeout,
-                                wasInput(
+                            corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
