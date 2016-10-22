@@ -207,11 +207,12 @@ namespace Corrade
         private static readonly object GroupNoticeLock = new object();
         private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
         private static readonly object TeleportLureLock = new object();
+
         // permission requests can be identical
         private static readonly List<ScriptPermissionRequest> ScriptPermissionRequests =
             new List<ScriptPermissionRequest>();
-
         private static readonly object ScriptPermissionRequestLock = new object();
+
         // script dialogs can be identical
         private static readonly List<ScriptDialog> ScriptDialogs = new List<ScriptDialog>();
         private static readonly object ScriptDialogLock = new object();
@@ -3241,36 +3242,6 @@ namespace Corrade
             // Now log-out.
             Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_OUT));
 
-            // Reject any inventory that has not been accepted.
-            lock (InventoryOffersLock)
-            {
-                InventoryOffers.AsParallel().ForAll(o =>
-                {
-                    o.Args.Accept = false;
-                    o.Event.Set();
-                });
-            }
-
-            // Perform the logout now.
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                if (Client.Network.Connected)
-                {
-                    // Full speed ahead; do not even attempt to grab a lock.
-                    var LoggedOutEvent = new ManualResetEvent(false);
-                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
-                    Client.Network.LoggedOut += LoggedOutEventHandler;
-                    Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
-                    {
-                        Client.Network.LoggedOut -= LoggedOutEventHandler;
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
-                    }
-                    Client.Network.LoggedOut -= LoggedOutEventHandler;
-                }
-            }
-
             // Disable the configuration watcher.
             try
             {
@@ -3330,6 +3301,36 @@ namespace Corrade
             catch (Exception)
             {
                 /* We are going down and we do not care. */
+            }
+
+            // Reject any inventory that has not been accepted.
+            lock (InventoryOffersLock)
+            {
+                InventoryOffers.AsParallel().ForAll(o =>
+                {
+                    o.Args.Accept = false;
+                    o.Event.Set();
+                });
+            }
+
+            // Perform the logout now.
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                if (Client.Network.Connected)
+                {
+                    // Full speed ahead; do not even attempt to grab a lock.
+                    var LoggedOutEvent = new ManualResetEvent(false);
+                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
+                    Client.Network.LoggedOut += LoggedOutEventHandler;
+                    Client.Network.BeginLogout();
+                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, false))
+                    {
+                        Client.Network.LoggedOut -= LoggedOutEventHandler;
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
+                    }
+                    Client.Network.LoggedOut -= LoggedOutEventHandler;
+                }
             }
 
             // Uninstall all installed handlers
@@ -4918,21 +4919,21 @@ namespace Corrade
         private static void HandleInventoryObjectAdded(object sender, InventoryObjectAddedEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Configuration.Notifications.Inventory, e),
+                () => SendNotification(Configuration.Notifications.Store, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleInventoryObjectRemoved(object sender, InventoryObjectRemovedEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Configuration.Notifications.Inventory, e),
+                () => SendNotification(Configuration.Notifications.Store, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleInventoryObjectUpdated(object sender, InventoryObjectUpdatedEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Configuration.Notifications.Inventory, e),
+                () => SendNotification(Configuration.Notifications.Store, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -5383,28 +5384,6 @@ namespace Corrade
                                         ] as
                                         InventoryFolder;
                             }
-
-                            if (Client.Inventory.Store != null)
-                            {
-                                // Bind to the inventory store notifications if enabled.
-                                switch (
-                                    corradeConfiguration.Groups.AsParallel()
-                                        .Any(
-                                            o => o.NotificationMask.IsMaskFlagSet(Configuration.Notifications.Inventory))
-                                    )
-                                {
-                                    case true:
-                                        Client.Inventory.Store.InventoryObjectAdded += HandleInventoryObjectAdded;
-                                        Client.Inventory.Store.InventoryObjectRemoved += HandleInventoryObjectRemoved;
-                                        Client.Inventory.Store.InventoryObjectUpdated += HandleInventoryObjectUpdated;
-                                        break;
-                                    default:
-                                        Client.Inventory.Store.InventoryObjectAdded -= HandleInventoryObjectAdded;
-                                        Client.Inventory.Store.InventoryObjectRemoved -= HandleInventoryObjectRemoved;
-                                        Client.Inventory.Store.InventoryObjectUpdated -= HandleInventoryObjectUpdated;
-                                        break;
-                                }
-                            }
                         }
                         catch (Exception)
                         {
@@ -5414,6 +5393,28 @@ namespace Corrade
                         }
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
+
+                        // Bind to the inventory store notifications if enabled.
+                        if (Client.Inventory.Store != null)
+                        {
+                            switch (
+                                corradeConfiguration.Groups.AsParallel()
+                                    .Any(
+                                        o => o.NotificationMask.IsMaskFlagSet(Configuration.Notifications.Store))
+                                )
+                            {
+                                case true:
+                                    Client.Inventory.Store.InventoryObjectAdded += HandleInventoryObjectAdded;
+                                    Client.Inventory.Store.InventoryObjectRemoved += HandleInventoryObjectRemoved;
+                                    Client.Inventory.Store.InventoryObjectUpdated += HandleInventoryObjectUpdated;
+                                    break;
+                                default:
+                                    Client.Inventory.Store.InventoryObjectAdded -= HandleInventoryObjectAdded;
+                                    Client.Inventory.Store.InventoryObjectRemoved -= HandleInventoryObjectRemoved;
+                                    Client.Inventory.Store.InventoryObjectUpdated -= HandleInventoryObjectUpdated;
+                                    break;
+                            }
+                        }
                     })
                     {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set current group to land group.
@@ -6906,7 +6907,7 @@ namespace Corrade
                                 break;
                         }
                         break;
-                    case Configuration.Notifications.Inventory:
+                    case Configuration.Notifications.Store:
                         if (Client.Inventory.Store != null)
                         {
                             switch (enabled)

@@ -37,6 +37,7 @@ namespace Corrade
             [RLVBehaviour("getattach")] [Reflection.NameAttribute("getattach")] GETATTACH,
             [RLVBehaviour("remattach")] [Reflection.NameAttribute("remattach")] REMATTACH,
             [RLVBehaviour("detach")] [Reflection.NameAttribute("detach")] DETACH,
+            [RLVBehaviour("detachall")] [Reflection.NameAttribute("detachall")] DETACHALL,
             [RLVBehaviour("detachme")] [Reflection.NameAttribute("detachme")] DETACHME,
             [RLVBehaviour("remoutfit")] [Reflection.NameAttribute("remoutfit")] REMOUTFIT,
             [RLVBehaviour("attach")] [Reflection.NameAttribute("attach")] ATTACH,

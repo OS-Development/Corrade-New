@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Corrade.Events;
 using CorradeConfiguration;
@@ -43,7 +44,8 @@ namespace Corrade
                             case true:
                                 var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
                                     o =>
-                                        Strings.StringEquals(rule.Option, o.Name, StringComparison.InvariantCultureIgnoreCase));
+                                        Strings.StringEquals(rule.Option, o.Name,
+                                            StringComparison.InvariantCultureIgnoreCase));
                                 switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                                 {
                                     case true: // detach by attachment point
@@ -138,16 +140,19 @@ namespace Corrade
                                                     if (inventoryItem is InventoryAttachment ||
                                                         inventoryItem is InventoryObject)
                                                     {
-                                                        var slot = attachments
+                                                        var attachment = attachments
                                                             .ToArray()
                                                             .AsParallel()
-                                                            .Where(
+                                                            .FirstOrDefault(
                                                                 p =>
                                                                     p.Key.Properties.ItemID.Equals(
-                                                                        inventoryItem.UUID))
-                                                            .Select(p => p.Value.ToString())
-                                                            .FirstOrDefault() ??
-                                                                   AttachmentPoint.Default.ToString();
+                                                                        o.UUID));
+                                                        // Item not attached.
+                                                        if (
+                                                            attachment.Equals(
+                                                                default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                                            return;
+                                                        var slot = attachment.Value.ToString();
                                                         CorradeThreadPool[
                                                             Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                                 () => SendNotification(
@@ -187,15 +192,17 @@ namespace Corrade
                                     .ForAll(
                                         o =>
                                         {
-                                            var slot = attachments
+                                            var attachment = attachments
                                                 .ToArray()
                                                 .AsParallel()
-                                                .Where(
+                                                .FirstOrDefault(
                                                     p =>
                                                         p.Key.Properties.ItemID.Equals(
-                                                            o.UUID))
-                                                .Select(p => p.Value.ToString())
-                                                .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
+                                                            o.UUID));
+                                            // Item not attached.
+                                            if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                                return;
+                                            var slot = attachment.Value.ToString();
                                             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
                                                     Configuration.Notifications.OutfitChanged,

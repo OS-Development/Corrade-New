@@ -787,7 +787,7 @@ namespace wasOpenMetaverse
 
             // Radegast does this with 6 threads, any reason?
             inventoryFolders.AsParallel()
-                .ForAll(o => { directUpdateInventoryRecursive(Client, o, millisecondsTimeout); });
+                .ForAll(o => { directUpdateInventoryRecursive(Client, o, millisecondsTimeout, force); });
         }
 
         ///////////////////////////////////////////////////////////////////////////

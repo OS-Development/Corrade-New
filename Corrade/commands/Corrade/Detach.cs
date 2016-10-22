@@ -54,8 +54,8 @@ namespace Corrade
 
                     // build a look-up table for the attachment points
                     var attachmentPoints =
-                        new Dictionary<string, AttachmentPoint>(typeof (AttachmentPoint).GetFields(BindingFlags.Public |
-                                                                                                   BindingFlags.Static)
+                        new Dictionary<string, AttachmentPoint>(typeof(AttachmentPoint).GetFields(BindingFlags.Public |
+                                                                                                  BindingFlags.Static)
                             .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint) o.GetValue(null)));
 
                     // stop non default animations if requested
@@ -129,14 +129,17 @@ namespace Corrade
 
                             if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                             {
-                                var slot = attached
+                                var attachment = attached
+                                    .ToArray()
                                     .AsParallel()
-                                    .Where(
+                                    .FirstOrDefault(
                                         p =>
                                             p.Key.Properties.ItemID.Equals(
-                                                inventoryItem.UUID))
-                                    .Select(p => p.Value.ToString())
-                                    .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
+                                                inventoryItem.UUID));
+                                // Item not attached.
+                                if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                    return;
+                                var slot = attachment.Value.ToString();
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                     () => SendNotification(
                                         Configuration.Notifications.OutfitChanged,

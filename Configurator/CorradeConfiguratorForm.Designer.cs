@@ -312,6 +312,10 @@
             this.pictureBox27 = new System.Windows.Forms.PictureBox();
             this.NetworkBindAddress = new System.Windows.Forms.TextBox();
             this.LimitsTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox77 = new System.Windows.Forms.GroupBox();
+            this.pictureBox69 = new System.Windows.Forms.PictureBox();
+            this.label21 = new System.Windows.Forms.Label();
+            this.LimitsHeartbeatLogInterval = new System.Windows.Forms.TextBox();
             this.groupBox86 = new System.Windows.Forms.GroupBox();
             this.pictureBox93 = new System.Windows.Forms.PictureBox();
             this.label32 = new System.Windows.Forms.Label();
@@ -446,10 +450,10 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.groupBox77 = new System.Windows.Forms.GroupBox();
-            this.pictureBox69 = new System.Windows.Forms.PictureBox();
-            this.label21 = new System.Windows.Forms.Label();
-            this.LimitsHeartbeatLogInterval = new System.Windows.Forms.TextBox();
+            this.AllNotificationsButton = new System.Windows.Forms.PictureBox();
+            this.NoneNotificationsButton = new System.Windows.Forms.PictureBox();
+            this.NonePermissionsButton = new System.Windows.Forms.PictureBox();
+            this.AllPermissionsButton = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -613,6 +617,8 @@
             this.groupBox44.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox27)).BeginInit();
             this.LimitsTabPage.SuspendLayout();
+            this.groupBox77.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).BeginInit();
             this.groupBox86.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).BeginInit();
             this.groupBox82.SuspendLayout();
@@ -674,8 +680,10 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.groupBox77.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllNotificationsButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.NoneNotificationsButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.NonePermissionsButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllPermissionsButton)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -1603,6 +1611,8 @@
             // 
             // groupBox27
             // 
+            this.groupBox27.Controls.Add(this.NoneNotificationsButton);
+            this.groupBox27.Controls.Add(this.AllNotificationsButton);
             this.groupBox27.Controls.Add(this.pictureBox81);
             this.groupBox27.Controls.Add(this.GroupNotifications);
             this.groupBox27.Location = new System.Drawing.Point(340, 126);
@@ -1616,7 +1626,7 @@
             // 
             this.pictureBox81.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox81.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox81.Image")));
-            this.pictureBox81.Location = new System.Drawing.Point(100, 193);
+            this.pictureBox81.Location = new System.Drawing.Point(100, 196);
             this.pictureBox81.Name = "pictureBox81";
             this.pictureBox81.Size = new System.Drawing.Size(20, 20);
             this.pictureBox81.TabIndex = 11;
@@ -1668,7 +1678,8 @@
             "preload",
             "teleport",
             "heartbeat",
-            "login"});
+            "login",
+            "store"});
             this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
             this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
@@ -1677,11 +1688,13 @@
             // 
             // groupBox26
             // 
+            this.groupBox26.Controls.Add(this.NonePermissionsButton);
+            this.groupBox26.Controls.Add(this.AllPermissionsButton);
             this.groupBox26.Controls.Add(this.pictureBox80);
             this.groupBox26.Controls.Add(this.GroupPermissions);
             this.groupBox26.Location = new System.Drawing.Point(200, 126);
             this.groupBox26.Name = "groupBox26";
-            this.groupBox26.Size = new System.Drawing.Size(134, 223);
+            this.groupBox26.Size = new System.Drawing.Size(134, 225);
             this.groupBox26.TabIndex = 7;
             this.groupBox26.TabStop = false;
             this.groupBox26.Text = "Group Permissions";
@@ -1690,7 +1703,7 @@
             // 
             this.pictureBox80.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox80.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox80.Image")));
-            this.pictureBox80.Location = new System.Drawing.Point(106, 193);
+            this.pictureBox80.Location = new System.Drawing.Point(106, 196);
             this.pictureBox80.Name = "pictureBox80";
             this.pictureBox80.Size = new System.Drawing.Size(20, 20);
             this.pictureBox80.TabIndex = 11;
@@ -4015,6 +4028,46 @@
             this.LimitsTabPage.Text = "Limits";
             this.LimitsTabPage.UseVisualStyleBackColor = true;
             // 
+            // groupBox77
+            // 
+            this.groupBox77.Controls.Add(this.pictureBox69);
+            this.groupBox77.Controls.Add(this.label21);
+            this.groupBox77.Controls.Add(this.LimitsHeartbeatLogInterval);
+            this.groupBox77.Location = new System.Drawing.Point(488, 243);
+            this.groupBox77.Name = "groupBox77";
+            this.groupBox77.Size = new System.Drawing.Size(181, 55);
+            this.groupBox77.TabIndex = 17;
+            this.groupBox77.TabStop = false;
+            this.groupBox77.Text = "Heartbeat Log";
+            // 
+            // pictureBox69
+            // 
+            this.pictureBox69.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox69.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox69.Image")));
+            this.pictureBox69.Location = new System.Drawing.Point(155, 21);
+            this.pictureBox69.Name = "pictureBox69";
+            this.pictureBox69.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox69.TabIndex = 9;
+            this.pictureBox69.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox69, "The interval in milliseconds between posting\r\nheartbeat data to the Corrade log.");
+            // 
+            // label21
+            // 
+            this.label21.AutoSize = true;
+            this.label21.Location = new System.Drawing.Point(6, 24);
+            this.label21.Name = "label21";
+            this.label21.Size = new System.Drawing.Size(45, 16);
+            this.label21.TabIndex = 1;
+            this.label21.Text = "Interval";
+            // 
+            // LimitsHeartbeatLogInterval
+            // 
+            this.LimitsHeartbeatLogInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsHeartbeatLogInterval.Location = new System.Drawing.Point(62, 21);
+            this.LimitsHeartbeatLogInterval.Name = "LimitsHeartbeatLogInterval";
+            this.LimitsHeartbeatLogInterval.Size = new System.Drawing.Size(87, 20);
+            this.LimitsHeartbeatLogInterval.TabIndex = 0;
+            // 
             // groupBox86
             // 
             this.groupBox86.Controls.Add(this.pictureBox93);
@@ -5394,45 +5447,57 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // groupBox77
+            // AllNotificationsButton
             // 
-            this.groupBox77.Controls.Add(this.pictureBox69);
-            this.groupBox77.Controls.Add(this.label21);
-            this.groupBox77.Controls.Add(this.LimitsHeartbeatLogInterval);
-            this.groupBox77.Location = new System.Drawing.Point(488, 243);
-            this.groupBox77.Name = "groupBox77";
-            this.groupBox77.Size = new System.Drawing.Size(181, 55);
-            this.groupBox77.TabIndex = 17;
-            this.groupBox77.TabStop = false;
-            this.groupBox77.Text = "Heartbeat Log";
+            this.AllNotificationsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.AllNotificationsButton.Image = ((System.Drawing.Image)(resources.GetObject("AllNotificationsButton.Image")));
+            this.AllNotificationsButton.Location = new System.Drawing.Point(6, 196);
+            this.AllNotificationsButton.Name = "AllNotificationsButton";
+            this.AllNotificationsButton.Size = new System.Drawing.Size(20, 20);
+            this.AllNotificationsButton.TabIndex = 16;
+            this.AllNotificationsButton.TabStop = false;
+            this.AllNotificationsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsRequested);
+            this.AllNotificationsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsMouseDown);
+            this.AllNotificationsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsMouseUp);
             // 
-            // pictureBox69
+            // NoneNotificationsButton
             // 
-            this.pictureBox69.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox69.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox69.Image")));
-            this.pictureBox69.Location = new System.Drawing.Point(155, 21);
-            this.pictureBox69.Name = "pictureBox69";
-            this.pictureBox69.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox69.TabIndex = 9;
-            this.pictureBox69.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox69, "The interval in milliseconds between posting\r\nheartbeat data to the Corrade log.");
+            this.NoneNotificationsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.NoneNotificationsButton.Image = ((System.Drawing.Image)(resources.GetObject("NoneNotificationsButton.Image")));
+            this.NoneNotificationsButton.Location = new System.Drawing.Point(32, 196);
+            this.NoneNotificationsButton.Name = "NoneNotificationsButton";
+            this.NoneNotificationsButton.Size = new System.Drawing.Size(20, 20);
+            this.NoneNotificationsButton.TabIndex = 17;
+            this.NoneNotificationsButton.TabStop = false;
+            this.NoneNotificationsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsRequested);
+            this.NoneNotificationsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsMouseDown);
+            this.NoneNotificationsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsMouseUp);
             // 
-            // label21
+            // NonePermissionsButton
             // 
-            this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(6, 24);
-            this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(45, 16);
-            this.label21.TabIndex = 1;
-            this.label21.Text = "Interval";
+            this.NonePermissionsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.NonePermissionsButton.Image = ((System.Drawing.Image)(resources.GetObject("NonePermissionsButton.Image")));
+            this.NonePermissionsButton.Location = new System.Drawing.Point(32, 196);
+            this.NonePermissionsButton.Name = "NonePermissionsButton";
+            this.NonePermissionsButton.Size = new System.Drawing.Size(20, 20);
+            this.NonePermissionsButton.TabIndex = 19;
+            this.NonePermissionsButton.TabStop = false;
+            this.NonePermissionsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsRequested);
+            this.NonePermissionsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsMouseDown);
+            this.NonePermissionsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsMouseUp);
             // 
-            // LimitsHeartbeatLogInterval
+            // AllPermissionsButton
             // 
-            this.LimitsHeartbeatLogInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsHeartbeatLogInterval.Location = new System.Drawing.Point(62, 21);
-            this.LimitsHeartbeatLogInterval.Name = "LimitsHeartbeatLogInterval";
-            this.LimitsHeartbeatLogInterval.Size = new System.Drawing.Size(87, 20);
-            this.LimitsHeartbeatLogInterval.TabIndex = 0;
+            this.AllPermissionsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.AllPermissionsButton.Image = ((System.Drawing.Image)(resources.GetObject("AllPermissionsButton.Image")));
+            this.AllPermissionsButton.Location = new System.Drawing.Point(6, 196);
+            this.AllPermissionsButton.Name = "AllPermissionsButton";
+            this.AllPermissionsButton.Size = new System.Drawing.Size(20, 20);
+            this.AllPermissionsButton.TabIndex = 18;
+            this.AllPermissionsButton.TabStop = false;
+            this.AllPermissionsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsRequested);
+            this.AllPermissionsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsMouseDown);
+            this.AllPermissionsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsMouseUp);
             // 
             // CorradeConfiguratorForm
             // 
@@ -5670,6 +5735,9 @@
             this.groupBox44.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox27)).EndInit();
             this.LimitsTabPage.ResumeLayout(false);
+            this.groupBox77.ResumeLayout(false);
+            this.groupBox77.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).EndInit();
             this.groupBox86.ResumeLayout(false);
             this.groupBox86.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox93)).EndInit();
@@ -5757,9 +5825,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox77.ResumeLayout(false);
-            this.groupBox77.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox69)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllNotificationsButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.NoneNotificationsButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.NonePermissionsButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllPermissionsButton)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6187,6 +6256,10 @@
         private System.Windows.Forms.PictureBox pictureBox69;
         private System.Windows.Forms.Label label21;
         private System.Windows.Forms.TextBox LimitsHeartbeatLogInterval;
+        private System.Windows.Forms.PictureBox NoneNotificationsButton;
+        private System.Windows.Forms.PictureBox AllNotificationsButton;
+        private System.Windows.Forms.PictureBox NonePermissionsButton;
+        private System.Windows.Forms.PictureBox AllPermissionsButton;
     }
 }
 

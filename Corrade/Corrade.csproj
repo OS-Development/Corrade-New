@@ -239,10 +239,16 @@
     <Compile Include="commands\Corrade\Shoot.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\RLV\DetachAll.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Heartbeat.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="notifications\Login.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Store.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="notifications\Teleport.cs">
@@ -1685,6 +1691,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\login.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="templates\notifications\store.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\teleport.xml">

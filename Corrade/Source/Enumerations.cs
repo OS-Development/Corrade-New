@@ -659,7 +659,8 @@ namespace Corrade
             [Command.StatusAttribute(09703)] [Reflection.DescriptionAttribute("group not configured")] GROUP_NOT_CONFIGURED,
             [Command.StatusAttribute(31868)] [Reflection.DescriptionAttribute("no database path provided")] NO_DATABASE_PATH_PROVIDED,
             [Command.StatusAttribute(13030)] [Reflection.DescriptionAttribute("no chatlog path provided")] NO_CHATLOG_PATH_PROVIDED,
-            [Command.StatusAttribute(42140)] [Reflection.DescriptionAttribute("group already configured")] GROUP_ALREADY_CONFIGURED
+            [Command.StatusAttribute(42140)] [Reflection.DescriptionAttribute("group already configured")] GROUP_ALREADY_CONFIGURED,
+            [Command.StatusAttribute(15517)] [Reflection.DescriptionAttribute("eject needs demote")] EJECT_NEEDS_DEMOTE
         }
 
 

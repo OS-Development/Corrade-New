@@ -141,14 +141,10 @@ namespace Corrade
                                                     attachments.AsParallel()
                                                         .FirstOrDefault(
                                                             p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID));
-                                                if (!a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                                                {
-                                                    slot = a.Value.ToString();
-                                                }
-                                                else
-                                                {
-                                                    slot = AttachmentPoint.Default.ToString();
-                                                }
+                                                // Item not attached.
+                                                if (a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                                    break;
+                                                slot = a.Value.ToString();
                                             }
                                             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
@@ -221,14 +217,10 @@ namespace Corrade
                                 attachments.AsParallel()
                                     .FirstOrDefault(
                                         p => p.Key.Properties.ItemID.Equals(o.UUID));
-                            if (!a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                            {
-                                slot = a.Value.ToString();
-                            }
-                            else
-                            {
-                                slot = AttachmentPoint.Default.ToString();
-                            }
+                            if (a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                return;
+
+                            slot = a.Value.ToString();
                         }
                         CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(

@@ -114,10 +114,14 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Configurator.ico" />
+    <EmbeddedResource Include="img\all-state.png" />
+    <EmbeddedResource Include="img\all.png" />
     <Content Include="img\banner.png" />
     <Content Include="img\Configurator.ico" />
     <EmbeddedResource Include="img\down-state.png" />
     <EmbeddedResource Include="img\down.png" />
+    <EmbeddedResource Include="img\none-state.png" />
+    <EmbeddedResource Include="img\none.png" />
     <Content Include="img\questionmark.png" />
     <EmbeddedResource Include="img\up-state.png" />
     <EmbeddedResource Include="img\up.png" />

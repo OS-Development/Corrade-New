@@ -119,7 +119,8 @@ namespace CorradeConfiguration
             [XmlEnum(Name = "preload")] [Reflection.NameAttribute("preload")] Preload = 34359738368ul,
             [XmlEnum(Name = "teleport")] [Reflection.NameAttribute("teleport")] Teleport = 68719476736ul,
             [XmlEnum(Name = "heartbeat")] [Reflection.NameAttribute("heartbeat")] Heartbeat = 137438953472ul,
-            [XmlEnum(Name = "login")] [Reflection.NameAttribute("login")] Login = 274877906944ul
+            [XmlEnum(Name = "login")] [Reflection.NameAttribute("login")] Login = 274877906944ul,
+            [XmlEnum(Name = "store")] [Reflection.NameAttribute("store")] Store = 549755813888ul
         }
 
         /// <summary>
