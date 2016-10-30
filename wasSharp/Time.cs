@@ -121,6 +121,11 @@ namespace wasSharp
                 Delay.ContinueWith(t => tick(), TokenSource.Token);
             }
 
+            public void Stop()
+            {
+                Change(0, 0);
+            }
+
             private void Cancel()
             {
                 if (TokenSource == null) return;

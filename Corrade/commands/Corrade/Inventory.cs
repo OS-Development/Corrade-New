@@ -78,7 +78,7 @@ namespace Corrade
                                                 DirItem.FromInventoryBase(Client, o,
                                                     corradeConfiguration.ServicesTimeout)));
                                     }
-                                    foreach (var dirItem in dirItems)
+                                    foreach (var dirItem in dirItems.OrderByDescending(o => o.Time))
                                     {
                                         csv.AddRange(new[]
                                         {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});

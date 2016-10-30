@@ -108,9 +108,13 @@
             this.pictureBox78 = new System.Windows.Forms.PictureBox();
             this.GroupDatabaseFile = new System.Windows.Forms.TextBox();
             this.groupBox27 = new System.Windows.Forms.GroupBox();
+            this.NoneNotificationsButton = new System.Windows.Forms.PictureBox();
+            this.AllNotificationsButton = new System.Windows.Forms.PictureBox();
             this.pictureBox81 = new System.Windows.Forms.PictureBox();
             this.GroupNotifications = new System.Windows.Forms.CheckedListBox();
             this.groupBox26 = new System.Windows.Forms.GroupBox();
+            this.NonePermissionsButton = new System.Windows.Forms.PictureBox();
+            this.AllPermissionsButton = new System.Windows.Forms.PictureBox();
             this.pictureBox80 = new System.Windows.Forms.PictureBox();
             this.GroupPermissions = new System.Windows.Forms.CheckedListBox();
             this.WorkersBox = new System.Windows.Forms.GroupBox();
@@ -450,10 +454,6 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.AllNotificationsButton = new System.Windows.Forms.PictureBox();
-            this.NoneNotificationsButton = new System.Windows.Forms.PictureBox();
-            this.NonePermissionsButton = new System.Windows.Forms.PictureBox();
-            this.AllPermissionsButton = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -504,8 +504,12 @@
             this.DatabaseBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox78)).BeginInit();
             this.groupBox27.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NoneNotificationsButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllNotificationsButton)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox81)).BeginInit();
             this.groupBox26.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NonePermissionsButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllPermissionsButton)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox80)).BeginInit();
             this.WorkersBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox76)).BeginInit();
@@ -680,10 +684,6 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.AllNotificationsButton)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.NoneNotificationsButton)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.NonePermissionsButton)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.AllPermissionsButton)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -718,7 +718,6 @@
             this.Tabs.SelectedIndex = 0;
             this.Tabs.Size = new System.Drawing.Size(680, 392);
             this.Tabs.TabIndex = 1;
-            this.Tabs.MouseClick += new System.Windows.Forms.MouseEventHandler(this.TabsClicked);
             // 
             // ClientTabPage
             // 
@@ -740,7 +739,6 @@
             this.ClientTabPage.TabIndex = 0;
             this.ClientTabPage.Text = "Client";
             this.ClientTabPage.UseVisualStyleBackColor = true;
-            this.ClientTabPage.MouseClick += new System.Windows.Forms.MouseEventHandler(this.ClientTabPageClicked);
             // 
             // AutoPruneCacheBox
             // 
@@ -1284,7 +1282,6 @@
             this.MastersTabPage.TabIndex = 10;
             this.MastersTabPage.Text = "Masters";
             this.MastersTabPage.UseVisualStyleBackColor = true;
-            this.MastersTabPage.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MastersTabPageClicked);
             // 
             // MasterPasswordBox
             // 
@@ -1622,6 +1619,32 @@
             this.groupBox27.TabStop = false;
             this.groupBox27.Text = "Group Notifications";
             // 
+            // NoneNotificationsButton
+            // 
+            this.NoneNotificationsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.NoneNotificationsButton.Image = ((System.Drawing.Image)(resources.GetObject("NoneNotificationsButton.Image")));
+            this.NoneNotificationsButton.Location = new System.Drawing.Point(32, 196);
+            this.NoneNotificationsButton.Name = "NoneNotificationsButton";
+            this.NoneNotificationsButton.Size = new System.Drawing.Size(20, 20);
+            this.NoneNotificationsButton.TabIndex = 17;
+            this.NoneNotificationsButton.TabStop = false;
+            this.NoneNotificationsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsRequested);
+            this.NoneNotificationsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsMouseDown);
+            this.NoneNotificationsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsMouseUp);
+            // 
+            // AllNotificationsButton
+            // 
+            this.AllNotificationsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.AllNotificationsButton.Image = ((System.Drawing.Image)(resources.GetObject("AllNotificationsButton.Image")));
+            this.AllNotificationsButton.Location = new System.Drawing.Point(6, 196);
+            this.AllNotificationsButton.Name = "AllNotificationsButton";
+            this.AllNotificationsButton.Size = new System.Drawing.Size(20, 20);
+            this.AllNotificationsButton.TabIndex = 16;
+            this.AllNotificationsButton.TabStop = false;
+            this.AllNotificationsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsRequested);
+            this.AllNotificationsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsMouseDown);
+            this.AllNotificationsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsMouseUp);
+            // 
             // pictureBox81
             // 
             this.pictureBox81.Cursor = System.Windows.Forms.Cursors.Help;
@@ -1698,6 +1721,32 @@
             this.groupBox26.TabIndex = 7;
             this.groupBox26.TabStop = false;
             this.groupBox26.Text = "Group Permissions";
+            // 
+            // NonePermissionsButton
+            // 
+            this.NonePermissionsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.NonePermissionsButton.Image = ((System.Drawing.Image)(resources.GetObject("NonePermissionsButton.Image")));
+            this.NonePermissionsButton.Location = new System.Drawing.Point(32, 196);
+            this.NonePermissionsButton.Name = "NonePermissionsButton";
+            this.NonePermissionsButton.Size = new System.Drawing.Size(20, 20);
+            this.NonePermissionsButton.TabIndex = 19;
+            this.NonePermissionsButton.TabStop = false;
+            this.NonePermissionsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsRequested);
+            this.NonePermissionsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsMouseDown);
+            this.NonePermissionsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsMouseUp);
+            // 
+            // AllPermissionsButton
+            // 
+            this.AllPermissionsButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.AllPermissionsButton.Image = ((System.Drawing.Image)(resources.GetObject("AllPermissionsButton.Image")));
+            this.AllPermissionsButton.Location = new System.Drawing.Point(6, 196);
+            this.AllPermissionsButton.Name = "AllPermissionsButton";
+            this.AllPermissionsButton.Size = new System.Drawing.Size(20, 20);
+            this.AllPermissionsButton.TabIndex = 18;
+            this.AllPermissionsButton.TabStop = false;
+            this.AllPermissionsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsRequested);
+            this.AllPermissionsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsMouseDown);
+            this.AllPermissionsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsMouseUp);
             // 
             // pictureBox80
             // 
@@ -5447,58 +5496,6 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // AllNotificationsButton
-            // 
-            this.AllNotificationsButton.Cursor = System.Windows.Forms.Cursors.Cross;
-            this.AllNotificationsButton.Image = ((System.Drawing.Image)(resources.GetObject("AllNotificationsButton.Image")));
-            this.AllNotificationsButton.Location = new System.Drawing.Point(6, 196);
-            this.AllNotificationsButton.Name = "AllNotificationsButton";
-            this.AllNotificationsButton.Size = new System.Drawing.Size(20, 20);
-            this.AllNotificationsButton.TabIndex = 16;
-            this.AllNotificationsButton.TabStop = false;
-            this.AllNotificationsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsRequested);
-            this.AllNotificationsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsMouseDown);
-            this.AllNotificationsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllNotificationsMouseUp);
-            // 
-            // NoneNotificationsButton
-            // 
-            this.NoneNotificationsButton.Cursor = System.Windows.Forms.Cursors.Cross;
-            this.NoneNotificationsButton.Image = ((System.Drawing.Image)(resources.GetObject("NoneNotificationsButton.Image")));
-            this.NoneNotificationsButton.Location = new System.Drawing.Point(32, 196);
-            this.NoneNotificationsButton.Name = "NoneNotificationsButton";
-            this.NoneNotificationsButton.Size = new System.Drawing.Size(20, 20);
-            this.NoneNotificationsButton.TabIndex = 17;
-            this.NoneNotificationsButton.TabStop = false;
-            this.NoneNotificationsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsRequested);
-            this.NoneNotificationsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsMouseDown);
-            this.NoneNotificationsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NoneNotificationsMouseUp);
-            // 
-            // NonePermissionsButton
-            // 
-            this.NonePermissionsButton.Cursor = System.Windows.Forms.Cursors.Cross;
-            this.NonePermissionsButton.Image = ((System.Drawing.Image)(resources.GetObject("NonePermissionsButton.Image")));
-            this.NonePermissionsButton.Location = new System.Drawing.Point(32, 196);
-            this.NonePermissionsButton.Name = "NonePermissionsButton";
-            this.NonePermissionsButton.Size = new System.Drawing.Size(20, 20);
-            this.NonePermissionsButton.TabIndex = 19;
-            this.NonePermissionsButton.TabStop = false;
-            this.NonePermissionsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsRequested);
-            this.NonePermissionsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsMouseDown);
-            this.NonePermissionsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NonePermissionsMouseUp);
-            // 
-            // AllPermissionsButton
-            // 
-            this.AllPermissionsButton.Cursor = System.Windows.Forms.Cursors.Cross;
-            this.AllPermissionsButton.Image = ((System.Drawing.Image)(resources.GetObject("AllPermissionsButton.Image")));
-            this.AllPermissionsButton.Location = new System.Drawing.Point(6, 196);
-            this.AllPermissionsButton.Name = "AllPermissionsButton";
-            this.AllPermissionsButton.Size = new System.Drawing.Size(20, 20);
-            this.AllPermissionsButton.TabIndex = 18;
-            this.AllPermissionsButton.TabStop = false;
-            this.AllPermissionsButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsRequested);
-            this.AllPermissionsButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsMouseDown);
-            this.AllPermissionsButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllPermissionsMouseUp);
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -5522,7 +5519,6 @@
             this.Text = "Corrade Configurator";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SaveCheck);
             this.Shown += new System.EventHandler(this.CorradeConfiguratorShown);
-            this.MouseClick += new System.Windows.Forms.MouseEventHandler(this.CorradeConfiguratorClicked);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.Tabs.ResumeLayout(false);
             this.ClientTabPage.ResumeLayout(false);
@@ -5589,8 +5585,12 @@
             this.DatabaseBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox78)).EndInit();
             this.groupBox27.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.NoneNotificationsButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllNotificationsButton)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox81)).EndInit();
             this.groupBox26.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.NonePermissionsButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllPermissionsButton)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox80)).EndInit();
             this.WorkersBox.ResumeLayout(false);
             this.WorkersBox.PerformLayout();
@@ -5825,10 +5825,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.AllNotificationsButton)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.NoneNotificationsButton)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.NonePermissionsButton)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.AllPermissionsButton)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

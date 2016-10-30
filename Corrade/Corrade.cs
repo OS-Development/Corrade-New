@@ -136,8 +136,6 @@ namespace Corrade
         private static Thread TCPNotificationsThread;
         private static TcpListener TCPListener;
         private static HttpListener HTTPListener;
-        private static Thread EffectsExpirationThread;
-        private static Thread GroupSchedulesThread;
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
         private static LoginParams Login;
@@ -211,6 +209,7 @@ namespace Corrade
         // permission requests can be identical
         private static readonly List<ScriptPermissionRequest> ScriptPermissionRequests =
             new List<ScriptPermissionRequest>();
+
         private static readonly object ScriptPermissionRequestLock = new object();
 
         // script dialogs can be identical
@@ -311,6 +310,9 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
         }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
+        /// <summary>
+        ///     Heartbeat logging.
+        /// </summary>
         private static readonly Time.Timer CorradeHeartBeatLogTimer = new Time.Timer(o =>
         {
             // Log heartbeat data.
@@ -321,6 +323,282 @@ namespace Corrade
                     TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours,
                     TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes, CorradeHeartbeat.ProcessedCommands,
                     CorradeHeartbeat.ProcessedRLVBehaviours));
+        }, null, TimeSpan.Zero, TimeSpan.Zero);
+
+        /// <summary>
+        ///     Effects expiration timer.
+        /// </summary>
+        private static readonly Time.Timer EffectsExpirationTimer = new Time.Timer(callback =>
+        {
+            lock (SphereEffectsLock)
+            {
+                SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+            }
+            lock (BeamEffectsLock)
+            {
+                BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+            }
+        }, null, TimeSpan.Zero, TimeSpan.Zero);
+
+        /// <summary>
+        ///     Group membership timer.
+        /// </summary>
+        private static readonly Time.Timer GroupMembershipTimer = new Time.Timer(callback =>
+        {
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                if (!Client.Network.Connected ||
+                    (Client.Network.CurrentSim != null && !Client.Network.CurrentSim.Caps.IsEventQueueRunning))
+                    return;
+            }
+
+            // Expire any hard soft bans.
+            lock (GroupSoftBansLock)
+            {
+                GroupSoftBans.AsParallel()
+                    // Select only the groups to which we have the capability of changing the group access list.
+                    .Where(o => Services.HasGroupPowers(Client, Client.Self.AgentID, o.Key,
+                        GroupPowers.GroupBanAccess,
+                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                    // Select group and all the soft bans that have expired.
+                    .Select(o => new
+                    {
+                        Group = o.Key,
+                        SoftBans = o.Value.AsParallel().Where(p =>
+                        {
+                            // Only process softbans with a set hard-ban time.
+                            if (p.Time.Equals(0))
+                                return false;
+                            // Get the softban timestamp and covert to datetime.
+                            DateTime lastBanDate;
+                            if (
+                                !DateTime.TryParseExact(p.Last, CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                    CultureInfo.InvariantCulture, DateTimeStyles.None, out lastBanDate))
+                                return false;
+                            // If the current time exceeds the hard-ban time then select the softban for processing.
+                            return DateTime.Compare(lastBanDate.AddMinutes(p.Time), DateTime.UtcNow) < 0;
+                        })
+                    })
+
+                    // Only select groups with non-empty soft bans matching previous criteria.
+                    .Where(o => o.SoftBans.Any())
+                    // Select only soft bans that are also group bans.
+                    .Select(o =>
+                    {
+                        // Get current group bans.
+                        var agents = new HashSet<UUID>();
+                        Dictionary<UUID, DateTime> bannedAgents = null;
+                        if (Services.GetGroupBans(Client, o.Group, corradeConfiguration.ServicesTimeout,
+                            ref bannedAgents) && bannedAgents != null)
+                        {
+                            agents.UnionWith(bannedAgents.Keys);
+                        }
+                        return new
+                        {
+                            o.Group,
+                            SoftBans = o.SoftBans.Where(p => agents.Contains(p.Agent))
+                        };
+                    })
+                    // Unban all the agents with expired soft bans that are also group bans.
+                    .ForAll(o =>
+                    {
+                        lock (Locks.ClientInstanceGroupsLock)
+                        {
+                            var GroupBanEvent = new ManualResetEvent(false);
+                            Client.Groups.RequestBanAction(o.Group,
+                                GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
+                                (sender, args) => { GroupBanEvent.Set(); });
+                            if (!GroupBanEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.UNABLE_TO_LIFT_HARD_SOFT_BAN),
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST));
+                            }
+                        }
+                    });
+            }
+
+            // Get current groups.
+            var groups = Enumerable.Empty<UUID>();
+            if (!Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout, ref groups))
+                return;
+            var currentGroups = new HashSet<UUID>(groups);
+            // Remove groups that are not configured.
+            currentGroups.RemoveWhere(o => !corradeConfiguration.Groups.Any(p => p.UUID.Equals(o)));
+
+            // Bail if no configured groups are also joined.
+            if (!currentGroups.Any())
+                return;
+
+            var membersGroups = new HashSet<UUID>();
+            lock (GroupMembersLock)
+            {
+                membersGroups.UnionWith(GroupMembers.Keys);
+            }
+            // Remove groups no longer handled.
+            membersGroups.AsParallel().ForAll(o =>
+            {
+                if (!currentGroups.Contains(o))
+                {
+                    lock (GroupMembersLock)
+                    {
+                        GroupMembers[o].CollectionChanged -= HandleGroupMemberJoinPart;
+                        GroupMembers.Remove(o);
+                    }
+                }
+            });
+            // Add new groups to be handled.
+            currentGroups.AsParallel().ForAll(o =>
+            {
+                lock (GroupMembersLock)
+                {
+                    if (!GroupMembers.ContainsKey(o))
+                    {
+                        GroupMembers.Add(o, new Collections.ObservableHashSet<UUID>());
+                        GroupMembers[o].CollectionChanged += HandleGroupMemberJoinPart;
+                    }
+                }
+            });
+
+            var LockObject = new object();
+            var groupMembersRequestUUIDs = new HashSet<UUID>();
+            var GroupMembersReplyEvent = new AutoResetEvent(false);
+            EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+            {
+                lock (LockObject)
+                {
+                    switch (groupMembersRequestUUIDs.Contains(args.RequestID))
+                    {
+                        case true:
+                            groupMembersRequestUUIDs.Remove(args.RequestID);
+                            break;
+                        default:
+                            return;
+                    }
+                }
+
+                lock (GroupMembersLock)
+                {
+                    if (GroupMembers.ContainsKey(args.GroupID))
+                    {
+                        switch (!GroupMembers[args.GroupID].Any())
+                        {
+                            case true:
+                                GroupMembers[args.GroupID].UnionWith(args.Members.Values.Select(o => o.ID));
+                                break;
+                            default:
+                                GroupMembers[args.GroupID].ExceptWith(GroupMembers[args.GroupID].AsParallel()
+                                    .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
+                                GroupMembers[args.GroupID].UnionWith(args.Members.Values.AsParallel()
+                                    .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
+                                    .Select(o => o.ID));
+                                break;
+                        }
+                    }
+                }
+                GroupMembersReplyEvent.Set();
+            };
+
+            currentGroups.AsParallel().ForAll(o =>
+            {
+                Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                lock (LockObject)
+                {
+                    groupMembersRequestUUIDs.Add(Client.Groups.RequestGroupMembers(o));
+                }
+                GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+            });
+        }, null, TimeSpan.Zero, TimeSpan.Zero);
+
+        /// <summary>
+        ///     Group feeds timer.
+        /// </summary>
+        private static readonly Time.Timer GroupFeedsTimer = new Time.Timer(callback =>
+        {
+            lock (GroupFeedsLock)
+            {
+                GroupFeeds.AsParallel().ForAll(o =>
+                {
+                    try
+                    {
+                        using (var reader = XmlReader.Create(o.Key))
+                        {
+                            var syndicationFeed = SyndicationFeed.Load(reader);
+                            syndicationFeed?.Items.AsParallel()
+                                .Where(
+                                    p =>
+                                        p != null && p.Title != null && p.Summary != null &&
+                                        p.PublishDate.CompareTo(
+                                            DateTimeOffset.Now.Subtract(
+                                                TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval))) >
+                                        0)
+                                .ForAll(p =>
+                                {
+                                    o.Value.AsParallel().ForAll(q =>
+                                    {
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.Feed,
+                                                new FeedEventArgs
+                                                {
+                                                    Title = p.Title.Text,
+                                                    Summary = p.Summary.Text,
+                                                    Date = p.PublishDate,
+                                                    Name = q.Value,
+                                                    GroupUUID = q.Key
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
+                                    });
+                                });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.ERROR_LOADING_FEED),
+                            o.Key,
+                            ex.Message);
+                    }
+                });
+            }
+        }, null, TimeSpan.Zero, TimeSpan.Zero);
+
+        /// <summary>
+        ///     Group schedules timer.
+        /// </summary>
+        private static readonly Time.Timer GroupSchedulesTimer = new Time.Timer(callback =>
+        {
+            var groupSchedules = new HashSet<GroupSchedule>();
+            lock (GroupSchedulesLock)
+            {
+                groupSchedules.UnionWith(GroupSchedules.AsParallel()
+                    .Where(
+                        o =>
+                            DateTime.Compare(DateTime.Now.ToUniversalTime(),
+                                o.At) >= 0));
+            }
+            if (groupSchedules.Any())
+            {
+                groupSchedules.AsParallel().ForAll(
+                    o =>
+                    {
+                        // Spawn the command.
+                        CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
+                            () => HandleCorradeCommand(o.Message, o.Sender, o.Identifier, o.Group),
+                            corradeConfiguration.MaximumCommandThreads, o.Group.UUID,
+                            corradeConfiguration.SchedulerExpiration);
+                        lock (GroupSchedulesLock)
+                        {
+                            GroupSchedules.Remove(o);
+                        }
+                    });
+                SaveGroupSchedulesState.Invoke();
+            }
         }, null, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
@@ -345,50 +623,6 @@ namespace Corrade
                 {Threading.Enumerations.ThreadType.LOG, new Threading.Thread(Threading.Enumerations.ThreadType.LOG)},
                 {Threading.Enumerations.ThreadType.POST, new Threading.Thread(Threading.Enumerations.ThreadType.POST)}
             };
-
-        /// <summary>
-        ///     Group feed thread.
-        /// </summary>
-        private static Thread GroupFeedThread;
-
-        /// <summary>
-        ///     Group feed thread starter.
-        /// </summary>
-        private static readonly Action StartGroupFeedThread = () =>
-        {
-            if (GroupFeedThread != null &&
-                (GroupFeedThread.ThreadState.Equals(ThreadState.Running) ||
-                 GroupFeedThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                return;
-            runGroupFeedThread = true;
-            GroupFeedThread = new Thread(CheckGroupFeeds)
-            {
-                IsBackground = true
-            };
-            GroupFeedThread.Start();
-        };
-
-        /// <summary>
-        ///     Group feed thread stopper.
-        /// </summary>
-        private static readonly Action StopGroupFeedThread = () =>
-        {
-            // Stop the notification thread.
-            runGroupFeedThread = false;
-            if (GroupFeedThread == null ||
-                (!GroupFeedThread.ThreadState.Equals(ThreadState.Running) &&
-                 !GroupFeedThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                return;
-            if (GroupFeedThread.Join(1000)) return;
-            try
-            {
-                GroupFeedThread.Abort();
-                GroupFeedThread.Join();
-            }
-            catch (ThreadStateException)
-            {
-            }
-        };
 
         /// <summary>
         ///     Schedules a load of the configuration file.
@@ -1747,10 +1981,6 @@ namespace Corrade
         private static volatile bool runTCPNotificationsServer;
         private static volatile bool runCallbackThread = true;
         private static volatile bool runNotificationThread = true;
-        private static volatile bool runGroupMembershipThread = true;
-        private static volatile bool runGroupSchedulesThread;
-        private static volatile bool runEffectsExpirationThread;
-        private static volatile bool runGroupFeedThread;
 
         public Corrade()
         {
@@ -1783,64 +2013,6 @@ namespace Corrade
                 EventLog.CreateEventSource(CorradeEventLog.Source, CorradeEventLog.Log);
             }
             CorradeEventLog.EndInit();
-        }
-
-        /// <summary>
-        ///     Checks feeds for updates and enqueues a notification if they have changed.
-        /// </summary>
-        private static void CheckGroupFeeds()
-        {
-            do
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval));
-                lock (GroupFeedsLock)
-                {
-                    GroupFeeds.AsParallel().ForAll(o =>
-                    {
-                        try
-                        {
-                            using (var reader = XmlReader.Create(o.Key))
-                            {
-                                var syndicationFeed = SyndicationFeed.Load(reader);
-                                syndicationFeed?.Items.AsParallel()
-                                    .Where(
-                                        p =>
-                                            p != null && p.Title != null && p.Summary != null &&
-                                            p.PublishDate.CompareTo(
-                                                DateTimeOffset.Now.Subtract(
-                                                    TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval))) >
-                                            0)
-                                    .ForAll(p =>
-                                    {
-                                        o.Value.AsParallel().ForAll(q =>
-                                        {
-                                            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                                                () => SendNotification(
-                                                    Configuration.Notifications.Feed,
-                                                    new FeedEventArgs
-                                                    {
-                                                        Title = p.Title.Text,
-                                                        Summary = p.Summary.Text,
-                                                        Date = p.PublishDate,
-                                                        Name = q.Value,
-                                                        GroupUUID = q.Key
-                                                    }),
-                                                corradeConfiguration.MaximumNotificationThreads);
-                                        });
-                                    });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.ERROR_LOADING_FEED),
-                                o.Key,
-                                ex.Message);
-                        }
-                    });
-                }
-            } while (runGroupFeedThread);
         }
 
         /// <summary>
@@ -3035,178 +3207,8 @@ namespace Corrade
             {IsBackground = true};
             NotificationThread.Start();
             // Start the group membership thread.
-            var GroupMembershipThread = new Thread(() =>
-            {
-                do
-                {
-                    Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
-
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        if (!Client.Network.Connected ||
-                            (Client.Network.CurrentSim != null && !Client.Network.CurrentSim.Caps.IsEventQueueRunning))
-                            continue;
-                    }
-
-                    // Expire any hard soft bans.
-                    lock (GroupSoftBansLock)
-                    {
-                        GroupSoftBans.AsParallel()
-                            // Select only the groups to which we have the capability of changing the group access list.
-                            .Where(o => Services.HasGroupPowers(Client, Client.Self.AgentID, o.Key,
-                                GroupPowers.GroupBanAccess,
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                            // Select group and all the soft bans that have expired.
-                            .Select(o => new
-                            {
-                                Group = o.Key,
-                                SoftBans = o.Value.AsParallel().Where(p =>
-                                {
-                                    // Only process softbans with a set hard-ban time.
-                                    if (p.Time.Equals(0))
-                                        return false;
-                                    // Get the softban timestamp and covert to datetime.
-                                    DateTime lastBanDate;
-                                    if (
-                                        !DateTime.TryParseExact(p.Last, CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                            CultureInfo.InvariantCulture, DateTimeStyles.None, out lastBanDate))
-                                        return false;
-                                    // If the current time exceeds the hard-ban time then select the softban for processing.
-                                    return DateTime.Compare(lastBanDate.AddMinutes(p.Time), DateTime.UtcNow) < 0;
-                                })
-                            }
-                            )
-                            // Only select groups with non-empty soft bans matching previous criteria.
-                            .Where(o => o.SoftBans.Any())
-                            // Select only soft bans that are also group bans.
-                            .Select(o =>
-                            {
-                                // Get current group bans.
-                                var agents = new HashSet<UUID>();
-                                Dictionary<UUID, DateTime> bannedAgents = null;
-                                if (Services.GetGroupBans(Client, o.Group, corradeConfiguration.ServicesTimeout,
-                                    ref bannedAgents) && bannedAgents != null)
-                                {
-                                    agents.UnionWith(bannedAgents.Keys);
-                                }
-                                return new {o.Group, SoftBans = o.SoftBans.Where(p => agents.Contains(p.Agent))};
-                            })
-                            // Unban all the agents with expired soft bans that are also group bans.
-                            .ForAll(o =>
-                            {
-                                lock (Locks.ClientInstanceGroupsLock)
-                                {
-                                    var GroupBanEvent = new ManualResetEvent(false);
-                                    Client.Groups.RequestBanAction(o.Group,
-                                        GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
-                                        (sender, args) => { GroupBanEvent.Set(); });
-                                    if (!GroupBanEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                                    {
-                                        Feedback(
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                Enumerations.ConsoleMessage.UNABLE_TO_LIFT_HARD_SOFT_BAN),
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST));
-                                    }
-                                }
-                            });
-                    }
-
-                    // Get current groups.
-                    var groups = Enumerable.Empty<UUID>();
-                    if (!Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout, ref groups))
-                        continue;
-                    var currentGroups = new HashSet<UUID>(groups);
-                    // Remove groups that are not configured.
-                    currentGroups.RemoveWhere(o => !corradeConfiguration.Groups.Any(p => p.UUID.Equals(o)));
-
-                    // Bail if no configured groups are also joined.
-                    if (!currentGroups.Any()) continue;
-
-                    var membersGroups = new HashSet<UUID>();
-                    lock (GroupMembersLock)
-                    {
-                        membersGroups.UnionWith(GroupMembers.Keys);
-                    }
-                    // Remove groups no longer handled.
-                    membersGroups.AsParallel().ForAll(o =>
-                    {
-                        if (!currentGroups.Contains(o))
-                        {
-                            lock (GroupMembersLock)
-                            {
-                                GroupMembers[o].CollectionChanged -= HandleGroupMemberJoinPart;
-                                GroupMembers.Remove(o);
-                            }
-                        }
-                    });
-                    // Add new groups to be handled.
-                    currentGroups.AsParallel().ForAll(o =>
-                    {
-                        lock (GroupMembersLock)
-                        {
-                            if (!GroupMembers.ContainsKey(o))
-                            {
-                                GroupMembers.Add(o, new Collections.ObservableHashSet<UUID>());
-                                GroupMembers[o].CollectionChanged += HandleGroupMemberJoinPart;
-                            }
-                        }
-                    });
-
-                    var LockObject = new object();
-                    var groupMembersRequestUUIDs = new HashSet<UUID>();
-                    var GroupMembersReplyEvent = new AutoResetEvent(false);
-                    EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-                    {
-                        lock (LockObject)
-                        {
-                            switch (groupMembersRequestUUIDs.Contains(args.RequestID))
-                            {
-                                case true:
-                                    groupMembersRequestUUIDs.Remove(args.RequestID);
-                                    break;
-                                default:
-                                    return;
-                            }
-                        }
-
-                        lock (GroupMembersLock)
-                        {
-                            if (GroupMembers.ContainsKey(args.GroupID))
-                            {
-                                switch (!GroupMembers[args.GroupID].Any())
-                                {
-                                    case true:
-                                        GroupMembers[args.GroupID].UnionWith(args.Members.Values.Select(o => o.ID));
-                                        break;
-                                    default:
-                                        GroupMembers[args.GroupID].ExceptWith(GroupMembers[args.GroupID].AsParallel()
-                                            .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
-                                        GroupMembers[args.GroupID].UnionWith(args.Members.Values.AsParallel()
-                                            .Where(o => !GroupMembers[args.GroupID].Contains(o.ID))
-                                            .Select(o => o.ID));
-                                        break;
-                                }
-                            }
-                        }
-                        GroupMembersReplyEvent.Set();
-                    };
-
-                    currentGroups.AsParallel().ForAll(o =>
-                    {
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        lock (LockObject)
-                        {
-                            groupMembersRequestUUIDs.Add(Client.Groups.RequestGroupMembers(o));
-                        }
-                        GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
-                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                    });
-                } while (runGroupMembershipThread);
-            })
-            {IsBackground = true};
-            GroupMembershipThread.Start();
+            GroupMembershipTimer.Change(TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval),
+                TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval));
             // Install non-dynamic global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
             Client.Network.LoginProgress += HandleLoginProgress;
@@ -3323,7 +3325,7 @@ namespace Corrade
                     EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
                     Client.Network.LoggedOut += LoggedOutEventHandler;
                     Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, false))
+                    if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
                     {
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
                         Feedback(
@@ -3374,6 +3376,15 @@ namespace Corrade
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             Client.Sound.PreloadSound -= HandlePreloadSound;
 
+            // Stop the sphere effects expiration timer.
+            EffectsExpirationTimer.Stop();
+            // Stop the group membership timer.
+            GroupMembershipTimer.Stop();
+            // Stop the group feed thread.
+            GroupFeedsTimer.Stop();
+            // Stop the group schedules timer.
+            GroupSchedulesTimer.Stop();
+
             // Save group soft bans state.
             SaveGroupSoftBansState.Invoke();
             // Save conferences state.
@@ -3392,36 +3403,8 @@ namespace Corrade
             SaveCorradeCache.Invoke();
             // Save Bayes classifications.
             SaveGroupBayesClassificiations.Invoke();
-
-            // Stop the sphere effects expiration thread.
-            runEffectsExpirationThread = false;
-            if (EffectsExpirationThread != null)
-            {
-                try
-                {
-                    if (
-                        EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
-                        EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                    {
-                        if (!EffectsExpirationThread.Join(1000))
-                        {
-                            EffectsExpirationThread.Abort();
-                            EffectsExpirationThread.Join();
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-                    /* We are going down and we do not care. */
-                }
-                finally
-                {
-                    EffectsExpirationThread = null;
-                }
-            }
-
-            // Stop the group feed thread.
-            StopGroupFeedThread.Invoke();
+            // Save group cookies.
+            SaveGroupCookiesState.Invoke();
 
             // Stop the notification thread.
             try
@@ -3470,33 +3453,6 @@ namespace Corrade
             {
                 NotificationThread = null;
             }
-
-            // Stop the group membership thread.
-            try
-            {
-                runGroupMembershipThread = false;
-                if (
-                    GroupMembershipThread.ThreadState.Equals(ThreadState.Running) ||
-                    GroupMembershipThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                {
-                    if (!GroupMembershipThread.Join(1000))
-                    {
-                        GroupMembershipThread.Abort();
-                        GroupMembershipThread.Join();
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                /* We are going down and we do not care. */
-            }
-            finally
-            {
-                GroupMembershipThread = null;
-            }
-
-            // Save group cookies.
-            SaveGroupCookiesState.Invoke();
 
             // Close HTTP server
             if (HttpListener.IsSupported && corradeConfiguration.EnableHTTPServer)
@@ -3579,10 +3535,10 @@ namespace Corrade
                     {
                         Client.Assets.Cache.SaveAssetToCache(e.SoundID, assetData);
                     }
+                    if (corradeConfiguration.EnableHorde)
+                        HordeDistributeCacheAsset(e.SoundID, assetData,
+                            Configuration.HordeDataSynchronizationOption.Add);
                 }
-                if (corradeConfiguration.EnableHorde)
-                    HordeDistributeCacheAsset(e.SoundID, assetData,
-                        Configuration.HordeDataSynchronizationOption.Add);
             }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
         }
 
@@ -5459,9 +5415,13 @@ namespace Corrade
                     // We have exceeded the configured locations so raise the semaphore and abort.
                     if (string.IsNullOrEmpty(location))
                     {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.COULD_NOT_CONNECT_TO_ANY_SIMULATOR));
                         ConnectionSemaphores['l'].Set();
                         break;
                     }
+                    Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
                     var startLocation = new
                         wasOpenMetaverse.Helpers.StartLocationParser(location);
                     Login.Start = startLocation.isCustom
@@ -6596,81 +6556,19 @@ namespace Corrade
                     break;
             }
 
-            // Enable the group scheduling thread if permissions were granted to groups.
+            // Enable the group scheduling timer if permissions were granted to groups.
             switch (configuration.Groups.AsParallel()
                 .Any(
                     o => o.PermissionMask.IsMaskFlagSet(Configuration.Permissions.Schedule) &&
                          !o.Schedules.Equals(0)))
             {
                 case true:
-                    // Don't start if the expiration thread is already started.
-                    if (GroupSchedulesThread != null) break;
-                    // Start the group expiration thread.
-                    runGroupSchedulesThread = true;
-                    var groupSchedules = new HashSet<GroupSchedule>();
-                    GroupSchedulesThread = new Thread(() =>
-                    {
-                        do
-                        {
-                            // Check schedules with a one second resolution.
-                            Thread.Sleep((int) configuration.SchedulesResolution);
-                            lock (GroupSchedulesLock)
-                            {
-                                groupSchedules.Clear();
-                                groupSchedules.UnionWith(GroupSchedules.AsParallel()
-                                    .Where(
-                                        o =>
-                                            DateTime.Compare(DateTime.Now.ToUniversalTime(),
-                                                o.At) >= 0));
-                            }
-                            if (groupSchedules.Any())
-                            {
-                                groupSchedules.AsParallel().ForAll(
-                                    o =>
-                                    {
-                                        // Spawn the command.
-                                        CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
-                                            () => HandleCorradeCommand(o.Message, o.Sender, o.Identifier, o.Group),
-                                            configuration.MaximumCommandThreads, o.Group.UUID,
-                                            configuration.SchedulerExpiration);
-                                        lock (GroupSchedulesLock)
-                                        {
-                                            GroupSchedules.Remove(o);
-                                        }
-                                    });
-                                SaveGroupSchedulesState.Invoke();
-                            }
-                        } while (runGroupSchedulesThread);
-                    })
-                    {IsBackground = true};
-                    GroupSchedulesThread.Start();
+                    // Start the group schedules timer.
+                    GroupSchedulesTimer.Change(TimeSpan.FromMilliseconds(configuration.SchedulesResolution),
+                        TimeSpan.FromMilliseconds(configuration.SchedulesResolution));
                     break;
                 default:
-                    runGroupSchedulesThread = false;
-                    try
-                    {
-                        if (GroupSchedulesThread != null)
-                        {
-                            if (
-                                GroupSchedulesThread.ThreadState.Equals(ThreadState.Running) ||
-                                GroupSchedulesThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                            {
-                                if (!GroupSchedulesThread.Join(1000))
-                                {
-                                    GroupSchedulesThread.Abort();
-                                    GroupSchedulesThread.Join();
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        /* We are going down and we do not care. */
-                    }
-                    finally
-                    {
-                        GroupSchedulesThread = null;
-                    }
+                    GroupSchedulesTimer.Stop();
                     break;
             }
 
@@ -6742,11 +6640,13 @@ namespace Corrade
                         {
                             case true:
                                 // Start the group feed thread.
-                                StartGroupFeedThread.Invoke();
+                                GroupFeedsTimer.Change(
+                                    TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval),
+                                    TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval));
                                 break;
                             default:
                                 // Stop the group feed thread.
-                                StopGroupFeedThread.Invoke();
+                                GroupFeedsTimer.Stop();
                                 break;
                         }
                         break;
@@ -6935,55 +6835,12 @@ namespace Corrade
                     .Any(o => o.NotificationMask.IsMaskFlagSet(Configuration.Notifications.ViewerEffect)))
             {
                 case true:
-                    // Don't start if the expiration thread is already started.
-                    if (EffectsExpirationThread != null) break;
-                    EffectsExpirationThread = new Thread(() =>
-                    {
-                        do
-                        {
-                            Thread.Sleep(1000);
-                            lock (SphereEffectsLock)
-                            {
-                                SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
-                            }
-                            lock (BeamEffectsLock)
-                            {
-                                BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
-                            }
-                        } while (runEffectsExpirationThread);
-                    })
-                    {IsBackground = true};
                     // Start sphere and beam effect expiration thread
-                    runEffectsExpirationThread = true;
-                    EffectsExpirationThread.Start();
+                    EffectsExpirationTimer.Change(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
                     break;
                 default:
                     // Stop the effects expiration thread.
-                    runEffectsExpirationThread = false;
-                    if (EffectsExpirationThread != null)
-                    {
-                        try
-                        {
-                            if (
-                                EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
-                                EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                            {
-                                if (!EffectsExpirationThread.Join(1000))
-                                {
-                                    EffectsExpirationThread.Abort();
-                                    EffectsExpirationThread.Join();
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            /* We are going down and we do not care. */
-                        }
-                        finally
-                        {
-                            EffectsExpirationThread = null;
-                        }
-                    }
+                    EffectsExpirationTimer.Stop();
                     break;
             }
 

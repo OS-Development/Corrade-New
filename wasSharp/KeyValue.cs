@@ -24,8 +24,7 @@ namespace wasSharp
             return data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2))
-                .Where(o => Strings.StringEquals(o[0], key, StringComparison.Ordinal))
+                .Where(o => o.Length.Equals(2) && Strings.StringEquals(o[0], key, StringComparison.Ordinal))
                 .Select(o => o[1])
                 .FirstOrDefault();
         }
@@ -45,8 +44,7 @@ namespace wasSharp
             return string.Join("&", string.Join("&", data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2))
-                .Where(o => !Strings.StringEquals(o[0], key, StringComparison.Ordinal))
+                .Where(o => o.Length.Equals(2) && !Strings.StringEquals(o[0], key, StringComparison.Ordinal))
                 .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value));
         }
 
@@ -62,8 +60,7 @@ namespace wasSharp
             return string.Join("&", data.Split('&')
                 .AsParallel()
                 .Select(o => o.Split('='))
-                .Where(o => o.Length.Equals(2))
-                .Where(o => !Strings.StringEquals(o[0], key, StringComparison.Ordinal))
+                .Where(o => o.Length.Equals(2) && !Strings.StringEquals(o[0], key, StringComparison.Ordinal))
                 .Select(o => string.Join("=", o[0], o[1]))
                 .ToArray());
         }

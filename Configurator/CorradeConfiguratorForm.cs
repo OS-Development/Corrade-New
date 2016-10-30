@@ -708,9 +708,84 @@ namespace Configurator
             corradeConfiguration.EnableHorde = mainForm.HordeEnabled.Checked;
         };
 
+        private void AddClickHandlerRecursive<T>(Control parent, EventHandler handler)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                if (c.GetType() == typeof(T))
+                {
+                    c.Click += handler;
+                    continue;
+                }
+                AddClickHandlerRecursive<T>(c, handler);
+            }
+        }
+
         public CorradeConfiguratorForm()
         {
             InitializeComponent();
+            var deselectEventHandler = new EventHandler((sender, args) =>
+            {
+                // Clear start locations
+                StartLocations.ClearSelected();
+                StartLocationTextBox.Text = string.Empty;
+
+                // Clear masters
+                Masters.ClearSelected();
+                MasterFirstName.Text = string.Empty;
+                MasterLastName.Text = string.Empty;
+
+                // Clear groups
+                Groups.ClearSelected();
+                GroupName.Text = string.Empty;
+                GroupPassword.Text = string.Empty;
+                GroupUUID.Text = string.Empty;
+                GroupWorkers.Text = string.Empty;
+                GroupSchedules.Text = string.Empty;
+                GroupDatabaseFile.Text = string.Empty;
+                GroupChatLogEnabled.Checked = false;
+                GroupChatLogFile.Text = string.Empty;
+                // Permissions
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+                {
+                    GroupPermissions.SetItemChecked(i, false);
+                }
+
+                // Notifications
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+                {
+                    GroupNotifications.SetItemChecked(i, false);
+                }
+
+                // Clear horde.
+                HordePeers.ClearSelected();
+                HordePeerUsername.Text = string.Empty;
+                HordePeerPassword.Text = string.Empty;
+                HordePeerURL.Text = string.Empty;
+                HordePeerName.Text = string.Empty;
+                HordePeerSharedSecret.Text = string.Empty;
+
+                // Synchronization
+                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+                {
+                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+                    if (addCheckBox != null)
+                    {
+                        addCheckBox.Value = 0;
+                    }
+                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+                    if (removeCheckBox != null)
+                    {
+                        removeCheckBox.Value = 0;
+                    }
+                }
+            });
+            this.Click += deselectEventHandler;
+            AddClickHandlerRecursive<StatusStrip>(this, deselectEventHandler);
+            AddClickHandlerRecursive<GroupBox>(this, deselectEventHandler);
+            AddClickHandlerRecursive<PictureBox>(this, deselectEventHandler);
+            AddClickHandlerRecursive<TabControl>(this, deselectEventHandler);
+            AddClickHandlerRecursive<TabPage>(this, deselectEventHandler);
             mainForm = this;
         }
 
@@ -3536,51 +3611,6 @@ namespace Configurator
                     return;
                 StartLocations.ClearSelected();
                 StartLocationTextBox.Text = string.Empty;
-            }));
-        }
-
-        private void CorradeConfiguratorClicked(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                StartLocations.ClearSelected();
-                StartLocationTextBox.Text = string.Empty;
-
-                Masters.ClearSelected();
-                MasterFirstName.Text = string.Empty;
-                MasterLastName.Text = string.Empty;
-            }));
-        }
-
-        private void TabsClicked(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                StartLocations.ClearSelected();
-                StartLocationTextBox.Text = string.Empty;
-
-                Masters.ClearSelected();
-                MasterFirstName.Text = string.Empty;
-                MasterLastName.Text = string.Empty;
-            }));
-        }
-
-        private void ClientTabPageClicked(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                StartLocations.ClearSelected();
-                StartLocationTextBox.Text = string.Empty;
-            }));
-        }
-
-        private void MastersTabPageClicked(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                Masters.ClearSelected();
-                MasterFirstName.Text = string.Empty;
-                MasterLastName.Text = string.Empty;
             }));
         }
 

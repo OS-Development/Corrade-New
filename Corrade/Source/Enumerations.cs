@@ -221,7 +221,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("unable to install service")] UNABLE_TO_INSTALL_SERVICE,
             [Reflection.DescriptionAttribute("unable to uninstall service")] UNABLE_TO_UNINSTALL_SERVICE,
             [Reflection.DescriptionAttribute("unable to save group Bayes data")] UNABLE_TO_SAVE_GROUP_BAYES_DATA,
-            [Reflection.DescriptionAttribute("unable to load group Bayes data")] UNABLE_TO_LOAD_GROUP_BAYES_DATA
+            [Reflection.DescriptionAttribute("unable to load group Bayes data")] UNABLE_TO_LOAD_GROUP_BAYES_DATA,
+            [Reflection.DescriptionAttribute("could not connect to any simulator")] COULD_NOT_CONNECT_TO_ANY_SIMULATOR,
+            [Reflection.DescriptionAttribute("cycling simulators")] CYCLING_SIMULATORS
         }
 
         /// <summary>

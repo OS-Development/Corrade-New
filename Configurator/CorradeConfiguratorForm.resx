@@ -4213,6 +4213,9 @@
         QRAEnraG/wdZoFpPZ2e0AAAAAABJRU5ErkJggg==
 </value>
   </data>
+  <metadata name="toolTip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>704, 17</value>
+  </metadata>
   <data name="pictureBox105.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGOfPtRkwAAACBjSFJNAACH
@@ -4267,9 +4270,6 @@
         dQgdpxD/YtCVgwtB0JV/5d+Fgp6AN1enJiPk3QAAAABJRU5ErkJggg==
 </value>
   </data>
-  <metadata name="toolTip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>704, 17</value>
-  </metadata>
   <data name="pictureBox106.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGOfPtRkwAAACBjSFJNAACH
@@ -5411,29 +5411,27 @@ group will be able to control any other group.</value>
   </data>
   <data name="NoneNotificationsButton.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
-        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAGUSURBVDhPvZTLK8RRHMUnr5KUjfwJFnZKaShJeZSUohSx8Q9YWLCwlKWlslSSBQsLFkhCkddC
-        HsVOyrPkWRSfcx2PyZgZC059mrnne86dO/c3TeTf1Nc3H4V+WIJzuIAVGIByx5KLcCFMwot5gH3Ygzt7
-        YgqKXIsvAsVw4oJO0w4FkGbyoQ0WQRmdvNT1WDHQyd4364U0j+KKebezp/D9pJjTDvTYSiqyXe4swOcB
-        WJR7sGwrZdGZdbfaVjAHbTbZSll06t0dthXMbbiCXFtBrNP99keRyYNr2LEVzFvY9PLXoruqTb0Mxj2s
-        v72fS/h0v4pOll/1E7sJpsRiF84UYMOkX/Nd5LPNJRzYDoMh0MXW2UoocpkQ7pvXKndHwlBiUWNzxlbK
-        ojPhbqOtYGaA7kGDTttJRbbVnS0I9/khjBLQ036GDts/iow2ewL9YURtx4pBLWhTfeo46H5yPNZcD6AS
-        RkGZR2jwOL4IlMGaC0J/GPMwB8f2xAZUuJZYBHWnzaCTHIJ+p+IIxqAFYu/sbxSJvAIvTF+5QO+wjAAA
-        AABJRU5ErkJggg==
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAAZRJREFUOE+9
+        lMsrxFEcxSevkpSN/AkWdkppKEl5lJSiFLHxD1hYsLCUpaWyVJIFCwsWSEKR10IexU7Ks+RZFJ9zHY/J
+        mBkLTn2aued7zp079zdN5N/U1zcfhX5YgnO4gBUYgHLHkotwIUzCi3mAfdiDO3tiCopciy8CxXDigk7T
+        DgWQZvKhDRZBGZ281PVYMdDJ3jfrhTSP4op5t7On8P2kmNMO9NhKKrJd7izA5wFYlHuwbCtl0Zl1t9pW
+        MAdtNtlKWXTq3R22FcxtuIJcW0Gs0/32R5HJg2vYsRXMW9j08teiu6pNvQzGPay/vZ9L+HS/ik6WX/UT
+        uwmmxGIXzhRgw6Rf813ks80lHNgOgyHQxdbZSihymRDum9cqd0fCUGJRY3PGVsqiM+Fuo61gZoDuQYNO
+        20lFttWdLQj3+SGMEtDTfoYO2z+KjDZ7Av1hRG3HikEtaFN96jjofnI81lwPoBJGQZlHaPA4vgiUwZoL
+        Qn8Y8zAHx/bEBlS4llgEdafNoJMcgn6n4gjGoAVi7+xvFIm8Ai9MX7lA77CMAAAAAElFTkSuQmCC
 </value>
   </data>
   <data name="AllNotificationsButton.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
-        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAHHSURBVDhPvZS/S5tRFIZDKgURwUX6Jzi4CYKkASmFaiERBJWCpS7+Ax0c2iFTKB07Co6ClA52
-        cNBBg4gKSrUO4g/QrQhWLSRpq1BBn/f6qs3nV81iDzzknve85+R+97t8if8WuVwhBe9gHg7gEBbhPaRt
-        uzswN8FnODPHsAWb8MuamIBmt8UHhhbYc4N28woeQdI0wkuYA3m08za3VwYF7exy2FtIuhQb1Ifs3Yeb
-        O0WctOGNJWlZKEDZaJ1xWfXXoJ5ZuN4ASdqFBUvS8tbiyNsm37S1Z5aC+MFij/OM89vIRrwjykOQrMEP
-        qHeuR4sOiFKwtwGKsK48BMlPWHWqvARxQ/6mZLv8S1B0GoTf8OViPaPrUc1AvaSH7tcVK2sdgmQDvsvA
-        wAf8VvXIUGuOYNvjwsBhkOm5c12X6IAoffY+dT6qPARJh8UpS9KqvTbj1rotBbEGdA4qDFqW3gV6NL00
-        oXW4LgrW/aCerxDO8yoQWkFNpzBg+Z+BR8P+gD4YKcuVQaETNFT/+gl0PnUuq64X8ATGQJ4T6HI5PjA8
-        hmU3CH0w9Kgz8M2aWIF2t90eGHWmvaCd7IDuqdiFj/ACKs/sfiKROAdjKEBAVy9oEwAAAABJRU5ErkJg
-        gg==
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAAcdJREFUOE+9
+        lL9Lm1EUhkMqBRHBRfonOLgJgqQBKYVqIREElYKlLv4DHRzaIVMoHTsKjoKUDnZw0EGDiApKtQ7iD9Ct
+        CFYtJGmrUEGf9/qqzedXzWIPPOSe97zn5H73u3yJ/xa5XCEF72AeDuAQFuE9pG27OzA3wWc4M8ewBZvw
+        y5qYgGa3xQeGFthzg3bzCh5B0jTCS5gDebTzNrdXBgXt7HLYW0i6FBvUh+zdh5s7RZy04Y0laVkoQNlo
+        nXFZ9degnlm43gBJ2oUFS9Ly1uLI2ybftLVnloL4wWKP84zz28hGvCPKQ5CswQ+od65Hiw6IUrC3AYqw
+        rjwEyU9Ydaq8BHFD/qZku/xLUHQahN/w5WI9o+tRzUC9pIfu1xUrax2CZAO+y8DAB/xW9chQa45g2+PC
+        wGGQ6blzXZfogCh99j51Pqo8BEmHxSlL0qq9NuPWui0FsQZ0DioMWpbeBXo0vTShdbguCtb9oJ6vEM7z
+        KhBaQU2nMGD5n4FHw/6APhgpy5VBoRM0VP/6CXQ+dS6rrhfwBMZAnhPocjk+MDyGZTcIfTD0qDPwzZpY
+        gXa33R4Ydaa9oJ3sgO6p2IWP8AIqz+x+IpE4B2MoQEBXL2gTAAAAAElFTkSuQmCC
 </value>
   </data>
   <data name="pictureBox81.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
@@ -6623,6 +6621,15 @@ tends to use ~50MiB.
         dQgdpxD/YtCVgwtB0JV/5d+Fgp6AN1enJiPk3QAAAABJRU5ErkJggg==
 </value>
   </data>
+  <metadata name="Data.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
+  <metadata name="Add.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
+  <metadata name="Remove.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
   <metadata name="Data.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>
   </metadata>
@@ -10192,6 +10199,9 @@ case Corrade must connect to neighboring regions.
   </metadata>
   <metadata name="SaveConfigurationDialog.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>517, 17</value>
+  </metadata>
+  <metadata name="toolTip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>704, 17</value>
   </metadata>
   <metadata name="LoadTCPNotificationsServerCertificateFileDialog.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>801, 17</value>
