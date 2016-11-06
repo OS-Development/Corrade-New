@@ -31,18 +31,20 @@ namespace wasOpenMetaverse
             if (data is Array || data is IList)
             {
                 var iList = (IList) data;
-                foreach (var item in iList.Cast<object>().Where(o => o != null))
+                foreach (
+                    var item in iList.Cast<object>().Where(o => o != null).Select((value, index) => new {value, index}))
                 {
                     // These are index collections so pre-prend an index.
                     yield return "Index";
-                    yield return iList.IndexOf(item).ToString();
-                    switch (item.GetType().IsPrimitive || item is string)
+                    yield return item.index.ToString();
+                    switch (item.value.GetType().IsPrimitive || item.value is string)
                     {
                         case true: // Don't bother with primitive types.
-                            yield return item.ToString();
+                            yield return item.value.ToString();
                             break;
                         default:
-                            foreach (var fi in wasSharpNET.Reflection.wasGetFields(item, item.GetType().Name))
+                            foreach (
+                                var fi in wasSharpNET.Reflection.wasGetFields(item.value, item.value.GetType().Name))
                             {
                                 if (fi.Key != null)
                                 {
@@ -56,7 +58,9 @@ namespace wasOpenMetaverse
                                     }
                                 }
                             }
-                            foreach (var pi in wasSharpNET.Reflection.wasGetProperties(item, item.GetType().Name))
+                            foreach (
+                                var pi in wasSharpNET.Reflection.wasGetProperties(item.value, item.value.GetType().Name)
+                                )
                             {
                                 if (pi.Key != null)
                                 {
@@ -272,7 +276,7 @@ namespace wasOpenMetaverse
             if (data is FriendRights)
             {
                 var friendRights = (FriendRights) data;
-                foreach (var flag in typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
+                foreach (var flag in typeof(FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => friendRights.IsMaskFlagSet((FriendRights) o.GetValue(null)))
                     .Select(o => o.Name))
@@ -286,7 +290,7 @@ namespace wasOpenMetaverse
             if (data is ScriptControlChange)
             {
                 var scriptControlChange = (ScriptControlChange) data;
-                foreach (var flag in typeof (ScriptControlChange).GetFields(BindingFlags.Public | BindingFlags.Static)
+                foreach (var flag in typeof(ScriptControlChange).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => scriptControlChange.IsMaskFlagSet((ScriptControlChange) o.GetValue(null)))
                     .Select(o => o.Name))
@@ -313,7 +317,7 @@ namespace wasOpenMetaverse
             if (data is ParcelFlags)
             {
                 var parcelFlags = (ParcelFlags) data;
-                foreach (var flag in typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                foreach (var flag in typeof(ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => parcelFlags.IsMaskFlagSet((ParcelFlags) o.GetValue(null)))
                     .Select(o => o.Name))
@@ -326,7 +330,7 @@ namespace wasOpenMetaverse
             if (data is GroupPowers)
             {
                 var groupPowers = (GroupPowers) data;
-                foreach (var power in typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                foreach (var power in typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
                     .Where(o => groupPowers.IsMaskFlagSet((GroupPowers) o.GetValue(null)))
                     .Select(o => o.Name))
@@ -374,7 +378,7 @@ namespace wasOpenMetaverse
                     {
                         case true:
                             var allFlags =
-                                typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                typeof(ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .ToDictionary(o => o.Name, o => (ParcelFlags) o.GetValue(null));
                             CSV.ToEnumerable(d.Value).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                                 o =>
@@ -398,7 +402,7 @@ namespace wasOpenMetaverse
                     {
                         case true:
                             var allPowers =
-                                typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .ToDictionary(o => o.Name, o => (GroupPowers) o.GetValue(null));
                             CSV.ToEnumerable(d.Value).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                                 o =>
@@ -421,7 +425,7 @@ namespace wasOpenMetaverse
                     {
                         case true:
                             var attachmentPointFieldInfo =
-                                typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                typeof(AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
                                     .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (attachmentPointFieldInfo == null) break;
@@ -437,8 +441,8 @@ namespace wasOpenMetaverse
                     switch (!byte.TryParse(d.Value, out tree))
                     {
                         case true:
-                            var treeFieldInfo = typeof (Tree).GetFields(BindingFlags.Public |
-                                                                        BindingFlags.Static)
+                            var treeFieldInfo = typeof(Tree).GetFields(BindingFlags.Public |
+                                                                       BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (treeFieldInfo == null) break;
@@ -454,8 +458,8 @@ namespace wasOpenMetaverse
                     switch (!byte.TryParse(d.Value, out material))
                     {
                         case true:
-                            var materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
-                                                                                BindingFlags.Static)
+                            var materialFieldInfo = typeof(Material).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (materialFieldInfo == null) break;
@@ -471,8 +475,8 @@ namespace wasOpenMetaverse
                     switch (!byte.TryParse(d.Value, out pathCurve))
                     {
                         case true:
-                            var pathCurveFieldInfo = typeof (PathCurve).GetFields(BindingFlags.Public |
-                                                                                  BindingFlags.Static)
+                            var pathCurveFieldInfo = typeof(PathCurve).GetFields(BindingFlags.Public |
+                                                                                 BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (pathCurveFieldInfo == null) break;
@@ -488,7 +492,7 @@ namespace wasOpenMetaverse
                     switch (!byte.TryParse(d.Value, out pCode))
                     {
                         case true:
-                            var pCodeFieldInfo = typeof (PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
+                            var pCodeFieldInfo = typeof(PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (pCodeFieldInfo == null) break;
@@ -505,7 +509,7 @@ namespace wasOpenMetaverse
                     {
                         case true:
                             var profileCurveFieldInfo =
-                                typeof (ProfileCurve).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                typeof(ProfileCurve).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
                                     .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (profileCurveFieldInfo == null) break;
@@ -521,8 +525,8 @@ namespace wasOpenMetaverse
                     switch (!byte.TryParse(d.Value, out holeType))
                     {
                         case true:
-                            var holeTypeFieldInfo = typeof (HoleType).GetFields(BindingFlags.Public |
-                                                                                BindingFlags.Static)
+                            var holeTypeFieldInfo = typeof(HoleType).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (holeTypeFieldInfo == null) break;
@@ -538,8 +542,8 @@ namespace wasOpenMetaverse
                     switch (!byte.TryParse(d.Value, out sculptType))
                     {
                         case true:
-                            var sculptTypeFieldInfo = typeof (SculptType).GetFields(BindingFlags.Public |
-                                                                                    BindingFlags.Static)
+                            var sculptTypeFieldInfo = typeof(SculptType).GetFields(BindingFlags.Public |
+                                                                                   BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(p => Strings.StringEquals(d.Value, p.Name, StringComparison.Ordinal));
                             if (sculptTypeFieldInfo == null) break;
