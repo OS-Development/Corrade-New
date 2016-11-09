@@ -31,72 +31,85 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        UUID sessionUUID;
-                        if (
-                            !UUID.TryParse(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
-                                        corradeCommandParameters.Message)),
-                                out sessionUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                        }
-                        InventoryOffer inventoryOffer;
-                        lock (InventoryOffersLock)
-                        {
-                            if (!InventoryOffers.TryGetValue(sessionUUID, out inventoryOffer))
-                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_OFFER_NOT_FOUND);
-                        }
-                        var folder = wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
-                                corradeCommandParameters.Message));
+
                         InventoryFolder inventoryFolder = null;
-                        switch (!string.IsNullOrEmpty(folder))
-                        {
-                            case true:
-                                UUID folderUUID;
-                                switch (UUID.TryParse(folder, out folderUUID))
-                                {
-                                    case true:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            if (Client.Inventory.Store.Contains(folderUUID))
-                                            {
-                                                inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                            }
-                                        }
-                                        break;
-                                    default:
-                                        inventoryFolder =
-                                            Inventory.FindInventory<InventoryFolder>(Client, folder,
-                                                CORRADE_CONSTANTS.PATH_SEPARATOR,
-                                                CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
-                                                corradeConfiguration.ServicesTimeout);
-                                        break;
-                                }
-                                if (inventoryFolder == null)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
-                                }
-                                break;
-                            default:
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    inventoryFolder =
-                                        Client.Inventory.Store.Items[
-                                            Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
-                                            .Data as InventoryFolder;
-                                }
-                                break;
-                        }
-                        switch (
+                        InventoryOffer inventoryOffer = null;
+                        var sessionUUID = UUID.Zero;
+                        var action =
                             Reflection.GetEnumValueFromName<Enumerations.Action>(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                        corradeCommandParameters.Message)).ToLowerInvariant()))
+                                        corradeCommandParameters.Message)).ToLowerInvariant());
+                        switch (action)
+                        {
+                            case Enumerations.Action.ACCEPT:
+                                var folder = wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
+                                        corradeCommandParameters.Message));
+                                switch (!string.IsNullOrEmpty(folder))
+                                {
+                                    case true:
+                                        UUID folderUUID;
+                                        switch (UUID.TryParse(folder, out folderUUID))
+                                        {
+                                            case true:
+                                                lock (Locks.ClientInstanceInventoryLock)
+                                                {
+                                                    if (Client.Inventory.Store.Contains(folderUUID))
+                                                    {
+                                                        inventoryFolder =
+                                                            Client.Inventory.Store[folderUUID] as InventoryFolder;
+                                                    }
+                                                }
+                                                break;
+                                            default:
+                                                inventoryFolder =
+                                                    Inventory.FindInventory<InventoryFolder>(Client, folder,
+                                                        CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                        CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                                        corradeConfiguration.ServicesTimeout);
+                                                break;
+                                        }
+                                        if (inventoryFolder == null)
+                                        {
+                                            throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
+                                        }
+                                        break;
+                                    default:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            inventoryFolder =
+                                                Client.Inventory.Store.Items[
+                                                    Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
+                                                    .Data as InventoryFolder;
+                                        }
+                                        break;
+                                }
+                                goto case Enumerations.Action.IGNORE;
+                            case Enumerations.Action.DECLINE:
+                            case Enumerations.Action.IGNORE:
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
+                                                corradeCommandParameters.Message)),
+                                        out sessionUUID))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
+                                }
+                                lock (InventoryOffersLock)
+                                {
+                                    if (!InventoryOffers.TryGetValue(sessionUUID, out inventoryOffer))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.INVENTORY_OFFER_NOT_FOUND);
+                                }
+                                break;
+                        }
+
+                        switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
                                 lock (InventoryOffersLock)

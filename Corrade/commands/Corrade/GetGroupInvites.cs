@@ -35,17 +35,17 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
-                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Group), o.Group});
+                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[] { Reflection.GetNameFromEnumValue(Command.ScriptKeys.GROUP), o.Group});
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o, o.Session), o.Session.ToString()});
+                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION), o.Session.ToString()});
                                 csv.AddRange(new[]
                                 {
-                                    Reflection.GetStructureMemberName(o, o.Fee),
+                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.FEE),
                                     o.Fee.ToString(Utils.EnUsCulture)
                                 });
                             }

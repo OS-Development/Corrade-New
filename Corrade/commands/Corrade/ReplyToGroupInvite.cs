@@ -30,29 +30,38 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        UUID sessionUUID;
-                        if (
-                            !UUID.TryParse(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
-                                        corradeCommandParameters.Message)),
-                                out sessionUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                        }
-                        GroupInvite groupInvite;
-                        lock (GroupInvitesLock)
-                        {
-                            if (!GroupInvites.TryGetValue(sessionUUID, out groupInvite))
-                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_INVITE_NOT_FOUND);
-                        }
-                        switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
+                        UUID sessionUUID = UUID.Zero;
+                        GroupInvite groupInvite = null;
+                        var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant()))
+                                .ToLowerInvariant());
+                        switch (action)
+                        {
+                            case Enumerations.Action.ACCEPT:
+                            case Enumerations.Action.DECLINE:
+                            case Enumerations.Action.IGNORE:
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
+                                                corradeCommandParameters.Message)),
+                                        out sessionUUID))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
+                                }
+                                lock (GroupInvitesLock)
+                                {
+                                    if (!GroupInvites.TryGetValue(sessionUUID, out groupInvite))
+                                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_INVITE_NOT_FOUND);
+                                }
+                                break;
+                        }
+                        
+                        switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
                                 var currentGroups = Enumerable.Empty<UUID>();
@@ -92,7 +101,7 @@ namespace Corrade
                                 }
                                 lock (Locks.ClientInstanceSelfLock)
                                 {
-                                    Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
+                                    Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
                                         true);
                                 }
                                 break;
@@ -103,7 +112,7 @@ namespace Corrade
                                 }
                                 lock (Locks.ClientInstanceSelfLock)
                                 {
-                                    Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
+                                    Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
                                         false);
                                 }
                                 break;

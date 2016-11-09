@@ -34,6 +34,8 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("fee")]
+            FEE,
             [Reflection.NameAttribute("demote")]
             DEMOTE,
             [Reflection.NameAttribute("note")]

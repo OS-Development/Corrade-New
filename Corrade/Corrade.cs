@@ -5229,7 +5229,7 @@ namespace Corrade
                     },
                     Item = e.ItemID,
                     Task = e.TaskID,
-                    Permission = e.Questions,
+                    Permissions = e.Questions,
                     Region = e.Simulator.Name
                 });
             }
@@ -5672,6 +5672,7 @@ namespace Corrade
                                 UUID = inviteGroupAgent
                             },
                             Group = inviteGroup.Name,
+                            ID = inviteGroup.ID,
                             Session = args.IM.IMSessionID,
                             Fee = inviteGroup.MembershipFee
                         });

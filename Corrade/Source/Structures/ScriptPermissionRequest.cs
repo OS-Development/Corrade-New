@@ -12,12 +12,12 @@ namespace Corrade.Structures
     /// <summary>
     ///     A structure for script permission requests.
     /// </summary>
-    public struct ScriptPermissionRequest
+    public class ScriptPermissionRequest
     {
-        public Agent Agent;
+        [Reflection.NameAttribute("agent")] public Agent Agent;
         [Reflection.NameAttribute("item")] public UUID Item;
         [Reflection.NameAttribute("name")] public string Name;
-        [Reflection.NameAttribute("permission")] public ScriptPermission Permission;
+        [Reflection.NameAttribute("permissions")] public ScriptPermission Permissions;
         [Reflection.NameAttribute("region")] public string Region;
         [Reflection.NameAttribute("task")] public UUID Task;
     }

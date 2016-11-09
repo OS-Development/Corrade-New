@@ -31,24 +31,37 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
 
-                        UUID dialogUUID;
-                        if (
-                            !UUID.TryParse(
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIALOG)),
-                                    corradeCommandParameters.Message)),
-                                out dialogUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_DIALOG_SPECIFIED);
-                        }
-
-                        ScriptDialog scriptDialog;
-                        switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
+                        var dialogUUID = UUID.Zero;
+                        ScriptDialog scriptDialog = null;
+                        var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant()))
+                                .ToLowerInvariant());
+                        switch (action)
+                        {
+                            case Enumerations.Action.REPLY:
+                            case Enumerations.Action.IGNORE:
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIALOG)),
+                                            corradeCommandParameters.Message)),
+                                        out dialogUUID))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_DIALOG_SPECIFIED);
+                                }
+                                lock (ScriptDialogsLock)
+                                {
+                                    if (!ScriptDialogs.TryGetValue(dialogUUID, out scriptDialog))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
+                                }
+                                break;
+                        }
+
+                        switch (action)
                         {
                             case Enumerations.Action.PURGE:
                                 lock (ScriptDialogsLock)
@@ -59,19 +72,10 @@ namespace Corrade
                             case Enumerations.Action.IGNORE:
                                 lock (ScriptDialogsLock)
                                 {
-                                    if (!ScriptDialogs.TryGetValue(dialogUUID, out scriptDialog))
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
                                     ScriptDialogs.Remove(dialogUUID);
                                 }
                                 break;
                             case Enumerations.Action.REPLY:
-                                lock (ScriptDialogsLock)
-                                {
-                                    if (!ScriptDialogs.TryGetValue(dialogUUID, out scriptDialog))
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
-                                }
                                 var label = wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BUTTON)),
                                         corradeCommandParameters.Message));

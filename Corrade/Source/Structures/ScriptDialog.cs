@@ -13,7 +13,7 @@ namespace Corrade.Structures
     /// <summary>
     ///     A structure for script dialogs.
     /// </summary>
-    public struct ScriptDialog
+    public class ScriptDialog
     {
         [Reflection.NameAttribute("agent")] public Agent Agent;
         [Reflection.NameAttribute("button")] public List<string> Button;

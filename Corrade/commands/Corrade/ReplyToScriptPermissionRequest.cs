@@ -25,44 +25,52 @@ namespace Corrade
                 replytoscriptpermissionrequest =
                     (corradeCommandParameters, result) =>
                     {
-                        UUID itemUUID;
-                        if (
-                            !UUID.TryParse(
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                                    corradeCommandParameters.Message)),
-                                out itemUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                        }
-                        UUID taskUUID;
-                        if (
-                            !UUID.TryParse(
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TASK)),
-                                    corradeCommandParameters.Message)),
-                                out taskUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_TASK_SPECIFIED);
-                        }
-                        ScriptPermissionRequest scriptPermissionRequest;
-                        lock (ScriptPermissionsRequestsLock)
-                        {
-                            scriptPermissionRequest =
-                                ScriptPermissionRequests.FirstOrDefault(
-                                    o => o.Task.Equals(taskUUID) && o.Item.Equals(itemUUID));
-                        }
-                        if (scriptPermissionRequest.Equals(default(ScriptPermissionRequest)))
-                        {
-                            throw new Command.ScriptException(
-                                Enumerations.ScriptError.SCRIPT_PERMISSION_REQUEST_NOT_FOUND);
-                        }
-                        switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
+                        ScriptPermissionRequest scriptPermissionRequest = null;
+                        var itemUUID = UUID.Zero;
+                        var taskUUID = UUID.Zero;
+                        var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant()))
+                                .ToLowerInvariant());
+                        switch (action)
+                        {
+                            case Enumerations.Action.REPLY:
+                            case Enumerations.Action.IGNORE:
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                                            corradeCommandParameters.Message)),
+                                        out itemUUID))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
+                                }
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TASK)),
+                                            corradeCommandParameters.Message)),
+                                        out taskUUID))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_TASK_SPECIFIED);
+                                }
+                                lock (ScriptPermissionsRequestsLock)
+                                {
+                                    scriptPermissionRequest =
+                                        ScriptPermissionRequests.FirstOrDefault(
+                                            o => o.Task.Equals(taskUUID) && o.Item.Equals(itemUUID));
+                                }
+                                if (scriptPermissionRequest == null)
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.SCRIPT_PERMISSION_REQUEST_NOT_FOUND);
+                                }
+                                break;
+                        }
+
+                        switch (action)
                         {
                             case Enumerations.Action.REPLY:
                                 var succeeded = true;
