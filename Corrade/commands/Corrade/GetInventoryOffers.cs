@@ -30,7 +30,7 @@ namespace Corrade
                         var csv = new List<string>();
                         lock (InventoryOffersLock)
                         {
-                            InventoryOffers.AsParallel().ForAll(o =>
+                            InventoryOffers.Values.AsParallel().ForAll(o =>
                             {
                                 var name =
                                     new List<string>(

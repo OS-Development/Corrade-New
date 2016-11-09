@@ -20,6 +20,76 @@ namespace wasSharp
     public static class Collections
     {
 
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     A collection that maps ranges to values with O(1) complexity
+        ///     lookups and O(n) insertions.
+        /// </summary>
+        /// <typeparam name="T">the type of value to store</typeparam>
+        public class RangeCollection<T> : IEnumerable
+        {
+            private Dictionary<int, T> map = null;
+
+            public RangeCollection(int min, int max)
+            {
+                map = new Dictionary<int, T>(max - min);
+            }
+
+            /// <summary>
+            ///     Map a value to a range.
+            /// </summary>
+            /// <param name="Value">the value for the range</param>
+            /// <param name="min">the minimal range</param>
+            /// <param name="max">the maximal range</param>
+            public void Add(T Value, int min, int max)
+            {
+                foreach (var i in Enumerable.Range(min, max - min + 1))
+                {
+                    map.Add(i, Value);
+                }
+            }
+
+            public IEnumerator GetEnumerator()
+            {
+                return ((IEnumerable)map).GetEnumerator();
+            }
+
+            public T this[int x]
+            {
+                get
+                {
+                    T value;
+                    return map.TryGetValue(x, out value) ? value : default(T);
+                }
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns true of an enumerable contains more than one element.
+        /// </summary>
+        /// <typeparam name="T">the type of the enumeration</typeparam>
+        /// <param name="e">the enumeration</param>
+        /// <returns>true if enumeration contains more than one element</returns>
+        /// <remarks>O(2) worst case</remarks>
+        public static bool Some<T>(this IEnumerable<T> e)
+        {
+            int i = 0;
+            using (var iter = e.GetEnumerator())
+            {
+                while (iter.MoveNext())
+                {
+                    if (++i > 1)
+                        return true;
+                }
+                return false;
+            }
+        }
+
         /// <summary>
         ///     Compares two dictionaries for equality.
         /// </summary>

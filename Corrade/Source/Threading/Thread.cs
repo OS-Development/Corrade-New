@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Amib.Threading;
 using OpenMetaverse;
 using wasSharp;
 using ThreadState = System.Threading.ThreadState;
@@ -21,13 +22,10 @@ namespace Corrade.Threading
     public class Thread
     {
         /// <summary>
-        ///     Holds all the live threads.
+        ///     Thread pool.
         /// </summary>
-        private static readonly HashSet<System.Threading.Thread> WorkSet = new HashSet<System.Threading.Thread>();
-
-        private static readonly object WorkSetLock = new object();
-
-        private static readonly Random corradeRandom = new Random();
+        private static readonly SmartThreadPool smartThreadPool = new SmartThreadPool();
+        public Collections.RangeCollection<WorkItemPriority> threadRangePriority = new Collections.RangeCollection<WorkItemPriority>(0, 100);
 
         /// <summary>
         ///     Semaphore for sequential execution of threads.
@@ -35,12 +33,10 @@ namespace Corrade.Threading
         private static readonly ManualResetEvent SequentialThreadCompletedEvent = new ManualResetEvent(true);
 
         /// <summary>
-        ///     Holds a map of groups to execution time in milliseconds.
+        ///     Holds group execution times.
         /// </summary>
-        private static Dictionary<UUID, GroupExecution> GroupExecutionTime =
-            new Dictionary<UUID, GroupExecution>();
-
-        private static readonly object GroupExecutionTimeLock = new object();
+        private static SortedSet<GroupExecution> GroupExecutionSet = new SortedSet<GroupExecution>();
+        private static readonly object GroupExecutionSetLock = new object();
         private static readonly Stopwatch ThreadExecutuionStopwatch = new Stopwatch();
         private readonly Enumerations.ThreadType threadType;
 
@@ -50,7 +46,15 @@ namespace Corrade.Threading
         /// <param name="threadType">the type of Corrade thread</param>
         public Thread(Enumerations.ThreadType threadType)
         {
+            // Get the thread type.
             this.threadType = threadType;
+
+            // Set priority ranges.
+            threadRangePriority.Add(WorkItemPriority.Highest, 0, 20);
+            threadRangePriority.Add(WorkItemPriority.AboveNormal, 21, 40);
+            threadRangePriority.Add(WorkItemPriority.Normal, 41, 60);
+            threadRangePriority.Add(WorkItemPriority.BelowNormal, 61, 80);
+            threadRangePriority.Add(WorkItemPriority.Lowest, 81, 100);
         }
 
         /// <summary>
@@ -65,24 +69,19 @@ namespace Corrade.Threading
         /// </param>
         public void SpawnSequential(ThreadStart s, uint m, uint millisecondsTimeout)
         {
-            lock (WorkSetLock)
-            {
-                if (WorkSet.Count > m)
-                {
-                    return;
-                }
-            }
+            if (smartThreadPool.InUseThreads > m)
+                return;
+
             var threadType = this.threadType;
-            System.Threading.Thread t = null;
-            t = new System.Threading.Thread(() =>
+            smartThreadPool.QueueWorkItem(() =>
             {
-                // Wait for previous sequential thread to complete.
-                SequentialThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false);
-                SequentialThreadCompletedEvent.Reset();
                 // protect inner thread
                 try
                 {
+                    SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, false);
+                    SequentialThreadCompletedEvent.Reset();
                     s();
+                    SequentialThreadCompletedEvent.Set();
                 }
                 catch (Exception ex)
                 {
@@ -91,19 +90,7 @@ namespace Corrade.Threading
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
                         Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                 }
-                // Thread has completed.
-                SequentialThreadCompletedEvent.Set();
-                lock (WorkSetLock)
-                {
-                    WorkSet.Remove(t);
-                }
-            })
-            {IsBackground = true};
-            lock (WorkSetLock)
-            {
-                WorkSet.Add(t);
-            }
-            t.Start();
+            });
         }
 
         /// <summary>
@@ -114,16 +101,11 @@ namespace Corrade.Threading
         /// <param name="m">the maximum amount of threads</param>
         public void Spawn(ThreadStart s, uint m)
         {
-            lock (WorkSetLock)
-            {
-                if (WorkSet.Count > m)
-                {
-                    return;
-                }
-            }
+            if (smartThreadPool.InUseThreads > m)
+                return;
+
             var threadType = this.threadType;
-            System.Threading.Thread t = null;
-            t = new System.Threading.Thread(() =>
+            smartThreadPool.QueueWorkItem(() =>
             {
                 // protect inner thread
                 try
@@ -138,84 +120,7 @@ namespace Corrade.Threading
                         Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
                         ex.StackTrace);
                 }
-                lock (WorkSetLock)
-                {
-                    WorkSet.Remove(t);
-                }
-            })
-            {IsBackground = true};
-            lock (WorkSetLock)
-            {
-                WorkSet.Add(t);
-            }
-            t.Start();
-        }
-
-        /// <summary>
-        ///     This is an blocking scheduler where threads will be waited upon.
-        /// </summary>
-        /// <param name="s">the code to execute as a ThreadStart delegate</param>
-        /// <param name="m">the maximum amount of threads</param>
-        /// <param name="millisecondsTimeout">the timout after which to abort the thread</param>
-        public void SpawnBlock(ThreadStart s, uint m, uint millisecondsTimeout)
-        {
-            lock (WorkSetLock)
-            {
-                if (WorkSet.Count > m)
-                {
-                    return;
-                }
-            }
-            var threadType = this.threadType;
-            System.Threading.Thread t = null;
-            t = new System.Threading.Thread(() =>
-            {
-                // protect inner thread
-                try
-                {
-                    s();
-                }
-                catch (Exception ex)
-                {
-                    Corrade.Feedback(
-                        Reflection.GetDescriptionFromEnumValue(
-                            global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
-                }
-                lock (WorkSetLock)
-                {
-                    WorkSet.Remove(t);
-                }
-            })
-            {IsBackground = true};
-            lock (WorkSetLock)
-            {
-                WorkSet.Add(t);
-            }
-            t.Start();
-            // Now block until return.
-            if (
-                t.ThreadState.Equals(ThreadState.Running) ||
-                t.ThreadState.Equals(ThreadState.WaitSleepJoin))
-            {
-                if (t.Join((int) millisecondsTimeout))
-                {
-                    return;
-                }
-                // Timeout elapsed, so we force an abort and remove the thread from the workset.
-                try
-                {
-                    t.Abort();
-                    t.Join();
-                }
-                catch (Exception)
-                {
-                    lock (WorkSetLock)
-                    {
-                        WorkSet.Remove(t);
-                    }
-                }
-            }
+            });
         }
 
         /// <summary>
@@ -233,77 +138,50 @@ namespace Corrade.Threading
             // Don't accept to schedule bogus groups.
             if (groupUUID.Equals(UUID.Zero))
                 return;
-            lock (WorkSetLock)
+
+            if (smartThreadPool.InUseThreads > m)
+                return;
+
+            WorkItemPriority workItemPriority = WorkItemPriority.Normal;
+            lock (GroupExecutionSetLock)
             {
-                if (WorkSet.Count > m)
-                {
-                    return;
-                }
+                // Clear threads that are not restricted anymore due to expiration.
+                GroupExecutionSet.RemoveWhere(o => (DateTime.UtcNow - o.TimeStamp).Milliseconds > expiration);
+
+                var groupExecution = GroupExecutionSet.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
+                // Adjust the priority depending on the time spent executing a command.
+                if (GroupExecutionSet.Some() && !groupExecution.Equals(default(GroupExecution)))
+                    workItemPriority = threadRangePriority[(int)(100L * groupExecution.ExecutionTime / GroupExecutionSet.Sum(o => o.ExecutionTime))];
             }
+
+            // Spawn.
             var threadType = this.threadType;
-            System.Threading.Thread t = null;
-            t = new System.Threading.Thread(() =>
+            smartThreadPool.QueueWorkItem(() =>
             {
                 // protect inner thread
                 try
                 {
-                    // First remove any groups that have expired.
-                    lock (GroupExecutionTimeLock)
-                    {
-                        GroupExecutionTime =
-                            GroupExecutionTime.AsParallel().Where(
-                                o => (DateTime.Now - o.Value.TimeStamp).Milliseconds < expiration)
-                                .ToDictionary(o => o.Key, o => o.Value);
-                    }
-                    var sleepTime = 0;
-                    var sortedTimeGroups = new List<int>();
-                    lock (GroupExecutionTimeLock)
-                    {
-                        // In case only one group is involved, then do not schedule the group.
-                        if (GroupExecutionTime.Count > 1 && GroupExecutionTime.ContainsKey(groupUUID))
-                        {
-                            sortedTimeGroups.AddRange(
-                                GroupExecutionTime.OrderBy(o => o.Value.ExecutionTime)
-                                    .Select(o => o.Value.ExecutionTime));
-                        }
-                    }
-                    switch (sortedTimeGroups.Any())
-                    {
-                        case true:
-                            var draw = corradeRandom.Next(sortedTimeGroups.Sum(o => o));
-                            var accu = 0;
-                            foreach (var time in sortedTimeGroups)
-                            {
-                                accu += time;
-                                if (accu < draw) continue;
-                                sleepTime = time;
-                                break;
-                            }
-                            break;
-                    }
-                    System.Threading.Thread.Sleep(sleepTime);
                     ThreadExecutuionStopwatch.Restart();
                     s();
                     ThreadExecutuionStopwatch.Stop();
-                    lock (GroupExecutionTimeLock)
+                    lock (GroupExecutionSetLock)
                     {
                         // add or change the mean execution time for a group
-                        switch (GroupExecutionTime.ContainsKey(groupUUID))
+                        var groupExecution = GroupExecutionSet.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
+                        switch (!groupExecution.Equals(default(GroupExecution)))
                         {
                             case true:
-                                GroupExecutionTime[groupUUID] = new GroupExecution
-                                {
-                                    ExecutionTime = (GroupExecutionTime[groupUUID].ExecutionTime +
-                                                     (int) ThreadExecutuionStopwatch.ElapsedMilliseconds)/
-                                                    2,
-                                    TimeStamp = DateTime.Now
-                                };
+                                GroupExecutionSet.Remove(groupExecution);
+                                groupExecution.ExecutionTime = (groupExecution.ExecutionTime + ThreadExecutuionStopwatch.ElapsedMilliseconds) / 2;
+                                groupExecution.TimeStamp = DateTime.UtcNow;
+                                GroupExecutionSet.Add(groupExecution);
                                 break;
                             default:
-                                GroupExecutionTime.Add(groupUUID, new GroupExecution
+                                GroupExecutionSet.Add(new GroupExecution
                                 {
-                                    ExecutionTime = (int) ThreadExecutuionStopwatch.ElapsedMilliseconds,
-                                    TimeStamp = DateTime.Now
+                                    GroupUUID = groupUUID,
+                                    ExecutionTime = ThreadExecutuionStopwatch.ElapsedMilliseconds,
+                                    TimeStamp = DateTime.UtcNow
                                 });
                                 break;
                         }
@@ -317,23 +195,29 @@ namespace Corrade.Threading
                         Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
                         ex.StackTrace);
                 }
-                lock (WorkSetLock)
-                {
-                    WorkSet.Remove(t);
-                }
-            })
-            {IsBackground = true};
-            lock (WorkSetLock)
-            {
-                WorkSet.Add(t);
-            }
-            t.Start();
+            }, workItemPriority);
         }
 
-        private struct GroupExecution
+        private struct GroupExecution : IComparer<GroupExecution>, IComparable<GroupExecution>
         {
-            public int ExecutionTime;
+            public UUID GroupUUID;
+            public long ExecutionTime;
             public DateTime TimeStamp;
+
+            int IComparer<GroupExecution>.Compare(GroupExecution x, GroupExecution y)
+            {
+                if (x.ExecutionTime.Equals(y.ExecutionTime))
+                    return 0;
+                if (x.ExecutionTime < y.ExecutionTime)
+                    return -1;
+
+                return 1;
+            }
+
+            int IComparable<GroupExecution>.CompareTo(GroupExecution o)
+            {
+                return ExecutionTime.CompareTo(o.ExecutionTime);
+            }
         }
     }
 }

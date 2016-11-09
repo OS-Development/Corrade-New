@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using CorradeConfiguration;
-using NTextCat;
+using LanguageDetection;
 using wasSharp;
 
 namespace Corrade
@@ -45,14 +45,13 @@ namespace Corrade
                             }
                             // language detection
                             var csv = new List<string>();
-                            var detectedLanguages =
-                                new HashSet<Tuple<LanguageInfo, double>>(rankedLanguageIdentifier.Identify(message));
+                            var detectedLanguages = languageDetector.DetectAll(message);
                             if (detectedLanguages.Any())
                             {
-                                foreach (var language in detectedLanguages)
+                                foreach (var detected in detectedLanguages)
                                 {
-                                    csv.Add(language.Item1.Iso639_3);
-                                    csv.Add(language.Item2.ToString(CultureInfo.InvariantCulture));
+                                    csv.Add(detected.Language);
+                                    csv.Add(detected.Probability.ToString(CultureInfo.InvariantCulture));
                                 }
                             }
                             if (csv.Any())

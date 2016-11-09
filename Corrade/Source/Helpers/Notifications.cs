@@ -14,7 +14,7 @@ using System.Reflection;
 using BayesSharp;
 using Corrade.Constants;
 using CorradeConfiguration;
-using NTextCat;
+using LanguageDetection;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
@@ -68,7 +68,7 @@ namespace Corrade.Helpers
 
         public static void ProcessParameters(this SerializedNotification.Parameter o, GridClient Client,
             Configuration corradeConfiguration, string type, List<object> args,
-            Dictionary<string, string> store, object sync, RankedLanguageIdentifier rankedLanguageIdentifier,
+            Dictionary<string, string> store, object sync, LanguageDetector languageDetector,
             BayesSimpleTextClassifier bayesSimpleClassifier)
         {
             object value;
@@ -285,14 +285,12 @@ namespace Corrade.Helpers
 
                             if (process.IdentifyLanguage != null)
                             {
-                                var detectedLanguage =
-                                    rankedLanguageIdentifier.Identify(value as string).FirstOrDefault();
+                                var detectedLanguage = languageDetector.Detect(value as string);
                                 if (detectedLanguage != null)
                                 {
                                     lock (sync)
                                     {
-                                        store.Add(process.IdentifyLanguage.Name,
-                                            detectedLanguage.Item1.Iso639_3);
+                                        store.Add(process.IdentifyLanguage.Name, detectedLanguage);
                                     }
                                 }
                                 continue;

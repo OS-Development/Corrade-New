@@ -20,14 +20,14 @@ namespace Corrade
             public static Action<NotificationParameters, Dictionary<string, string>> dialog =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    var scriptDialogEventArgs =
-                        (ScriptDialogEventArgs) corradeNotificationParameters.Event;
+                    var scriptDialog =
+                        (Structures.ScriptDialog) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
                         notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
-                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(scriptDialogEventArgs,
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(scriptDialog,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
@@ -38,8 +38,8 @@ namespace Corrade
                         .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
                             p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                new List<object> {scriptDialogEventArgs},
-                                notificationData, LockObject, rankedLanguageIdentifier,
+                                new List<object> {scriptDialog},
+                                notificationData, LockObject, languageDetector,
                                 GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));
                 };

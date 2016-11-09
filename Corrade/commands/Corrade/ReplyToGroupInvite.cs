@@ -30,24 +30,6 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        var action =
-                            (uint) Reflection.GetEnumValueFromName<Enumerations.Action>(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                        corradeCommandParameters.Message))
-                                    .ToLowerInvariant());
-                        var currentGroups = Enumerable.Empty<UUID>();
-                        if (
-                            !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
-                                ref currentGroups))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                        }
-                        if (new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.ALREADY_IN_GROUP);
-                        }
                         UUID sessionUUID;
                         if (
                             !UUID.TryParse(
@@ -60,47 +42,85 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                         }
                         GroupInvite groupInvite;
-                        int amount;
-                        lock (GroupInviteLock)
+                        lock (GroupInvitesLock)
                         {
-                            groupInvite =
-                                GroupInvites.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID));
-                            switch (!groupInvite.Equals(default(GroupInvite)))
-                            {
-                                case true:
-                                    amount = groupInvite.Fee;
-                                    break;
-                                default:
-                                    throw new Command.ScriptException(Enumerations.ScriptError.GROUP_INVITE_NOT_FOUND);
-                            }
+                            if (!GroupInvites.TryGetValue(sessionUUID, out groupInvite))
+                                throw new Command.ScriptException(Enumerations.ScriptError.GROUP_INVITE_NOT_FOUND);
                         }
-                        if (!amount.Equals(0) && action.Equals((uint) Enumerations.Action.ACCEPT))
+                        switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message))
+                                .ToLowerInvariant()))
                         {
-                            if (
-                                !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                    (int) Configuration.Permissions.Economy))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                            }
-                            if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
-                            {
-                                throw new Command.ScriptException(
-                                    Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
-                            }
-                            if (Client.Self.Balance < amount)
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
-                            }
-                        }
-                        // remove the group invite
-                        lock (GroupInviteLock)
-                        {
-                            GroupInvites.Remove(groupInvite);
-                        }
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
-                                action.Equals((uint) Enumerations.Action.ACCEPT));
+                            case Enumerations.Action.ACCEPT:
+                                var currentGroups = Enumerable.Empty<UUID>();
+                                if (
+                                    !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
+                                        ref currentGroups))
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                                }
+                                if (new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.ALREADY_IN_GROUP);
+                                }
+                                if (!groupInvite.Fee.Equals(0))
+                                {
+                                    if (
+                                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                            (int) Configuration.Permissions.Economy))
+                                    {
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                                    }
+                                    if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
+                                    {
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                                    }
+                                    if (Client.Self.Balance < groupInvite.Fee)
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
+                                    }
+                                }
+                                lock (GroupInvitesLock)
+                                {
+                                    GroupInvites.Remove(sessionUUID);
+                                }
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
+                                        true);
+                                }
+                                break;
+                            case Enumerations.Action.DECLINE:
+                                lock (GroupInvitesLock)
+                                {
+                                    GroupInvites.Remove(sessionUUID);
+                                }
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
+                                        false);
+                                }
+                                break;
+                            case Enumerations.Action.PURGE:
+                                lock (GroupInvitesLock)
+                                {
+                                    GroupInvites.Clear();
+                                }
+                                break;
+                            case Enumerations.Action.IGNORE:
+                                lock (GroupInvitesLock)
+                                {
+                                    GroupInvites.Remove(sessionUUID);
+                                }
+                                break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }
                     };
         }

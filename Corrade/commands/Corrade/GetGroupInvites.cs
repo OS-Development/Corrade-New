@@ -28,9 +28,9 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     var LockObject = new object();
-                    lock (GroupInviteLock)
+                    lock (GroupInvitesLock)
                     {
-                        GroupInvites.AsParallel().ForAll(o =>
+                        GroupInvites.Values.AsParallel().ForAll(o =>
                         {
                             lock (LockObject)
                             {

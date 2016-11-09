@@ -30,7 +30,7 @@ namespace Corrade
                         }
                         var csv = new List<string>();
                         var LockObject = new object();
-                        lock (ScriptPermissionRequestLock)
+                        lock (ScriptPermissionsRequestsLock)
                         {
                             ScriptPermissionRequests.AsParallel().ForAll(o =>
                             {

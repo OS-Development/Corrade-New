@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Corrade.Structures;
 using CorradeConfiguration;
 using OpenMetaverse;
@@ -63,25 +62,55 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                         }
                         TeleportLure teleportLure;
-                        lock (TeleportLureLock)
+                        lock (TeleportLuresLock)
                         {
-                            teleportLure = TeleportLures.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID));
+                            if (!TeleportLures.TryGetValue(sessionUUID, out teleportLure))
+                                throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_LURE_NOT_FOUND);
                         }
-                        if (teleportLure.Equals(default(TeleportLure)))
+                        switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message))
+                                .ToLowerInvariant()))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_LURE_NOT_FOUND);
+                            case Enumerations.Action.ACCEPT:
+                                // remove teleport lure
+                                lock (TeleportLuresLock)
+                                {
+                                    TeleportLures.Remove(sessionUUID);
+                                }
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.TeleportLureRespond(agentUUID, sessionUUID, true);
+                                }
+                                break;
+                            case Enumerations.Action.DECLINE:
+                                // remove teleport lure
+                                lock (TeleportLuresLock)
+                                {
+                                    TeleportLures.Remove(sessionUUID);
+                                }
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.TeleportLureRespond(agentUUID, sessionUUID, false);
+                                }
+                                break;
+                            case Enumerations.Action.PURGE:
+                                lock (TeleportLuresLock)
+                                {
+                                    TeleportLures.Clear();
+                                }
+                                break;
+                            case Enumerations.Action.IGNORE:
+                                lock (TeleportLuresLock)
+                                {
+                                    TeleportLures.Remove(sessionUUID);
+                                }
+                                break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }
-                        // remove teleport lure
-                        lock (TeleportLureLock)
-                        {
-                            TeleportLures.Remove(teleportLure);
-                        }
-                        Client.Self.TeleportLureRespond(agentUUID, sessionUUID,
-                            Reflection.GetEnumValueFromName<Enumerations.Action>(
-                                wasInput(
-                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                        corradeCommandParameters.Message))
-                                    .ToLowerInvariant()).Equals(Enumerations.Action.ACCEPT));
                     };
         }
     }

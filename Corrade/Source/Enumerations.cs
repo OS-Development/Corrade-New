@@ -299,7 +299,9 @@ namespace Corrade
             [Reflection.NameAttribute("statistics")] STATISTICS,
             [Reflection.NameAttribute("lindex")] LINDEX,
             [Reflection.NameAttribute("conference")] CONFERENCE,
-            [Reflection.NameAttribute("mute")] MUTE
+            [Reflection.NameAttribute("mute")] MUTE,
+            [Reflection.NameAttribute("global")] GLOBAL,
+            [Reflection.NameAttribute("landmark")] LANDMARK
         }
 
         /// <summary>
@@ -393,7 +395,7 @@ namespace Corrade
             [Command.StatusAttribute(09348)] [Reflection.DescriptionAttribute("unknown animation action")] UNKNOWN_ANIMATION_ACTION,
             [Command.StatusAttribute(42216)] [Reflection.DescriptionAttribute("no channel specified")] NO_CHANNEL_SPECIFIED,
             [Command.StatusAttribute(31049)] [Reflection.DescriptionAttribute("no button index specified")] NO_BUTTON_INDEX_SPECIFIED,
-            [Command.StatusAttribute(38931)] [Reflection.DescriptionAttribute("no button specified")] NO_BUTTON_SPECIFIED,
+            [Command.StatusAttribute(38931)] [Reflection.DescriptionAttribute("no label or index specified")] NO_LABEL_OR_INDEX_SPECIFIED,
             [Command.StatusAttribute(19059)] [Reflection.DescriptionAttribute("no land rights")] NO_LAND_RIGHTS,
             [Command.StatusAttribute(61113)] [Reflection.DescriptionAttribute("unknown entity")] UNKNOWN_ENTITY,
             [Command.StatusAttribute(58183)] [Reflection.DescriptionAttribute("invalid rotation")] INVALID_ROTATION,
@@ -528,7 +530,7 @@ namespace Corrade
             [Command.StatusAttribute(52751)] [Reflection.DescriptionAttribute("timeout requesting price")] TIMEOUT_REQUESTING_PRICE,
             [Command.StatusAttribute(01536)] [Reflection.DescriptionAttribute("primitive not for sale")] PRIMITIVE_NOT_FOR_SALE,
             [Command.StatusAttribute(36123)] [Reflection.DescriptionAttribute("teleport throttled")] TELEPORT_THROTTLED,
-            [Command.StatusAttribute(06617)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
+            [Command.StatusAttribute(06617)] [Reflection.DescriptionAttribute("dialog button not found")] DIALOG_BUTTON_NOT_FOUND,
             [Command.StatusAttribute(08842)] [Reflection.DescriptionAttribute("unknown tree type")] UNKNOWN_TREE_TYPE,
             [Command.StatusAttribute(62130)] [Reflection.DescriptionAttribute("invalid texture coordinates")] INVALID_TEXTURE_COORDINATES,
             [Command.StatusAttribute(10945)] [Reflection.DescriptionAttribute("invalid surface coordinates")] INVALID_SURFACE_COORDINATES,
@@ -662,7 +664,9 @@ namespace Corrade
             [Command.StatusAttribute(31868)] [Reflection.DescriptionAttribute("no database path provided")] NO_DATABASE_PATH_PROVIDED,
             [Command.StatusAttribute(13030)] [Reflection.DescriptionAttribute("no chatlog path provided")] NO_CHATLOG_PATH_PROVIDED,
             [Command.StatusAttribute(42140)] [Reflection.DescriptionAttribute("group already configured")] GROUP_ALREADY_CONFIGURED,
-            [Command.StatusAttribute(15517)] [Reflection.DescriptionAttribute("eject needs demote")] EJECT_NEEDS_DEMOTE
+            [Command.StatusAttribute(15517)] [Reflection.DescriptionAttribute("eject needs demote")] EJECT_NEEDS_DEMOTE,
+            [Command.StatusAttribute(01488)] [Reflection.DescriptionAttribute("no dialog specified")] NO_DIALOG_SPECIFIED,
+            [Command.StatusAttribute(55394)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND
         }
 
 

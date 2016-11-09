@@ -42,7 +42,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     new List<object> {friendInfoEventArgs},
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                         return;
@@ -69,7 +69,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     new List<object> {friendshipResponseEventArgs},
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                         return;
@@ -96,7 +96,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     new List<object> {friendshipOfferedEventArgs},
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                     }

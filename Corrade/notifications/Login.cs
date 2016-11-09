@@ -43,7 +43,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     new List<object> {loginProgressEventArgs},
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                         return;
@@ -70,7 +70,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     new List<object> {loggedOutEventArgs},
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                     }

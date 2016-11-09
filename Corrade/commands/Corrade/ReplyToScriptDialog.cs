@@ -30,61 +30,19 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        int channel;
-                        if (
-                            !int.TryParse(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CHANNEL)),
-                                        corradeCommandParameters.Message)),
-                                out channel))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CHANNEL_SPECIFIED);
-                        }
-                        var label =
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BUTTON)),
-                                    corradeCommandParameters.Message));
-                        if (string.IsNullOrEmpty(label))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_BUTTON_SPECIFIED);
-                        }
-                        UUID itemUUID;
+
+                        UUID dialogUUID;
                         if (
                             !UUID.TryParse(
                                 wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIALOG)),
                                     corradeCommandParameters.Message)),
-                                out itemUUID))
+                                out dialogUUID))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_DIALOG_SPECIFIED);
                         }
 
                         ScriptDialog scriptDialog;
-                        lock (ScriptDialogLock)
-                        {
-                            scriptDialog =
-                                ScriptDialogs.AsParallel().FirstOrDefault(
-                                    o => o.Item.Equals(itemUUID) && o.Channel.Equals(channel));
-                        }
-                        if (scriptDialog.Equals(default(ScriptDialog)))
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
-
-                        int index;
-                        if (
-                            !int.TryParse(
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
-                                    corradeCommandParameters.Message)),
-                                out index))
-                        {
-                            index = scriptDialog.Button.IndexOf(label);
-                            if (index.Equals(-1))
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
-                        }
-
-                        ScriptDialogs.Remove(scriptDialog);
-
                         switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
@@ -92,14 +50,80 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                         {
-                            case Enumerations.Action.IGNORE:
-                                break;
-                            default:
-                                lock (Locks.ClientInstanceSelfLock)
+                            case Enumerations.Action.PURGE:
+                                lock (ScriptDialogsLock)
                                 {
-                                    Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
+                                    ScriptDialogs.Clear();
                                 }
                                 break;
+                            case Enumerations.Action.IGNORE:
+                                lock (ScriptDialogsLock)
+                                {
+                                    if (!ScriptDialogs.TryGetValue(dialogUUID, out scriptDialog))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
+                                    ScriptDialogs.Remove(dialogUUID);
+                                }
+                                break;
+                            case Enumerations.Action.REPLY:
+                                lock (ScriptDialogsLock)
+                                {
+                                    if (!ScriptDialogs.TryGetValue(dialogUUID, out scriptDialog))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.NO_MATCHING_DIALOG_FOUND);
+                                }
+                                var label = wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BUTTON)),
+                                        corradeCommandParameters.Message));
+
+                                var index = wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
+                                    corradeCommandParameters.Message));
+                                int labelIndex;
+                                if (string.IsNullOrEmpty(index) || !int.TryParse(index, out labelIndex))
+                                    labelIndex = -1;
+
+                                if (string.IsNullOrEmpty(label) && labelIndex.Equals(-1))
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_LABEL_OR_INDEX_SPECIFIED);
+                                }
+                                if (string.IsNullOrEmpty(label) && !labelIndex.Equals(-1))
+                                {
+                                    label = scriptDialog.Button.ElementAtOrDefault(labelIndex);
+                                    if (string.IsNullOrEmpty(label))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.DIALOG_BUTTON_NOT_FOUND);
+                                }
+                                else if (!string.IsNullOrEmpty(label) && labelIndex.Equals(-1))
+                                {
+                                    labelIndex = scriptDialog.Button.IndexOf(label);
+                                    if (labelIndex.Equals(-1))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.DIALOG_BUTTON_NOT_FOUND);
+                                }
+                                else
+                                {
+                                    if (!scriptDialog.Button.IndexOf(label).Equals(labelIndex))
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.DIALOG_BUTTON_NOT_FOUND);
+                                }
+
+                                // Remove the dialog.
+                                lock (ScriptDialogsLock)
+                                {
+                                    ScriptDialogs.Remove(dialogUUID);
+                                }
+
+                                // Reply to the dialog.
+                                lock (Locks.ClientInstanceSelfLock)
+                                {
+                                    Client.Self.ReplyToScriptDialog(scriptDialog.Channel, labelIndex, label,
+                                        scriptDialog.Item);
+                                }
+                                break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }
                     };
         }

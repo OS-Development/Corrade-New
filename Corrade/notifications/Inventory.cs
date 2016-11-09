@@ -60,7 +60,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     objects,
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
 
@@ -70,8 +70,7 @@ namespace Corrade
                             case InstantMessageDialog.InventoryOffered:
                                 lock (InventoryOffersLock)
                                 {
-                                    InventoryOffers.RemoveWhere(o => o.Args.Offer.IMSessionID.Equals(
-                                        instantMessageEventArgs.IM.IMSessionID));
+                                    InventoryOffers.Remove(instantMessageEventArgs.IM.IMSessionID);
                                 }
                                 break;
                         }
@@ -115,7 +114,7 @@ namespace Corrade
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                     objects,
-                                    notificationData, LockObject, rankedLanguageIdentifier,
+                                    notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
                         return;

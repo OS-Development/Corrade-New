@@ -79,20 +79,16 @@
       <HintPath>..\packages\HtmlAgilityPack.1.4.9.5\lib\Net45\HtmlAgilityPack.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="IvanAkcheurov.Commons, Version=0.2.1.30, Culture=neutral, PublicKeyToken=a61413de1d13f8fc, processorArchitecture=MSIL">
-      <HintPath>..\packages\NTextCat.0.2.1.30\lib\net40\IvanAkcheurov.Commons.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="IvanAkcheurov.NClassify, Version=0.2.1.30, Culture=neutral, PublicKeyToken=a61413de1d13f8fc, processorArchitecture=MSIL">
-      <HintPath>..\packages\NTextCat.0.2.1.30\lib\net40\IvanAkcheurov.NClassify.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Jint, Version=2.9.1.0, Culture=neutral, PublicKeyToken=2e92ba9c8d81157f, processorArchitecture=MSIL">
       <HintPath>..\packages\Jint.2.9.1\lib\portable-net40+sl50+win+WindowsPhoneApp81+wp80\Jint.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="LanguageDetection, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\LanguageDetection.1.2.0\lib\net45\LanguageDetection.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.0\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.502\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -116,12 +112,8 @@
       <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NTextCat, Version=0.2.1.30, Culture=neutral, PublicKeyToken=a61413de1d13f8fc, processorArchitecture=MSIL">
-      <HintPath>..\packages\NTextCat.0.2.1.30\lib\net40\NTextCat.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="NVorbis, Version=0.8.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NVorbis.0.8.4.0\lib\NVorbis.dll</HintPath>
+    <Reference Include="NVorbis, Version=0.8.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NVorbis.0.8.5.0\lib\NVorbis.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="OpenMetaverse, Version=0.9.2.3173, Culture=neutral, processorArchitecture=MSIL">
@@ -141,16 +133,20 @@
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Bot, Version=1.2.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Bot.1.2.4\lib\portable-net45+win8+wp8\Syn.Bot.dll</HintPath>
+    <Reference Include="SmartThreadPool, Version=2.2.4.0, Culture=neutral, PublicKeyToken=1126fe8b671e8a79, processorArchitecture=MSIL">
+      <HintPath>..\packages\SmartThreadPool.dll.2.2.4\lib\net45\SmartThreadPool.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Log, Version=1.0.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Log.1.0.3\lib\portable-net45+win8+wpa81+wp8\Syn.Log.dll</HintPath>
+    <Reference Include="Syn.Bot, Version=1.2.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Bot.1.2.6\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Bot.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.VA, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.VA.1.0.4\lib\portable-net45+win8+wpa81+wp8\Syn.VA.dll</HintPath>
+    <Reference Include="Syn.Log, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Log.1.0.4\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Log.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Syn.VA, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.VA.1.0.6\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.VA.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System">
@@ -2025,10 +2021,6 @@
       <Link>openmetaverse_data\upperbody_shading_alpha.tga</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="..\libopenmetaverse\bin\SmartThreadPool.dll">
-      <Link>SmartThreadPool.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_lad.xml">
       <Link>openmetaverse_data\avatar_lad.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -2045,10 +2037,6 @@
     </Content>
     <Content Include="..\libopenmetaverse\bin\zlib.net.dll">
       <Link>zlib.net.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\packages\NTextCat.0.2.1.30\Core14.profile.xml">
-      <Link>Core14.profile.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Corrade.ico" />

@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Corrade.Constants;
 using Corrade.Structures;
 using CorradeConfiguration;
@@ -32,27 +31,22 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        UUID session;
+                        UUID sessionUUID;
                         if (
                             !UUID.TryParse(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                         corradeCommandParameters.Message)),
-                                out session))
+                                out sessionUUID))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                         }
-                        InventoryOffer offer;
+                        InventoryOffer inventoryOffer;
                         lock (InventoryOffersLock)
                         {
-                            offer =
-                                InventoryOffers.AsParallel()
-                                    .FirstOrDefault(o => o.Args.Offer.IMSessionID.Equals(session));
-                        }
-                        if (offer == null)
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_OFFER_NOT_FOUND);
+                            if (!InventoryOffers.TryGetValue(sessionUUID, out inventoryOffer))
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_OFFER_NOT_FOUND);
                         }
                         var folder = wasInput(
                             KeyValue.Get(
@@ -92,7 +86,7 @@ namespace Corrade
                                 {
                                     inventoryFolder =
                                         Client.Inventory.Store.Items[
-                                            Client.Inventory.FindFolderForType(offer.Args.AssetType)]
+                                            Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
                                             .Data as InventoryFolder;
                                 }
                                 break;
@@ -109,23 +103,35 @@ namespace Corrade
                                 {
                                     if (!inventoryFolder.UUID.Equals(UUID.Zero))
                                     {
-                                        offer.Args.FolderID = inventoryFolder.UUID;
+                                        inventoryOffer.Args.FolderID = inventoryFolder.UUID;
                                     }
                                     var name = wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                             corradeCommandParameters.Message));
                                     if (!string.IsNullOrEmpty(name))
-                                        offer.Name = name;
-                                    offer.Args.Accept = true;
-                                    offer.Event.Set();
+                                        inventoryOffer.Name = name;
+                                    inventoryOffer.Args.Accept = true;
+                                    inventoryOffer.Event.Set();
                                 }
                                 break;
                             case Enumerations.Action.DECLINE:
                                 lock (InventoryOffersLock)
                                 {
-                                    offer.Args.Accept = false;
-                                    offer.Event.Set();
+                                    inventoryOffer.Args.Accept = false;
+                                    inventoryOffer.Event.Set();
+                                }
+                                break;
+                            case Enumerations.Action.PURGE:
+                                lock (InventoryOffersLock)
+                                {
+                                    InventoryOffers.Clear();
+                                }
+                                break;
+                            case Enumerations.Action.IGNORE:
+                                lock (InventoryOffersLock)
+                                {
+                                    InventoryOffers.Remove(sessionUUID);
                                 }
                                 break;
                             default:

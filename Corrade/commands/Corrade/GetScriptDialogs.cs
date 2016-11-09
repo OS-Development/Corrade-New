@@ -29,9 +29,9 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     var LockObject = new object();
-                    lock (ScriptDialogLock)
+                    lock (ScriptDialogsLock)
                     {
-                        ScriptDialogs.AsParallel().ForAll(o =>
+                        ScriptDialogs.Values.AsParallel().ForAll(o =>
                         {
                             lock (LockObject)
                             {
@@ -49,6 +49,7 @@ namespace Corrade
                                 });
                                 csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Name), o.Name});
                                 csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Item), o.Item.ToString()});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.ID), o.ID.ToString()});
                                 csv.Add(Reflection.GetStructureMemberName(o, o.Button));
                                 csv.AddRange(o.Button.ToArray());
                             }

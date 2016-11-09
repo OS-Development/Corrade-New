@@ -6,7 +6,7 @@ using System.Resources;
 // associated with an assembly.
 
 [assembly: AssemblyTitle("wasSharp")]
-[assembly: AssemblyDescription("Collections of C# Portable Tools Created by Wizardry and Steamworks")]
+[assembly: AssemblyDescription("Collection of C# Portable Tools Created by Wizardry and Steamworks")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
 [assembly: AssemblyProduct("wasSharp")]
@@ -26,4 +26,4 @@ using System.Resources;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 
-[assembly: AssemblyVersion("1.27.*")]
+[assembly: AssemblyVersion("1.28.*")]

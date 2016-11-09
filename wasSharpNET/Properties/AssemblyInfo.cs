@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 // associated with an assembly.
 
 [assembly: AssemblyTitle("wasSharpNET")]
-[assembly: AssemblyDescription("Collections of C# Tools Created by Wizardry and Steamworks")]
+[assembly: AssemblyDescription("Collection of C# Tools Created by Wizardry and Steamworks")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
 [assembly: AssemblyProduct("wasSharpNET")]

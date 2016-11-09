@@ -21,5 +21,6 @@ namespace Corrade.Structures
         [Reflection.NameAttribute("item")] public UUID Item;
         [Reflection.NameAttribute("message")] public string Message;
         [Reflection.NameAttribute("name")] public string Name;
+        [Reflection.NameAttribute("id")] public UUID ID;
     }
 }

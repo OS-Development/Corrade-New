@@ -43,7 +43,7 @@ using Corrade.Helpers;
 using Corrade.Structures;
 using Corrade.Structures.Effects;
 using CorradeConfiguration;
-using NTextCat;
+using LanguageDetection;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using Syn.Bot.Siml;
@@ -143,7 +143,7 @@ namespace Corrade
         private static InventoryFolder CurrentOutfitFolder;
         private static readonly SimlBot SynBot = new SimlBot();
         private static readonly BotUser SynBotUser = SynBot.MainUser;
-        private static RankedLanguageIdentifier rankedLanguageIdentifier;
+        private static LanguageDetector languageDetector = new LanguageDetector();
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
@@ -180,7 +180,7 @@ namespace Corrade
         private static readonly Dictionary<Configuration.Notifications, HashSet<Notification>> GroupNotificationsCache =
             new Dictionary<Configuration.Notifications, HashSet<Notification>>();
 
-        private static readonly HashSet<InventoryOffer> InventoryOffers = new HashSet<InventoryOffer>();
+        private static readonly Dictionary<UUID, InventoryOffer> InventoryOffers = new Dictionary<UUID, InventoryOffer>();
 
         private static readonly object InventoryOffersLock = new object();
 
@@ -199,22 +199,22 @@ namespace Corrade
         private static readonly BlockingQueue<NotificationTCPQueueElement> NotificationTCPQueue =
             new BlockingQueue<NotificationTCPQueueElement>();
 
-        private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
-        private static readonly object GroupInviteLock = new object();
+        private static readonly Dictionary<UUID, GroupInvite> GroupInvites = new Dictionary<UUID, GroupInvite>();
+        private static readonly object GroupInvitesLock = new object();
         private static readonly HashSet<GroupNotice> GroupNotices = new HashSet<GroupNotice>();
         private static readonly object GroupNoticeLock = new object();
-        private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
-        private static readonly object TeleportLureLock = new object();
+        private static readonly Dictionary<UUID, TeleportLure> TeleportLures = new Dictionary<UUID, TeleportLure>();
+        private static readonly object TeleportLuresLock = new object();
 
         // permission requests can be identical
         private static readonly List<ScriptPermissionRequest> ScriptPermissionRequests =
             new List<ScriptPermissionRequest>();
 
-        private static readonly object ScriptPermissionRequestLock = new object();
+        private static readonly object ScriptPermissionsRequestsLock = new object();
 
         // script dialogs can be identical
-        private static readonly List<ScriptDialog> ScriptDialogs = new List<ScriptDialog>();
-        private static readonly object ScriptDialogLock = new object();
+        private static readonly Dictionary<UUID, ScriptDialog> ScriptDialogs = new Dictionary<UUID, ScriptDialog>();
+        private static readonly object ScriptDialogsLock = new object();
 
         private static readonly HashSet<KeyValuePair<UUID, int>> CurrentAnimations =
             new HashSet<KeyValuePair<UUID, int>>();
@@ -2895,9 +2895,7 @@ namespace Corrade
             // Load language detection
             try
             {
-                rankedLanguageIdentifier =
-                    new RankedLanguageIdentifierFactory().Load(IO.PathCombine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
-                        CORRADE_CONSTANTS.LANGUAGE_PROFILE_FILE));
+                languageDetector.AddAllLanguages();
             }
             catch (Exception ex)
             {
@@ -3308,7 +3306,7 @@ namespace Corrade
             // Reject any inventory that has not been accepted.
             lock (InventoryOffersLock)
             {
-                InventoryOffers.AsParallel().ForAll(o =>
+                InventoryOffers.Values.AsParallel().ForAll(o =>
                 {
                     o.Args.Accept = false;
                     o.Event.Set();
@@ -4665,25 +4663,28 @@ namespace Corrade
 
         private static void HandleScriptDialog(object sender, ScriptDialogEventArgs e)
         {
-            lock (ScriptDialogLock)
+            var dialogUUID = UUID.Random();
+            var scriptDialog = new ScriptDialog
             {
-                ScriptDialogs.Add(new ScriptDialog
+                Message = e.Message,
+                Agent = new Agent
                 {
-                    Message = e.Message,
-                    Agent = new Agent
-                    {
-                        FirstName = e.FirstName,
-                        LastName = e.LastName,
-                        UUID = e.OwnerID
-                    },
-                    Channel = e.Channel,
-                    Name = e.ObjectName,
-                    Item = e.ObjectID,
-                    Button = e.ButtonLabels
-                });
+                    FirstName = e.FirstName,
+                    LastName = e.LastName,
+                    UUID = e.OwnerID
+                },
+                Channel = e.Channel,
+                Name = e.ObjectName,
+                Item = e.ObjectID,
+                Button = e.ButtonLabels,
+                ID = dialogUUID
+            };
+            lock (ScriptDialogsLock)
+            {
+                ScriptDialogs.Add(dialogUUID, scriptDialog);
             }
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Configuration.Notifications.ScriptDialog, e),
+                () => SendNotification(Configuration.Notifications.ScriptDialog, scriptDialog),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -4904,7 +4905,7 @@ namespace Corrade
             // Add the inventory offer to the list of inventory offers.
             lock (InventoryOffersLock)
             {
-                InventoryOffers.Add(inventoryOffer);
+                InventoryOffers.Add(inventoryOffer.Args.Offer.IMSessionID, inventoryOffer);
             }
 
             // Accept anything from master avatars.
@@ -5215,7 +5216,7 @@ namespace Corrade
                 return;
             }
 
-            lock (ScriptPermissionRequestLock)
+            lock (ScriptPermissionsRequestsLock)
             {
                 ScriptPermissionRequests.Add(new ScriptPermissionRequest
                 {
@@ -5590,9 +5591,9 @@ namespace Corrade
                         }
                     }
                     // Store teleport lure.
-                    lock (TeleportLureLock)
+                    lock (TeleportLuresLock)
                     {
-                        TeleportLures.Add(new TeleportLure
+                        TeleportLures.Add(args.IM.IMSessionID, new TeleportLure
                         {
                             Agent = new Agent
                             {
@@ -5660,9 +5661,9 @@ namespace Corrade
                             ref inviteGroupAgent))
                         return;
                     // Add the group invite - have to track them manually.
-                    lock (GroupInviteLock)
+                    lock (GroupInvitesLock)
                     {
-                        GroupInvites.Add(new GroupInvite
+                        GroupInvites.Add(args.IM.IMSessionID, new GroupInvite
                         {
                             Agent = new Agent
                             {

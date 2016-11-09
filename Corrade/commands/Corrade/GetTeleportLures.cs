@@ -28,9 +28,9 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     var LockObject = new object();
-                    lock (TeleportLureLock)
+                    lock (TeleportLuresLock)
                     {
-                        TeleportLures.AsParallel().ForAll(o =>
+                        TeleportLures.Values.AsParallel().ForAll(o =>
                         {
                             lock (LockObject)
                             {

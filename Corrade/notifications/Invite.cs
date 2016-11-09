@@ -35,10 +35,9 @@ namespace Corrade
                     }
 
                     GroupInvite groupInvite;
-                    lock (GroupInviteLock)
+                    lock (GroupInvitesLock)
                     {
-                        groupInvite = GroupInvites.AsParallel().FirstOrDefault(
-                            p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID));
+                        GroupInvites.TryGetValue(notificationGroupInviteEventArgs.IM.IMSessionID, out groupInvite);
                     }
 
                     var LockObject = new object();
@@ -48,7 +47,7 @@ namespace Corrade
                         {
                             p.ProcessParameters(Client, corradeConfiguration, o.Key,
                                 new List<object> {notificationGroupInviteEventArgs, groupInvite},
-                                notificationData, LockObject, rankedLanguageIdentifier,
+                                notificationData, LockObject, languageDetector,
                                 GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));
                 };
