@@ -188,9 +188,6 @@
       <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\TweetSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="wasSharpNET">
-      <HintPath>..\wasSharpNET\bin\Release\wasSharpNET.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="commands\Corrade\AddConfigurationGroup.cs">
@@ -2062,6 +2059,10 @@
     <ProjectReference Include="..\wasOpenMetaverse\wasOpenMetaverse.csproj">
       <Project>{b9537c43-94dc-4bd4-b6fb-b7ca77c11824}</Project>
       <Name>wasOpenMetaverse</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasSharpNET\wasSharpNET.csproj">
+      <Project>{ef59aac3-9861-4e63-a513-e39127376f24}</Project>
+      <Name>wasSharpNET</Name>
     </ProjectReference>
     <ProjectReference Include="..\wasSharp\wasSharp.csproj">
       <Project>{a971e1c9-776c-4cd2-88ac-71197c7b955e}</Project>

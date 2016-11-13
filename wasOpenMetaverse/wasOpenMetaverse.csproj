@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.QualityTools.Testing.Fakes, Version=12.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
     <Reference Include="OpenMetaverse">
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.dll</HintPath>
     </Reference>
@@ -53,12 +56,6 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="wasSharp">
-      <HintPath>..\wasSharp\bin\Release\wasSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="wasSharpNET">
-      <HintPath>..\wasSharpNET\bin\Release\wasSharpNET.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cache.cs" />
@@ -75,6 +72,16 @@
     <Compile Include="Services.cs" />
     <Compile Include="wasOpenMetaverse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\wasSharpNET\wasSharpNET.csproj">
+      <Project>{ef59aac3-9861-4e63-a513-e39127376f24}</Project>
+      <Name>wasSharpNET</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasSharp\wasSharp.csproj">
+      <Project>{a971e1c9-776c-4cd2-88ac-71197c7b955e}</Project>
+      <Name>wasSharp</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
