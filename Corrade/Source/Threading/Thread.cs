@@ -12,7 +12,6 @@ using System.Threading;
 using Amib.Threading;
 using OpenMetaverse;
 using wasSharp;
-using ThreadState = System.Threading.ThreadState;
 
 namespace Corrade.Threading
 {
@@ -67,7 +66,7 @@ namespace Corrade.Threading
         /// <param name="millisecondsTimeout">
         ///     the timeout in milliseconds before considering the previous thread as vanished
         /// </param>
-        public void SpawnSequential(ThreadStart s, uint m, uint millisecondsTimeout)
+        public void SpawnSequential(Amib.Threading.Action s, uint m, uint millisecondsTimeout)
         {
             if (smartThreadPool.InUseThreads > m)
                 return;
@@ -99,7 +98,7 @@ namespace Corrade.Threading
         /// </summary>
         /// <param name="s">the code to execute as a ThreadStart delegate</param>
         /// <param name="m">the maximum amount of threads</param>
-        public void Spawn(ThreadStart s, uint m)
+        public void Spawn(Amib.Threading.Action s, uint m)
         {
             if (smartThreadPool.InUseThreads > m)
                 return;
@@ -133,7 +132,7 @@ namespace Corrade.Threading
         /// <param name="m">the maximum amount of threads</param>
         /// <param name="groupUUID">the UUID of the group</param>
         /// <param name="expiration">the time in milliseconds after which measurements are expunged</param>
-        public void Spawn(ThreadStart s, uint m, UUID groupUUID, uint expiration)
+        public void Spawn(Amib.Threading.Action s, uint m, UUID groupUUID, uint expiration)
         {
             // Don't accept to schedule bogus groups.
             if (groupUUID.Equals(UUID.Zero))
@@ -150,7 +149,7 @@ namespace Corrade.Threading
 
                 var groupExecution = GroupExecutionSet.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
                 // Adjust the priority depending on the time spent executing a command.
-                if (GroupExecutionSet.Some() && !groupExecution.Equals(default(GroupExecution)))
+                if (GroupExecutionSet.Count > 1 && !groupExecution.Equals(default(GroupExecution)))
                     workItemPriority = threadRangePriority[(int)(100L * groupExecution.ExecutionTime / GroupExecutionSet.Sum(o => o.ExecutionTime))];
             }
 

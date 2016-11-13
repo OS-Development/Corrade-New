@@ -31,8 +31,8 @@ namespace Corrade.Structures
         /// </summary>
         private Time.Timer HeartbeatTimer;
 
-        private long LastTotalCPUTicks;
-        private long LastUpdateTicks;
+        private TimeSpan LastTotalCPUTime;
+        private DateTime LastUpdateTime;
 
         /// <summary>
         ///     The total number of processed Corrade commands.
@@ -50,35 +50,24 @@ namespace Corrade.Structures
             Version = CORRADE_CONSTANTS.CORRADE_VERSION;
 
             // Compute intitial performance values.
-            using (var CurrentProcess = Process.GetCurrentProcess())
+            using (var currentProcess = Process.GetCurrentProcess())
             {
-                StartTime = CurrentProcess.StartTime.ToUniversalTime();
-                AverageCPUUsage =
-                    (uint)
-                        (100*CurrentProcess.TotalProcessorTime.Ticks/
-                         (Environment.ProcessorCount*DateTime.UtcNow.Subtract(StartTime).Ticks));
-                AverageRAMUsage = CurrentProcess.PrivateMemorySize64;
+                StartTime = currentProcess.StartTime.ToUniversalTime();
+                AverageRAMUsage = currentProcess.PrivateMemorySize64;
 
-                LastTotalCPUTicks = DateTime.FromFileTimeUtc(CurrentProcess.TotalProcessorTime.Ticks).Ticks;
-                LastUpdateTicks = DateTime.UtcNow.Ticks;
+                LastTotalCPUTime = currentProcess.TotalProcessorTime;
+                LastUpdateTime = DateTime.UtcNow;
             }
 
             // Start the heartbeat timer.
             HeartbeatTimer = new Time.Timer(o =>
             {
-                Heartbeats += 1;
-                Uptime += 1;
-                using (var CurrentProcess = Process.GetCurrentProcess())
+                ++Heartbeats;
+                ++Uptime;
+                using (var currentProcess = Process.GetCurrentProcess())
                 {
-                    var totalCPUTime = DateTime.FromFileTimeUtc(CurrentProcess.TotalProcessorTime.Ticks).Ticks -
-                                       LastTotalCPUTicks;
-                    var updateTicks = DateTime.UtcNow.Ticks - LastUpdateTicks;
-                    AverageCPUUsage = (AverageCPUUsage +
-                                       (uint) ((double) totalCPUTime/updateTicks*100f/Environment.ProcessorCount))/2;
-                    LastUpdateTicks = DateTime.UtcNow.Ticks;
-                    LastTotalCPUTicks = DateTime.FromFileTimeUtc(CurrentProcess.TotalProcessorTime.Ticks).Ticks;
-
-                    AverageRAMUsage = (AverageRAMUsage + CurrentProcess.PrivateMemorySize64)/2;
+                    AverageCPUUsage = (uint)(100d * ((currentProcess.TotalProcessorTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds) / DateTime.UtcNow.Subtract(LastUpdateTime).TotalMilliseconds / Convert.ToDouble(Environment.ProcessorCount)));
+                    AverageRAMUsage = (AverageRAMUsage + currentProcess.PrivateMemorySize64)/2;
                 }
             }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
