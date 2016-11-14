@@ -110,6 +110,124 @@ namespace wasSharp
                         .OrderBy(kvp => kvp.Key));
         }
 
+        public class ObservableTwoMap<K1, K2, V> : INotifyCollectionChanged
+        {
+            private readonly Dictionary<K1, V> forward = new Dictionary<K1, V>();
+            private readonly Dictionary<K2, V> reverse = new Dictionary<K2, V>();
+
+            private readonly Dictionary<K1, K2> mapForward = new Dictionary<K1, K2>();
+            private readonly Dictionary<K2, K1> mapReverse = new Dictionary<K2, K1>();
+
+            public bool IsVirgin { get; private set; } = true;
+
+            public ObservableTwoMap()
+            {
+            }
+
+            /*public ObservableTwoMap(ObservableTwoMap<K1, K2, V> map)
+            {
+                foreach (var i in map)
+                {
+
+                }
+            }*/
+
+            public V this[K1 key]
+            {
+                get
+                {
+                    return forward[key];
+                }
+            }
+
+            public V this[K2 key]
+            {
+                get
+                {
+                    return reverse[key];
+                }
+            }
+
+            public void Add(K1 k1, K2 k2, ref V value)
+            {
+                if (mapForward.ContainsKey(k1) || mapReverse.ContainsKey(k2))
+                    throw new ArgumentException("Key already exists");
+
+                forward.Add(k1, value);
+                reverse.Add(k2, value);
+                mapForward.Add(k1, k2);
+                mapReverse.Add(k2, k1);
+
+                IsVirgin = false;
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value));
+            }
+
+            public bool ContainsKey(K1 key)
+            {
+                return mapForward.ContainsKey(key);
+            }
+
+            public bool ContainsKey(K2 key)
+            {
+                return mapReverse.ContainsKey(key);
+            }
+
+            public bool Remove(K1 key)
+            {
+                V value;
+                if (!forward.TryGetValue(key, out value))
+                    return false;
+
+                var removed = forward.Remove(key);
+                if (mapForward.ContainsKey(key))
+                {
+                    Remove(mapForward[key]);
+                    mapForward.Remove(key);
+                }
+
+                IsVirgin = false;
+                if (removed)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, value));
+                return removed;
+            }
+
+            public bool Remove(K2 key)
+            {
+                V value;
+                if (!reverse.TryGetValue(key, out value))
+                    return false;
+
+                var removed = reverse.Remove(key);
+                if (mapReverse.ContainsKey(key))
+                {
+                    Remove(mapReverse[key]);
+                    mapReverse.Remove(key);
+                }
+
+                IsVirgin = false;
+                if (removed)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, value));
+                return removed;
+            }
+
+            public void Clear()
+            {
+                forward.Clear();
+                reverse.Clear();
+
+                if (!IsVirgin)
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                IsVirgin = false;
+            }
+
+            private void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
+            {
+                CollectionChanged?.Invoke(this, args);
+            }
+
+            public event NotifyCollectionChangedEventHandler CollectionChanged;
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////

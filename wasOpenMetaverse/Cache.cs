@@ -83,7 +83,7 @@ namespace wasOpenMetaverse
             }
             set
             {
-                lock (AgentCacheLock)
+                lock (GroupCacheLock)
                 {
                     ObservableGroupCache.UnionWith(value);
                 }
@@ -101,7 +101,7 @@ namespace wasOpenMetaverse
             }
             set
             {
-                lock (AgentCacheLock)
+                lock (CurrentGroupsCacheLock)
                 {
                     _currentGroupsCache = value;
                 }
@@ -119,7 +119,7 @@ namespace wasOpenMetaverse
             }
             set
             {
-                lock (AgentCacheLock)
+                lock (MuteCacheLock)
                 {
                     ObservableMuteCache.UnionWith(value);
                 }
