@@ -143,7 +143,7 @@ namespace Corrade
         private static InventoryFolder CurrentOutfitFolder;
         private static readonly SimlBot SynBot = new SimlBot();
         private static readonly BotUser SynBotUser = SynBot.MainUser;
-        private static LanguageDetector languageDetector = new LanguageDetector();
+        private static readonly LanguageDetector languageDetector = new LanguageDetector();
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
@@ -317,12 +317,7 @@ namespace Corrade
         {
             // Log heartbeat data.
             Feedback("Heartbeat",
-                string.Format("CPU: {0}% RAM: {1:0.}MiB Uptime: {2}d:{3}h:{4}m Commands: {5} Behaviours: {6}",
-                    CorradeHeartbeat.AverageCPUUsage,
-                    CorradeHeartbeat.AverageRAMUsage/1024/1024, TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Days,
-                    TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours,
-                    TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes, CorradeHeartbeat.ProcessedCommands,
-                    CorradeHeartbeat.ProcessedRLVBehaviours));
+                $"CPU: {CorradeHeartbeat.AverageCPUUsage}% RAM: {CorradeHeartbeat.AverageRAMUsage/1024/1024:0.}MiB Uptime: {TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Days}d:{TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours}h:{TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes}m Commands: {CorradeHeartbeat.ProcessedCommands} Behaviours: {CorradeHeartbeat.ProcessedRLVBehaviours}");
         }, null, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>

@@ -30,6 +30,7 @@ namespace wasOpenMetaverse
             new Collections.ObservableHashSet<MuteEntry>();
 
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
+
         private static readonly object RegionCacheLock = new object();
         private static readonly object AgentCacheLock = new object();
         private static readonly object GroupCacheLock = new object();
