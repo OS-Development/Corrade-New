@@ -322,8 +322,11 @@ namespace wasOpenMetaverse
             }
             if (succeeded)
             {
-                var name = new List<string>(Helpers.GetAvatarNames(AgentName));
-                Cache.AddAgent(name.First(), name.Last(), AgentUUID);
+                var fullName = new List<string>(Helpers.GetAvatarNames(AgentName));
+                if (fullName != null)
+                {
+                    Cache.AddAgent(fullName.First(), fullName.Last(), AgentUUID);
+                }
             }
             return succeeded;
         }

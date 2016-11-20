@@ -51,9 +51,9 @@ namespace Corrade
                         case Enumerations.Type.CLASSIFIED:
                             var searchClassified = new DirectoryManager.Classified();
                             searchClassified = searchClassified.wasCSVToStructure(wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                             var classifieds =
                                 new Dictionary<DirectoryManager.Classified, int>();
                             EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
@@ -116,9 +116,9 @@ namespace Corrade
                         case Enumerations.Type.EVENT:
                             var searchEvent = new DirectoryManager.EventsSearchData();
                             searchEvent = searchEvent.wasCSVToStructure(wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                             var events =
                                 new Dictionary<DirectoryManager.EventsSearchData, int>();
                             EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
@@ -198,9 +198,9 @@ namespace Corrade
                             }
                             var searchGroup = new DirectoryManager.GroupSearchData();
                             searchGroup = searchGroup.wasCSVToStructure(wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                             var groups =
                                 new Dictionary<DirectoryManager.GroupSearchData, int>();
                             EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
@@ -275,9 +275,9 @@ namespace Corrade
                         case Enumerations.Type.LAND:
                             var searchLand = new DirectoryManager.DirectoryParcel();
                             searchLand = searchLand.wasCSVToStructure(wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                             var lands =
                                 new Dictionary<DirectoryManager.DirectoryParcel, int>();
                             EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
@@ -435,9 +435,9 @@ namespace Corrade
                             }
                             var searchPlaces = new DirectoryManager.PlacesSearchData();
                             searchPlaces = searchPlaces.wasCSVToStructure(wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                             var places =
                                 new Dictionary<DirectoryManager.PlacesSearchData, int>();
                             EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =

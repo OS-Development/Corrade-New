@@ -82,8 +82,8 @@ namespace Corrade
                         }
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        var materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
-                                                                            BindingFlags.Static)
+                        var materialFieldInfo = typeof(Material).GetFields(BindingFlags.Public |
+                                                                           BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
                                     Strings.StringEquals(o.Name, wasInput(KeyValue.Get(

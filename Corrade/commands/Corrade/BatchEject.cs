@@ -115,10 +115,10 @@ namespace Corrade
                     }
                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
 
-                    bool demote = true;
+                    var demote = true;
                     bool.TryParse(wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEMOTE)),
-                                corradeCommandParameters.Message)), out demote);
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEMOTE)),
+                        corradeCommandParameters.Message)), out demote);
 
                     var data = new HashSet<string>();
                     var LockObject = new object();
@@ -135,7 +135,7 @@ namespace Corrade
                             if (!UUID.TryParse(o, out agentUUID))
                             {
                                 var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
-                                if (
+                                if (fullName == null ||
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
                                         corradeConfiguration.DataTimeout,
@@ -177,7 +177,10 @@ namespace Corrade
                             }
                             // If demote is false and the group member belongs to any other roles 
                             // other than the everyone role then we cannot proceed.
-                            switch (!groupRolesMembers.AsParallel().Where(p => p.Value.Equals(agentUUID)).All(p => p.Key.Equals(UUID.Zero)))
+                            switch (
+                                !groupRolesMembers.AsParallel()
+                                    .Where(p => p.Value.Equals(agentUUID))
+                                    .All(p => p.Key.Equals(UUID.Zero)))
                             {
                                 case true:
                                     if (!demote) // need demote to eject member.

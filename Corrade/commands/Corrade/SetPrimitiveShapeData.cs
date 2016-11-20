@@ -84,7 +84,7 @@ namespace Corrade
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         // build the primitive shape from presets by supplying "type" (or not)...
-                        var primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
+                        var primitiveShapesFieldInfo = typeof(CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
                             BindingFlags.Public |
                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
@@ -106,8 +106,11 @@ namespace Corrade
                                 break;
                         }
                         // ... and overwrite with manual data settings.
-                        constructionData = constructionData.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                        constructionData =
+                            constructionData.wasCSVToStructure(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {
                             Client.Objects.SetShape(simulator,

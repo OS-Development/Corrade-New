@@ -39,8 +39,10 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
-                            o => typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                            o => typeof(AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel()
+                                .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
+                                .ForAll(
                                     q =>
                                     {
                                         lock (LockObject)
@@ -81,7 +83,7 @@ namespace Corrade
                                     var inventoryItem = o as InventoryItem;
                                     if (assetTypes.Any() && !assetTypes.Contains(inventoryItem.AssetType))
                                         return;
-                                    assetType = Enum.GetName(typeof (AssetType), inventoryItem.AssetType);
+                                    assetType = Enum.GetName(typeof(AssetType), inventoryItem.AssetType);
                                     name = inventoryItem.Name;
                                     itemUUID = inventoryItem.UUID;
                                 }
@@ -90,7 +92,7 @@ namespace Corrade
                                     var inventoryFolder = o as InventoryFolder;
                                     if (assetTypes.Any() && !assetTypes.Contains(inventoryFolder.PreferredType))
                                         return;
-                                    assetType = Enum.GetName(typeof (AssetType), inventoryFolder.PreferredType);
+                                    assetType = Enum.GetName(typeof(AssetType), inventoryFolder.PreferredType);
                                     name = inventoryFolder.Name;
                                     itemUUID = inventoryFolder.UUID;
                                 }

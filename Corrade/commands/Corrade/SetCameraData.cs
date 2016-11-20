@@ -33,8 +33,8 @@ namespace Corrade
                         camera = Client.Self.Movement.Camera;
                     }
                     camera = camera.wasCSVToStructure(wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message)));
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.Movement.Camera.AtAxis = camera.AtAxis;

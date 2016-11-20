@@ -69,12 +69,12 @@ namespace Corrade.Structures
             if (inventoryItem is InventoryWearable)
             {
                 item.Type =
-                    (Enumerations.DirItemType) typeof (Enumerations.DirItemType).GetFields(BindingFlags.Public |
-                                                                                           BindingFlags.Static)
+                    (Enumerations.DirItemType) typeof(Enumerations.DirItemType).GetFields(BindingFlags.Public |
+                                                                                          BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
                                 Strings.StringEquals(o.Name,
-                                    Enum.GetName(typeof (WearableType),
+                                    Enum.GetName(typeof(WearableType),
                                         (inventoryItem as InventoryWearable).WearableType),
                                     StringComparison.OrdinalIgnoreCase)).GetValue(null);
                 return item;

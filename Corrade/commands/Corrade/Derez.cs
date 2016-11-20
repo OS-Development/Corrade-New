@@ -82,8 +82,8 @@ namespace Corrade
                             }
                             break;
                     }
-                    var deRezDestionationTypeInfo = typeof (DeRezDestination).GetFields(BindingFlags.Public |
-                                                                                        BindingFlags.Static)
+                    var deRezDestionationTypeInfo = typeof(DeRezDestination).GetFields(BindingFlags.Public |
+                                                                                       BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(

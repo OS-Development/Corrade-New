@@ -34,20 +34,17 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
-            [Reflection.NameAttribute("fee")]
-            FEE,
-            [Reflection.NameAttribute("demote")]
-            DEMOTE,
-            [Reflection.NameAttribute("note")]
-            NOTE,
+            [CommandInputSyntax(
+                "<command=exportoar>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<STRING>>&entity=object:<item=<STRING|UUID>>&entity=object:[range=<FLOAT>]&[path=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("exportoar")] [Reflection.NameAttribute("exportoar")] EXPORTOAR,
+
+            [Reflection.NameAttribute("fee")] FEE,
+            [Reflection.NameAttribute("demote")] DEMOTE,
+            [Reflection.NameAttribute("note")] NOTE,
 
             [CommandInputSyntax(
                 "<command=removeconfigurationgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<target=<STRING|UUID>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
-            [CorradeCommand("removeconfigurationgroup")]
-            [Reflection.NameAttribute("removeconfigurationgroup")]
-            REMOVECONFIGURATIONGROUP,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("removeconfigurationgroup")] [Reflection.NameAttribute("removeconfigurationgroup")] REMOVECONFIGURATIONGROUP,
 
             [CommandInputSyntax(
                 "<command=addconfigurationgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<target=<STRING|UUID>>&<secret=<STRING>>&<workers=<INTEGER>>&<schedules=<INTEGER>>&[database=<STRING>]&[logs=<BOOL>]&[path=<STRING>]&[permissions=<STRING,[STRING...]>]&[notifications=<STRING,[STRING...]>]&[callback=<STRING>]"

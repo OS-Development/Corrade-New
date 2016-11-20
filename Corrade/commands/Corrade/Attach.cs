@@ -63,7 +63,7 @@ namespace Corrade
                                 if (
                                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .Count() + items.Count -
-                                    typeof (AttachmentPoint).GetFields(
+                                    typeof(AttachmentPoint).GetFields(
                                         BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Count(p => !items.ContainsKey(p.Name)) >
                                     wasOpenMetaverse.Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
@@ -106,7 +106,7 @@ namespace Corrade
                     var currentAttachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout);
 
                     items.AsParallel().ForAll(o =>
-                        typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
+                        typeof(AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
                                     Strings.StringEquals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(

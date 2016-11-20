@@ -32,7 +32,7 @@ namespace Corrade
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Enumerations.Entity.DESCRIPTION:
-                            var scriptErrorFieldInfo = typeof (Enumerations.ScriptError).GetFields(
+                            var scriptErrorFieldInfo = typeof(Enumerations.ScriptError).GetFields(
                                 BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .FirstOrDefault(

@@ -54,14 +54,16 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
-                            o => typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal)).ForAll(
+                            o => typeof(PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel()
+                                .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
+                                .ForAll(
                                     q =>
                                     {
                                         BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask) q.GetValue(null));
                                     }));
-                    var assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                     BindingFlags.Static)
+                    var assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
                             o.Name.Equals(
                                 wasInput(
@@ -215,9 +217,9 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     (InventoryType)
-                                        typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                        typeof(InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
-                                                o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
+                                                o => o.Name.Equals(Enum.GetName(typeof(AssetType), assetType),
                                                     StringComparison.Ordinal)).GetValue(null),
                                     Client.Inventory.FindFolderForType(assetType),
                                     delegate(bool completed, string status, UUID itemID, UUID assetID)
@@ -254,9 +256,9 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     (InventoryType)
-                                        typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                        typeof(InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
-                                                o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
+                                                o => o.Name.Equals(Enum.GetName(typeof(AssetType), assetType),
                                                     StringComparison.Ordinal)).GetValue(null),
                                     Client.Inventory.FindFolderForType(assetType),
                                     delegate(bool completed, string status, UUID itemID, UUID assetID)
@@ -274,8 +276,8 @@ namespace Corrade
                             break;
                         case AssetType.Bodypart:
                         case AssetType.Clothing:
-                            var wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.Static)
+                            var wearTypeInfo = typeof(MuteType).GetFields(BindingFlags.Public |
+                                                                          BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(

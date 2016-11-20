@@ -222,8 +222,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("unable to uninstall service")] UNABLE_TO_UNINSTALL_SERVICE,
             [Reflection.DescriptionAttribute("unable to save group Bayes data")] UNABLE_TO_SAVE_GROUP_BAYES_DATA,
             [Reflection.DescriptionAttribute("unable to load group Bayes data")] UNABLE_TO_LOAD_GROUP_BAYES_DATA,
-            [Reflection.DescriptionAttribute("could not connect to any simulator")] COULD_NOT_CONNECT_TO_ANY_SIMULATOR,
-            [Reflection.DescriptionAttribute("cycling simulators")] CYCLING_SIMULATORS
+            [Reflection.DescriptionAttribute("start locations exhausted")] START_LOCATIONS_EXHAUSTED,
+            [Reflection.DescriptionAttribute("cycling simulators")] CYCLING_SIMULATORS,
+            [Reflection.DescriptionAttribute("no start locations found")] NO_START_LOCATIONS_FOUND
         }
 
         /// <summary>
@@ -666,7 +667,8 @@ namespace Corrade
             [Command.StatusAttribute(42140)] [Reflection.DescriptionAttribute("group already configured")] GROUP_ALREADY_CONFIGURED,
             [Command.StatusAttribute(15517)] [Reflection.DescriptionAttribute("eject needs demote")] EJECT_NEEDS_DEMOTE,
             [Command.StatusAttribute(01488)] [Reflection.DescriptionAttribute("no dialog specified")] NO_DIALOG_SPECIFIED,
-            [Command.StatusAttribute(55394)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND
+            [Command.StatusAttribute(55394)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
+            [Command.StatusAttribute(64179)] [Reflection.DescriptionAttribute("unable to serialize primitive")] UNABLE_TO_SERIALIZE_PRIMITIVE
         }
 
 

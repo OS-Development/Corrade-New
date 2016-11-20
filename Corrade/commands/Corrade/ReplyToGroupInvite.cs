@@ -30,7 +30,7 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        UUID sessionUUID = UUID.Zero;
+                        var sessionUUID = UUID.Zero;
                         GroupInvite groupInvite = null;
                         var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
@@ -56,11 +56,12 @@ namespace Corrade
                                 lock (GroupInvitesLock)
                                 {
                                     if (!GroupInvites.TryGetValue(sessionUUID, out groupInvite))
-                                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_INVITE_NOT_FOUND);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.GROUP_INVITE_NOT_FOUND);
                                 }
                                 break;
                         }
-                        
+
                         switch (action)
                         {
                             case Enumerations.Action.ACCEPT:

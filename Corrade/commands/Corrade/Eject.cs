@@ -93,12 +93,15 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                     }
                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                    bool demote = true;
+                    var demote = true;
                     if ((!bool.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEMOTE)),
-                                corradeCommandParameters.Message)),
-                            out demote) || !demote) && !rolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)).All(o => o.Key.Equals(UUID.Zero)))
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEMOTE)),
+                            corradeCommandParameters.Message)),
+                        out demote) || !demote) &&
+                        !rolesMembers.AsParallel()
+                            .Where(o => o.Value.Equals(agentUUID))
+                            .All(o => o.Key.Equals(UUID.Zero)))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.EJECT_NEEDS_DEMOTE);
                     }

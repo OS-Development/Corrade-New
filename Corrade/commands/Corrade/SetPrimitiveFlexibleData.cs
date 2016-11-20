@@ -82,8 +82,11 @@ namespace Corrade
                         }
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        primitive.Flexible = primitive.Flexible.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                        primitive.Flexible =
+                            primitive.Flexible.wasCSVToStructure(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {
                             Client.Objects.SetFlexible(simulator,

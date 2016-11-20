@@ -57,8 +57,10 @@ namespace Corrade
                     {
                         Name = target
                     };
-                    targetGroup = targetGroup.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)));
+                    targetGroup =
+                        targetGroup.wasCSVToStructure(
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)));
                     var succeeded = false;
                     var GroupCreatedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>

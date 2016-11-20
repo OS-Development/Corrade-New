@@ -145,7 +145,7 @@ namespace Corrade.Constants
 
         public static readonly Dictionary<string, string> ASSEMBLY_CUSTOM_ATTRIBUTES =
             Assembly.GetEntryAssembly()
-                .GetCustomAttributes(typeof (AssemblyMetadataAttribute), true)
+                .GetCustomAttributes(typeof(AssemblyMetadataAttribute), true)
                 .OfType<AssemblyMetadataAttribute>()
                 .ToDictionary(o => o.Key, o => o.Value);
 

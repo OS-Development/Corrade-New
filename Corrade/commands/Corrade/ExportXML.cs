@@ -21,6 +21,7 @@ using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
+using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -90,21 +91,31 @@ namespace Corrade
                     var LockObject = new object();
 
                     // find all the children that have the object as parent.
-                    Services.GetPrimitives(Client, range)
-                        .ToArray()
-                        .AsParallel()
-                        .Where(o => o.ParentID.Equals(root.LocalID))
-                        .ForAll(
-                            o =>
+                    var scriptError = Enumerations.ScriptError.NONE;
+                    Parallel.ForEach(
+                        Services.GetPrimitives(Client, range).AsParallel().Where(o => o.ParentID.Equals(root.LocalID)),
+                        (o, s) =>
+                        {
+                            switch (Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
                             {
-                                var child = new Primitive(o);
-                                child.Position = root.Position + child.Position*root.Rotation;
-                                child.Rotation = root.Rotation*child.Rotation;
-                                lock (LockObject)
-                                {
-                                    exportPrimitivesSet.Add(child);
-                                }
-                            });
+                                case true:
+                                    o.Position = root.Position + o.Position*root.Rotation;
+                                    o.Rotation = root.Rotation*o.Rotation;
+                                    lock (LockObject)
+                                    {
+                                        exportPrimitivesSet.Add(o);
+                                    }
+                                    break;
+                                default:
+                                    scriptError = Enumerations.ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES;
+                                    s.Break();
+                                    return;
+                            }
+                        });
+
+                    // if the child primitives could not be updated, then throw the error.
+                    if (!scriptError.Equals(Enumerations.ScriptError.NONE))
+                        throw new Command.ScriptException(scriptError);
 
                     // add all the textures to export
                     var exportTexturesSet = new HashSet<UUID>();
@@ -145,7 +156,7 @@ namespace Corrade
                     PropertyInfo formatProperty = null;
                     if (!string.IsNullOrEmpty(format))
                     {
-                        formatProperty = typeof (ImageFormat).GetProperties(
+                        formatProperty = typeof(ImageFormat).GetProperties(
                             BindingFlags.Public |
                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(

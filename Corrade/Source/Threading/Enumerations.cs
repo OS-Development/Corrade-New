@@ -20,7 +20,11 @@ namespace Corrade.Threading
             [Reflection.NameAttribute("notification")] NOTIFICATION = 3,
             [Reflection.NameAttribute("im")] INSTANT_MESSAGE = 4,
             [Reflection.NameAttribute("log")] LOG = 5,
-            [Reflection.NameAttribute("post")] POST = 6
+            [Reflection.NameAttribute("post")] POST = 6,
+            [Reflection.NameAttribute("preload")] PRELOAD = 7,
+            [Reflection.NameAttribute("horde")] HORDE = 8,
+            [Reflection.NameAttribute("softban")] SOFTBAN = 9,
+            [Reflection.NameAttribute("auxiliary")] AUXILIARY = 10
         }
     }
 }

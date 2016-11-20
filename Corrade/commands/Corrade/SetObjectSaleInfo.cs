@@ -96,8 +96,8 @@ namespace Corrade
                         }
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        var saleTypeInfo = typeof (SaleType).GetFields(BindingFlags.Public |
-                                                                       BindingFlags.Static)
+                        var saleTypeInfo = typeof(SaleType).GetFields(BindingFlags.Public |
+                                                                      BindingFlags.Static)
                             .AsParallel().FirstOrDefault(o =>
                                 o.Name.Equals(
                                     wasInput(

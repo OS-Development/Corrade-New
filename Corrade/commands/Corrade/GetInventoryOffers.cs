@@ -32,15 +32,17 @@ namespace Corrade
                         {
                             InventoryOffers.Values.AsParallel().ForAll(o =>
                             {
-                                var name =
+                                var fullName =
                                     new List<string>(
                                         wasOpenMetaverse.Helpers.GetAvatarNames(o.Args.Offer.FromAgentName));
+                                if (fullName == null)
+                                    return;
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), name.First()});
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), fullName.First()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), name.Last()});
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), fullName.Last()});
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),

@@ -54,11 +54,12 @@ namespace Corrade
                             {
                                 case true:
                                     var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
-                                    switch (
-                                        !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
-                                            corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout,
-                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
+                                    switch (fullName == null ||
+                                            !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                                corradeConfiguration.ServicesTimeout,
+                                                corradeConfiguration.DataTimeout,
+                                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                ref agentUUID))
                                     {
                                         case true: // the name could not be resolved to an UUID so add it to the return
                                             data.Add(o);

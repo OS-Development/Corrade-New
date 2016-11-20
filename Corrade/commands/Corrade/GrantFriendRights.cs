@@ -69,7 +69,7 @@ namespace Corrade
                             .AsParallel()
                             .Where(o => !string.IsNullOrEmpty(o))
                             .ForAll(
-                                o => typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                o => typeof(FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
                                     .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(

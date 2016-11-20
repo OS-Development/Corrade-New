@@ -125,7 +125,7 @@ namespace Corrade
                                     parcels.Add(parcel);
                                     break;
                             }
-                            var objectReturnTypeField = typeof (ObjectReturnType).GetFields(
+                            var objectReturnTypeField = typeof(ObjectReturnType).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
@@ -205,7 +205,7 @@ namespace Corrade
                             {
                                 allEstates = false;
                             }
-                            var estateReturnFlagsField = typeof (EstateTools.EstateReturnFlags).GetFields(
+                            var estateReturnFlagsField = typeof(EstateTools.EstateReturnFlags).GetFields(
                                 BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>

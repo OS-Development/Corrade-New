@@ -174,7 +174,7 @@ namespace Corrade
                             if (!UUID.TryParse(o, out agentUUID))
                             {
                                 var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
-                                if (
+                                if (fullName == null ||
                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                         corradeConfiguration.ServicesTimeout,
                                         corradeConfiguration.DataTimeout,

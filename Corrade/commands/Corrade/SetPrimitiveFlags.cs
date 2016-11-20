@@ -137,8 +137,8 @@ namespace Corrade
                         {
                             shadows = primitive.Flags.IsMaskFlagSet(PrimFlags.CastShadows);
                         }
-                        var physicsShapeFieldInfo = typeof (PhysicsShapeType).GetFields(BindingFlags.Public |
-                                                                                        BindingFlags.Static)
+                        var physicsShapeFieldInfo = typeof(PhysicsShapeType).GetFields(BindingFlags.Public |
+                                                                                       BindingFlags.Static)
                             .AsParallel().FirstOrDefault(p => p.Name.Equals(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                     corradeCommandParameters.Message)), StringComparison.Ordinal));

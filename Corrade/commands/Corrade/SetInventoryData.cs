@@ -65,8 +65,10 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    inventoryitem = inventoryitem.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)));
+                    inventoryitem =
+                        inventoryitem.wasCSVToStructure(
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)));
                     lock (Locks.ClientInstanceInventoryLock)
                     {
                         Client.Inventory.RequestUpdateItem(inventoryitem);

@@ -798,7 +798,7 @@ namespace Corrade
                                                 getLocalMessageLastNameRegex.IsMatch(o.LastName) &&
                                                 getLocalMessageMessageRegex.IsMatch(o.Message) &&
                                                 getLocalMessageRegionNameRegex.IsMatch(o.RegionName) &&
-                                                getLocalMessageChatTypeRegex.IsMatch(Enum.GetName(typeof (ChatType),
+                                                getLocalMessageChatTypeRegex.IsMatch(Enum.GetName(typeof(ChatType),
                                                     o.ChatType))).ForAll(o =>
                                                     {
                                                         lock (LockObject)
@@ -819,7 +819,7 @@ namespace Corrade
                                                             csv.AddRange(new[]
                                                             {
                                                                 Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),
-                                                                Enum.GetName(typeof (ChatType),
+                                                                Enum.GetName(typeof(ChatType),
                                                                     o.ChatType)
                                                             });
                                                             csv.AddRange(new[]
@@ -863,7 +863,7 @@ namespace Corrade
                                                     searchLocalMessagesRegex.IsMatch(o.LastName) ||
                                                     searchLocalMessagesRegex.IsMatch(o.Message) ||
                                                     searchLocalMessagesRegex.IsMatch(o.RegionName) ||
-                                                    searchLocalMessagesRegex.IsMatch(Enum.GetName(typeof (ChatType),
+                                                    searchLocalMessagesRegex.IsMatch(Enum.GetName(typeof(ChatType),
                                                         o.ChatType))).ForAll(o =>
                                                         {
                                                             lock (LockObject)
@@ -887,7 +887,7 @@ namespace Corrade
                                                                 {
                                                                     Reflection.GetNameFromEnumValue(
                                                                         Command.ScriptKeys.TYPE),
-                                                                    Enum.GetName(typeof (ChatType),
+                                                                    Enum.GetName(typeof(ChatType),
                                                                         o.ChatType)
                                                                 });
                                                                 csv.AddRange(new[]

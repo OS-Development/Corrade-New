@@ -32,7 +32,7 @@ namespace Corrade.Structures
         private Time.Timer HeartbeatTimer;
 
         private TimeSpan LastTotalCPUTime;
-        private DateTime LastUpdateTime;
+        private readonly DateTime LastUpdateTime;
 
         /// <summary>
         ///     The total number of processed Corrade commands.
@@ -66,7 +66,12 @@ namespace Corrade.Structures
                 ++Uptime;
                 using (var currentProcess = Process.GetCurrentProcess())
                 {
-                    AverageCPUUsage = (uint)(100d * ((currentProcess.TotalProcessorTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds) / DateTime.UtcNow.Subtract(LastUpdateTime).TotalMilliseconds / Convert.ToDouble(Environment.ProcessorCount)));
+                    AverageCPUUsage =
+                        (uint)
+                            (100d*
+                             ((currentProcess.TotalProcessorTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds)/
+                              DateTime.UtcNow.Subtract(LastUpdateTime).TotalMilliseconds/
+                              Convert.ToDouble(Environment.ProcessorCount)));
                     AverageRAMUsage = (AverageRAMUsage + currentProcess.PrivateMemorySize64)/2;
                 }
             }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));

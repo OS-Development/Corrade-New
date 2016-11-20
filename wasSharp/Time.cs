@@ -63,7 +63,7 @@ namespace wasSharp
             {
             }
 
-            public Timer(Action<object> callback) : this(callback.Invoke, null, TimeSpan.Zero, TimeSpan.Zero)
+            public Timer(TimerCallback callback) : this(callback, null, TimeSpan.Zero, TimeSpan.Zero)
             {
             }
 
@@ -105,19 +105,23 @@ namespace wasSharp
             private void Reset(int due)
             {
                 Cancel();
-                if (due <= 0) return;
+                if (due <= 0)
+                    return;
                 TokenSource = new CancellationTokenSource();
                 Action tick = null;
                 tick = () =>
                 {
                     Task.Run(() => Callback(State));
-                    if (Disposed) return;
+                    if (Disposed)
+                        return;
                     Delay = Period > 0 ? Task.Delay(Period, TokenSource.Token) : CompletedTask;
-                    if (Delay.IsCompleted) return;
+                    if (Delay.IsCompleted)
+                        return;
                     Delay.ContinueWith(t => tick(), TokenSource.Token);
                 };
                 Delay = due > 0 ? Task.Delay(due, TokenSource.Token) : CompletedTask;
-                if (Delay.IsCompleted) return;
+                if (Delay.IsCompleted)
+                    return;
                 Delay.ContinueWith(t => tick(), TokenSource.Token);
             }
 
@@ -128,7 +132,8 @@ namespace wasSharp
 
             private void Cancel()
             {
-                if (TokenSource == null) return;
+                if (TokenSource == null)
+                    return;
                 TokenSource.Cancel();
                 TokenSource.Dispose();
                 TokenSource = null;
@@ -149,7 +154,7 @@ namespace wasSharp
             private readonly uint EventsAllowed;
             private readonly object LockObject = new object();
             private Timer timer;
-            private uint TriggeredEvents;
+            public uint TriggeredEvents;
 
             public TimedThrottle(uint events, uint seconds)
             {

@@ -134,7 +134,7 @@ namespace Corrade
                     {
                         renew = false;
                     }
-                    var classifiedCategoriesField = typeof (DirectoryManager.ClassifiedCategories).GetFields(
+                    var classifiedCategoriesField = typeof(DirectoryManager.ClassifiedCategories).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>

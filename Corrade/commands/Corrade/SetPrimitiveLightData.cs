@@ -81,8 +81,11 @@ namespace Corrade
                         }
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        primitive.Light = primitive.Light.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                        primitive.Light =
+                            primitive.Light.wasCSVToStructure(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {
                             Client.Objects.SetLight(simulator,

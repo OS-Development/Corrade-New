@@ -199,6 +199,9 @@
     <Compile Include="commands\Corrade\Deactivate.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\ExportOAR.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetAvatarClassifiedData.cs">
       <SubType>Component</SubType>
     </Compile>

@@ -130,7 +130,7 @@ namespace Corrade
                                     if (!UUID.TryParse(o.input, out agentUUID))
                                     {
                                         var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o.input));
-                                        if (
+                                        if (fullName == null ||
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -191,6 +191,9 @@ namespace Corrade
 
                                         var fullName =
                                             new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o.input.Value));
+                                        if (fullName == null)
+                                            return;
+
                                         var softBan = new SoftBan
                                         {
                                             Agent = o.input.Key,
@@ -580,7 +583,11 @@ namespace Corrade
                                             !Resolvers.AgentUUIDToName(Client, o.Key,
                                                 corradeConfiguration.ServicesTimeout, ref agentName))
                                             return;
+
                                         var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(agentName);
+                                        if (fullName == null)
+                                            return;
+
                                         lock (LockObject)
                                         {
                                             softBans.Add(new SoftBan
@@ -643,6 +650,8 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout, ref agentName))
                                                 return;
                                             var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(agentName);
+                                            if (fullName == null)
+                                                return;
                                             lock (LockObject)
                                             {
                                                 softBans.Add(new SoftBan

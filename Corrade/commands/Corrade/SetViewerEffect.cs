@@ -151,8 +151,8 @@ namespace Corrade
                             switch (viewerEffectType)
                             {
                                 case Enumerations.ViewerEffectType.LOOK:
-                                    var lookAtTypeInfo = typeof (LookAtType).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
+                                    var lookAtTypeInfo = typeof(LookAtType).GetFields(BindingFlags.Public |
+                                                                                      BindingFlags.Static)
                                         .AsParallel().FirstOrDefault(
                                             o =>
                                                 o.Name.Equals(
@@ -210,8 +210,8 @@ namespace Corrade
                                     }
                                     break;
                                 case Enumerations.ViewerEffectType.POINT:
-                                    var pointAtTypeInfo = typeof (PointAtType).GetFields(BindingFlags.Public |
-                                                                                         BindingFlags.Static)
+                                    var pointAtTypeInfo = typeof(PointAtType).GetFields(BindingFlags.Public |
+                                                                                        BindingFlags.Static)
                                         .AsParallel().FirstOrDefault(
                                             o =>
                                                 o.Name.Equals(

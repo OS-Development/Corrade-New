@@ -5,7 +5,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using OpenMetaverse;
 
 namespace Corrade.Events
 {
@@ -14,26 +13,6 @@ namespace Corrade.Events
     /// </summary>
     public class HeartbeatEventArgs : EventArgs
     {
-        /// <summary>
-        ///     The number of currently executing Corrade commands.
-        /// </summary>
-        public int ExecutingCommands;
-
-        /// <summary>
-        ///     The number of currently executing RLV behaviours.
-        /// </summary>
-        public int ExecutingRLVBehaviours;
-
-        /// <summary>
-        ///     The total number of processed Corrade commands.
-        /// </summary>
-        public int ProcessedCommands;
-
-        /// <summary>
-        ///     The total number of processed RLV behaviours.
-        /// </summary>
-        public int ProcessedRLVBehaviours;
-
         /// <summary>
         ///     The artihmetic average of all CPU usages accross all heartbeats.
         /// </summary>
@@ -45,9 +24,29 @@ namespace Corrade.Events
         public long AverageRAMUsage;
 
         /// <summary>
+        ///     The number of currently executing Corrade commands.
+        /// </summary>
+        public int ExecutingCommands;
+
+        /// <summary>
+        ///     The number of currently executing RLV behaviours.
+        /// </summary>
+        public int ExecutingRLVBehaviours;
+
+        /// <summary>
         ///     The total number of heartbeats.
         /// </summary>
         public uint Heartbeats;
+
+        /// <summary>
+        ///     The total number of processed Corrade commands.
+        /// </summary>
+        public int ProcessedCommands;
+
+        /// <summary>
+        ///     The total number of processed RLV behaviours.
+        /// </summary>
+        public int ProcessedRLVBehaviours;
 
         /// <summary>
         ///     The uptime of the current Corrade instance (updated in heartbeat intervals).

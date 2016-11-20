@@ -122,7 +122,7 @@ namespace Corrade
                     {
                         newTree = true;
                     }
-                    var treeFieldInfo = typeof (Tree).GetFields(
+                    var treeFieldInfo = typeof(Tree).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(

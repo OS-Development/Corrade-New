@@ -931,5 +931,69 @@ namespace wasOpenMetaverse
             primitive = localPrimitive;
             return true;
         }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Download a texture by its asset UUID
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="assetUUID">the asset UUID of the texture</param>
+        /// <param name="assetData">the asset data where to store the texture</param>
+        /// <param name="dataTimeout">the timeout for downloading the texture</param>
+        /// <returns>true of the texture could be downloaded successfully</returns>
+        private static bool directDownloadTexture(GridClient Client, UUID assetUUID, out byte[] assetData, uint dataTimeout)
+        {
+            ManualResetEvent AssetReceivedEvent = new ManualResetEvent(false);
+            byte[] localAssetData = null;
+            lock (Locks.ClientInstanceAssetsLock)
+            {
+                Client.Assets.RequestImage(assetUUID, (state, asset) =>
+                {
+                    if (!asset.AssetID.Equals(assetUUID))
+                        return;
+                    if (!state.Equals(TextureRequestState.Finished))
+                        return;
+                    localAssetData = asset.AssetData;
+                    AssetReceivedEvent.Set();
+                });
+            }
+
+            assetData = localAssetData;
+            return AssetReceivedEvent.WaitOne((int)dataTimeout, false);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Cache wrapper for downloading a texture by its asset UUID.
+        /// </summary>
+        /// <param name="Client">the grid client to use</param>
+        /// <param name="assetUUID">the asset UUID of the texture</param>
+        /// <param name="assetData">the asset data where to store the texture</param>
+        /// <param name="dataTimeout">the timeout for downloading the texture</param>
+        /// <returns>true of the texture could be downloaded successfully</returns>
+        public static bool DownloadTexture(GridClient Client, UUID assetUUID, out byte[] assetData, uint dataTimeout)
+        {
+            lock (Locks.ClientInstanceAssetsLock)
+            {
+                if (Client.Assets.Cache.HasAsset(assetUUID))
+                {
+                    assetData = Client.Assets.Cache.GetCachedAssetBytes(assetUUID);
+                    return true;
+                }
+            }
+            bool succeeded = directDownloadTexture(Client, assetUUID, out assetData, dataTimeout);
+            if (succeeded)
+            {
+                lock (Locks.ClientInstanceAssetsLock)
+                {
+                    Client.Assets.Cache.SaveAssetToCache(assetUUID, assetData);
+                }
+            }
+            return succeeded;
+        }
     }
 }

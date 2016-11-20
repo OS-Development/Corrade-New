@@ -31,8 +31,8 @@ namespace Corrade
                     }
                     var movement = Client.Self.Movement;
                     movement = movement.wasCSVToStructure(wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message)));
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.Movement.AlwaysRun = movement.AlwaysRun;

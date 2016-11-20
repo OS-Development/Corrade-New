@@ -104,7 +104,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                             }
                             // get instant message dialog type
-                            var instantMessageDialogInfo = typeof (InstantMessageDialog).GetFields(
+                            var instantMessageDialogInfo = typeof(InstantMessageDialog).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
@@ -138,7 +138,7 @@ namespace Corrade
                                 }
                             }
                             // get whether the message is online of offline (defaults to offline)
-                            var instantMessageOnlineInfo = typeof (InstantMessageOnline).GetFields(
+                            var instantMessageOnlineInfo = typeof(InstantMessageOnline).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
@@ -184,9 +184,13 @@ namespace Corrade
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                                 }
+
                                 var fullName =
                                     new List<string>(
                                         wasOpenMetaverse.Helpers.GetAvatarNames(agentName));
+                                if (fullName == null)
+                                    break;
+
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try
@@ -343,8 +347,8 @@ namespace Corrade
                             {
                                 chatChannel = 0;
                             }
-                            var chatTypeInfo = typeof (ChatType).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.Static)
+                            var chatTypeInfo = typeof(ChatType).GetFields(BindingFlags.Public |
+                                                                          BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
@@ -394,6 +398,9 @@ namespace Corrade
                                     new List<string>(
                                         wasOpenMetaverse.Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName,
                                             Client.Self.LastName)));
+                                if (fullName == null)
+                                    break;
+
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try
@@ -416,7 +423,7 @@ namespace Corrade
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                             Utils.EnUsCulture.DateTimeFormat),
                                                         fullName.First(),
-                                                        fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
+                                                        fullName.Last(), Enum.GetName(typeof(ChatType), chatType),
                                                         data);
                                                     //logWriter.Flush();
                                                     //logWriter.Close();

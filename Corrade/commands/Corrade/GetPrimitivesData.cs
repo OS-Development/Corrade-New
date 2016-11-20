@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -209,13 +210,23 @@ namespace Corrade
                         }
 
                         // allow partial results
-                        Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
+                        var primitives = new HashSet<Primitive>();
+                        Parallel.ForEach(updatePrimitives, (o, s) =>
+                        {
+                            if (Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
+                            {
+                                lock (LockObject)
+                                {
+                                    primitives.Add(o);
+                                }
+                            }
+                        });
 
                         var data = new List<string>();
                         var dataQuery = wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message));
-                        updatePrimitives.AsParallel().ForAll(o =>
+                        primitives.AsParallel().ForAll(o =>
                         {
                             var primitiveData = o.GetStructuredData(dataQuery).ToList();
                             if (primitiveData.Any())

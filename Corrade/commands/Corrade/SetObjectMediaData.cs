@@ -108,8 +108,11 @@ namespace Corrade
                                     }
                                 });
                         }
-                        faceMediaEntries[face] = faceMediaEntries[face].wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                        faceMediaEntries[face] =
+                            faceMediaEntries[face].wasCSVToStructure(
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)));
                         lock (Locks.ClientInstanceObjectsLock)
                         {
                             Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries, simulator);

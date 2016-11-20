@@ -60,7 +60,7 @@ namespace Corrade
                         if (!DateTime.TryParse(wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
-                                corradeCommandParameters.Message)), out @from))
+                                corradeCommandParameters.Message)), out from))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DATE);
                         }
@@ -125,7 +125,7 @@ namespace Corrade
                             "https://secondlife.com/my/account/download_transactions.php",
                             new Dictionary<string, string>
                             {
-                                {"date_start", @from.ToString("yyyy-MM-dd ")},
+                                {"date_start", from.ToString("yyyy-MM-dd ")},
                                 {"date_end", to.ToString("yyyy-MM-dd ")},
                                 {"type", "xml"},
                                 {"include_zero", "yes"}
@@ -135,7 +135,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_TRANSACTIONS_FOUND);
 
                         Transactions transactions;
-                        var serializer = new XmlSerializer(typeof (Transactions));
+                        var serializer = new XmlSerializer(typeof(Transactions));
                         try
                         {
                             using (TextReader reader = new StringReader(Encoding.UTF8.GetString(postData.Result)))

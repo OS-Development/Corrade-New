@@ -152,7 +152,6 @@ namespace Corrade
                 // Execute the command.
                 execute.RLVBehaviour.Invoke(message, RLVrule, senderUUID);
                 Interlocked.Increment(ref Corrade.CorradeHeartbeat.ProcessedRLVBehaviours);
-
             }
             catch (Exception ex)
             {

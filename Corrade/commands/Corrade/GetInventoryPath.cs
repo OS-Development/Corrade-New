@@ -40,7 +40,7 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
-                            o => typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                            o => typeof(AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
                                 .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
                                 .ForAll(q =>

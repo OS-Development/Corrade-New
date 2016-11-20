@@ -61,7 +61,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_TERRAFORM_ACTION_SPECIFIED);
                     }
-                    var terraformActionFieldInfo = typeof (TerraformAction).GetFields(
+                    var terraformActionFieldInfo = typeof(TerraformAction).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -81,7 +81,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_TERRAFORM_BRUSH_SPECIFIED);
                     }
-                    var terraformBrushFieldInfo = typeof (TerraformBrushSize).GetFields(
+                    var terraformBrushFieldInfo = typeof(TerraformBrushSize).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(

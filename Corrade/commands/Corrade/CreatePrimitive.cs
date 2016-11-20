@@ -130,7 +130,7 @@ namespace Corrade
                             Enumerations.ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
                     // build the primitive shape from presets by supplying "type" (or not)...
-                    var primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
+                    var primitiveShapesFieldInfo = typeof(CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -153,8 +153,10 @@ namespace Corrade
                             break;
                     }
                     // ... and overwrite with manual data settings.
-                    constructionData = constructionData.wasCSVToStructure(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)));
+                    constructionData =
+                        constructionData.wasCSVToStructure(
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)));
                     // Get any primitive flags.
                     PrimFlags primFlags = 0;
                     CSV.ToEnumerable(
@@ -166,7 +168,7 @@ namespace Corrade
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
                             o =>
-                                typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                typeof(PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
                                     .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(

@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using CorradeConfiguration;
-using LanguageDetection;
 using wasSharp;
 
 namespace Corrade

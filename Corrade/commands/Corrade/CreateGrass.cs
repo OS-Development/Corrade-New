@@ -116,7 +116,7 @@ namespace Corrade
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                             corradeCommandParameters.Message));
-                    var grassFieldInfo = typeof (Grass).GetFields(
+                    var grassFieldInfo = typeof(Grass).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(

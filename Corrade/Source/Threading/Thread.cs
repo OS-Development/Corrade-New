@@ -12,6 +12,7 @@ using System.Threading;
 using Amib.Threading;
 using OpenMetaverse;
 using wasSharp;
+using Action = Amib.Threading.Action;
 
 namespace Corrade.Threading
 {
@@ -24,7 +25,6 @@ namespace Corrade.Threading
         ///     Thread pool.
         /// </summary>
         private static readonly SmartThreadPool smartThreadPool = new SmartThreadPool();
-        public Collections.RangeCollection<WorkItemPriority> threadRangePriority = new Collections.RangeCollection<WorkItemPriority>(0, 100);
 
         /// <summary>
         ///     Semaphore for sequential execution of threads.
@@ -34,10 +34,14 @@ namespace Corrade.Threading
         /// <summary>
         ///     Holds group execution times.
         /// </summary>
-        private static SortedSet<GroupExecution> GroupExecutionSet = new SortedSet<GroupExecution>();
+        private static readonly SortedSet<GroupExecution> GroupExecutionSet = new SortedSet<GroupExecution>();
+
         private static readonly object GroupExecutionSetLock = new object();
         private static readonly Stopwatch ThreadExecutuionStopwatch = new Stopwatch();
         private readonly Enumerations.ThreadType threadType;
+
+        public Collections.RangeCollection<WorkItemPriority> threadRangePriority =
+            new Collections.RangeCollection<WorkItemPriority>(0, 100);
 
         /// <summary>
         ///     Constructor for a Corrade thread.
@@ -66,7 +70,7 @@ namespace Corrade.Threading
         /// <param name="millisecondsTimeout">
         ///     the timeout in milliseconds before considering the previous thread as vanished
         /// </param>
-        public void SpawnSequential(Amib.Threading.Action s, uint m, uint millisecondsTimeout)
+        public void SpawnSequential(Action s, uint m, uint millisecondsTimeout)
         {
             if (smartThreadPool.InUseThreads > m)
                 return;
@@ -77,7 +81,7 @@ namespace Corrade.Threading
                 // protect inner thread
                 try
                 {
-                    SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, false);
+                    SequentialThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false);
                     SequentialThreadCompletedEvent.Reset();
                     s();
                     SequentialThreadCompletedEvent.Set();
@@ -97,8 +101,34 @@ namespace Corrade.Threading
         ///     first-come first-served fashion.
         /// </summary>
         /// <param name="s">the code to execute as a ThreadStart delegate</param>
+        public void Spawn(Action s)
+        {
+            var threadType = this.threadType;
+            smartThreadPool.QueueWorkItem(() =>
+            {
+                // protect inner thread
+                try
+                {
+                    s();
+                }
+                catch (Exception ex)
+                {
+                    Corrade.Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
+                        ex.StackTrace);
+                }
+            });
+        }
+
+        /// <summary>
+        ///     This is an ad-hoc scheduler where threads will be executed in a
+        ///     first-come first-served fashion.
+        /// </summary>
+        /// <param name="s">the code to execute as a ThreadStart delegate</param>
         /// <param name="m">the maximum amount of threads</param>
-        public void Spawn(Amib.Threading.Action s, uint m)
+        public void Spawn(Action s, uint m)
         {
             if (smartThreadPool.InUseThreads > m)
                 return;
@@ -132,7 +162,7 @@ namespace Corrade.Threading
         /// <param name="m">the maximum amount of threads</param>
         /// <param name="groupUUID">the UUID of the group</param>
         /// <param name="expiration">the time in milliseconds after which measurements are expunged</param>
-        public void Spawn(Amib.Threading.Action s, uint m, UUID groupUUID, uint expiration)
+        public void Spawn(Action s, uint m, UUID groupUUID, uint expiration)
         {
             // Don't accept to schedule bogus groups.
             if (groupUUID.Equals(UUID.Zero))
@@ -141,7 +171,7 @@ namespace Corrade.Threading
             if (smartThreadPool.InUseThreads > m)
                 return;
 
-            WorkItemPriority workItemPriority = WorkItemPriority.Normal;
+            var workItemPriority = WorkItemPriority.Normal;
             lock (GroupExecutionSetLock)
             {
                 // Clear threads that are not restricted anymore due to expiration.
@@ -150,7 +180,9 @@ namespace Corrade.Threading
                 var groupExecution = GroupExecutionSet.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
                 // Adjust the priority depending on the time spent executing a command.
                 if (GroupExecutionSet.Count > 1 && !groupExecution.Equals(default(GroupExecution)))
-                    workItemPriority = threadRangePriority[(int)(100L * groupExecution.ExecutionTime / GroupExecutionSet.Sum(o => o.ExecutionTime))];
+                    workItemPriority =
+                        threadRangePriority[
+                            (int) (100L*groupExecution.ExecutionTime/GroupExecutionSet.Sum(o => o.ExecutionTime))];
             }
 
             // Spawn.
@@ -171,7 +203,8 @@ namespace Corrade.Threading
                         {
                             case true:
                                 GroupExecutionSet.Remove(groupExecution);
-                                groupExecution.ExecutionTime = (groupExecution.ExecutionTime + ThreadExecutuionStopwatch.ElapsedMilliseconds) / 2;
+                                groupExecution.ExecutionTime = (groupExecution.ExecutionTime +
+                                                                ThreadExecutuionStopwatch.ElapsedMilliseconds)/2;
                                 groupExecution.TimeStamp = DateTime.UtcNow;
                                 GroupExecutionSet.Add(groupExecution);
                                 break;

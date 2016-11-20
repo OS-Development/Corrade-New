@@ -91,7 +91,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
-                    var accessField = typeof (AccessList).GetFields(
+                    var accessField = typeof(AccessList).GetFields(
                         BindingFlags.Public | BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>

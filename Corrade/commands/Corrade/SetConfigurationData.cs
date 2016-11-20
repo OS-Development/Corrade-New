@@ -31,9 +31,9 @@ namespace Corrade
                         lock (ConfigurationFileLock)
                         {
                             corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)));
                             UpdateDynamicConfiguration(corradeConfiguration);
                             ConfigurationWatcher.EnableRaisingEvents = false;
                             try

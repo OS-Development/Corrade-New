@@ -108,7 +108,7 @@ namespace Corrade
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
                             o =>
-                                typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
                                     .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(

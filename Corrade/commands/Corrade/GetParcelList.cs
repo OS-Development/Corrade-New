@@ -64,7 +64,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    var accessField = typeof (AccessList).GetFields(
+                    var accessField = typeof(AccessList).GetFields(
                         BindingFlags.Public | BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>

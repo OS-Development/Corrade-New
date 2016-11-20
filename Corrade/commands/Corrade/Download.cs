@@ -47,8 +47,8 @@ namespace Corrade
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    var assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                     BindingFlags.Static)
+                    var assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(
@@ -247,13 +247,13 @@ namespace Corrade
                                 switch (Environment.OSVersion.Platform)
                                 {
                                     case PlatformID.Win32NT:
-                                        var magickFormat = Enum.GetValues(typeof (MagickFormat))
+                                        var magickFormat = Enum.GetValues(typeof(MagickFormat))
                                             .Cast<MagickFormat>()
-                                            .Select(i => new {i, name = Enum.GetName(typeof (MagickFormat), i)})
+                                            .Select(i => new {i, name = Enum.GetName(typeof(MagickFormat), i)})
                                             .Where(
-                                                @t =>
+                                                t =>
                                                     t.name != null && t.name.Equals(format, StringComparison.Ordinal))
-                                            .Select(@t => t.i).FirstOrDefault();
+                                            .Select(t => t.i).FirstOrDefault();
                                         if (magickFormat.Equals(MagickFormat.Unknown))
                                         {
                                             throw new Command.ScriptException(
@@ -286,7 +286,7 @@ namespace Corrade
                                         }
                                         break;
                                     default:
-                                        var formatProperty = typeof (ImageFormat).GetProperties(
+                                        var formatProperty = typeof(ImageFormat).GetProperties(
                                             BindingFlags.Public |
                                             BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(

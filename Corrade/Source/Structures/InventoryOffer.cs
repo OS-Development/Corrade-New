@@ -16,7 +16,7 @@ namespace Corrade.Structures
     public class InventoryOffer
     {
         [Reflection.NameAttribute("args")] public InventoryObjectOfferedEventArgs Args;
-        [Reflection.NameAttribute("name")] public string Name;
         [Reflection.NameAttribute("event")] public ManualResetEvent Event;
+        [Reflection.NameAttribute("name")] public string Name;
     }
 }

@@ -90,8 +90,8 @@ namespace Corrade
                                         }
 
                                         // Get the mute type
-                                        var muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
+                                        var muteTypeInfo = typeof(MuteType).GetFields(BindingFlags.Public |
+                                                                                      BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 p =>
                                                     p.Name.Equals(
@@ -118,10 +118,11 @@ namespace Corrade
                                             .ToArray()
                                             .AsParallel()
                                             .Where(p => !string.IsNullOrEmpty(p)).ForAll(p =>
-                                                typeof (MuteFlags).GetFields(BindingFlags.Public |
-                                                                             BindingFlags.Static)
+                                                typeof(MuteFlags).GetFields(BindingFlags.Public |
+                                                                            BindingFlags.Static)
                                                     .AsParallel()
-                                                    .Where(q => Strings.StringEquals(p, q.Name, StringComparison.Ordinal))
+                                                    .Where(
+                                                        q => Strings.StringEquals(p, q.Name, StringComparison.Ordinal))
                                                     .ForAll(
                                                         r =>
                                                         {

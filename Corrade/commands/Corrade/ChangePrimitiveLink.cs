@@ -65,10 +65,19 @@ namespace Corrade
                         }
 
                         var LockObject = new object();
-                        var updatePrimitives = Services.GetPrimitives(Client, range);
 
-                        // allow partial results
-                        Services.UpdatePrimitives(Client, ref updatePrimitives, corradeConfiguration.DataTimeout);
+                        // Update the primitives.
+                        var updatePrimitives = new HashSet<Primitive>();
+                        Services.GetPrimitives(Client, range).AsParallel().ForAll(o =>
+                        {
+                            if (Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
+                            {
+                                lock (LockObject)
+                                {
+                                    updatePrimitives.Add(o);
+                                }
+                            }
+                        });
 
                         var searchPrimitives = new Primitive[items.Count];
                         var succeeded = true;

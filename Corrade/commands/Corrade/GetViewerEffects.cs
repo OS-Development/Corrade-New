@@ -52,7 +52,7 @@ namespace Corrade
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetStructureMemberName(o, o.Type),
-                                        Enum.GetName(typeof (LookAtType), o.Type)
+                                        Enum.GetName(typeof(LookAtType), o.Type)
                                     });
                                 }
                             });
@@ -73,7 +73,7 @@ namespace Corrade
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetStructureMemberName(o, o.Type),
-                                        Enum.GetName(typeof (PointAtType), o.Type)
+                                        Enum.GetName(typeof(PointAtType), o.Type)
                                     });
                                 }
                             });
