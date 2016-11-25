@@ -91,7 +91,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Land)] [CorradeCommand("getremoteparcelinfodata")] [Reflection.NameAttribute("getremoteparcelinfodata")] GETREMOTEPARCELINFODATA,
 
             [CommandInputSyntax(
-                "<command=renameitem>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                "<command=deactivate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Grooming)] [CorradeCommand("deactivate")] [Reflection.NameAttribute("deactivate")] DEACTIVATE,
 
             [Reflection.NameAttribute("restructure")] RESTRUCTURE,
