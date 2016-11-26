@@ -15,7 +15,6 @@ using System.Threading;
 using Corrade.Constants;
 using CorradeConfiguration;
 using ImageMagick;
-using NAudio.Lame;
 using NAudio.Vorbis;
 using NAudio.Wave;
 using OpenMetaverse;
@@ -355,16 +354,6 @@ namespace Corrade
                                             {
                                                 switch (format)
                                                 {
-                                                    case "mp3":
-                                                        using (
-                                                            var mp3Writer = new LameMP3FileWriter(soundOutputStream,
-                                                                vorbis.WaveFormat, LAMEPreset.ABR_256))
-                                                        {
-                                                            vorbis.CopyTo(vorbisStream);
-                                                            var vorbisData = vorbisStream.ToArray();
-                                                            mp3Writer.Write(vorbisData, 0, vorbisData.Length);
-                                                        }
-                                                        break;
                                                     case "wav":
                                                         using (
                                                             var wavWriter = new WaveFileWriter(soundOutputStream,

@@ -668,7 +668,8 @@ namespace Corrade
             [Command.StatusAttribute(15517)] [Reflection.DescriptionAttribute("eject needs demote")] EJECT_NEEDS_DEMOTE,
             [Command.StatusAttribute(01488)] [Reflection.DescriptionAttribute("no dialog specified")] NO_DIALOG_SPECIFIED,
             [Command.StatusAttribute(55394)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
-            [Command.StatusAttribute(64179)] [Reflection.DescriptionAttribute("unable to serialize primitive")] UNABLE_TO_SERIALIZE_PRIMITIVE
+            [Command.StatusAttribute(64179)] [Reflection.DescriptionAttribute("unable to serialize primitive")] UNABLE_TO_SERIALIZE_PRIMITIVE,
+            [Command.StatusAttribute(58212)] [Reflection.DescriptionAttribute("platform not supported")] PLATFORM_NOT_SUPPORTED
         }
 
 
