@@ -15,6 +15,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -98,7 +99,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
@@ -241,7 +242,7 @@ namespace Corrade
                                     if (!UUID.TryParse(target, out groupUUID) &&
                                         !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                             corradeConfiguration.DataTimeout,
-                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                            new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                                     break;
                                 default:
@@ -277,7 +278,7 @@ namespace Corrade
                                         groupUUID,
                                         GroupPowers.JoinChat,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);

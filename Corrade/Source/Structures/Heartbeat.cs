@@ -7,7 +7,7 @@
 using System;
 using System.Diagnostics;
 using Corrade.Constants;
-using wasSharp;
+using wasSharp.Timers;
 
 namespace Corrade.Structures
 {
@@ -16,6 +16,8 @@ namespace Corrade.Structures
     /// </summary>
     public class Heartbeat : IDisposable
     {
+        private readonly DateTime LastUpdateTime;
+
         /// <summary>
         ///     The number of currently executing Corrade commands.
         /// </summary>
@@ -29,10 +31,9 @@ namespace Corrade.Structures
         /// <summary>
         ///     Timer computing various metrics for the heartbeat structure.
         /// </summary>
-        private Time.Timer HeartbeatTimer;
+        private Timer HeartbeatTimer;
 
         private TimeSpan LastTotalCPUTime;
-        private readonly DateTime LastUpdateTime;
 
         /// <summary>
         ///     The total number of processed Corrade commands.
@@ -60,7 +61,7 @@ namespace Corrade.Structures
             }
 
             // Start the heartbeat timer.
-            HeartbeatTimer = new Time.Timer(o =>
+            HeartbeatTimer = new Timer(o =>
             {
                 ++Heartbeats;
                 ++Uptime;

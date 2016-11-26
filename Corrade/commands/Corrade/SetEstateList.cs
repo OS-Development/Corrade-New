@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -42,7 +43,7 @@ namespace Corrade
                     }
                     var estateList = new List<UUID>();
                     var EstateListReceivedAlarm =
-                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
+                        new DecayingAlarm(corradeConfiguration.DataDecayType);
                     UUID targetUUID;
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Type>(
@@ -70,7 +71,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
@@ -155,7 +156,7 @@ namespace Corrade
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                                 corradeCommandParameters.Message)),
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType),
                                         ref targetUUID))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
@@ -244,7 +245,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
@@ -333,7 +334,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);

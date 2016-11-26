@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace wasOpenMetaverse
@@ -221,7 +222,7 @@ namespace wasOpenMetaverse
         /// <returns>true if the agent has the powers</returns>
         public static bool HasGroupPowers(GridClient Client, UUID agentUUID, UUID groupUUID, GroupPowers powers,
             uint millisecondsTimeout,
-            uint dataTimeout, Time.DecayingAlarm alarm)
+            uint dataTimeout, DecayingAlarm alarm)
         {
             var avatarGroups = new List<AvatarGroup>();
             var LockObject = new object();
@@ -655,11 +656,11 @@ namespace wasOpenMetaverse
         /// <param name="alarm">a decaying alarm for retrieving data</param>
         /// <returns>true if any avatars were updated</returns>
         public static bool UpdateAvatars(GridClient Client, ref HashSet<Avatar> avatars, uint millisecondsTimeout,
-            uint dataTimeout, Time.DecayingAlarm alarm)
+            uint dataTimeout, DecayingAlarm alarm)
         {
             var scansAvatars = new HashSet<Avatar>(avatars);
             var avatarAlarms =
-                new Dictionary<UUID, Time.DecayingAlarm>(scansAvatars.AsParallel()
+                new Dictionary<UUID, DecayingAlarm>(scansAvatars.AsParallel()
                     .ToDictionary(o => o.ID, p => alarm.Clone()));
             var avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
                 .ToDictionary(o => o.ID, p => p));
@@ -717,7 +718,7 @@ namespace wasOpenMetaverse
                     Client.Avatars.RequestAvatarProperties(o.ID);
                     Client.Avatars.RequestAvatarPicks(o.ID);
                     Client.Avatars.RequestAvatarClassified(o.ID);
-                    Time.DecayingAlarm avatarAlarm;
+                    DecayingAlarm avatarAlarm;
                     lock (LockObject)
                     {
                         avatarAlarm = avatarAlarms[o.ID];
@@ -943,9 +944,10 @@ namespace wasOpenMetaverse
         /// <param name="assetData">the asset data where to store the texture</param>
         /// <param name="dataTimeout">the timeout for downloading the texture</param>
         /// <returns>true of the texture could be downloaded successfully</returns>
-        private static bool directDownloadTexture(GridClient Client, UUID assetUUID, out byte[] assetData, uint dataTimeout)
+        private static bool directDownloadTexture(GridClient Client, UUID assetUUID, out byte[] assetData,
+            uint dataTimeout)
         {
-            ManualResetEvent AssetReceivedEvent = new ManualResetEvent(false);
+            var AssetReceivedEvent = new ManualResetEvent(false);
             byte[] localAssetData = null;
             lock (Locks.ClientInstanceAssetsLock)
             {
@@ -961,7 +963,7 @@ namespace wasOpenMetaverse
             }
 
             assetData = localAssetData;
-            return AssetReceivedEvent.WaitOne((int)dataTimeout, false);
+            return AssetReceivedEvent.WaitOne((int) dataTimeout, false);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -985,7 +987,7 @@ namespace wasOpenMetaverse
                     return true;
                 }
             }
-            bool succeeded = directDownloadTexture(Client, assetUUID, out assetData, dataTimeout);
+            var succeeded = directDownloadTexture(Client, assetUUID, out assetData, dataTimeout);
             if (succeeded)
             {
                 lock (Locks.ClientInstanceAssetsLock)

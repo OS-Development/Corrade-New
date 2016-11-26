@@ -15,7 +15,7 @@ using System.Xml;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.Rendering;
-using wasSharp;
+using wasSharp.Web.Utilities;
 
 namespace wasOpenMetaverse
 {
@@ -155,7 +155,7 @@ namespace wasOpenMetaverse
                 image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
                 image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
                 image.AppendChild(Doc.CreateElement("init_from")).InnerText =
-                    Web.URIUnescapeDataString(name + "." + imageFormat.ToLower());
+                    (name + "." + imageFormat.ToLower()).URIUnescapeDataString();
             }
 
             Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>

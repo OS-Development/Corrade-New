@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 
 namespace wasOpenMetaverse
 {
@@ -29,7 +30,7 @@ namespace wasOpenMetaverse
         /// <param name="GroupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
         private static bool directGroupNameToUUID(GridClient Client, string GroupName,
-            uint millisecondsTimeout, uint dataTimeout, Time.DecayingAlarm alarm,
+            uint millisecondsTimeout, uint dataTimeout, DecayingAlarm alarm,
             ref UUID GroupUUID)
         {
             if (string.IsNullOrEmpty(GroupName))
@@ -76,13 +77,13 @@ namespace wasOpenMetaverse
         /// <param name="GroupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
         public static bool GroupNameToUUID(GridClient Client, string GroupName, uint millisecondsTimeout,
-            uint dataTimeout, Time.DecayingAlarm alarm,
+            uint dataTimeout, DecayingAlarm alarm,
             ref UUID GroupUUID)
         {
-            var @group = Cache.GetGroup(GroupName);
-            if (!@group.Equals(default(Cache.Group)))
+            var group = Cache.GetGroup(GroupName);
+            if (!group.Equals(default(Cache.Group)))
             {
-                GroupUUID = @group.UUID;
+                GroupUUID = group.UUID;
                 return true;
             }
             bool succeeded;
@@ -116,7 +117,7 @@ namespace wasOpenMetaverse
         private static bool directAgentNameToUUID(GridClient Client, string FirstName, string LastName,
             uint millisecondsTimeout,
             uint dataTimeout,
-            Time.DecayingAlarm alarm,
+            DecayingAlarm alarm,
             ref UUID AgentUUID)
         {
             if (string.IsNullOrEmpty(FirstName) || string.IsNullOrEmpty(LastName))
@@ -169,7 +170,7 @@ namespace wasOpenMetaverse
         public static bool AgentNameToUUID(GridClient Client, string FirstName, string LastName,
             uint millisecondsTimeout,
             uint dataTimeout,
-            Time.DecayingAlarm alarm,
+            DecayingAlarm alarm,
             ref UUID AgentUUID)
         {
             var agent = Cache.GetAgent(FirstName, LastName);
@@ -241,10 +242,10 @@ namespace wasOpenMetaverse
         public static bool GroupUUIDToName(GridClient Client, UUID GroupUUID, uint millisecondsTimeout,
             ref string GroupName)
         {
-            var @group = Cache.GetGroup(GroupUUID);
-            if (!@group.Equals(default(Cache.Group)))
+            var group = Cache.GetGroup(GroupUUID);
+            if (!group.Equals(default(Cache.Group)))
             {
-                GroupName = @group.Name;
+                GroupName = group.Name;
                 return true;
             }
             bool succeeded;

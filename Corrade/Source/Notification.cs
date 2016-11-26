@@ -1,4 +1,10 @@
-﻿using System;
+﻿///////////////////////////////////////////////////////////////////////////
+//  Copyright (C) Wizardry and Steamworks 2016 - License: GNU GPLv3      //
+//  Please see: http://www.gnu.org/licenses/gpl.html for legal details,  //
+//  rights of fair usage, the disclaimer and warranty conditions.        //
+///////////////////////////////////////////////////////////////////////////
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -6,6 +12,7 @@ using System.Xml.Serialization;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Generic;
 
 namespace Corrade
 {
@@ -15,7 +22,7 @@ namespace Corrade
     [Serializable]
     public class Notification
     {
-        public Collections.SerializableDictionary<string, string> Afterburn;
+        public SerializableDictionary<string, string> Afterburn;
         public HashSet<string> Data;
         public string GroupName;
         public UUID GroupUUID;
@@ -26,7 +33,7 @@ namespace Corrade
         /// <remarks>These are state dependant so they do not have to be serialized.</remarks>
         [XmlIgnore] public Dictionary<Configuration.Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
 
-        public Collections.SerializableDictionary<Configuration.Notifications, HashSet<string>>
+        public SerializableDictionary<Configuration.Notifications, HashSet<string>>
             NotificationURLDestination;
 
         public Configuration.Notifications NotificationMask

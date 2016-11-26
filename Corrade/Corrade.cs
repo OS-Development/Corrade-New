@@ -50,15 +50,20 @@ using Syn.Bot.Siml;
 using Syn.Bot.Siml.Events;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Generic;
+using wasSharp.Collections.Specialized;
+using wasSharp.Timers;
+using wasSharp.Web;
 using wasSharpNET.Cryptography;
-using static wasSharp.Time;
 using static Corrade.Command;
+using Extensions = wasSharp.Web.Utilities.Extensions;
 using Group = OpenMetaverse.Group;
 using GroupNotice = Corrade.Structures.GroupNotice;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 using ThreadState = System.Threading.ThreadState;
+using Timer = wasSharp.Timers.Timer;
 
 #endregion
 
@@ -192,8 +197,8 @@ namespace Corrade
         private static readonly object InventoryOffersLock = new object();
 
         private static readonly
-            Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>> GroupFeeds =
-                new Collections.SerializableDictionary<string, Collections.SerializableDictionary<UUID, string>>();
+            SerializableDictionary<string, SerializableDictionary<UUID, string>> GroupFeeds =
+                new SerializableDictionary<string, SerializableDictionary<UUID, string>>();
 
         private static readonly object GroupFeedsLock = new object();
 
@@ -228,15 +233,15 @@ namespace Corrade
 
         private static readonly object CurrentAnimationsLock = new object();
 
-        private static readonly Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>
+        private static readonly SerializableDictionary<UUID, ObservableHashSet<UUID>>
             GroupMembers =
-                new Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>();
+                new SerializableDictionary<UUID, ObservableHashSet<UUID>>();
 
         private static readonly object GroupMembersLock = new object();
 
-        public static readonly Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<SoftBan>>
+        public static readonly SerializableDictionary<UUID, ObservableHashSet<SoftBan>>
             GroupSoftBans =
-                new Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<SoftBan>>();
+                new SerializableDictionary<UUID, ObservableHashSet<SoftBan>>();
 
         private static readonly object GroupSoftBansLock = new object();
 
@@ -272,13 +277,13 @@ namespace Corrade
 
         private static readonly object GroupCookieContainersLock = new object();
 
-        private static readonly Dictionary<UUID, Web.wasHTTPClient> GroupHTTPClients =
-            new Dictionary<UUID, Web.wasHTTPClient>();
+        private static readonly Dictionary<UUID, wasHTTPClient> GroupHTTPClients =
+            new Dictionary<UUID, wasHTTPClient>();
 
         private static readonly object GroupHTTPClientsLock = new object();
 
-        private static readonly Dictionary<string, Web.wasHTTPClient> HordeHTTPClients =
-            new Dictionary<string, Web.wasHTTPClient>();
+        private static readonly Dictionary<string, wasHTTPClient> HordeHTTPClients =
+            new Dictionary<string, wasHTTPClient>();
 
         private static readonly object HordeHTTPClientsLock = new object();
 
@@ -298,7 +303,7 @@ namespace Corrade
         /// <summary>
         ///     Heartbeat timer.
         /// </summary>
-        private static readonly Time.Timer CorradeHeartBeatTimer = new Time.Timer(o =>
+        private static readonly Timer CorradeHeartBeatTimer = new Timer(o =>
         {
             // Send notification.
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -320,7 +325,7 @@ namespace Corrade
         /// <summary>
         ///     Heartbeat logging.
         /// </summary>
-        private static readonly Time.Timer CorradeHeartBeatLogTimer = new Time.Timer(o =>
+        private static readonly Timer CorradeHeartBeatLogTimer = new Timer(o =>
         {
             // Log heartbeat data.
             Feedback("Heartbeat",
@@ -330,7 +335,7 @@ namespace Corrade
         /// <summary>
         ///     Effects expiration timer.
         /// </summary>
-        private static readonly Time.Timer EffectsExpirationTimer = new Time.Timer(callback =>
+        private static readonly Timer EffectsExpirationTimer = new Timer(callback =>
         {
             lock (SphereEffectsLock)
             {
@@ -345,7 +350,7 @@ namespace Corrade
         /// <summary>
         ///     Group membership timer.
         /// </summary>
-        private static readonly Time.Timer GroupMembershipTimer = new Time.Timer(callback =>
+        private static readonly Timer GroupMembershipTimer = new Timer(callback =>
         {
             lock (Locks.ClientInstanceNetworkLock)
             {
@@ -459,7 +464,7 @@ namespace Corrade
                 {
                     if (!GroupMembers.ContainsKey(o))
                     {
-                        GroupMembers.Add(o, new Collections.ObservableHashSet<UUID>());
+                        GroupMembers.Add(o, new ObservableHashSet<UUID>());
                         GroupMembers[o].CollectionChanged += HandleGroupMemberJoinPart;
                     }
                 }
@@ -519,7 +524,7 @@ namespace Corrade
         /// <summary>
         ///     Group feeds timer.
         /// </summary>
-        private static readonly Time.Timer GroupFeedsTimer = new Time.Timer(callback =>
+        private static readonly Timer GroupFeedsTimer = new Timer(callback =>
         {
             lock (GroupFeedsLock)
             {
@@ -573,7 +578,7 @@ namespace Corrade
         /// <summary>
         ///     Group schedules timer.
         /// </summary>
-        private static readonly Time.Timer GroupSchedulesTimer = new Time.Timer(callback =>
+        private static readonly Timer GroupSchedulesTimer = new Timer(callback =>
         {
             var groupSchedules = new HashSet<GroupSchedule>();
             lock (GroupSchedulesLock)
@@ -642,8 +647,8 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the configuration file.
         /// </summary>
-        private static readonly Time.Timer ConfigurationChangedTimer =
-            new Time.Timer(ConfigurationChanged =>
+        private static readonly Timer ConfigurationChangedTimer =
+            new Timer(ConfigurationChanged =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -716,8 +721,8 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the notifications file.
         /// </summary>
-        private static readonly Time.Timer NotificationsChangedTimer =
-            new Time.Timer(NotificationsChanged =>
+        private static readonly Timer NotificationsChangedTimer =
+            new Timer(NotificationsChanged =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -728,8 +733,8 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the SIML configuration file.
         /// </summary>
-        private static readonly Time.Timer SIMLConfigurationChangedTimer =
-            new Time.Timer(SIMLConfigurationChanged =>
+        private static readonly Timer SIMLConfigurationChangedTimer =
+            new Timer(SIMLConfigurationChanged =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -747,8 +752,8 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the group schedules file.
         /// </summary>
-        private static readonly Time.Timer GroupSchedulesChangedTimer =
-            new Time.Timer(GroupSchedulesChanged =>
+        private static readonly Timer GroupSchedulesChangedTimer =
+            new Timer(GroupSchedulesChanged =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -759,8 +764,8 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the group feeds file.
         /// </summary>
-        private static readonly Time.Timer GroupFeedsChangedTimer =
-            new Time.Timer(GroupFeedsChanged =>
+        private static readonly Timer GroupFeedsChangedTimer =
+            new Timer(GroupFeedsChanged =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.GROUP_FEEDS_FILE_MODIFIED));
@@ -770,8 +775,8 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the group soft bans file.
         /// </summary>
-        private static readonly Time.Timer GroupSoftBansChangedTimer =
-            new Time.Timer(GroupSoftBansChanged =>
+        private static readonly Timer GroupSoftBansChangedTimer =
+            new Timer(GroupSoftBansChanged =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -782,7 +787,7 @@ namespace Corrade
         /// <summary>
         ///     Global rebake timer.
         /// </summary>
-        private static readonly Time.Timer RebakeTimer = new Time.Timer(Rebake =>
+        private static readonly Timer RebakeTimer = new Timer(Rebake =>
         {
             lock (Locks.ClientInstanceAppearanceLock)
             {
@@ -799,8 +804,8 @@ namespace Corrade
         /// <summary>
         ///     Current land group activation timer.
         /// </summary>
-        private static readonly Time.Timer ActivateCurrentLandGroupTimer =
-            new Time.Timer(ActivateCurrentLandGroup =>
+        private static readonly Timer ActivateCurrentLandGroupTimer =
+            new Timer(ActivateCurrentLandGroup =>
             {
                 Parcel parcel = null;
                 if (
@@ -830,10 +835,10 @@ namespace Corrade
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
-                        o = Web.URLUnescapeDataString(o);
+                        o = Extensions.URLUnescapeDataString(o);
                         break;
                     case Configuration.Filter.RFC3986:
-                        o = Web.URIUnescapeDataString(o);
+                        o = Extensions.URIUnescapeDataString(o);
                         break;
                     case Configuration.Filter.ENIGMA:
                         o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
@@ -874,10 +879,10 @@ namespace Corrade
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
-                        o = Web.URLEscapeDataString(o);
+                        o = Extensions.URLEscapeDataString(o);
                         break;
                     case Configuration.Filter.RFC3986:
-                        o = Web.URIEscapeDataString(o);
+                        o = Extensions.URIEscapeDataString(o);
                         break;
                     case Configuration.Filter.ENIGMA:
                         o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
@@ -1142,7 +1147,7 @@ namespace Corrade
                         {
                             var serializer =
                                 new XmlSerializer(
-                                    typeof(Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>
+                                    typeof(SerializableDictionary<UUID, ObservableHashSet<UUID>>
                                         ));
                             lock (GroupMembersLock)
                             {
@@ -1182,10 +1187,10 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                                ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<UUID>>)
+                                ((SerializableDictionary<UUID, ObservableHashSet<UUID>>)
                                     new XmlSerializer(
-                                        typeof(Collections.SerializableDictionary
-                                            <UUID, Collections.ObservableHashSet<UUID>>))
+                                        typeof(SerializableDictionary
+                                            <UUID, ObservableHashSet<UUID>>))
                                         .Deserialize(streamReader))
                                     .AsParallel()
                                     .Where(
@@ -1197,7 +1202,7 @@ namespace Corrade
                                             switch (!GroupMembers.ContainsKey(o.Key))
                                             {
                                                 case true:
-                                                    GroupMembers.Add(o.Key, new Collections.ObservableHashSet<UUID>());
+                                                    GroupMembers.Add(o.Key, new ObservableHashSet<UUID>());
                                                     GroupMembers[o.Key].CollectionChanged += HandleGroupMemberJoinPart;
                                                     GroupMembers[o.Key].UnionWith(o.Value);
                                                     break;
@@ -1241,7 +1246,7 @@ namespace Corrade
                             var serializer =
                                 new XmlSerializer(
                                     typeof(
-                                        Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<SoftBan>>
+                                        SerializableDictionary<UUID, ObservableHashSet<SoftBan>>
                                         ));
                             lock (GroupSoftBansLock)
                             {
@@ -1282,10 +1287,10 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
-                                ((Collections.SerializableDictionary<UUID, Collections.ObservableHashSet<SoftBan>>)
+                                ((SerializableDictionary<UUID, ObservableHashSet<SoftBan>>)
                                     new XmlSerializer(
-                                        typeof(Collections.SerializableDictionary
-                                            <UUID, Collections.ObservableHashSet<SoftBan>>))
+                                        typeof(SerializableDictionary
+                                            <UUID, ObservableHashSet<SoftBan>>))
                                         .Deserialize(streamReader))
                                     .AsParallel()
                                     .Where(
@@ -1298,7 +1303,7 @@ namespace Corrade
                                             {
                                                 case true:
                                                     GroupSoftBans.Add(o.Key,
-                                                        new Collections.ObservableHashSet<SoftBan>());
+                                                        new ObservableHashSet<SoftBan>());
                                                     GroupSoftBans[o.Key].CollectionChanged += HandleGroupSoftBansChanged;
                                                     GroupSoftBans[o.Key].UnionWith(o.Value);
                                                     break;
@@ -1830,8 +1835,8 @@ namespace Corrade
                         {
                             var serializer =
                                 new XmlSerializer(
-                                    typeof(Collections.SerializableDictionary
-                                        <string, Collections.SerializableDictionary<UUID, string>>));
+                                    typeof(SerializableDictionary
+                                        <string, SerializableDictionary<UUID, string>>));
                             lock (GroupFeedsLock)
                             {
                                 serializer.Serialize(writer, GroupFeeds);
@@ -1873,10 +1878,10 @@ namespace Corrade
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
                                 var serializer =
                                     new XmlSerializer(
-                                        typeof(Collections.SerializableDictionary
-                                            <string, Collections.SerializableDictionary<UUID, string>>));
-                                ((Collections.SerializableDictionary
-                                    <string, Collections.SerializableDictionary<UUID, string>>)
+                                        typeof(SerializableDictionary
+                                            <string, SerializableDictionary<UUID, string>>));
+                                ((SerializableDictionary
+                                    <string, SerializableDictionary<UUID, string>>)
                                     serializer.Deserialize(streamReader)).AsParallel()
                                     .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
                                     .ForAll(o =>
@@ -2143,7 +2148,7 @@ namespace Corrade
                                                 GroupName = commandGroup.Name,
                                                 GroupUUID = commandGroup.UUID,
                                                 NotificationURLDestination =
-                                                    new Collections.SerializableDictionary
+                                                    new SerializableDictionary
                                                         <Configuration.Notifications, HashSet<string>>(),
                                                 NotificationTCPDestination =
                                                     new Dictionary
@@ -2161,7 +2166,7 @@ namespace Corrade
                                             if (notification.NotificationURLDestination == null)
                                             {
                                                 notification.NotificationURLDestination =
-                                                    new Collections.SerializableDictionary
+                                                    new SerializableDictionary
                                                         <Configuration.Notifications, HashSet<string>>();
                                             }
                                             break;
@@ -3160,7 +3165,7 @@ namespace Corrade
                         {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.POST].Spawn(async () =>
                             {
-                                Web.wasHTTPClient wasHTTPClient;
+                                wasHTTPClient wasHTTPClient;
                                 lock (GroupHTTPClientsLock)
                                 {
                                     GroupHTTPClients.TryGetValue(callbackQueueElement.GroupUUID,
@@ -3196,7 +3201,7 @@ namespace Corrade
                         {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.POST].Spawn(async () =>
                             {
-                                Web.wasHTTPClient wasHTTPClient;
+                                wasHTTPClient wasHTTPClient;
                                 lock (GroupHTTPClientsLock)
                                 {
                                     GroupHTTPClients.TryGetValue(notificationQueueElement.GroupUUID,
@@ -4190,7 +4195,7 @@ namespace Corrade
                                         {
                                             case true:
                                                 GroupSoftBans.Add(groupUUID,
-                                                    new Collections.ObservableHashSet<SoftBan>());
+                                                    new ObservableHashSet<SoftBan>());
                                                 GroupSoftBans[groupUUID].CollectionChanged += HandleGroupSoftBansChanged;
                                                 GroupSoftBans[groupUUID].Add(softBan);
                                                 groupSoftBansModified = true;
@@ -6473,8 +6478,9 @@ namespace Corrade
                 {
                     if (!GroupHTTPClients.ContainsKey(o.UUID))
                     {
-                        GroupHTTPClients.Add(o.UUID, new Web.wasHTTPClient
-                            (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType, configuration.ServicesTimeout));
+                        GroupHTTPClients.Add(o.UUID, new wasHTTPClient
+                            (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType,
+                                configuration.ServicesTimeout));
                     }
                 }
             });
@@ -6501,7 +6507,7 @@ namespace Corrade
                     {
                         lock (HordeHTTPClientsLock)
                         {
-                            HordeHTTPClients.Add(o.URL, new Web.wasHTTPClient
+                            HordeHTTPClients.Add(o.URL, new wasHTTPClient
                                 (CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(), @"text/plain",
                                     new AuthenticationHeaderValue(@"Basic",
                                         Convert.ToBase64String(
@@ -7526,8 +7532,8 @@ namespace Corrade
         {
             var group =
                 GroupMembers.FirstOrDefault(
-                    o => ReferenceEquals(o.Value, sender as Collections.ObservableHashSet<UUID>));
-            if (group.Equals(default(KeyValuePair<UUID, Collections.ObservableHashSet<UUID>>)))
+                    o => ReferenceEquals(o.Value, sender as ObservableHashSet<UUID>));
+            if (group.Equals(default(KeyValuePair<UUID, ObservableHashSet<UUID>>)))
                 return;
             switch (e.Action)
             {
@@ -7835,8 +7841,8 @@ namespace Corrade
         {
             var group =
                 GroupSoftBans.FirstOrDefault(
-                    o => ReferenceEquals(o.Value, sender as Collections.ObservableHashSet<UUID>));
-            if (group.Equals(default(KeyValuePair<UUID, Collections.ObservableHashSet<UUID>>)))
+                    o => ReferenceEquals(o.Value, sender as ObservableHashSet<UUID>));
+            if (group.Equals(default(KeyValuePair<UUID, ObservableHashSet<UUID>>)))
                 return;
             switch (e.Action)
             {

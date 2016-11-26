@@ -18,6 +18,7 @@ using LanguageDetection;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade.Helpers
@@ -235,7 +236,7 @@ namespace Corrade.Helpers
                                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                         corradeConfiguration.ServicesTimeout,
                                                         corradeConfiguration.DataTimeout,
-                                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                        new DecayingAlarm(corradeConfiguration.DataDecayType),
                                                         ref agentUUID))
                                                     break;
                                                 value = agentUUID;

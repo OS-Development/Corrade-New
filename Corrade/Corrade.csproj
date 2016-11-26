@@ -1236,31 +1236,31 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
-      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
+      <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so">
-      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so</Link>
+      <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so">
-      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so</Link>
+      <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse-overrides\OpenMetaverse.dll.config">
-      <Link>OpenMetaverse.dll.config</Link>
+      <Link>libs\OpenMetaverse.dll.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so">
-      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so</Link>
+      <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so">
-      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so</Link>
+      <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib">
-      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
+      <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\SIML\Corrade.simlpk">
@@ -1544,31 +1544,31 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\libsqlite3-arm.so">
-      <Link>libsqlite3-arm.so</Link>
+      <Link>libs\libsqlite3-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\libsqlite3-freebsd.so">
-      <Link>libsqlite3-freebsd.so</Link>
+      <Link>libs\libsqlite3-freebsd.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\libsqlite3-x86_64-freebsd.so">
-      <Link>libsqlite3-x86_64-freebsd.so</Link>
+      <Link>libs\libsqlite3-x86_64-freebsd.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\libsqlite3-x86_64.so">
-      <Link>libsqlite3-x86_64.so</Link>
+      <Link>libs\libsqlite3-x86_64.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\libsqlite3.dylib">
-      <Link>libsqlite3.dylib</Link>
+      <Link>libs\libsqlite3.dylib</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\libsqlite3.so">
-      <Link>libsqlite3.so</Link>
+      <Link>libs\libsqlite3.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\sqlite\Mono.Data.Sqlite.dll.config">
-      <Link>Mono.Data.Sqlite.dll.config</Link>
+      <Link>libs\Mono.Data.Sqlite.dll.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="app.config" />
@@ -1612,11 +1612,11 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\sqlite\sqlite3-x86_64.dll">
-      <Link>sqlite3-x86_64.dll</Link>
+      <Link>libs\sqlite3-x86_64.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\sqlite\sqlite3.dll">
-      <Link>sqlite3.dll</Link>
+      <Link>libs\sqlite3.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\alert.xml">
@@ -1744,23 +1744,23 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <Content Include="..\libopenmetaverse-overrides\OpenMetaverse.dll">
-      <Link>OpenMetaverse.dll</Link>
+      <Link>libs\OpenMetaverse.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse-overrides\OpenMetaverse.StructuredData.dll">
-      <Link>OpenMetaverse.StructuredData.dll</Link>
+      <Link>libs\OpenMetaverse.StructuredData.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse-overrides\OpenMetaverse.XML">
-      <Link>OpenMetaverse.XML</Link>
+      <Link>libs\OpenMetaverse.XML</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse-overrides\OpenMetaverseTypes.dll">
-      <Link>OpenMetaverseTypes.dll</Link>
+      <Link>libs\OpenMetaverseTypes.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse\bin\log4net.dll">
-      <Link>log4net.dll</Link>
+      <Link>libs\log4net.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_skeleton.xml">
@@ -1768,11 +1768,11 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="..\libopenmetaverse\bin\openjpeg-dotnet-x86_64.dll">
-      <Link>openjpeg-dotnet-x86_64.dll</Link>
+      <Link>libs\openjpeg-dotnet-x86_64.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\openjpeg-dotnet.dll">
-      <Link>openjpeg-dotnet.dll</Link>
+      <Link>libs\openjpeg-dotnet.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\openmetaverse_data\blush_alpha.tga">
@@ -2022,11 +2022,11 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <Content Include="..\libopenmetaverse\bin\XMLRPC.dll">
-      <Link>XMLRPC.dll</Link>
+      <Link>libs\XMLRPC.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse\bin\zlib.net.dll">
-      <Link>zlib.net.dll</Link>
+      <Link>libs\zlib.net.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Corrade.ico" />
@@ -2035,7 +2035,6 @@
     <Folder Include="Bayes\" />
     <Folder Include="cache\assets\" />
     <Folder Include="databases\" />
-    <Folder Include="libs\" />
     <Folder Include="logs\conference\" />
     <Folder Include="logs\groupchat\" />
     <Folder Include="logs\im\" />

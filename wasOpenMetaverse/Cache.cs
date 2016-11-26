@@ -12,22 +12,23 @@ using System.Text;
 using System.Xml.Serialization;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Specialized;
 
 namespace wasOpenMetaverse
 {
     public static class Cache
     {
-        public static readonly Collections.ObservableHashSet<Region> ObservableRegionCache =
-            new Collections.ObservableHashSet<Region>();
+        public static readonly ObservableHashSet<Region> ObservableRegionCache =
+            new ObservableHashSet<Region>();
 
-        public static readonly Collections.ObservableHashSet<Agent> ObservableAgentCache =
-            new Collections.ObservableHashSet<Agent>();
+        public static readonly ObservableHashSet<Agent> ObservableAgentCache =
+            new ObservableHashSet<Agent>();
 
-        public static readonly Collections.ObservableHashSet<Group> ObservableGroupCache =
-            new Collections.ObservableHashSet<Group>();
+        public static readonly ObservableHashSet<Group> ObservableGroupCache =
+            new ObservableHashSet<Group>();
 
-        public static readonly Collections.ObservableHashSet<MuteEntry> ObservableMuteCache =
-            new Collections.ObservableHashSet<MuteEntry>();
+        public static readonly ObservableHashSet<MuteEntry> ObservableMuteCache =
+            new ObservableHashSet<MuteEntry>();
 
         private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
 
@@ -37,7 +38,7 @@ namespace wasOpenMetaverse
         private static readonly object CurrentGroupsCacheLock = new object();
         private static readonly object MuteCacheLock = new object();
 
-        public static Collections.ObservableHashSet<Region> RegionCache
+        public static ObservableHashSet<Region> RegionCache
         {
             get
             {
@@ -55,7 +56,7 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static Collections.ObservableHashSet<Agent> AgentCache
+        public static ObservableHashSet<Agent> AgentCache
         {
             get
             {
@@ -73,7 +74,7 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static Collections.ObservableHashSet<Group> GroupCache
+        public static ObservableHashSet<Group> GroupCache
         {
             get
             {
@@ -109,7 +110,7 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static Collections.ObservableHashSet<MuteEntry> MuteCache
+        public static ObservableHashSet<MuteEntry> MuteCache
         {
             get
             {
@@ -405,8 +406,8 @@ namespace wasOpenMetaverse
         {
             lock (GroupCacheLock)
             {
-                if (ObservableGroupCache.Contains(@group)) return false;
-                ObservableGroupCache.Add(@group);
+                if (ObservableGroupCache.Contains(group)) return false;
+                ObservableGroupCache.Add(group);
                 return true;
             }
         }
@@ -461,7 +462,7 @@ namespace wasOpenMetaverse
             {
                 using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                 {
-                    var serializer = new XmlSerializer(typeof (T));
+                    var serializer = new XmlSerializer(typeof(T));
                     serializer.Serialize(writer, o);
                     writer.Flush();
                 }
@@ -482,7 +483,7 @@ namespace wasOpenMetaverse
             {
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
-                    var serializer = new XmlSerializer(typeof (T));
+                    var serializer = new XmlSerializer(typeof(T));
                     return (T) serializer.Deserialize(streamReader);
                 }
             }

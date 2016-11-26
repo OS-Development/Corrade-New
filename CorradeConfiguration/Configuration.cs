@@ -14,6 +14,8 @@ using System.Xml;
 using System.Xml.Serialization;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Generic;
+using wasSharp.Timers;
 
 namespace CorradeConfiguration
 {
@@ -169,7 +171,7 @@ namespace CorradeConfiguration
         private bool _conferenceMessageLogEnabled;
         private uint _connectionIdleTime = 900000;
         private uint _connectionLimit = 100;
-        private Time.DecayingAlarm.DECAY_TYPE _dataDecayType = Time.DecayingAlarm.DECAY_TYPE.ARITHMETIC;
+        private DecayingAlarm.DECAY_TYPE _dataDecayType = DecayingAlarm.DECAY_TYPE.ARITHMETIC;
         private uint _dataTimeout = 2500;
         private string _driveIdentifierHash = string.Empty;
         private bool _enableHorde;
@@ -190,10 +192,10 @@ namespace CorradeConfiguration
         private int _exitCodeAbnormal = -2;
         private int _exitCodeExpected = -1;
         private uint _feedsUpdateInterval = 60000;
-        private uint _heartbeatLogInterval = 3600000;
         private string _firstName = string.Empty;
         private uint _groupCreateFee = 100;
         private HashSet<Group> _groups = new HashSet<Group>();
+        private uint _heartbeatLogInterval = 3600000;
         private HashSet<HordePeer> _hordePeers = new HashSet<HordePeer>();
         private uint _HTTPServerBodyTimeout = 5000;
         private HTTPCompressionMethod _HTTPServerCompression = HTTPCompressionMethod.NONE;
@@ -1511,7 +1513,7 @@ namespace CorradeConfiguration
             }
         }
 
-        public Time.DecayingAlarm.DECAY_TYPE DataDecayType
+        public DecayingAlarm.DECAY_TYPE DataDecayType
         {
             get
             {
@@ -2096,9 +2098,9 @@ namespace CorradeConfiguration
         /// </summary>
         public class HordePeer
         {
-            public Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>
+            public SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>
                 DataSynchronization =
-                    new Collections.SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>();
+                    new SerializableDictionary<HordeDataSynchronization, HordeDataSynchronizationOption>();
 
             public string Name;
             public string Password;

@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -38,7 +39,7 @@ namespace Corrade
                                 if (!UUID.TryParse(o, out groupUUID) &&
                                     !Resolvers.GroupNameToUUID(Client, o, corradeConfiguration.ServicesTimeout,
                                         corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                     return;
                                 var dataGroup = new Group();
                                 if (

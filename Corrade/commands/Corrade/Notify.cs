@@ -11,6 +11,7 @@ using System.Net;
 using System.Threading.Tasks;
 using CorradeConfiguration;
 using wasSharp;
+using wasSharp.Collections.Generic;
 
 namespace Corrade
 {
@@ -76,7 +77,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AFTERBURN)),
                                         corradeCommandParameters.Message));
                             var afterburn =
-                                new Collections.SerializableDictionary<string, string>();
+                                new SerializableDictionary<string, string>();
                             if (!string.IsNullOrEmpty(afterBurnData))
                             {
                                 // remove keys that are script keys, result keys or invalid key-value pairs
@@ -128,7 +129,7 @@ namespace Corrade
                                         GroupName = corradeCommandParameters.Group.Name,
                                         GroupUUID = corradeCommandParameters.Group.UUID,
                                         NotificationURLDestination =
-                                            new Collections.SerializableDictionary
+                                            new SerializableDictionary
                                                 <Configuration.Notifications, HashSet<string>>(),
                                         NotificationTCPDestination =
                                             new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>(),
@@ -145,7 +146,7 @@ namespace Corrade
                                     if (notification.NotificationURLDestination == null)
                                     {
                                         notification.NotificationURLDestination =
-                                            new Collections.SerializableDictionary
+                                            new SerializableDictionary
                                                 <Configuration.Notifications, HashSet<string>>();
                                     }
                                     break;
@@ -249,7 +250,7 @@ namespace Corrade
                                     }
                                     var
                                         notificationDestination =
-                                            new Collections.SerializableDictionary
+                                            new SerializableDictionary
                                                 <Configuration.Notifications, HashSet<string>>();
                                     var NotficatinDestinationLock = new object();
                                     o.NotificationURLDestination.AsParallel().ForAll(p =>
@@ -351,7 +352,7 @@ namespace Corrade
                                         case false: // this is our group
                                             var
                                                 notificationDestination =
-                                                    new Collections.SerializableDictionary
+                                                    new SerializableDictionary
                                                         <Configuration.Notifications, HashSet<string>>();
                                             o.NotificationURLDestination.AsParallel().ForAll(p =>
                                             {

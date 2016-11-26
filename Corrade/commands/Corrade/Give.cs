@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Reflection = wasSharp.Reflection;
 
@@ -199,7 +200,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);

@@ -14,6 +14,8 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Specialized;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -41,7 +43,7 @@ namespace Corrade
                             if (!UUID.TryParse(target, out groupUUID) &&
                                 !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
                         default:
@@ -64,15 +66,15 @@ namespace Corrade
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.Eject,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)) ||
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.RemoveMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)) ||
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.GroupBanAccess,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -108,7 +110,7 @@ namespace Corrade
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
-                                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                new DecayingAlarm(corradeConfiguration.DataDecayType),
                                                 ref agentUUID))
                                         {
                                             // Add all the unrecognized agents to the returned list.
@@ -237,7 +239,7 @@ namespace Corrade
                                                             break;
                                                         default:
                                                             GroupSoftBans.Add(groupUUID,
-                                                                new Collections.ObservableHashSet<SoftBan>());
+                                                                new ObservableHashSet<SoftBan>());
                                                             GroupSoftBans[groupUUID].CollectionChanged +=
                                                                 HandleGroupSoftBansChanged;
                                                             GroupSoftBans[groupUUID].Add(softBan);

@@ -119,6 +119,30 @@ namespace wasOpenMetaverse
         }
 
         /// <summary>
+        ///     Gets items descending from a root node.
+        /// </summary>
+        /// <param name="root">the node to search from</param>
+        /// <param name="items">a reference to a list where the items will be stored</param>
+        public static IEnumerable<InventoryItem> GetInventoryItems(this InventoryNode root)
+        {
+            foreach (var node in root.Nodes.Values.Where(n => !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)))
+            {
+                switch (node.Data is InventoryFolder)
+                {
+                    case true:
+                        foreach (var item in GetInventoryItems(node))
+                        {
+                            yield return item;
+                        }
+                        break;
+                    default:
+                        yield return node.Data as InventoryItem;
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
         ///     A structure holding all the commands of a RLV behaviour.
         /// </summary>
         public struct RLVRule
@@ -177,30 +201,6 @@ namespace wasOpenMetaverse
         {
             public AttachmentPoint AttachmentPoint;
             public string Name;
-        }
-
-        /// <summary>
-        ///     Gets items descending from a root node.
-        /// </summary>
-        /// <param name="root">the node to search from</param>
-        /// <param name="items">a reference to a list where the items will be stored</param>
-        public static IEnumerable<InventoryItem> GetInventoryItems(this InventoryNode root)
-        {
-            foreach (var node in root.Nodes.Values.Where(n => !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)))
-            {
-                switch (node.Data is InventoryFolder)
-                {
-                    case true:
-                        foreach (var item in GetInventoryItems(node))
-                        {
-                            yield return item;
-                        }
-                        break;
-                    default:
-                        yield return node.Data as InventoryItem;
-                        break;
-                }
-            }
         }
     }
 }

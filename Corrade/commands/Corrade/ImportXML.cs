@@ -19,6 +19,7 @@ using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Inventory = wasOpenMetaverse.Inventory;
 using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
@@ -104,7 +105,7 @@ namespace Corrade
                                         corradeCommandParameters.Group.UUID,
                                         GroupPowers.AllowRez,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);

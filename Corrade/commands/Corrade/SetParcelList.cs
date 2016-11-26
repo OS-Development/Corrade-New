@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -86,7 +87,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                            new DecayingAlarm(corradeConfiguration.DataDecayType),
                             ref targetUUID))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
@@ -122,7 +123,7 @@ namespace Corrade
                                             corradeCommandParameters.Group.UUID,
                                             GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
                                             corradeConfiguration.DataTimeout,
-                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -134,7 +135,7 @@ namespace Corrade
                                             corradeCommandParameters.Group.UUID,
                                             GroupPowers.LandManageBanned,
                                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);

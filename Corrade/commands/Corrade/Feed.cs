@@ -12,6 +12,7 @@ using System.Xml;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Generic;
 
 namespace Corrade
 {
@@ -84,7 +85,7 @@ namespace Corrade
                                     GroupFeeds[url].Add(corradeCommandParameters.Group.UUID, name);
                                     return;
                                 }
-                                GroupFeeds.Add(url, new Collections.SerializableDictionary<UUID, string>
+                                GroupFeeds.Add(url, new SerializableDictionary<UUID, string>
                                 {
                                     {corradeCommandParameters.Group.UUID, name}
                                 });

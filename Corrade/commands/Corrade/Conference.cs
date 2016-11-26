@@ -13,6 +13,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -59,7 +60,7 @@ namespace Corrade
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
-                                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                new DecayingAlarm(corradeConfiguration.DataDecayType),
                                                 ref agentUUID))
                                             return;
                                     }

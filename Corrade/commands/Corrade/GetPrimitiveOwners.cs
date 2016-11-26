@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 
@@ -114,7 +115,7 @@ namespace Corrade
                                         if (Services.HasGroupPowers(Client, Client.Self.AgentID,
                                             corradeCommandParameters.Group.UUID, p,
                                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                         {
                                             permissions = true;
                                             s.Break();

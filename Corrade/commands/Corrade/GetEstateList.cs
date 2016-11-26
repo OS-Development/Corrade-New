@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -32,7 +33,7 @@ namespace Corrade
                     }
                     var estateList = new List<UUID>();
                     var EstateListReceivedAlarm =
-                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
+                        new DecayingAlarm(corradeConfiguration.DataDecayType);
                     var type =
                         Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(KeyValue.Get(

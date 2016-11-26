@@ -12,6 +12,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -32,11 +33,11 @@ namespace Corrade
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.Eject,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)) ||
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)) ||
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.RemoveMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
@@ -56,7 +57,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new Time.DecayingAlarm(corradeConfiguration.DataDecayType),
+                                new DecayingAlarm(corradeConfiguration.DataDecayType),
                                 ref agentUUID))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);

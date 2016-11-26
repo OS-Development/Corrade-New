@@ -12,6 +12,7 @@ using System.Threading;
 using Amib.Threading;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Generic;
 using Action = Amib.Threading.Action;
 
 namespace Corrade.Threading
@@ -40,8 +41,8 @@ namespace Corrade.Threading
         private static readonly Stopwatch ThreadExecutuionStopwatch = new Stopwatch();
         private readonly Enumerations.ThreadType threadType;
 
-        public Collections.RangeCollection<WorkItemPriority> threadRangePriority =
-            new Collections.RangeCollection<WorkItemPriority>(0, 100);
+        public RangeCollection<WorkItemPriority> threadRangePriority =
+            new RangeCollection<WorkItemPriority>(0, 100);
 
         /// <summary>
         ///     Constructor for a Corrade thread.

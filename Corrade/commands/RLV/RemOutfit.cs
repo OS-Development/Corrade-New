@@ -29,11 +29,12 @@ namespace Corrade
                     switch (!string.IsNullOrEmpty(rule.Option))
                     {
                         case true: // A single wearable
-                            var wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
-                                                                               BindingFlags.Static)
+                            var wearTypeInfo = typeof(WearableType).GetFields(BindingFlags.Public |
+                                                                              BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     p =>
-                                        Strings.StringEquals(rule.Option, p.Name, StringComparison.InvariantCultureIgnoreCase));
+                                        Strings.StringEquals(rule.Option, p.Name,
+                                            StringComparison.InvariantCultureIgnoreCase));
                             if (wearTypeInfo == null)
                             {
                                 break;

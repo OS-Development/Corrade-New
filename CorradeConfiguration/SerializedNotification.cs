@@ -10,7 +10,7 @@ using System.IO;
 using System.Text;
 using System.Xml.Serialization;
 using OpenMetaverse;
-using wasSharp;
+using wasSharp.Collections.Generic;
 
 namespace CorradeConfiguration
 {
@@ -36,7 +36,7 @@ namespace CorradeConfiguration
         public Configuration.Notifications Notification { get; set; }
 
         [XmlElement(ElementName = "NotificationParameters")]
-        public Collections.SerializableDictionary<string, HashSet<Parameter>> NotificationParameters { get; set; }
+        public SerializableDictionary<string, HashSet<Parameter>> NotificationParameters { get; set; }
 
         [XmlIgnore]
         public string XML
@@ -82,7 +82,7 @@ namespace CorradeConfiguration
             {
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
-                    var serializer = new XmlSerializer(typeof (SerializedNotification));
+                    var serializer = new XmlSerializer(typeof(SerializedNotification));
                     return serializer.Deserialize(streamReader) as SerializedNotification;
                 }
             }
@@ -108,11 +108,11 @@ namespace CorradeConfiguration
             [XmlElement(ElementName = "Path")]
             public string Path { get; set; }
 
-            [XmlElement(Type = typeof (ChatSourceType)),
-             XmlElement(Type = typeof (int)),
-             XmlElement(Type = typeof (uint)),
-             XmlElement(Type = typeof (bool)),
-             XmlElement(Type = typeof (string))]
+            [XmlElement(Type = typeof(ChatSourceType)),
+             XmlElement(Type = typeof(int)),
+             XmlElement(Type = typeof(uint)),
+             XmlElement(Type = typeof(bool)),
+             XmlElement(Type = typeof(string))]
             public object Value { get; set; }
         }
 
@@ -158,10 +158,10 @@ namespace CorradeConfiguration
             [XmlElement(ElementName = "Path")]
             public string Path { get; set; }
 
-            [XmlElement(Type = typeof (bool)),
-             XmlElement(Type = typeof (int)),
-             XmlElement(Type = typeof (uint)),
-             XmlElement(Type = typeof (InstantMessageDialog))]
+            [XmlElement(Type = typeof(bool)),
+             XmlElement(Type = typeof(int)),
+             XmlElement(Type = typeof(uint)),
+             XmlElement(Type = typeof(InstantMessageDialog))]
             public object Check { get; set; }
 
             [XmlElement(ElementName = "Value")]
@@ -177,10 +177,10 @@ namespace CorradeConfiguration
             [XmlElement(ElementName = "Path")]
             public string Path { get; set; }
 
-            [XmlElement(Type = typeof (bool)),
-             XmlElement(Type = typeof (int)),
-             XmlElement(Type = typeof (uint)),
-             XmlElement(Type = typeof (string))]
+            [XmlElement(Type = typeof(bool)),
+             XmlElement(Type = typeof(int)),
+             XmlElement(Type = typeof(uint)),
+             XmlElement(Type = typeof(string))]
             public object Value { get; set; }
 
             [XmlElement(ElementName = "Left")]
@@ -209,7 +209,7 @@ namespace CorradeConfiguration
             public string Path { get; set; }
 
             [XmlElement(ElementName = "Parameters")]
-            public Collections.SerializableDictionary<string, string> Parameters { get; set; }
+            public SerializableDictionary<string, string> Parameters { get; set; }
 
             [XmlElement(ElementName = "Assembly")]
             public string Assembly { get; set; }

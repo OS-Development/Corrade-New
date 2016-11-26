@@ -24,6 +24,8 @@ using Configurator.Properties;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Generic;
+using wasSharp.Timers;
 
 namespace Configurator
 {
@@ -639,7 +641,7 @@ namespace Configurator
                 corradeConfiguration.DataTimeout = outUint;
             }
             corradeConfiguration.DataDecayType =
-                Reflection.GetEnumValueFromName<Time.DecayingAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
+                Reflection.GetEnumValueFromName<DecayingAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
             if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, out outUint))
             {
                 corradeConfiguration.MembershipSweepInterval = outUint;
@@ -652,7 +654,7 @@ namespace Configurator
             {
                 corradeConfiguration.LogoutGrace = outUint;
             }
-            if(uint.TryParse(mainForm.LimitsHeartbeatLogInterval.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHeartbeatLogInterval.Text, out outUint))
             {
                 corradeConfiguration.HeartbeatLogInterval = outUint;
             }
@@ -707,19 +709,6 @@ namespace Configurator
 
             corradeConfiguration.EnableHorde = mainForm.HordeEnabled.Checked;
         };
-
-        private void AddClickHandlerRecursive<T>(Control parent, EventHandler handler)
-        {
-            foreach (Control c in parent.Controls)
-            {
-                if (c.GetType() == typeof(T))
-                {
-                    c.Click += handler;
-                    continue;
-                }
-                AddClickHandlerRecursive<T>(c, handler);
-            }
-        }
 
         public CorradeConfiguratorForm()
         {
@@ -780,13 +769,26 @@ namespace Configurator
                     }
                 }
             });
-            this.Click += deselectEventHandler;
+            Click += deselectEventHandler;
             AddClickHandlerRecursive<StatusStrip>(this, deselectEventHandler);
             AddClickHandlerRecursive<GroupBox>(this, deselectEventHandler);
             AddClickHandlerRecursive<PictureBox>(this, deselectEventHandler);
             AddClickHandlerRecursive<TabControl>(this, deselectEventHandler);
             AddClickHandlerRecursive<TabPage>(this, deselectEventHandler);
             mainForm = this;
+        }
+
+        private void AddClickHandlerRecursive<T>(Control parent, EventHandler handler)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                if (c.GetType() == typeof(T))
+                {
+                    c.Click += handler;
+                    continue;
+                }
+                AddClickHandlerRecursive<T>(c, handler);
+            }
         }
 
         private static string CalculateMD5Hash(string input)
@@ -2689,7 +2691,7 @@ namespace Configurator
                                         break;
                                     case ConfigurationKeys.DECAY:
                                         corradeConfiguration.DataDecayType =
-                                            Reflection.GetEnumValueFromName<Time.DecayingAlarm.DECAY_TYPE>(
+                                            Reflection.GetEnumValueFromName<DecayingAlarm.DECAY_TYPE>(
                                                 dataLimitNode.InnerText);
                                         break;
                                 }
@@ -3173,7 +3175,7 @@ namespace Configurator
 
                 // Synchronization
                 var synchronization =
-                    new Collections.SerializableDictionary
+                    new SerializableDictionary
                         <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>();
                 foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
                 {
@@ -3265,7 +3267,7 @@ namespace Configurator
 
                 // Synchronization
                 var synchronization =
-                    new Collections.SerializableDictionary
+                    new SerializableDictionary
                         <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>
                         ();
                 foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
@@ -3775,6 +3777,198 @@ namespace Configurator
             }));
         }
 
+        private void AllNotificationsRequested(object sender, EventArgs e)
+        {
+        }
+
+        private void NoneNotificationsRequested(object sender, EventArgs e)
+        {
+        }
+
+        private void NonePermissionsRequested(object sender, EventArgs e)
+        {
+        }
+
+        private void AllPermissionsRequested(object sender, EventArgs e)
+        {
+        }
+
+        private void AllPermissionsMouseDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    AllPermissionsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.all-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void AllPermissionsMouseUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    AllPermissionsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void AllPermissionsRequested(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+                {
+                    GroupPermissions.SetItemChecked(i, true);
+                }
+            }));
+        }
+
+        private void NonePermissionsRequested(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+                {
+                    GroupPermissions.SetItemChecked(i, false);
+                }
+            }));
+        }
+
+        private void NonePermissionsMouseDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    NonePermissionsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.none-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void NonePermissionsMouseUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    NonePermissionsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void AllNotificationsRequested(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+                {
+                    GroupNotifications.SetItemChecked(i, true);
+                }
+            }));
+        }
+
+        private void AllNotificationsMouseDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    AllNotificationsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.all-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void AllNotificationsMouseUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    AllNotificationsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void NoneNotificationsRequested(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+                {
+                    GroupNotifications.SetItemChecked(i, false);
+                }
+            }));
+        }
+
+        private void NoneNotificationsMouseDown(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    NoneNotificationsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.none-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
+        private void NoneNotificationsMouseUp(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                try
+                {
+                    NoneNotificationsButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
+        }
+
         /// <summary>
         ///     Constants used by Corrade.
         /// </summary>
@@ -3897,202 +4091,6 @@ namespace Configurator
             public const string BODY = @"body";
             public const string HEADER = @"header";
             public const string QUEUE = @"queue";
-        }
-
-        private void AllNotificationsRequested(object sender, EventArgs e)
-        {
-
-        }
-
-        private void NoneNotificationsRequested(object sender, EventArgs e)
-        {
-
-        }
-
-        private void NonePermissionsRequested(object sender, EventArgs e)
-        {
-
-        }
-
-        private void AllPermissionsRequested(object sender, EventArgs e)
-        {
-
-        }
-
-        private void AllPermissionsMouseDown(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    AllPermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.all-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void AllPermissionsMouseUp(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    AllPermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void AllPermissionsRequested(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    GroupPermissions.SetItemChecked(i, true);
-                }
-            }));
-        }
-
-        private void NonePermissionsRequested(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    GroupPermissions.SetItemChecked(i, false);
-                }
-            }));
-        }
-
-        private void NonePermissionsMouseDown(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    NonePermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.none-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void NonePermissionsMouseUp(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    NonePermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void AllNotificationsRequested(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    GroupNotifications.SetItemChecked(i, true);
-                }
-            }));
-        }
-
-        private void AllNotificationsMouseDown(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    AllNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.all-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void AllNotificationsMouseUp(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    AllNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void NoneNotificationsRequested(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    GroupNotifications.SetItemChecked(i, false);
-                }
-            }));
-        }
-
-        private void NoneNotificationsMouseDown(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    NoneNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.none-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
-        }
-
-        private void NoneNotificationsMouseUp(object sender, MouseEventArgs e)
-        {
-            mainForm.BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    NoneNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
         }
     }
 }

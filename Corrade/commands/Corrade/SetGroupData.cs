@@ -11,6 +11,7 @@ using CorradeConfiguration;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 
@@ -39,7 +40,7 @@ namespace Corrade
                             if (!UUID.TryParse(target, out groupUUID) &&
                                 !Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
-                                    new Time.DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
                         default:
@@ -85,7 +86,7 @@ namespace Corrade
                                         groupUUID,
                                         GroupPowers.ChangeIdentity,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     gotPermissions = false;
                                     s.Break();
@@ -98,7 +99,7 @@ namespace Corrade
                                         groupUUID,
                                         GroupPowers.ChangeOptions,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     gotPermissions = false;
                                     s.Break();
@@ -110,7 +111,7 @@ namespace Corrade
                                         groupUUID,
                                         GroupPowers.FindPlaces,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
                                 {
                                     gotPermissions = false;
                                     s.Break();
