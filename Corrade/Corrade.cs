@@ -6474,9 +6474,7 @@ namespace Corrade
                     if (!GroupHTTPClients.ContainsKey(o.UUID))
                     {
                         GroupHTTPClients.Add(o.UUID, new Web.wasHTTPClient
-                            (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType, null,
-                                null,
-                                configuration.ServicesTimeout));
+                            (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType, configuration.ServicesTimeout));
                     }
                 }
             });
