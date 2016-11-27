@@ -1572,7 +1572,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="app.config" />
-    <None Include="Corrade.ini">
+    <None Include="Corrade.ini.default">
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

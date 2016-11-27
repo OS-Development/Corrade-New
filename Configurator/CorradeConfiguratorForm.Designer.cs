@@ -5446,6 +5446,7 @@
             // 
             // SaveConfigurationDialog
             // 
+            this.SaveConfigurationDialog.FileName = "Corrade.ini";
             this.SaveConfigurationDialog.Filter = "Corrade Configuration (*.ini)|*.ini|All files (*.*)|*.*";
             // 
             // toolTip1

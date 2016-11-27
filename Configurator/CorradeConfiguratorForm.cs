@@ -1582,8 +1582,9 @@ namespace Configurator
                 }
             }));
 
-            if (File.Exists("Corrade.ini"))
+            switch (File.Exists("Corrade.ini"))
             {
+                case true:
                 new Thread(() =>
                 {
                     mainForm.BeginInvoke((MethodInvoker) (() =>
@@ -1609,8 +1610,18 @@ namespace Configurator
                             mainForm.StatusText.Text = ex.Message;
                         }
                     }));
-                })
-                {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+                }) {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+                    break;
+                default:
+                    mainForm.BeginInvoke((MethodInvoker)(() =>
+                    {
+                        DialogResult dialogResult = MessageBox.Show("No configuration found, would you like to load defaults?", "Load defaults", MessageBoxButtons.YesNo);
+                        if (dialogResult == DialogResult.Yes)
+                        {
+                            LoadDefaults(null, null);
+                        }
+                    }));
+                    break;
             }
         }
 
@@ -3012,7 +3023,7 @@ namespace Configurator
                     {
                         using (
                             var stream =
-                                Assembly.GetExecutingAssembly().GetManifestResourceStream(@"Configurator.Corrade.ini"))
+                                Assembly.GetExecutingAssembly().GetManifestResourceStream(@"Configurator.Corrade.ini.default"))
                         {
                             mainForm.StatusText.Text = @"loading configuration...";
                             mainForm.StatusProgress.Value = 0;
