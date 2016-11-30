@@ -1233,21 +1233,31 @@
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\OpenMetaverse.dll.config">
+      <Link>libs\OpenMetaverse.dll.config</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\SIML\Corrade.simlpk">
       <Link>SIML\Corrade.simlpk</Link>
