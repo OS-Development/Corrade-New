@@ -34,17 +34,20 @@
     <Reference Include="Microsoft.QualityTools.Testing.Fakes, Version=12.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="OpenMetaverse">
+    <Reference Include="OpenMetaverse, Version=0.9.3.3318, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.dll</HintPath>
     </Reference>
-    <Reference Include="OpenMetaverse.Rendering.Meshmerizer">
+    <Reference Include="OpenMetaverse.Rendering.Meshmerizer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmerizer.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverse.StructuredData, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.StructuredData.dll</HintPath>
     </Reference>
-    <Reference Include="OpenMetaverseTypes">
+    <Reference Include="OpenMetaverseTypes, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
     <Reference Include="System" />
