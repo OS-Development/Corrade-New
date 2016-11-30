@@ -42,7 +42,7 @@ using Corrade.Events;
 using Corrade.Helpers;
 using Corrade.Structures;
 using Corrade.Structures.Effects;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using LanguageDetection;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
@@ -811,7 +811,7 @@ namespace Corrade
                 if (
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
                         corradeConfiguration.ServicesTimeout, ref parcel)) return;
-                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                 if (!groups.Contains(parcel.GroupID)) return;
                 Client.Groups.ActivateGroup(parcel.GroupID);
             });
@@ -1186,7 +1186,7 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                                 ((SerializableDictionary<UUID, ObservableHashSet<UUID>>)
                                     new XmlSerializer(
                                         typeof(SerializableDictionary
@@ -1286,7 +1286,7 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                                 ((SerializableDictionary<UUID, ObservableHashSet<SoftBan>>)
                                     new XmlSerializer(
                                         typeof(SerializableDictionary
@@ -1392,7 +1392,7 @@ namespace Corrade
                                                 o =>
                                                     !o.Schedules.Equals(0) &&
                                                     o.PermissionMask.IsMaskFlagSet(Configuration.Permissions.Schedule))
-                                            .Select(o => o.UUID));
+                                            .Select(o => new UUID(o.UUID)));
                                 ((HashSet<GroupSchedule>)
                                     new XmlSerializer(typeof(HashSet<GroupSchedule>)).Deserialize(streamReader))
                                     .AsParallel()
@@ -1468,7 +1468,7 @@ namespace Corrade
                 CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
             if (File.Exists(groupNotificationsStateFile))
             {
-                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                 try
                 {
                     lock (GroupNotificationsStateFileLock)
@@ -1755,7 +1755,7 @@ namespace Corrade
                             var fileStream = File.Open(groupCookiesStateFile, FileMode.Open, FileAccess.Read,
                                 FileShare.Read))
                         {
-                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                            var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                             var serializer = new BinaryFormatter();
                             ((Dictionary<UUID, CookieContainer>)
                                 serializer.Deserialize(fileStream)).AsParallel()
@@ -1875,7 +1875,7 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => o.UUID));
+                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                                 var serializer =
                                     new XmlSerializer(
                                         typeof(SerializableDictionary
@@ -2398,33 +2398,6 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Used to check whether a group name matches a group password.
-        /// </summary>
-        /// <param name="group">the name of the group</param>
-        /// <param name="password">the password for the group</param>
-        /// <returns>true if the agent has authenticated</returns>
-        private static bool Authenticate(string group, string password)
-        {
-            /*
-             * If the master override feature is enabled and the password matches the 
-             * master override password then consider the request to be authenticated.
-             * Otherwise, check that the password matches the password for the group.
-             */
-            return (corradeConfiguration.EnableMasterPasswordOverride &&
-                    !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
-                        Strings.StringEquals(corradeConfiguration.MasterPasswordOverride, password,
-                            StringComparison.Ordinal) ||
-                        Utils.SHA1String(password)
-                            .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase))) ||
-                   corradeConfiguration.Groups.AsParallel().Any(
-                       o =>
-                           Strings.StringEquals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                           (Strings.StringEquals(o.Password, password, StringComparison.Ordinal) ||
-                            Utils.SHA1String(password)
-                                .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        /// <summary>
         ///     Used to check whether a group UUID matches a group password.
         /// </summary>
         /// <param name="group">the UUID of the group</param>
@@ -2449,20 +2422,6 @@ namespace Corrade
                            (Strings.StringEquals(o.Password, password, StringComparison.Ordinal) ||
                             Utils.SHA1String(password)
                                 .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        /// <summary>
-        ///     Used to check whether a group has certain permissions for Corrade.
-        /// </summary>
-        /// <param name="group">the name of the group</param>
-        /// <param name="permission">the numeric Corrade permission</param>
-        /// <returns>true if the group has permission</returns>
-        private static bool HasCorradePermission(string group, ulong permission)
-        {
-            return !permission.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
-                o =>
-                    Strings.StringEquals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                    o.PermissionMask.IsMaskFlagSet((Configuration.Permissions) permission));
         }
 
         /// <summary>
@@ -2493,19 +2452,6 @@ namespace Corrade
                 ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
                 : corradeConfiguration.Groups.AsParallel()
                     .FirstOrDefault(o => Strings.StringEquals(group, o.Name, StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
-        ///     Used to check whether a group has a certain notification for Corrade.
-        /// </summary>
-        /// <param name="group">the name of the group</param>
-        /// <param name="notification">the numeric Corrade notification</param>
-        /// <returns>true if the group has the notification</returns>
-        private static bool GroupHasNotification(string group, ulong notification)
-        {
-            return !notification.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
-                o => Strings.StringEquals(group, o.Name, StringComparison.OrdinalIgnoreCase) &&
-                     o.NotificationMask.IsMaskFlagSet((Configuration.Notifications) notification));
         }
 
         /// <summary>
@@ -2860,7 +2806,10 @@ namespace Corrade
                         Enumerations.ConsoleMessage.READING_CORRADE_CONFIGURATION));
                 try
                 {
-                    corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                    using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open))
+                    {
+                        corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -4329,8 +4278,10 @@ namespace Corrade
                                 {
                                     lock (ConfigurationFileLock)
                                     {
-                                        corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                                            ref corradeConfiguration);
+                                        using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                                        {
+                                            corradeConfiguration.Save(fileStream, ref corradeConfiguration);
+                                        }
                                     }
                                 }
                                 catch (Exception)

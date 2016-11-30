@@ -7,7 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;

@@ -43,7 +43,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="OpenMetaverseTypes">
-      <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
+      <HintPath>..\libopenmetaverse-overrides\OpenMetaverseTypes.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -120,9 +120,9 @@
     <EmbeddedResource Include="img\up.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CorradeConfiguration\CorradeConfiguration.csproj">
-      <Project>{9af3a0cc-6e94-45fb-ab70-1ba04f49e340}</Project>
-      <Name>CorradeConfiguration</Name>
+    <ProjectReference Include="..\corrade-configuration-sharp\CorradeConfigurationSharp\CorradeConfigurationSharp.csproj">
+      <Project>{2ca04070-f3e8-4e39-9f43-4bb7090d7a77}</Project>
+      <Name>CorradeConfigurationSharp</Name>
     </ProjectReference>
     <ProjectReference Include="..\wasSharp\wasSharp.csproj">
       <Project>{a971e1c9-776c-4cd2-88ac-71197c7b955e}</Project>

@@ -12,7 +12,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using ImageMagick;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;

@@ -13,13 +13,14 @@ using System.Linq;
 using System.Reflection;
 using BayesSharp;
 using Corrade.Constants;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using LanguageDetection;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
+using Corrade.Structures;
 
 namespace Corrade.Helpers
 {

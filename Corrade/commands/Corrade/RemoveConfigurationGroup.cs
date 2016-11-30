@@ -6,8 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Corrade.Constants;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
@@ -58,7 +59,10 @@ namespace Corrade
 
                     lock (ConfigurationFileLock)
                     {
-                        corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                        using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                        {
+                            corradeConfiguration.Save(fileStream, ref corradeConfiguration);
+                        }
                     }
                 };
         }

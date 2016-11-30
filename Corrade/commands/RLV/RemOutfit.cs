@@ -8,7 +8,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using Corrade.Events;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;

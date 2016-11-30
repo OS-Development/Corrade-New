@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using wasOpenMetaverse;

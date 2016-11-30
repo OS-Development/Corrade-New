@@ -18,31 +18,31 @@ namespace wasOpenMetaverse
     {
         public static readonly HashSet<UUID> LindenAnimations = new HashSet<UUID>(typeof(Animations).GetFields(
             BindingFlags.Public |
-            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
+            BindingFlags.Static).AsParallel().Select(o => (UUID)o.GetValue(null)));
 
         public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
             RegexOptions.Compiled);
 
 #if !__MonoCS__
         private static readonly Func<string, IEnumerable<string>> directGetAvatarNames =
-            ((Expression<Func<string, IEnumerable<string>>>) (o => !string.IsNullOrEmpty(o)
-                ? AvatarFullNameRegex.Matches(o)
-                    .Cast<Match>()
-                    .ToDictionary(p => new[]
-                    {
+            ((Expression<Func<string, IEnumerable<string>>>)(o => !string.IsNullOrEmpty(o)
+               ? AvatarFullNameRegex.Matches(o)
+                   .Cast<Match>()
+                   .ToDictionary(p => new[]
+                   {
                         p.Groups["first"].Value,
                         p.Groups["last"].Value
-                    })
-                    .SelectMany(
-                        p =>
-                            new[]
-                            {
+                   })
+                   .SelectMany(
+                       p =>
+                           new[]
+                           {
                                 p.Key[0].Trim(),
                                 !string.IsNullOrEmpty(p.Key[1])
                                     ? p.Key[1].Trim()
                                     : Constants.AVATARS.LASTNAME_PLACEHOLDER
-                            })
-                : null)).Compile();
+                           })
+               : null)).Compile();
 #endif
 
         /// <summary>
@@ -112,8 +112,8 @@ namespace wasOpenMetaverse
             Utils.LongToUInts(simulator.Handle, out globalX, out globalY);
 
             return new Vector3d(
-                globalX + (double) position.X,
-                globalY + (double) position.Y,
+                globalX + (double)position.X,
+                globalY + (double)position.Y,
                 position.Z);
         }
 
@@ -168,7 +168,8 @@ namespace wasOpenMetaverse
 
             private static string GetSim(string location)
             {
-                if (!location.Contains("/")) return location;
+                if (!location.Contains("/"))
+                    return location;
 
                 var locSplit = location.Split('/');
                 return locSplit[0];
@@ -176,7 +177,8 @@ namespace wasOpenMetaverse
 
             private static int GetX(string location)
             {
-                if (!location.Contains("/")) return 128;
+                if (!location.Contains("/"))
+                    return 128;
 
                 var locSplit = location.Split('/');
 
@@ -188,7 +190,8 @@ namespace wasOpenMetaverse
 
             private static int GetY(string location)
             {
-                if (!location.Contains("/")) return 128;
+                if (!location.Contains("/"))
+                    return 128;
 
                 var locSplit = location.Split('/');
 
@@ -206,7 +209,8 @@ namespace wasOpenMetaverse
 
             private static int GetZ(string location)
             {
-                if (!location.Contains("/")) return 0;
+                if (!location.Contains("/"))
+                    return 0;
 
                 var locSplit = location.Split('/');
 

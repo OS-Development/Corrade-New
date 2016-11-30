@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade

@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse.StructuredData;
 using wasSharp;
 using OSD = wasOpenMetaverse.OSD;

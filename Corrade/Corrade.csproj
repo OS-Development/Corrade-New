@@ -263,6 +263,7 @@
     <Compile Include="Source\Helpers\Utilities.cs" />
     <Compile Include="Source\Notification.cs" />
     <Compile Include="Source\RLV.cs" />
+    <Compile Include="Source\Structures\SerializedNotification.cs" />
     <Compile Include="Source\Structures\Agent.cs" />
     <Compile Include="Source\Structures\AgentMovement.cs" />
     <Compile Include="Source\Structures\Effects\BeamEffect.cs" />
@@ -1611,6 +1612,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\libopenmetaverse-overrides\OpenMetaverseTypes.XML">
+      <Link>libs\OpenMetaverseTypes.XML</Link>
+    </Content>
     <Content Include="..\sqlite\sqlite3-x86_64.dll">
       <Link>libs\sqlite3-x86_64.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -2044,9 +2048,9 @@
     <Folder Include="state\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CorradeConfiguration\CorradeConfiguration.csproj">
-      <Project>{9af3a0cc-6e94-45fb-ab70-1ba04f49e340}</Project>
-      <Name>CorradeConfiguration</Name>
+    <ProjectReference Include="..\corrade-configuration-sharp\CorradeConfigurationSharp\CorradeConfigurationSharp.csproj">
+      <Project>{2ca04070-f3e8-4e39-9f43-4bb7090d7a77}</Project>
+      <Name>CorradeConfigurationSharp</Name>
     </ProjectReference>
     <ProjectReference Include="..\wasOpenMetaverse\wasOpenMetaverse.csproj">
       <Project>{b9537c43-94dc-4bd4-b6fb-b7ca77c11824}</Project>

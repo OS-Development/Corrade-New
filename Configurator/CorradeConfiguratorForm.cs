@@ -21,7 +21,7 @@ using System.Web.Security;
 using System.Windows.Forms;
 using System.Xml;
 using Configurator.Properties;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
@@ -861,7 +861,10 @@ namespace Configurator
                                 {
                                     mainForm.StatusText.Text = @"loading configuration...";
                                     mainForm.StatusProgress.Value = 0;
-                                    corradeConfiguration.Load(file, ref corradeConfiguration);
+                                    using (var fileStream = new FileStream(file, FileMode.Open))
+                                    {
+                                        corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                                    }
                                     mainForm.StatusProgress.Value = 50;
                                     mainForm.StatusText.Text = @"applying settings...";
                                     GetUserConfiguration.Invoke();
@@ -900,7 +903,10 @@ namespace Configurator
                                     SetUserConfiguration.Invoke();
                                     mainForm.StatusText.Text = @"saving configuration...";
                                     mainForm.StatusProgress.Value = 50;
-                                    corradeConfiguration.Save(file, ref corradeConfiguration);
+                                    using (var fileStream = new FileStream(file, FileMode.Create))
+                                    {
+                                        corradeConfiguration.Save(fileStream, ref corradeConfiguration);
+                                    }
                                     mainForm.StatusText.Text = @"configuration saved";
                                     mainForm.StatusProgress.Value = 100;
                                     isConfigurationSaved = true;
@@ -1593,7 +1599,10 @@ namespace Configurator
                         {
                             mainForm.StatusText.Text = @"loading configuration...";
                             mainForm.StatusProgress.Value = 0;
-                            corradeConfiguration.Load("Corrade.ini", ref corradeConfiguration);
+                            using (var fileStream = new FileStream("Corrade.ini", FileMode.Open))
+                            {
+                                corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                            }
                             mainForm.StatusProgress.Value = 50;
                             mainForm.StatusText.Text = @"applying settings...";
                             GetUserConfiguration.Invoke();
@@ -2830,10 +2839,12 @@ namespace Configurator
                                 configGroup.Name = groupNode.InnerText;
                                 break;
                             case ConfigurationKeys.UUID:
-                                if (!UUID.TryParse(groupNode.InnerText, out configGroup.UUID))
+                                UUID configGroupUUID;
+                                if (!UUID.TryParse(groupNode.InnerText, out configGroupUUID))
                                 {
                                     throw new Exception("error in group section");
                                 }
+                                configGroup.UUID = configGroupUUID;
                                 break;
                             case ConfigurationKeys.PASSWORD:
                                 if (string.IsNullOrEmpty(groupNode.InnerText))

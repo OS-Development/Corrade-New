@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using Corrade.Constants;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using TweetSharp;
 using wasSharp;
 

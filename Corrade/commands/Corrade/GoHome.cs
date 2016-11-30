@@ -7,7 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;

@@ -6,7 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
 

@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using Mono.Data.Sqlite;
 using wasSharp;
 

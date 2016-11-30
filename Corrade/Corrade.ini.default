@@ -1,6 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.21.6157.23346</Version>
+  <Version>1.22.6178.33377</Version>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
   <CacheAutoPruneInterval>300000</CacheAutoPruneInterval>
   <HeartbeatLogInterval>3600000</HeartbeatLogInterval>
@@ -75,9 +75,7 @@
   <MembershipSweepInterval>60000</MembershipSweepInterval>
   <FeedsUpdateInterval>60000</FeedsUpdateInterval>
   <TOSAccepted>false</TOSAccepted>
-  <ClientIdentificationTag>
-    <Guid>0705230f-cbd0-99bd-040b-28eb348b5255</Guid>
-  </ClientIdentificationTag>
+  <ClientIdentificationTag>0705230f-cbd0-99bd-040b-28eb348b5255</ClientIdentificationTag>
   <StartLocations>
     <string>last</string>
     <string>home</string>
@@ -120,9 +118,7 @@
         <Permissions>group</Permissions>
       </Permissions>
       <Schedules>0</Schedules>
-      <UUID>
-        <Guid>aaa465f0-e18c-4aec-baa2-21b153092886</Guid>
-      </UUID>
+      <UUID>aaa465f0-e18c-4aec-baa2-21b153092886</UUID>
       <Workers>5</Workers>
     </Group>
     <Group>
@@ -134,9 +130,7 @@
       <Password>fc2eed3863d826b52f384b90d3ad4509a2dd734a</Password>
       <Permissions />
       <Schedules>0</Schedules>
-      <UUID>
-        <Guid>0bf9748c-724e-4d30-88c6-b9c3bb197eae</Guid>
-      </UUID>
+      <UUID>0bf9748c-724e-4d30-88c6-b9c3bb197eae</UUID>
       <Workers>10</Workers>
     </Group>
   </Groups>

@@ -11,7 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Corrade.Constants;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using Facebook;
 using OpenMetaverse;
 using OpenMetaverse.Assets;

@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BayesSharp;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade

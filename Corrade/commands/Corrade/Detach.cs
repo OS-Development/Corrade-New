@@ -10,7 +10,7 @@ using System.Linq;
 using System.Reflection;
 using Corrade.Constants;
 using Corrade.Events;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;

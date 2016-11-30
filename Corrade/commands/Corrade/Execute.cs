@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade

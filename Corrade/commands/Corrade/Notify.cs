@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using wasSharp;
 using wasSharp.Collections.Generic;
 

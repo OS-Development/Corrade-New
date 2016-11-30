@@ -14,7 +14,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Xml;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;

@@ -7,7 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade

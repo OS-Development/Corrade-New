@@ -11,7 +11,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using Corrade.WebForms.SecondLife;
-using CorradeConfiguration;
+using CorradeConfigurationSharp;
 using HtmlAgilityPack;
 using wasSharp;
 

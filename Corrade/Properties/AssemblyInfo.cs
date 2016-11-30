@@ -34,5 +34,5 @@ using System.Runtime.InteropServices;
 //      Revision
 //
 
-[assembly: AssemblyVersion("9.146.*")]
-[assembly: AssemblyMetadata("configuration", "1.21")]
+[assembly: AssemblyVersion("9.147.*")]
+[assembly: AssemblyMetadata("configuration", "1.22")]
