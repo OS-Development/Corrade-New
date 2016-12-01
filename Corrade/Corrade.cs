@@ -5261,6 +5261,10 @@ namespace Corrade
             }
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ALL_SIMULATORS_DISCONNECTED));
+            // Do not cycle if a user-logout was requested.
+            if (ConnectionSemaphores['l'] != null && !ConnectionSemaphores['l'].SafeWaitHandle.IsClosed &&
+                ConnectionSemaphores['l'].WaitOne(0))
+                return;
             // Login failed, so trying the next start location...
             var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
             // We have exceeded the configured locations so raise the semaphore and abort.
