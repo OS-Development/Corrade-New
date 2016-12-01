@@ -224,7 +224,8 @@ namespace Corrade
             [Reflection.DescriptionAttribute("unable to load group Bayes data")] UNABLE_TO_LOAD_GROUP_BAYES_DATA,
             [Reflection.DescriptionAttribute("start locations exhausted")] START_LOCATIONS_EXHAUSTED,
             [Reflection.DescriptionAttribute("cycling simulators")] CYCLING_SIMULATORS,
-            [Reflection.DescriptionAttribute("no start locations found")] NO_START_LOCATIONS_FOUND
+            [Reflection.DescriptionAttribute("no start locations found")] NO_START_LOCATIONS_FOUND,
+            [Reflection.DescriptionAttribute("simulator disconnected")] SIMULATOR_DISCONNECTED
         }
 
         /// <summary>

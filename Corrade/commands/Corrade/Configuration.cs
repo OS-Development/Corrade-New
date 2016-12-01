@@ -7,8 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Xml;
 using System.Text;
+using System.Xml;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using wasSharp;
@@ -41,9 +41,12 @@ namespace Corrade
                             {
                                 lock (ConfigurationFileLock)
                                 {
-                                    using (var streamReader = new StreamReader(CORRADE_CONSTANTS.CONFIGURATION_FILE, Encoding.UTF8))
+                                    using (
+                                        var streamReader = new StreamReader(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                            Encoding.UTF8))
                                     {
-                                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), streamReader.ReadToEnd());
+                                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                            streamReader.ReadToEnd());
                                     }
                                 }
                             }
@@ -57,9 +60,12 @@ namespace Corrade
                             {
                                 lock (ConfigurationFileLock)
                                 {
-                                    using (var streamWriter = new StreamWriter(CORRADE_CONSTANTS.CONFIGURATION_FILE, false, Encoding.UTF8))
+                                    using (
+                                        var streamWriter = new StreamWriter(CORRADE_CONSTANTS.CONFIGURATION_FILE, false,
+                                            Encoding.UTF8))
                                     {
-                                        streamWriter.Write(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        streamWriter.Write(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message);
                                     }
                                 }
@@ -85,7 +91,9 @@ namespace Corrade
                             {
                                 lock (ConfigurationFileLock)
                                 {
-                                    using (var streamReader = new StreamReader(CORRADE_CONSTANTS.CONFIGURATION_FILE, Encoding.UTF8))
+                                    using (
+                                        var streamReader = new StreamReader(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                            Encoding.UTF8))
                                     {
                                         conf.LoadXml(streamReader.ReadToEnd());
                                     }
@@ -135,7 +143,9 @@ namespace Corrade
                                     {
                                         lock (ConfigurationFileLock)
                                         {
-                                            using (var streamWriter = new StreamWriter(CORRADE_CONSTANTS.CONFIGURATION_FILE, false, Encoding.UTF8))
+                                            using (
+                                                var streamWriter = new StreamWriter(
+                                                    CORRADE_CONSTANTS.CONFIGURATION_FILE, false, Encoding.UTF8))
                                             {
                                                 conf.Save(streamWriter);
                                             }

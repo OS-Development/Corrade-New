@@ -299,7 +299,7 @@ namespace wasOpenMetaverse
                 if (prim.NameValues[i].Name.Equals("AttachItemID")) continue;
                 lock (Locks.ClientInstanceInventoryLock)
                 {
-                    return Client.Inventory.Store[(UUID) prim.NameValues[i].Value.ToString()] as InventoryItem;
+                    return Client.Inventory.Store[prim.NameValues[i].Value.ToString()] as InventoryItem;
                 }
             }
             return null;

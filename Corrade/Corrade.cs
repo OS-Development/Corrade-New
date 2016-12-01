@@ -3205,12 +3205,6 @@ namespace Corrade
             {
                 Client.Network.BeginLogin(Login);
             }
-            /*
-             * The main thread spins around waiting for the semaphores to become invalidated,
-             * at which point Corrade will consider its connection to the grid severed and
-             * will terminate.
-             *
-             */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
             // Now log-out.
             Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_OUT));
@@ -4278,7 +4272,9 @@ namespace Corrade
                                 {
                                     lock (ConfigurationFileLock)
                                     {
-                                        using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                                        using (
+                                            var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                                FileMode.Create))
                                         {
                                             corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                                         }
@@ -5249,7 +5245,8 @@ namespace Corrade
 
         private static void HandleSimulatorConnected(object sender, SimConnectedEventArgs e)
         {
-            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.SIMULATOR_CONNECTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.SIMULATOR_CONNECTED),
+                e.Simulator.Name);
         }
 
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
@@ -5257,11 +5254,36 @@ namespace Corrade
             // if any simulators are still connected, we are not disconnected
             lock (Locks.ClientInstanceNetworkLock)
             {
-                if (Client.Network.Simulators.Any()) return;
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.SIMULATOR_DISCONNECTED),
+                    e.Simulator.Name, e.Reason.ToString());
+                if (Client.Network.Simulators.Any())
+                    return;
             }
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ALL_SIMULATORS_DISCONNECTED));
-            ConnectionSemaphores['s'].Set();
+            // Login failed, so trying the next start location...
+            var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
+            // We have exceeded the configured locations so raise the semaphore and abort.
+            if (string.IsNullOrEmpty(location))
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
+                ConnectionSemaphores['s'].Set();
+                return;
+            }
+            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS),
+                location);
+            var startLocation = new
+                wasOpenMetaverse.Helpers.StartLocationParser(location);
+            Login.Start = startLocation.isCustom
+                ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
+                    startLocation.Z)
+                : location;
+            lock (Locks.ClientInstanceNetworkLock)
+            {
+                Client.Network.BeginLogin(Login);
+            }
         }
 
         private static void HandleLoggedOut(object sender, LoggedOutEventArgs e)

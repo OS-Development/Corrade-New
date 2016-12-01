@@ -835,7 +835,7 @@
             // 
             this.AbnormalExitCodeBox.Controls.Add(this.pictureBox10);
             this.AbnormalExitCodeBox.Controls.Add(this.AbnomalExitCode);
-            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(158, 241);
+            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(158, 232);
             this.AbnormalExitCodeBox.Name = "AbnormalExitCodeBox";
             this.AbnormalExitCodeBox.Size = new System.Drawing.Size(126, 50);
             this.AbnormalExitCodeBox.TabIndex = 9;
@@ -872,7 +872,7 @@
             // 
             this.ExpectedExitCodeBox.Controls.Add(this.pictureBox11);
             this.ExpectedExitCodeBox.Controls.Add(this.ExpectedExitCode);
-            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(12, 241);
+            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(12, 210);
             this.ExpectedExitCodeBox.Name = "ExpectedExitCodeBox";
             this.ExpectedExitCodeBox.Size = new System.Drawing.Size(126, 50);
             this.ExpectedExitCodeBox.TabIndex = 8;
@@ -908,7 +908,7 @@
             // 
             this.GroupCreateFeeBox.Controls.Add(this.pictureBox9);
             this.GroupCreateFeeBox.Controls.Add(this.GroupCreateFee);
-            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 241);
+            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 295);
             this.GroupCreateFeeBox.Name = "GroupCreateFeeBox";
             this.GroupCreateFeeBox.Size = new System.Drawing.Size(126, 57);
             this.GroupCreateFeeBox.TabIndex = 7;
@@ -1036,7 +1036,7 @@
             this.groupBox5.Controls.Add(this.button17);
             this.groupBox5.Location = new System.Drawing.Point(435, 84);
             this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(223, 206);
+            this.groupBox5.Size = new System.Drawing.Size(223, 268);
             this.groupBox5.TabIndex = 4;
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Start Locations";
@@ -1091,7 +1091,7 @@
             "Wellfleet Harbor/196/142/12"});
             this.StartLocations.Location = new System.Drawing.Point(5, 21);
             this.StartLocations.Name = "StartLocations";
-            this.StartLocations.Size = new System.Drawing.Size(186, 121);
+            this.StartLocations.Size = new System.Drawing.Size(186, 173);
             this.StartLocations.TabIndex = 14;
             this.StartLocations.MouseClick += new System.Windows.Forms.MouseEventHandler(this.LocationsClicked);
             this.StartLocations.SelectedIndexChanged += new System.EventHandler(this.StartLocationSelected);
@@ -1099,7 +1099,7 @@
             // StartLocationTextBox
             // 
             this.StartLocationTextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.StartLocationTextBox.Location = new System.Drawing.Point(5, 148);
+            this.StartLocationTextBox.Location = new System.Drawing.Point(6, 206);
             this.StartLocationTextBox.Name = "StartLocationTextBox";
             this.StartLocationTextBox.Size = new System.Drawing.Size(186, 20);
             this.StartLocationTextBox.TabIndex = 12;
@@ -1107,7 +1107,7 @@
             // 
             // button16
             // 
-            this.button16.Location = new System.Drawing.Point(101, 174);
+            this.button16.Location = new System.Drawing.Point(101, 232);
             this.button16.Name = "button16";
             this.button16.Size = new System.Drawing.Size(90, 23);
             this.button16.TabIndex = 13;
@@ -1120,7 +1120,7 @@
             // 
             this.pictureBox6.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox6.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox6.Image")));
-            this.pictureBox6.Location = new System.Drawing.Point(196, 148);
+            this.pictureBox6.Location = new System.Drawing.Point(197, 234);
             this.pictureBox6.Name = "pictureBox6";
             this.pictureBox6.Size = new System.Drawing.Size(20, 20);
             this.pictureBox6.TabIndex = 2;
@@ -1130,7 +1130,7 @@
             // 
             // button17
             // 
-            this.button17.Location = new System.Drawing.Point(5, 174);
+            this.button17.Location = new System.Drawing.Point(5, 232);
             this.button17.Name = "button17";
             this.button17.Size = new System.Drawing.Size(91, 23);
             this.button17.TabIndex = 12;
@@ -1565,7 +1565,7 @@
             // 
             this.GroupChatLogEnabled.AutoSize = true;
             this.GroupChatLogEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.GroupChatLogEnabled.Location = new System.Drawing.Point(71, 15);
+            this.GroupChatLogEnabled.Location = new System.Drawing.Point(114, 15);
             this.GroupChatLogEnabled.Name = "GroupChatLogEnabled";
             this.GroupChatLogEnabled.Size = new System.Drawing.Size(68, 17);
             this.GroupChatLogEnabled.TabIndex = 0;
@@ -5438,7 +5438,8 @@
             // 
             // LoadConfigurationDialog
             // 
-            this.LoadConfigurationDialog.Filter = "Corrade Configuration (*.ini)|*.ini|All files (*.*)|*.*";
+            this.LoadConfigurationDialog.Filter = "Corrade Configuration (*.ini)|*.ini|Default Configuration (*.default)|*.default|A" +
+    "ll files (*.*)|*.*";
             // 
             // LoadLegacyConfigurationDialog
             // 
@@ -5447,7 +5448,8 @@
             // SaveConfigurationDialog
             // 
             this.SaveConfigurationDialog.FileName = "Corrade.ini";
-            this.SaveConfigurationDialog.Filter = "Corrade Configuration (*.ini)|*.ini|All files (*.*)|*.*";
+            this.SaveConfigurationDialog.Filter = "Corrade Configuration (*.ini)|*.ini|Default Configuration (*.default)|*.default|A" +
+    "ll files (*.*)|*.*";
             // 
             // toolTip1
             // 

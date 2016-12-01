@@ -140,7 +140,8 @@ namespace Corrade
 
                         lock (ConfigurationFileLock)
                         {
-                            using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                            using (
+                                var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
                             {
                                 corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                             }

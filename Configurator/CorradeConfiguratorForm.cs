@@ -70,7 +70,7 @@ namespace Configurator
                                              corradeConfiguration.ExitCodeAbnormal > 100
                 ? -2
                 : corradeConfiguration.ExitCodeAbnormal;
-            mainForm.ClientIdentificationTag.Text = corradeConfiguration.ClientIdentificationTag.ToString();
+            mainForm.ClientIdentificationTag.Text = corradeConfiguration.ClientIdentificationTag;
 
             // logs
             mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
@@ -772,7 +772,6 @@ namespace Configurator
             Click += deselectEventHandler;
             AddClickHandlerRecursive<StatusStrip>(this, deselectEventHandler);
             AddClickHandlerRecursive<GroupBox>(this, deselectEventHandler);
-            AddClickHandlerRecursive<PictureBox>(this, deselectEventHandler);
             AddClickHandlerRecursive<TabControl>(this, deselectEventHandler);
             AddClickHandlerRecursive<TabPage>(this, deselectEventHandler);
             mainForm = this;
@@ -947,7 +946,7 @@ namespace Configurator
                 var group = (Configuration.Group) listViewItem.Tag;
                 GroupName.Text = group.Name;
                 GroupPassword.Text = group.Password;
-                GroupUUID.Text = group.UUID.ToString();
+                GroupUUID.Text = group.UUID;
                 GroupWorkers.Text = group.Workers.ToString();
                 GroupSchedules.Text = group.Schedules.ToString();
                 GroupDatabaseFile.Text = group.DatabaseFile;
@@ -1591,40 +1590,41 @@ namespace Configurator
             switch (File.Exists("Corrade.ini"))
             {
                 case true:
-                new Thread(() =>
-                {
-                    mainForm.BeginInvoke((MethodInvoker) (() =>
+                    new Thread(() =>
                     {
-                        try
+                        mainForm.BeginInvoke((MethodInvoker) (() =>
                         {
-                            mainForm.StatusText.Text = @"loading configuration...";
-                            mainForm.StatusProgress.Value = 0;
-                            using (var fileStream = new FileStream("Corrade.ini", FileMode.Open))
+                            try
                             {
-                                corradeConfiguration.Load(fileStream, ref corradeConfiguration);
-                            }
-                            mainForm.StatusProgress.Value = 50;
-                            mainForm.StatusText.Text = @"applying settings...";
-                            GetUserConfiguration.Invoke();
-                            mainForm.StatusText.Text = @"configuration loaded";
-                            mainForm.StatusProgress.Value = 100;
+                                mainForm.StatusText.Text = @"loading configuration...";
+                                mainForm.StatusProgress.Value = 0;
+                                using (var fileStream = new FileStream("Corrade.ini", FileMode.Open))
+                                {
+                                    corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                                }
+                                mainForm.StatusProgress.Value = 50;
+                                mainForm.StatusText.Text = @"applying settings...";
+                                GetUserConfiguration.Invoke();
+                                mainForm.StatusText.Text = @"configuration loaded";
+                                mainForm.StatusProgress.Value = 100;
 
-                            var experienceLevel = Settings.Default["ExperienceLevel"];
-                            mainForm.ExperienceLevel.SelectedIndex =
-                                mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
-                            mainForm.ExperienceLevel.SelectedItem = experienceLevel;
-                        }
-                        catch (Exception ex)
-                        {
-                            mainForm.StatusText.Text = ex.Message;
-                        }
-                    }));
-                }) {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+                                var experienceLevel = Settings.Default["ExperienceLevel"];
+                                mainForm.ExperienceLevel.SelectedIndex =
+                                    mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                                mainForm.ExperienceLevel.SelectedItem = experienceLevel;
+                            }
+                            catch (Exception ex)
+                            {
+                                mainForm.StatusText.Text = ex.Message;
+                            }
+                        }));
+                    }) {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
                     break;
                 default:
-                    mainForm.BeginInvoke((MethodInvoker)(() =>
+                    mainForm.BeginInvoke((MethodInvoker) (() =>
                     {
-                        DialogResult dialogResult = MessageBox.Show("No configuration found, would you like to load defaults?", "Load defaults", MessageBoxButtons.YesNo);
+                        var dialogResult = MessageBox.Show("No configuration found, would you like to load defaults?",
+                            "Load defaults", MessageBoxButtons.YesNo);
                         if (dialogResult == DialogResult.Yes)
                         {
                             LoadDefaults(null, null);
@@ -3034,7 +3034,8 @@ namespace Configurator
                     {
                         using (
                             var stream =
-                                Assembly.GetExecutingAssembly().GetManifestResourceStream(@"Configurator.Corrade.ini.default"))
+                                Assembly.GetExecutingAssembly()
+                                    .GetManifestResourceStream(@"Configurator.Corrade.ini.default"))
                         {
                             mainForm.StatusText.Text = @"loading configuration...";
                             mainForm.StatusProgress.Value = 0;

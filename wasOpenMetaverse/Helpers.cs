@@ -18,31 +18,31 @@ namespace wasOpenMetaverse
     {
         public static readonly HashSet<UUID> LindenAnimations = new HashSet<UUID>(typeof(Animations).GetFields(
             BindingFlags.Public |
-            BindingFlags.Static).AsParallel().Select(o => (UUID)o.GetValue(null)));
+            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
 
         public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
             RegexOptions.Compiled);
 
 #if !__MonoCS__
         private static readonly Func<string, IEnumerable<string>> directGetAvatarNames =
-            ((Expression<Func<string, IEnumerable<string>>>)(o => !string.IsNullOrEmpty(o)
-               ? AvatarFullNameRegex.Matches(o)
-                   .Cast<Match>()
-                   .ToDictionary(p => new[]
-                   {
+            ((Expression<Func<string, IEnumerable<string>>>) (o => !string.IsNullOrEmpty(o)
+                ? AvatarFullNameRegex.Matches(o)
+                    .Cast<Match>()
+                    .ToDictionary(p => new[]
+                    {
                         p.Groups["first"].Value,
                         p.Groups["last"].Value
-                   })
-                   .SelectMany(
-                       p =>
-                           new[]
-                           {
+                    })
+                    .SelectMany(
+                        p =>
+                            new[]
+                            {
                                 p.Key[0].Trim(),
                                 !string.IsNullOrEmpty(p.Key[1])
                                     ? p.Key[1].Trim()
                                     : Constants.AVATARS.LASTNAME_PLACEHOLDER
-                           })
-               : null)).Compile();
+                            })
+                : null)).Compile();
 #endif
 
         /// <summary>
@@ -112,8 +112,8 @@ namespace wasOpenMetaverse
             Utils.LongToUInts(simulator.Handle, out globalX, out globalY);
 
             return new Vector3d(
-                globalX + (double)position.X,
-                globalY + (double)position.Y,
+                globalX + (double) position.X,
+                globalY + (double) position.Y,
                 position.Z);
         }
 

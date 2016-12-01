@@ -39,7 +39,9 @@ namespace Corrade
                             ConfigurationWatcher.EnableRaisingEvents = false;
                             try
                             {
-                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                                using (
+                                    var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                        FileMode.Create))
                                 {
                                     corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                                 }
