@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using CorradeConfigurationSharp;
@@ -34,7 +35,8 @@ namespace Corrade
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture,  out amount))
+                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign,
+                        CultureInfo.InvariantCulture, out amount))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
                     }

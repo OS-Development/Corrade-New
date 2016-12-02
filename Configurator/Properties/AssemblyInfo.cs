@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
 [assembly: AssemblyProduct("Corrade")]
-[assembly: AssemblyCopyright("© Copyright 2013, Wizardry and Steamworks")]
+[assembly: AssemblyCopyright("(c) Copyright 2013, Wizardry and Steamworks")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: NeutralResourcesLanguage("en")]

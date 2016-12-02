@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -343,7 +344,8 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CHANNEL)),
-                                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, 
+                                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign,
+                                    CultureInfo.InvariantCulture,
                                     out chatChannel))
                             {
                                 chatChannel = 0;

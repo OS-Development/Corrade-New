@@ -10,7 +10,7 @@ using System.Resources;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
 [assembly: AssemblyProduct("wasOpenMetaverse")]
-[assembly: AssemblyCopyright("© Copyright 2016, Wizardry and Steamworks")]
+[assembly: AssemblyCopyright("(c) Copyright 2016, Wizardry and Steamworks")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: NeutralResourcesLanguage("en")]

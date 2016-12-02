@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
 [assembly: AssemblyProduct("Corrade")]
-[assembly: AssemblyCopyright("© Copyright 2013, Wizardry and Steamworks")]
+[assembly: AssemblyCopyright("(c) Copyright 2013, Wizardry and Steamworks")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: NeutralResourcesLanguage("en")]
@@ -34,5 +34,5 @@ using System.Runtime.InteropServices;
 //      Revision
 //
 
-[assembly: AssemblyVersion("9.147.*")]
+[assembly: AssemblyVersion("9.148.*")]
 [assembly: AssemblyMetadata("configuration", "1.22")]
