@@ -1776,7 +1776,7 @@ namespace Configurator
                                 {
                                     case ConfigurationKeys.EXPECTED:
                                         int exitCodeExpected;
-                                        if (!int.TryParse(exitCodeNode.InnerText, out exitCodeExpected))
+                                        if (!int.TryParse(exitCodeNode.InnerText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out exitCodeExpected))
                                         {
                                             throw new Exception("error in client section");
                                         }
@@ -1784,7 +1784,7 @@ namespace Configurator
                                         break;
                                     case ConfigurationKeys.ABNORMAL:
                                         int exitCodeAbnormal;
-                                        if (!int.TryParse(exitCodeNode.InnerText, out exitCodeAbnormal))
+                                        if (!int.TryParse(exitCodeNode.InnerText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out exitCodeAbnormal))
                                         {
                                             throw new Exception("error in client section");
                                         }
