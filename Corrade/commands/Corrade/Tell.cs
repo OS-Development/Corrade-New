@@ -350,99 +350,117 @@ namespace Corrade
                             {
                                 chatChannel = 0;
                             }
-                            var chatTypeInfo = typeof(ChatType).GetFields(BindingFlags.Public |
-                                                                          BindingFlags.Static)
-                                .AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Name.Equals(
-                                            wasInput(
-                                                KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                                                    corradeCommandParameters.Message)),
-                                            StringComparison.Ordinal));
-                            var chatType = chatTypeInfo != null
-                                ? (ChatType)
-                                    chatTypeInfo
-                                        .GetValue(null)
-                                : ChatType.Normal;
-                            // check for message length depending on the type of message
-                            if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
+                            // Add support for sending messages on negative channels.
+                            switch (chatChannel < 0)
                             {
-                                switch (chatType)
-                                {
-                                    case ChatType.Normal:
-                                    case ChatType.Debug:
-                                    case ChatType.OwnerSay:
-                                    case ChatType.RegionSay:
-                                    case ChatType.RegionSayTo:
-                                    case ChatType.Shout:
-                                    case ChatType.Whisper:
-                                        if (string.IsNullOrEmpty(data) || Encoding.UTF8.GetByteCount(data) >
-                                            wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
-                                        {
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
-                                        }
-                                        break;
-                                }
-                            }
-                            // send the message
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Chat(data, chatChannel, chatType);
-                            }
-                            // do not log empty messages
-                            if (string.IsNullOrEmpty(data))
-                                break;
-                            // Log local chat,
-                            if (corradeConfiguration.LocalMessageLogEnabled)
-                            {
-                                var fullName =
-                                    new List<string>(
-                                        wasOpenMetaverse.Helpers.GetAvatarNames(string.Join(" ", Client.Self.FirstName,
-                                            Client.Self.LastName)));
-                                if (fullName == null)
-                                    break;
-
-                                CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
-                                {
-                                    try
+                                case false:
+                                    var chatTypeInfo = typeof(ChatType).GetFields(BindingFlags.Public |
+                                                                                  BindingFlags.Static)
+                                        .AsParallel().FirstOrDefault(
+                                            o =>
+                                                o.Name.Equals(
+                                                    wasInput(
+                                                        KeyValue.Get(
+                                                            wasOutput(
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                                            corradeCommandParameters.Message)),
+                                                    StringComparison.Ordinal));
+                                    var chatType = chatTypeInfo != null
+                                        ? (ChatType)
+                                            chatTypeInfo
+                                                .GetValue(null)
+                                        : ChatType.Normal;
+                                    // check for message length depending on the type of message
+                                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                                     {
-                                        lock (LocalLogFileLock)
+                                        switch (chatType)
                                         {
-                                            using (var fileStream = File.Open(Path.Combine(
-                                                corradeConfiguration.LocalMessageLogDirectory,
-                                                Client.Network.CurrentSim.Name) + "." +
-                                                                              CORRADE_CONSTANTS
-                                                                                  .LOG_FILE_EXTENSION,
-                                                FileMode.Append, FileAccess.Write, FileShare.None))
-                                            {
-                                                using (
-                                                    var logWriter = new StreamWriter(fileStream,
-                                                        Encoding.UTF8)
-                                                    )
+                                            case ChatType.Normal:
+                                            case ChatType.Debug:
+                                            case ChatType.OwnerSay:
+                                            case ChatType.RegionSay:
+                                            case ChatType.RegionSayTo:
+                                            case ChatType.Shout:
+                                            case ChatType.Whisper:
+                                                if (string.IsNullOrEmpty(data) || Encoding.UTF8.GetByteCount(data) >
+                                                    wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
                                                 {
-                                                    logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
-                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            Utils.EnUsCulture.DateTimeFormat),
-                                                        fullName.First(),
-                                                        fullName.Last(), Enum.GetName(typeof(ChatType), chatType),
-                                                        data);
-                                                    //logWriter.Flush();
-                                                    //logWriter.Close();
+                                                    throw new Command.ScriptException(
+                                                        Enumerations.ScriptError
+                                                            .TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                                                }
+                                                break;
+                                        }
+                                    }
+                                    // send the message
+                                    lock (Locks.ClientInstanceSelfLock)
+                                    {
+                                        Client.Self.Chat(data, chatChannel, chatType);
+                                    }
+                                    // do not log empty messages
+                                    if (string.IsNullOrEmpty(data))
+                                        break;
+                                    // Log local chat,
+                                    if (corradeConfiguration.LocalMessageLogEnabled)
+                                    {
+                                        var fullName =
+                                            new List<string>(
+                                                wasOpenMetaverse.Helpers.GetAvatarNames(string.Join(" ",
+                                                    Client.Self.FirstName,
+                                                    Client.Self.LastName)));
+                                        if (fullName == null)
+                                            break;
+
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
+                                        {
+                                            try
+                                            {
+                                                lock (LocalLogFileLock)
+                                                {
+                                                    using (var fileStream = File.Open(Path.Combine(
+                                                        corradeConfiguration.LocalMessageLogDirectory,
+                                                        Client.Network.CurrentSim.Name) + "." +
+                                                                                      CORRADE_CONSTANTS
+                                                                                          .LOG_FILE_EXTENSION,
+                                                        FileMode.Append, FileAccess.Write, FileShare.None))
+                                                    {
+                                                        using (
+                                                            var logWriter = new StreamWriter(fileStream,
+                                                                Encoding.UTF8)
+                                                            )
+                                                        {
+                                                            logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
+                                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                    Utils.EnUsCulture.DateTimeFormat),
+                                                                fullName.First(),
+                                                                fullName.Last(),
+                                                                Enum.GetName(typeof(ChatType), chatType),
+                                                                data);
+                                                            //logWriter.Flush();
+                                                            //logWriter.Close();
+                                                        }
+                                                    }
                                                 }
                                             }
-                                        }
+                                            catch (Exception ex)
+                                            {
+                                                // or fail and append the fail message.
+                                                Feedback(
+                                                    Reflection.GetNameFromEnumValue(
+                                                        Enumerations.ConsoleMessage
+                                                            .COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
+                                                    ex.Message);
+                                            }
+                                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                     }
-                                    catch (Exception ex)
+                                    break;
+                                default:
+                                    // that's how the big boys do it
+                                    lock (Locks.ClientInstanceSelfLock)
                                     {
-                                        // or fail and append the fail message.
-                                        Feedback(
-                                            Reflection.GetNameFromEnumValue(
-                                                Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
-                                            ex.Message);
+                                        Client.Self.ReplyToScriptDialog(chatChannel, 0, data, Client.Self.AgentID);
                                     }
-                                }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                                    break;
                             }
                             break;
                         case Enumerations.Entity.ESTATE:
