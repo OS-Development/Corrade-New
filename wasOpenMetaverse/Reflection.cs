@@ -648,7 +648,7 @@ namespace wasOpenMetaverse
                 if (data is int)
                 {
                     int intData;
-                    if (int.TryParse(d.Value, out intData))
+                    if (int.TryParse(d.Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out intData))
                     {
                         wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, intData);
                         return;
