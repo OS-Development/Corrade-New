@@ -120,10 +120,6 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
                     }
-                    if (price < 0)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
-                    }
                     bool renew;
                     if (
                         !bool.TryParse(

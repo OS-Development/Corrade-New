@@ -34,7 +34,7 @@ namespace Corrade
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                            corradeCommandParameters.Message)), out amount))
+                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture,  out amount))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
                     }

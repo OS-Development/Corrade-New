@@ -343,7 +343,7 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CHANNEL)),
-                                            corradeCommandParameters.Message)),
+                                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, 
                                     out chatChannel))
                             {
                                 chatChannel = 0;

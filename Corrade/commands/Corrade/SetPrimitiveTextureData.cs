@@ -120,7 +120,7 @@ namespace Corrade
                                 }
                                 break;
                             default:
-                                if (i < 0 || i > Primitive.TextureEntry.MAX_FACES)
+                                if (i > Primitive.TextureEntry.MAX_FACES)
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
                                 if (primitive.Textures.FaceTextures[i] == null)
                                 {
