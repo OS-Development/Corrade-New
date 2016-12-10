@@ -67,6 +67,10 @@
       <HintPath>..\packages\BayesSharp.0.1.1.0\lib\net40\BayesSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="CommandLine, Version=1.9.71.2, Culture=neutral, PublicKeyToken=de6f01bd326f8c32, processorArchitecture=MSIL">
+      <HintPath>..\packages\CommandLineParser.1.9.71\lib\net45\CommandLine.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Facebook, Version=6.0.10.0, Culture=neutral, PublicKeyToken=58cb4f2111d1e6de, processorArchitecture=MSIL">
       <HintPath>..\packages\Facebook.7.0.6\lib\net45\Facebook.dll</HintPath>
       <Private>True</Private>
@@ -88,7 +92,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.502\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.902\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -246,6 +250,7 @@
     </Compile>
     <Compile Include="Source\Attributes.cs" />
     <Compile Include="Source\Command.cs" />
+    <Compile Include="Source\CommandLineOptions.cs" />
     <Compile Include="Source\Constants\CORRADE_CONSTANTS.cs" />
     <Compile Include="Source\Constants\SIML_BOT_CONSTANTS.cs" />
     <Compile Include="Source\Enumerations.cs" />

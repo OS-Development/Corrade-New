@@ -37,9 +37,11 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using BayesSharp;
+using CommandLine;
 using Corrade.Constants;
 using Corrade.Events;
 using Corrade.Helpers;
+using Corrade.Source;
 using Corrade.Structures;
 using Corrade.Structures.Effects;
 using CorradeConfigurationSharp;
@@ -145,10 +147,14 @@ namespace Corrade
         private static Thread programThread;
         private static Thread HTTPListenerThread;
         private static Thread TCPNotificationsThread;
+        private static readonly ManualResetEvent CallbackThreadState = new ManualResetEvent(false);
+        private static readonly ManualResetEvent NotificationThreadState = new ManualResetEvent(false);
+        private static readonly ManualResetEvent HTTPListenerThreadState = new ManualResetEvent(false);
+        private static readonly ManualResetEvent TCPNotificationsThreadState = new ManualResetEvent(false);
         private static TcpListener TCPListener;
         private static HttpListener HTTPListener;
         private static readonly EventLog CorradeEventLog = new EventLog();
-        private static readonly GridClient Client = new GridClient();
+        private static GridClient Client;
         private static LoginParams Login;
         private static int LoginLocationIndex;
         private static InventoryFolder CurrentOutfitFolder;
@@ -2047,6 +2053,8 @@ namespace Corrade
 
             do
             {
+                TCPNotificationsThreadState.WaitOne();
+
                 var TCPClient = TCPListener.AcceptTcpClient();
 
                 new Thread(() =>
@@ -2624,157 +2632,149 @@ namespace Corrade
 
         public static int Main(string[] args)
         {
-            if (Environment.UserInteractive)
-            {
-                if (args.Any())
-                {
-                    var action = string.Empty;
-                    for (var i = 0; i < args.Length; ++i)
-                    {
-                        switch (args[i].ToUpper())
-                        {
-                            case "/INSTALL":
-                                action = "INSTALL";
-                                break;
-                            case "/UNINSTALL":
-                                action = "UNINSTALL";
-                                break;
-                            case "/NAME":
-                                if (args.Length > i + 1)
-                                {
-                                    InstalledServiceName = args[++i];
-                                }
-                                break;
-                        }
-                    }
 
-                    switch (action)
-                    {
-                        case "INSTALL":
-                            // If administrator privileges are obtained, then install the service.
-                            if (new WindowsPrincipal
-                                (WindowsIdentity.GetCurrent()).IsInRole
-                                (WindowsBuiltInRole.Administrator))
-                                return InstallService();
-                            if (!ForkPriviledgedSelf(args))
-                            {
-                                Feedback(
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_INSTALL_SERVICE));
-                                return -1;
-                            }
-                            return 0;
-                        case "UNINSTALL":
-                            // If administrator privileges are obtained, then uninstall the service.
-                            if (new WindowsPrincipal
-                                (WindowsIdentity.GetCurrent()).IsInRole
-                                (WindowsBuiltInRole.Administrator))
-                                return UninstallService();
-                            if (!ForkPriviledgedSelf(args))
-                            {
-                                Feedback(
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_UNINSTALL_SERVICE));
-                                return -1;
-                            }
-                            return 0;
-                    }
-                }
-                // run interactively and log to console
-                var corrade = new Corrade();
-                corrade.OnStart(null);
+            if (!Environment.UserInteractive)
+            {
+                // run as a service
+                Run(new Corrade());
                 return 0;
             }
 
-            // run as a standard service
-            Run(new Corrade());
-            return 0;
-        }
-
-        private static bool ForkPriviledgedSelf(string[] args)
-        {
-            // The name parameter has to be escaped in order to preserve the full service name.
-            for (var i = 0; i < args.Length; ++i)
+            switch (args.Any())
             {
-                switch (args[i].ToUpper())
-                {
-                    case "/NAME":
-                        if (args.Length > i + 1)
+                case false:
+                    // run interactively and log to console
+                    var corrade = new Corrade();
+                    corrade.OnStart(null);
+                    return 0;
+                default:
+                    var exitCode = 0;
+                    if (Parser.Default.ParseArgumentsStrict(args, new CommandLineOptions(), (o, p) =>
+                    {
+                        Func<bool> elevatePrivileges = () =>
                         {
-                            ++i;
-                            args[i] = $"\"{args[i]}\"";
+                            try
+                            {
+                                // Create an elevated process with the original arguments.
+                                var info = new ProcessStartInfo(Assembly.GetEntryAssembly().Location,
+                                    string.Join(@" ", Environment.CommandLine.Split(' ').Skip(1)))
+                                {
+                                    Verb = "runas" // indicates to elevate privileges
+                                };
+
+                                var process = new Process
+                                {
+                                    EnableRaisingEvents = true, // enable WaitForExit()
+                                    StartInfo = info
+                                };
+
+                                process.Start();
+                                process.WaitForExit();
+                            }
+                            catch (Exception)
+                            {
+                                return false;
+                            }
+
+                            return true;
+                        };
+
+                        switch (o)
+                        {
+                            case "info":
+                                var infoOptions = (InfoSubOptions)p;
+                                if (infoOptions == null)
+                                {
+                                    exitCode = -1;
+                                    return;
+                                }
+                                Console.WriteLine("Version: " + CORRADE_CONSTANTS.CORRADE_VERSION);
+                                Console.WriteLine("Compiled on: " + CORRADE_CONSTANTS.CORRADE_COMPILE_DATE);
+                                break;
+                            case "install":
+                                var installOptions = (InstallSubOptions) p;
+                                if (installOptions == null)
+                                {
+                                    exitCode = -1;
+                                    return;
+                                }
+                                InstalledServiceName = installOptions.Name;
+                                // If administrator privileges are obtained, then install the service.
+                                if (new WindowsPrincipal(WindowsIdentity.GetCurrent())
+                                    .IsInRole(WindowsBuiltInRole.Administrator))
+                                {
+                                    try
+                                    {
+                                        // install the service with the Windows Service Control Manager (SCM)
+                                        ManagedInstallerClass.InstallHelper(new[]
+                                        {Assembly.GetExecutingAssembly().Location});
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        if (ex.InnerException != null &&
+                                            ex.InnerException.GetType() == typeof(Win32Exception))
+                                        {
+                                            var we = (Win32Exception) ex.InnerException;
+                                            Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
+                                            exitCode = we.ErrorCode;
+                                        }
+                                        Console.WriteLine(ex.ToString());
+                                        exitCode = -1;
+                                    }
+                                    break;
+                                }
+                                if (!elevatePrivileges())
+                                {
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            Enumerations.ConsoleMessage.UNABLE_TO_INSTALL_SERVICE));
+                                    exitCode = -1;
+                                }
+                                break;
+                            case "uninstall":
+                                var uninstallOptions = (UninstallSubOptions) p;
+                                if (uninstallOptions == null)
+                                {
+                                    exitCode = -1;
+                                    return;
+                                }
+                                InstalledServiceName = uninstallOptions.Name;
+                                // If administrator privileges are obtained, then uninstall the service.
+                                if (new WindowsPrincipal(WindowsIdentity.GetCurrent())
+                                    .IsInRole(WindowsBuiltInRole.Administrator))
+                                {
+                                    try
+                                    {
+                                        // uninstall the service from the Windows Service Control Manager (SCM)
+                                        ManagedInstallerClass.InstallHelper(new[]
+                                        {"/u", Assembly.GetExecutingAssembly().Location});
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        if (ex.InnerException.GetType() == typeof(Win32Exception))
+                                        {
+                                            var we = (Win32Exception) ex.InnerException;
+                                            Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
+                                            exitCode = we.ErrorCode;
+                                        }
+                                        Console.WriteLine(ex.ToString());
+                                        exitCode = -1;
+                                    }
+                                    break;
+                                }
+                                if (!elevatePrivileges())
+                                {
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            Enumerations.ConsoleMessage.UNABLE_TO_UNINSTALL_SERVICE));
+                                    exitCode = -1;
+                                }
+                                break;
                         }
-                        break;
-                }
+                    }))
+                        Environment.Exit(Parser.DefaultExitCodeFail);
+                    return exitCode;
             }
-
-            try
-            {
-                // Create an elevated process with the original arguments.
-                var info = new ProcessStartInfo(Assembly.GetEntryAssembly().Location, string.Join(" ", args))
-                {
-                    Verb = "runas" // indicates to elevate privileges
-                };
-
-                var process = new Process
-                {
-                    EnableRaisingEvents = true, // enable WaitForExit()
-                    StartInfo = info
-                };
-
-                process.Start();
-                process.WaitForExit();
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private static int InstallService()
-        {
-            try
-            {
-                // install the service with the Windows Service Control Manager (SCM)
-                ManagedInstallerClass.InstallHelper(new[] {Assembly.GetExecutingAssembly().Location});
-            }
-            catch (Exception ex)
-            {
-                if (ex.InnerException != null && ex.InnerException.GetType() == typeof(Win32Exception))
-                {
-                    var we = (Win32Exception) ex.InnerException;
-                    Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
-                    return we.ErrorCode;
-                }
-                Console.WriteLine(ex.ToString());
-                return -1;
-            }
-
-            return 0;
-        }
-
-        private static int UninstallService()
-        {
-            try
-            {
-                // uninstall the service from the Windows Service Control Manager (SCM)
-                ManagedInstallerClass.InstallHelper(new[] {"/u", Assembly.GetExecutingAssembly().Location});
-            }
-            catch (Exception ex)
-            {
-                if (ex.InnerException.GetType() == typeof(Win32Exception))
-                {
-                    var we = (Win32Exception) ex.InnerException;
-                    Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
-                    return we.ErrorCode;
-                }
-                Console.WriteLine(ex.ToString());
-                return -1;
-            }
-
-            return 0;
         }
 
         protected override void OnStop()
@@ -2796,8 +2796,34 @@ namespace Corrade
         {
             // Set the MTA to above normal for connection consistency.
             Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+
+            // Branch on platform and set-up termination handlers.
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Win32NT:
+                    if (Environment.UserInteractive)
+                    {
+                        // Setup console handler.
+                        ConsoleEventHandler += ConsoleCtrlCheck;
+                        NativeMethods.SetConsoleCtrlHandler(ConsoleEventHandler, true);
+                        if (Environment.UserInteractive)
+                        {
+                            Console.CancelKeyPress +=
+                                (sender, args) => ConnectionSemaphores['u'].Set();
+                        }
+                    }
+                    break;
+            }
+
+            // Write the logo.
+            Feedback(true, CORRADE_CONSTANTS.LOGO.ToArray());
+
+            // Suppress standard OpenMetaverse logs, we have better ones.
+            Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
+
             // Load the configuration file.
             lock (ConfigurationFileLock)
             {
@@ -2835,31 +2861,7 @@ namespace Corrade
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.READ_CORRADE_CONFIGURATION));
             }
-            // Load group cookies.
-            LoadGroupCookiesState.Invoke();
-            if (!corradeConfiguration.Equals(default(Configuration)))
-            {
-                UpdateDynamicConfiguration(corradeConfiguration);
-            }
-            // Write the logo.
-            Feedback(true, CORRADE_CONSTANTS.LOGO.ToArray());
-            // Branch on platform and set-up termination handlers.
-            switch (Environment.OSVersion.Platform)
-            {
-                case PlatformID.Win32NT:
-                    if (Environment.UserInteractive)
-                    {
-                        // Setup console handler.
-                        ConsoleEventHandler += ConsoleCtrlCheck;
-                        NativeMethods.SetConsoleCtrlHandler(ConsoleEventHandler, true);
-                        if (Environment.UserInteractive)
-                        {
-                            Console.CancelKeyPress +=
-                                (sender, args) => ConnectionSemaphores['u'].Set();
-                        }
-                    }
-                    break;
-            }
+
             // Load language detection
             try
             {
@@ -2873,6 +2875,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemEventHandler HandleConfigurationFileChanged = null;
             try
@@ -2892,6 +2895,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
             // Set-up watcher for dynamically reading the notifications file.
             FileSystemEventHandler HandleNotificationsFileChanged = null;
             try
@@ -2912,6 +2916,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
             // Set-up watcher for dynamically reading the group schedules file.
             FileSystemEventHandler HandleGroupSchedulesFileChanged = null;
             try
@@ -2932,6 +2937,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
             // Set-up watcher for dynamically reading the feeds file.
             FileSystemEventHandler HandleGroupFeedsFileChanged = null;
             try
@@ -2952,6 +2958,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
             // Set-up watcher for dynamically reading the group soft bans file.
             FileSystemEventHandler HandleGroupSoftBansFileChanged = null;
             try
@@ -2972,6 +2979,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
             // Set-up the SIML bot in case it has been enabled.
             FileSystemEventHandler HandleSIMLBotConfigurationChanged = null;
             try
@@ -2992,102 +3000,7 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
-            // Suppress standard OpenMetaverse logs, we have better ones.
-            Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
-            Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
-            Client.Settings.ALWAYS_DECODE_OBJECTS = true;
-            Client.Settings.ALWAYS_REQUEST_OBJECTS = true;
-            Client.Settings.SEND_AGENT_APPEARANCE = true;
-            Client.Settings.AVATAR_TRACKING = true;
-            Client.Settings.OBJECT_TRACKING = true;
-            Client.Settings.PARCEL_TRACKING = true;
-            Client.Settings.ALWAYS_REQUEST_PARCEL_DWELL = true;
-            Client.Settings.SEND_AGENT_UPDATES = true;
-            // Smoother movement for autopilot.
-            Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
-            Client.Settings.ENABLE_CAPS = true;
-            // Inventory settings.
-            Client.Settings.FETCH_MISSING_INVENTORY = true;
-            Client.Settings.HTTP_INVENTORY = true;
-            // Set the asset cache directory.
-            Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
-            Client.Settings.USE_ASSET_CACHE = true;
-            // More precision for object and avatar tracking updates.
-            Client.Settings.USE_INTERPOLATION_TIMER = true;
-            // Transfer textures over HTTP if possible.
-            Client.Settings.USE_HTTP_TEXTURES = true;
-            // Needed for commands dealing with terrain height.
-            Client.Settings.STORE_LAND_PATCHES = true;
-            // Decode simulator statistics.
-            Client.Settings.ENABLE_SIMSTATS = true;
-            // Send pings for lag measurement.
-            Client.Settings.SEND_PINGS = true;
-            // Throttling.
-            Client.Settings.SEND_AGENT_THROTTLE = true;
-            // Enable multiple simulators.
-            Client.Settings.MULTIPLE_SIMS = true;
-            // Check TOS
-            if (!corradeConfiguration.TOSAccepted)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TOS_NOT_ACCEPTED));
-                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
-            }
 
-            // Get the custom location.
-            var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
-            if (string.IsNullOrEmpty(location))
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.NO_START_LOCATIONS_FOUND));
-                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
-            }
-            var startLocation = new
-                wasOpenMetaverse.Helpers.StartLocationParser(location);
-            // Proceed to log-in.
-            Login = new LoginParams(
-                Client,
-                corradeConfiguration.FirstName,
-                corradeConfiguration.LastName,
-                corradeConfiguration.Password,
-                CORRADE_CONSTANTS.CLIENT_CHANNEL,
-                CORRADE_CONSTANTS.CORRADE_VERSION.ToString(Utils.EnUsCulture),
-                corradeConfiguration.LoginURL)
-            {
-                Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
-                AgreeToTos = corradeConfiguration.TOSAccepted,
-                Start =
-                    startLocation.isCustom
-                        ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
-                            startLocation.Z)
-                        : location,
-                UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString()
-            };
-
-            // Set the outgoing IP address if specified in the configuration file.
-            if (!string.IsNullOrEmpty(corradeConfiguration.BindIPAddress))
-            {
-                try
-                {
-                    Settings.BIND_ADDR = IPAddress.Parse(corradeConfiguration.BindIPAddress);
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.UNKNOWN_IP_ADDRESS),
-                        ex.Message);
-                    Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
-                }
-            }
-            // Set the ID0 if specified in the configuration file.
-            if (!string.IsNullOrEmpty(corradeConfiguration.DriveIdentifierHash))
-            {
-                Login.ID0 = Utils.MD5String(corradeConfiguration.DriveIdentifierHash);
-            }
-            // Set the MAC if specified in the configuration file.
-            if (!string.IsNullOrEmpty(corradeConfiguration.NetworkCardMAC))
-            {
-                Login.MAC = Utils.MD5String(corradeConfiguration.NetworkCardMAC);
-            }
             // Load Corrade caches.
             LoadCorradeCache.Invoke();
             // Load group members.
@@ -3102,11 +3015,15 @@ namespace Corrade
             LoadGroupSoftBansState.Invoke();
             // Load group Bayes classifications.
             LoadGroupBayesClassificiations.Invoke();
+            // Load group cookies.
+            LoadGroupCookiesState.Invoke();
+
             // Start the callback thread to send callbacks.
             var CallbackThread = new Thread(() =>
             {
                 do
                 {
+                    CallbackThreadState.WaitOne();
                     try
                     {
                         var callbackQueueElement = new CallbackQueueElement();
@@ -3142,6 +3059,8 @@ namespace Corrade
             {
                 do
                 {
+                    NotificationThreadState.WaitOne();
+
                     try
                     {
                         var notificationQueueElement = new NotificationQueueElement();
@@ -3177,35 +3096,192 @@ namespace Corrade
             })
             {IsBackground = true};
             NotificationThread.Start();
-            // Start the group membership thread.
-            GroupMembershipTimer.Change(TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval),
-                TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval));
-            // Install non-dynamic global event handlers.
-            Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
-            Client.Network.LoginProgress += HandleLoginProgress;
-            Client.Network.LoggedOut += HandleLoggedOut;
-            Client.Appearance.AppearanceSet += HandleAppearanceSet;
-            Client.Network.SimConnected += HandleSimulatorConnected;
-            Client.Network.Disconnected += HandleDisconnected;
-            Client.Network.SimDisconnected += HandleSimulatorDisconnected;
-            Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            Client.Self.TeleportProgress += HandleTeleportProgress;
-            Client.Self.ChatFromSimulator += HandleChatFromSimulator;
-            Client.Groups.GroupJoinedReply += HandleGroupJoined;
-            Client.Groups.GroupLeaveReply += HandleGroupLeave;
-            Client.Sound.PreloadSound += HandlePreloadSound;
-            // Each Instant Message is processed in its own thread.
-            Client.Self.IM +=
-                (sender, args) => CorradeThreadPool[Threading.Enumerations.ThreadType.INSTANT_MESSAGE].Spawn(
-                    () => HandleSelfIM(sender, args),
-                    corradeConfiguration.MaximumInstantMessageThreads);
-            // Log-in to the grid.
-            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_IN));
-            lock (Locks.ClientInstanceNetworkLock)
+
+            do
             {
-                Client.Network.BeginLogin(Login);
-            }
-            WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
+                // If the client has already been initialized, then we cycle the simulators.
+                if (Client == null)
+                    Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
+
+                // Create a new client.
+                Client = new GridClient();
+
+                // Set the initial client configuration.
+                Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
+                Client.Settings.ALWAYS_DECODE_OBJECTS = true;
+                Client.Settings.ALWAYS_REQUEST_OBJECTS = true;
+                Client.Settings.SEND_AGENT_APPEARANCE = true;
+                Client.Settings.AVATAR_TRACKING = true;
+                Client.Settings.OBJECT_TRACKING = true;
+                Client.Settings.PARCEL_TRACKING = true;
+                Client.Settings.ALWAYS_REQUEST_PARCEL_DWELL = true;
+                Client.Settings.SEND_AGENT_UPDATES = true;
+                // Smoother movement for autopilot.
+                Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
+                Client.Settings.ENABLE_CAPS = true;
+                // Inventory settings.
+                Client.Settings.FETCH_MISSING_INVENTORY = true;
+                Client.Settings.HTTP_INVENTORY = true;
+                // Set the asset cache directory.
+                Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                    CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
+                Client.Settings.USE_ASSET_CACHE = true;
+                // More precision for object and avatar tracking updates.
+                Client.Settings.USE_INTERPOLATION_TIMER = true;
+                // Transfer textures over HTTP if possible.
+                Client.Settings.USE_HTTP_TEXTURES = true;
+                // Needed for commands dealing with terrain height.
+                Client.Settings.STORE_LAND_PATCHES = true;
+                // Decode simulator statistics.
+                Client.Settings.ENABLE_SIMSTATS = true;
+                // Send pings for lag measurement.
+                Client.Settings.SEND_PINGS = true;
+                // Throttling.
+                Client.Settings.SEND_AGENT_THROTTLE = true;
+                // Enable multiple simulators.
+                Client.Settings.MULTIPLE_SIMS = true;
+
+                // Update the configuration.
+                UpdateDynamicConfiguration(corradeConfiguration);
+
+                // Install non-dynamic global event handlers.
+                Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
+                Client.Network.LoginProgress += HandleLoginProgress;
+                Client.Network.LoggedOut += HandleLoggedOut;
+                Client.Appearance.AppearanceSet += HandleAppearanceSet;
+                Client.Network.SimConnected += HandleSimulatorConnected;
+                Client.Network.Disconnected += HandleDisconnected;
+                Client.Network.SimDisconnected += HandleSimulatorDisconnected;
+                Client.Network.EventQueueRunning += HandleEventQueueRunning;
+                Client.Self.TeleportProgress += HandleTeleportProgress;
+                Client.Self.ChatFromSimulator += HandleChatFromSimulator;
+                Client.Groups.GroupJoinedReply += HandleGroupJoined;
+                Client.Groups.GroupLeaveReply += HandleGroupLeave;
+                Client.Sound.PreloadSound += HandlePreloadSound;
+                // Each Instant Message is processed in its own thread.
+                Client.Self.IM +=
+                    (o, p) => CorradeThreadPool[Threading.Enumerations.ThreadType.INSTANT_MESSAGE].Spawn(
+                        () => HandleSelfIM(o, p),
+                        corradeConfiguration.MaximumInstantMessageThreads);
+
+                // Start all event watchers.
+                SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                ConfigurationWatcher.EnableRaisingEvents = true;
+                NotificationsWatcher.EnableRaisingEvents = true;
+                SchedulesWatcher.EnableRaisingEvents = true;
+                GroupFeedWatcher.EnableRaisingEvents = true;
+                GroupSoftBansWatcher.EnableRaisingEvents = true;
+
+                // Start threads.
+                GroupMembershipTimer.Change(TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval),
+                    TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval));
+                NotificationThreadState.Set();
+                CallbackThreadState.Set();
+                HTTPListenerThreadState.Set();
+                TCPNotificationsThreadState.Set();
+
+                // Get the custom location.
+                var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
+                if (string.IsNullOrEmpty(location))
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
+                    break;
+                }
+
+                var startLocation = new
+                    wasOpenMetaverse.Helpers.StartLocationParser(location);
+
+                // Proceed to log-in.
+                Login = new LoginParams(
+                    Client,
+                    corradeConfiguration.FirstName,
+                    corradeConfiguration.LastName,
+                    corradeConfiguration.Password,
+                    CORRADE_CONSTANTS.CLIENT_CHANNEL,
+                    CORRADE_CONSTANTS.CORRADE_VERSION.ToString(Utils.EnUsCulture),
+                    corradeConfiguration.LoginURL)
+                {
+                    Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
+                    AgreeToTos = corradeConfiguration.TOSAccepted,
+                    Start =
+                        startLocation.isCustom
+                            ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
+                                startLocation.Z)
+                            : location,
+                    UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString()
+                };
+
+                // Reset all semaphores.
+                ConnectionSemaphores.Values.AsParallel().ForAll(o => o.Reset());
+
+                // Log-in to the grid.
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_IN), location);
+                lock (Locks.ClientInstanceNetworkLock)
+                {
+                    Client.Network.BeginLogin(Login);
+                }
+
+                // Wait for any semaphore.
+                WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
+
+                // Stop all event watchers.
+                SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                ConfigurationWatcher.EnableRaisingEvents = false;
+                NotificationsWatcher.EnableRaisingEvents = false;
+                SchedulesWatcher.EnableRaisingEvents = false;
+                GroupFeedWatcher.EnableRaisingEvents = false;
+                GroupSoftBansWatcher.EnableRaisingEvents = false;
+
+                // Uninstall all installed handlers
+                Client.Self.IM -= HandleSelfIM;
+                Client.Network.SimChanged -= HandleRadarObjects;
+                Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+                Client.Objects.ObjectUpdate -= HandleObjectUpdate;
+                Client.Objects.KillObject -= HandleKillObject;
+                Client.Self.AnimationsChanged -= HandleAnimationsChanged;
+                Client.Self.LoadURL -= HandleLoadURL;
+                Client.Self.ScriptControlChange -= HandleScriptControlChange;
+                Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
+                Client.Network.SimChanged -= HandleSimChanged;
+                Client.Self.RegionCrossed -= HandleRegionCrossed;
+                Client.Self.MeanCollision -= HandleMeanCollision;
+                Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+                Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
+                Client.Avatars.ViewerEffect -= HandleViewerEffect;
+                Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
+                Client.Self.ScriptDialog -= HandleScriptDialog;
+                Client.Objects.AvatarSitChanged -= HandleAvatarSitChanged;
+                Client.Groups.GroupJoinedReply -= HandleGroupJoined;
+                Client.Groups.GroupLeaveReply -= HandleGroupLeave;
+                Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
+                Client.Self.MoneyBalance -= HandleMoneyBalance;
+                Client.Self.AlertMessage -= HandleAlertMessage;
+                Client.Self.ScriptQuestion -= HandleScriptQuestion;
+                Client.Self.TeleportProgress -= HandleTeleportProgress;
+                Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
+                Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
+                Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
+                Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
+                Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
+                Client.Network.EventQueueRunning -= HandleEventQueueRunning;
+                Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
+                Client.Network.Disconnected -= HandleDisconnected;
+                Client.Network.SimConnected -= HandleSimulatorConnected;
+                Client.Network.LoginProgress -= HandleLoginProgress;
+                Client.Network.LoggedOut -= HandleLoggedOut;
+                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+                Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+                Client.Sound.PreloadSound -= HandlePreloadSound;
+
+                // Suspend threads.
+                GroupMembershipTimer.Change(0, 0);
+                NotificationThreadState.Reset();
+                CallbackThreadState.Reset();
+                HTTPListenerThreadState.Reset();
+                TCPNotificationsThreadState.Reset();
+            } while (!ConnectionSemaphores['u'].WaitOne(0));
+
             // Now log-out.
             Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_OUT));
 
@@ -3299,47 +3375,6 @@ namespace Corrade
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
                 }
             }
-
-            // Uninstall all installed handlers
-            Client.Self.IM -= HandleSelfIM;
-            Client.Network.SimChanged -= HandleRadarObjects;
-            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
-            Client.Objects.ObjectUpdate -= HandleObjectUpdate;
-            Client.Objects.KillObject -= HandleKillObject;
-            Client.Self.AnimationsChanged -= HandleAnimationsChanged;
-            Client.Self.LoadURL -= HandleLoadURL;
-            Client.Self.ScriptControlChange -= HandleScriptControlChange;
-            Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
-            Client.Network.SimChanged -= HandleSimChanged;
-            Client.Self.RegionCrossed -= HandleRegionCrossed;
-            Client.Self.MeanCollision -= HandleMeanCollision;
-            Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
-            Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
-            Client.Avatars.ViewerEffect -= HandleViewerEffect;
-            Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
-            Client.Self.ScriptDialog -= HandleScriptDialog;
-            Client.Objects.AvatarSitChanged -= HandleAvatarSitChanged;
-            Client.Groups.GroupJoinedReply -= HandleGroupJoined;
-            Client.Groups.GroupLeaveReply -= HandleGroupLeave;
-            Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
-            Client.Self.MoneyBalance -= HandleMoneyBalance;
-            Client.Self.AlertMessage -= HandleAlertMessage;
-            Client.Self.ScriptQuestion -= HandleScriptQuestion;
-            Client.Self.TeleportProgress -= HandleTeleportProgress;
-            Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
-            Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
-            Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
-            Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
-            Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
-            Client.Network.EventQueueRunning -= HandleEventQueueRunning;
-            Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
-            Client.Network.Disconnected -= HandleDisconnected;
-            Client.Network.SimConnected -= HandleSimulatorConnected;
-            Client.Network.LoginProgress -= HandleLoginProgress;
-            Client.Network.LoggedOut -= HandleLoggedOut;
-            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-            Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
-            Client.Sound.PreloadSound -= HandlePreloadSound;
 
             // Stop the sphere effects expiration timer.
             EffectsExpirationTimer.Stop();
@@ -3455,7 +3490,7 @@ namespace Corrade
             Environment.Exit(corradeConfiguration.ExitCodeExpected);
         }
 
-        private void HandlePreloadSound(object sender, PreloadSoundEventArgs e)
+        private static void HandlePreloadSound(object sender, PreloadSoundEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.Preload, e),
@@ -5234,13 +5269,14 @@ namespace Corrade
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
         {
-            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.DISCONNECTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.DISCONNECTED), e.Message);
             ConnectionSemaphores['l'].Set();
         }
 
         private static void HandleEventQueueRunning(object sender, EventQueueRunningEventArgs e)
         {
-            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.EVENT_QUEUE_STARTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.EVENT_QUEUE_STARTED),
+                e.Simulator.Name);
         }
 
         private static void HandleSimulatorConnected(object sender, SimConnectedEventArgs e)
@@ -5251,43 +5287,22 @@ namespace Corrade
 
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
+            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.SIMULATOR_DISCONNECTED),
+                e.Simulator.Name, e.Reason.ToString());
+
             // if any simulators are still connected, we are not disconnected
             lock (Locks.ClientInstanceNetworkLock)
             {
-                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.SIMULATOR_DISCONNECTED),
-                    e.Simulator.Name, e.Reason.ToString());
                 if (Client.Network.Simulators.Any())
                     return;
             }
+
+            // Announce that we lost all connections to simulators.
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ALL_SIMULATORS_DISCONNECTED));
-            // Do not cycle if a user-logout was requested.
-            if (ConnectionSemaphores['l'] != null && !ConnectionSemaphores['l'].SafeWaitHandle.IsClosed &&
-                ConnectionSemaphores['l'].WaitOne(0))
-                return;
-            // Login failed, so trying the next start location...
-            var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
-            // We have exceeded the configured locations so raise the semaphore and abort.
-            if (string.IsNullOrEmpty(location))
-            {
-                Feedback(
-                    Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
-                ConnectionSemaphores['s'].Set();
-                return;
-            }
-            Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS),
-                location);
-            var startLocation = new
-                wasOpenMetaverse.Helpers.StartLocationParser(location);
-            Login.Start = startLocation.isCustom
-                ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
-                    startLocation.Z)
-                : location;
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                Client.Network.BeginLogin(Login);
-            }
+
+            // Set the semaphore.
+            ConnectionSemaphores['s'].Set();
         }
 
         private static void HandleLoggedOut(object sender, LoggedOutEventArgs e)
@@ -5427,29 +5442,7 @@ namespace Corrade
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGIN_FAILED),
                         e.FailReason,
                         e.Message);
-                    // Login failed, so trying the next start location...
-                    var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
-                    // We have exceeded the configured locations so raise the semaphore and abort.
-                    if (string.IsNullOrEmpty(location))
-                    {
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
-                        ConnectionSemaphores['l'].Set();
-                        break;
-                    }
-                    Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS),
-                        location);
-                    var startLocation = new
-                        wasOpenMetaverse.Helpers.StartLocationParser(location);
-                    Login.Start = startLocation.isCustom
-                        ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
-                            startLocation.Z)
-                        : location;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        Client.Network.BeginLogin(Login);
-                    }
+                    ConnectionSemaphores['l'].Set();
                     break;
                 case LoginStatus.ConnectingToLogin:
                     Feedback(
@@ -6109,8 +6102,10 @@ namespace Corrade
             var password =
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD)),
                     message));
-            // Bail if no password set.
+
+            // No password, no game.
             if (string.IsNullOrEmpty(password)) return null;
+
             // Authenticate the request against the group password.
             if (!Authenticate(commandGroup.UUID, password))
             {
@@ -6118,6 +6113,7 @@ namespace Corrade
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ACCESS_DENIED));
                 return null;
             }
+
             // Censor password.
             message = KeyValue.Set(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD)),
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
@@ -6424,6 +6420,13 @@ namespace Corrade
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(
                     Enumerations.ConsoleMessage.UPDATING_CORRADE_CONFIGURATION));
+
+            // Check TOS
+            if (!corradeConfiguration.TOSAccepted)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TOS_NOT_ACCEPTED));
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+            }
 
             // Setup heartbeat log timer.
             CorradeHeartBeatLogTimer.Change(TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval),
@@ -6987,6 +6990,7 @@ namespace Corrade
                                         HTTPListener.Start();
                                         while (runHTTPServer && HTTPListener.IsListening)
                                         {
+                                            HTTPListenerThreadState.WaitOne();
                                             var result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
                                                 HTTPListener);
                                             WaitHandle.WaitAny(new[] {result.AsyncWaitHandle});
@@ -7057,6 +7061,34 @@ namespace Corrade
             Settings.MAX_HTTP_CONNECTIONS = (int) configuration.ConnectionLimit;
 
             // Network Settings
+            // Set the outgoing IP address if specified in the configuration file.
+            if (!string.IsNullOrEmpty(corradeConfiguration.BindIPAddress))
+            {
+                try
+                {
+                    Settings.BIND_ADDR = IPAddress.Parse(corradeConfiguration.BindIPAddress);
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.UNKNOWN_IP_ADDRESS),
+                        ex.Message);
+                    Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+                }
+            }
+
+            // Set the ID0 if specified in the configuration file.
+            if (!string.IsNullOrEmpty(corradeConfiguration.DriveIdentifierHash))
+            {
+                Login.ID0 = Utils.MD5String(corradeConfiguration.DriveIdentifierHash);
+            }
+
+            // Set the MAC if specified in the configuration file.
+            if (!string.IsNullOrEmpty(corradeConfiguration.NetworkCardMAC))
+            {
+                Login.MAC = Utils.MD5String(corradeConfiguration.NetworkCardMAC);
+            }
+            // ServicePoint settings.
             ServicePointManager.DefaultConnectionLimit = (int) configuration.ConnectionLimit;
             ServicePointManager.UseNagleAlgorithm = configuration.UseNaggle;
             ServicePointManager.Expect100Continue = configuration.UseExpect100Continue;

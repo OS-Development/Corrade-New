@@ -42,12 +42,14 @@ namespace Corrade
             // 
             // CorradeInstaller
             // 
+            this.CorradeInstaller.DelayedAutoStart = true;
             this.CorradeInstaller.Description = "Corrade Second Life and OpenSim Scripted Agent";
             this.CorradeInstaller.DisplayName = "Corrade";
             this.CorradeInstaller.ServiceName = "Corrade";
             this.CorradeInstaller.ServicesDependedOn = new string[] {
         "eventlog",
         "Netman"};
+            this.CorradeInstaller.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
             // 
             // ProjectInstaller
             // 
