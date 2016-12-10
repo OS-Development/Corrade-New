@@ -159,8 +159,6 @@ namespace Configurator
             // server
             mainForm.HTTPServerEnabled.Checked = corradeConfiguration.EnableHTTPServer;
             mainForm.HTTPServerPrefix.Text = corradeConfiguration.HTTPServerPrefix;
-            mainForm.HTTPServerCompression.Text =
-                Reflection.GetNameFromEnumValue(corradeConfiguration.HTTPServerCompression);
             mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
             mainForm.HTTPServerAuthenticationEnabled.Checked = corradeConfiguration.EnableHTTPServerAuthentication;
             mainForm.HTTPServerUsername.Text = corradeConfiguration.HTTPServerUsername;
@@ -290,7 +288,6 @@ namespace Configurator
                             mainForm.ExpectedExitCodeBox.Visible = false;
                             mainForm.AbnormalExitCodeBox.Visible = false;
                             mainForm.HTTPServerLimitsBox.Visible = false;
-                            mainForm.CompressionBox.Visible = false;
                             break;
                         case "Intermediary":
                             /* Hide non-advanced experience tabs. */
@@ -313,7 +310,6 @@ namespace Configurator
                             mainForm.ExpectedExitCodeBox.Visible = false;
                             mainForm.AbnormalExitCodeBox.Visible = false;
                             mainForm.HTTPServerLimitsBox.Visible = false;
-                            mainForm.CompressionBox.Visible = false;
                             break;
                         case "Advanced":
                             /* Show everything. */
@@ -336,7 +332,6 @@ namespace Configurator
                             mainForm.ExpectedExitCodeBox.Visible = true;
                             mainForm.AbnormalExitCodeBox.Visible = true;
                             mainForm.HTTPServerLimitsBox.Visible = true;
-                            mainForm.CompressionBox.Visible = true;
                             break;
                     }
                     mainForm.Tabs.Enabled = true;
@@ -489,9 +484,6 @@ namespace Configurator
             // server
             corradeConfiguration.EnableHTTPServer = mainForm.HTTPServerEnabled.Checked;
             corradeConfiguration.HTTPServerPrefix = mainForm.HTTPServerPrefix.Text;
-            corradeConfiguration.HTTPServerCompression =
-                Reflection.GetEnumValueFromName<Configuration.HTTPCompressionMethod>(
-                    mainForm.HTTPServerCompression.Text);
             corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
             corradeConfiguration.EnableHTTPServerAuthentication = mainForm.HTTPServerAuthenticationEnabled.Checked;
             corradeConfiguration.HTTPServerUsername = mainForm.HTTPServerUsername.Text;
@@ -2134,11 +2126,6 @@ namespace Configurator
                                 throw new Exception("error in server section");
                             }
                             corradeConfiguration.HTTPServerPrefix = serverNode.InnerText;
-                            break;
-                        case ConfigurationKeys.COMPRESSION:
-                            corradeConfiguration.HTTPServerCompression =
-                                Reflection.GetEnumValueFromName<Configuration.HTTPCompressionMethod>(
-                                    serverNode.InnerText);
                             break;
                         case ConfigurationKeys.KEEP_ALIVE:
                             bool HTTPKeepAlive;

@@ -56,9 +56,9 @@ using wasSharp.Collections.Generic;
 using wasSharp.Collections.Specialized;
 using wasSharp.Timers;
 using wasSharp.Web;
+using wasSharp.Web.Utilities;
 using wasSharpNET.Cryptography;
 using static Corrade.Command;
-using Extensions = wasSharp.Web.Utilities.Extensions;
 using Group = OpenMetaverse.Group;
 using GroupNotice = Corrade.Structures.GroupNotice;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -841,10 +841,10 @@ namespace Corrade
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
-                        o = Extensions.URLUnescapeDataString(o);
+                        o = o.URLUnescapeDataString();
                         break;
                     case Configuration.Filter.RFC3986:
-                        o = Extensions.URIUnescapeDataString(o);
+                        o = o.URIUnescapeDataString();
                         break;
                     case Configuration.Filter.ENIGMA:
                         o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
@@ -885,10 +885,10 @@ namespace Corrade
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
-                        o = Extensions.URLEscapeDataString(o);
+                        o = o.URLEscapeDataString();
                         break;
                     case Configuration.Filter.RFC3986:
-                        o = Extensions.URIEscapeDataString(o);
+                        o = o.URIEscapeDataString();
                         break;
                     case Configuration.Filter.ENIGMA:
                         o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
@@ -2632,7 +2632,6 @@ namespace Corrade
 
         public static int Main(string[] args)
         {
-
             if (!Environment.UserInteractive)
             {
                 // run as a service
@@ -2682,7 +2681,7 @@ namespace Corrade
                         switch (o)
                         {
                             case "info":
-                                var infoOptions = (InfoSubOptions)p;
+                                var infoOptions = (InfoSubOptions) p;
                                 if (infoOptions == null)
                                 {
                                     exitCode = -1;
@@ -2751,7 +2750,7 @@ namespace Corrade
                                     }
                                     catch (Exception ex)
                                     {
-                                        if (ex.InnerException.GetType() == typeof(Win32Exception))
+                                        if (ex.InnerException?.GetType() == typeof(Win32Exception))
                                         {
                                             var we = (Win32Exception) ex.InnerException;
                                             Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
@@ -3104,42 +3103,46 @@ namespace Corrade
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
 
                 // Create a new client.
-                Client = new GridClient();
-
-                // Set the initial client configuration.
-                Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
-                Client.Settings.ALWAYS_DECODE_OBJECTS = true;
-                Client.Settings.ALWAYS_REQUEST_OBJECTS = true;
-                Client.Settings.SEND_AGENT_APPEARANCE = true;
-                Client.Settings.AVATAR_TRACKING = true;
-                Client.Settings.OBJECT_TRACKING = true;
-                Client.Settings.PARCEL_TRACKING = true;
-                Client.Settings.ALWAYS_REQUEST_PARCEL_DWELL = true;
-                Client.Settings.SEND_AGENT_UPDATES = true;
-                // Smoother movement for autopilot.
-                Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
-                Client.Settings.ENABLE_CAPS = true;
-                // Inventory settings.
-                Client.Settings.FETCH_MISSING_INVENTORY = true;
-                Client.Settings.HTTP_INVENTORY = true;
-                // Set the asset cache directory.
-                Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                    CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
-                Client.Settings.USE_ASSET_CACHE = true;
-                // More precision for object and avatar tracking updates.
-                Client.Settings.USE_INTERPOLATION_TIMER = true;
-                // Transfer textures over HTTP if possible.
-                Client.Settings.USE_HTTP_TEXTURES = true;
-                // Needed for commands dealing with terrain height.
-                Client.Settings.STORE_LAND_PATCHES = true;
-                // Decode simulator statistics.
-                Client.Settings.ENABLE_SIMSTATS = true;
-                // Send pings for lag measurement.
-                Client.Settings.SEND_PINGS = true;
-                // Throttling.
-                Client.Settings.SEND_AGENT_THROTTLE = true;
-                // Enable multiple simulators.
-                Client.Settings.MULTIPLE_SIMS = true;
+                Client = new GridClient
+                {
+                    // Set the initial client configuration.
+                    Settings =
+                    {
+                        ALWAYS_REQUEST_PARCEL_ACL = true,
+                        ALWAYS_DECODE_OBJECTS = true,
+                        ALWAYS_REQUEST_OBJECTS = true,
+                        SEND_AGENT_APPEARANCE = true,
+                        AVATAR_TRACKING = true,
+                        OBJECT_TRACKING = true,
+                        PARCEL_TRACKING = true,
+                        ALWAYS_REQUEST_PARCEL_DWELL = true,
+                        // Smoother movement for autopilot.
+                        SEND_AGENT_UPDATES = true,
+                        DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
+                        ENABLE_CAPS = true,
+                        // Inventory settings.
+                        FETCH_MISSING_INVENTORY = true,
+                        HTTP_INVENTORY = true,
+                        // Set the asset cache directory.
+                        ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                            CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY),
+                        USE_ASSET_CACHE = true,
+                        // More precision for object and avatar tracking updates.
+                        USE_INTERPOLATION_TIMER = true,
+                        // Transfer textures over HTTP if possible.
+                        USE_HTTP_TEXTURES = true,
+                        // Needed for commands dealing with terrain height.
+                        STORE_LAND_PATCHES = true,
+                        // Decode simulator statistics.
+                        ENABLE_SIMSTATS = true,
+                        // Send pings for lag measurement.
+                        SEND_PINGS = true,
+                        // Throttling.
+                        SEND_AGENT_THROTTLE = true,
+                        // Enable multiple simulators.
+                        MULTIPLE_SIMS = true
+                    }
+                };
 
                 // Update the configuration.
                 UpdateDynamicConfiguration(corradeConfiguration);
@@ -3384,6 +3387,8 @@ namespace Corrade
             GroupFeedsTimer.Stop();
             // Stop the group schedules timer.
             GroupSchedulesTimer.Stop();
+            // Stop the heartbeat timer.
+            CorradeHeartBeatTimer.Stop();
 
             // Save group soft bans state.
             SaveGroupSoftBansState.Invoke();
@@ -3671,8 +3676,21 @@ namespace Corrade
                 httpRequest = httpContext.Request;
                 // only accept connected remote endpoints
                 if (httpRequest.RemoteEndPoint == null) throw new HTTPCommandException();
-                // Retrieve the message sent even if it is a compressed stream.
-                switch (httpRequest.ContentEncoding.EncodingName.ToLower())
+                // perform decompression in case the client sent compressed data
+                var requestEncoding = new QValue("identity");
+                var acceptEncoding = httpRequest.Headers.GetValues("Content-Encoding");
+                if (acceptEncoding != null && acceptEncoding.Any())
+                {
+                    var acceptEncodings = new QValueList(acceptEncoding);
+                    if (!acceptEncodings.Equals(default(QValueList)))
+                    {
+                        var preferredEncoding = acceptEncodings.FindPreferred("gzip", "deflate", "identity");
+                        if (!preferredEncoding.IsEmpty)
+                            requestEncoding = preferredEncoding;
+                    }
+                }
+                // retrieve the message sent even if it is a compressed stream.
+                switch (requestEncoding.Name)
                 {
                     case "gzip":
                         using (var inputStream = new MemoryStream())
@@ -4382,9 +4400,6 @@ namespace Corrade
                                 break;
                             }
 
-                            if (bayes == null)
-                                break;
-
                             var bayesDataModified = false;
                             switch (dataSynchronizationOption)
                             {
@@ -4486,9 +4501,23 @@ namespace Corrade
                                         KeyValue.Encode(KeyValue.Escape(result, wasOutput)));
                                 using (var outputStream = new MemoryStream())
                                 {
-                                    switch (corradeConfiguration.HTTPServerCompression)
+                                    // perform compression based on the encoding advertised by the client. 
+                                    var requestEncoding = new QValue("identity");
+                                    var acceptEncoding = httpRequest.Headers.GetValues("Accept-Encoding");
+                                    if (acceptEncoding != null && acceptEncoding.Any())
                                     {
-                                        case Configuration.HTTPCompressionMethod.GZIP:
+                                        var acceptEncodings = new QValueList(acceptEncoding);
+                                        if (!acceptEncodings.Equals(default(QValueList)))
+                                        {
+                                            var preferredEncoding = acceptEncodings.FindPreferred("gzip", "deflate",
+                                                "identity");
+                                            if (!preferredEncoding.IsEmpty)
+                                                requestEncoding = preferredEncoding;
+                                        }
+                                    }
+                                    switch (requestEncoding.Name.ToLower())
+                                    {
+                                        case "gzip":
                                             using (var dataGZipStream = new GZipStream(outputStream,
                                                 CompressionMode.Compress, false))
                                             {
@@ -4498,7 +4527,7 @@ namespace Corrade
                                             response.AddHeader("Content-Encoding", "gzip");
                                             data = outputStream.ToArray();
                                             break;
-                                        case Configuration.HTTPCompressionMethod.DEFLATE:
+                                        case "deflate":
                                             using (
                                                 var dataDeflateStream = new DeflateStream(outputStream,
                                                     CompressionMode.Compress, false))
@@ -4516,7 +4545,7 @@ namespace Corrade
                                 }
                                 using (var responseStream = response.OutputStream)
                                 {
-                                    using (var responseBinaryWriter = new BinaryWriter(responseStream))
+                                    using (var responseBinaryWriter = new BinaryWriter(responseStream, Encoding.UTF8))
                                     {
                                         responseBinaryWriter.Write(data);
                                     }

@@ -152,9 +152,6 @@
             this.groupBox43 = new System.Windows.Forms.GroupBox();
             this.pictureBox24 = new System.Windows.Forms.PictureBox();
             this.HTTPServerKeepAliveEnabled = new System.Windows.Forms.CheckBox();
-            this.CompressionBox = new System.Windows.Forms.GroupBox();
-            this.pictureBox25 = new System.Windows.Forms.PictureBox();
-            this.HTTPServerCompression = new System.Windows.Forms.ComboBox();
             this.groupBox41 = new System.Windows.Forms.GroupBox();
             this.pictureBox26 = new System.Windows.Forms.PictureBox();
             this.HTTPServerPrefix = new System.Windows.Forms.TextBox();
@@ -535,8 +532,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).BeginInit();
             this.groupBox43.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox24)).BeginInit();
-            this.CompressionBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox25)).BeginInit();
             this.groupBox41.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox26)).BeginInit();
             this.groupBox40.SuspendLayout();
@@ -2039,7 +2034,6 @@
             // 
             this.HTTPTabPage.Controls.Add(this.groupBox25);
             this.HTTPTabPage.Controls.Add(this.groupBox43);
-            this.HTTPTabPage.Controls.Add(this.CompressionBox);
             this.HTTPTabPage.Controls.Add(this.groupBox41);
             this.HTTPTabPage.Controls.Add(this.groupBox40);
             this.HTTPTabPage.Controls.Add(this.HTTPServerLimitsBox);
@@ -2056,7 +2050,7 @@
             this.groupBox25.Controls.Add(this.HTTPServerAuthenticationEnabled);
             this.groupBox25.Controls.Add(this.groupBox28);
             this.groupBox25.Controls.Add(this.groupBox42);
-            this.groupBox25.Location = new System.Drawing.Point(7, 149);
+            this.groupBox25.Location = new System.Drawing.Point(14, 76);
             this.groupBox25.Name = "groupBox25";
             this.groupBox25.Size = new System.Drawing.Size(285, 147);
             this.groupBox25.TabIndex = 13;
@@ -2154,9 +2148,9 @@
             // 
             this.groupBox43.Controls.Add(this.pictureBox24);
             this.groupBox43.Controls.Add(this.HTTPServerKeepAliveEnabled);
-            this.groupBox43.Location = new System.Drawing.Point(7, 76);
+            this.groupBox43.Location = new System.Drawing.Point(519, 76);
             this.groupBox43.Name = "groupBox43";
-            this.groupBox43.Size = new System.Drawing.Size(144, 67);
+            this.groupBox43.Size = new System.Drawing.Size(150, 67);
             this.groupBox43.TabIndex = 3;
             this.groupBox43.TabStop = false;
             this.groupBox43.Text = "KeepAlive";
@@ -2182,42 +2176,6 @@
             this.HTTPServerKeepAliveEnabled.TabIndex = 0;
             this.HTTPServerKeepAliveEnabled.Text = "Enabled";
             this.HTTPServerKeepAliveEnabled.UseVisualStyleBackColor = true;
-            // 
-            // CompressionBox
-            // 
-            this.CompressionBox.Controls.Add(this.pictureBox25);
-            this.CompressionBox.Controls.Add(this.HTTPServerCompression);
-            this.CompressionBox.Location = new System.Drawing.Point(160, 76);
-            this.CompressionBox.Name = "CompressionBox";
-            this.CompressionBox.Size = new System.Drawing.Size(132, 67);
-            this.CompressionBox.TabIndex = 2;
-            this.CompressionBox.TabStop = false;
-            this.CompressionBox.Text = "Compression";
-            // 
-            // pictureBox25
-            // 
-            this.pictureBox25.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox25.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox25.Image")));
-            this.pictureBox25.Location = new System.Drawing.Point(105, 28);
-            this.pictureBox25.Name = "pictureBox25";
-            this.pictureBox25.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox25.TabIndex = 4;
-            this.pictureBox25.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox25, "Which compression algorithm should be used by \r\nCorrade when returning data.");
-            this.pictureBox25.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // HTTPServerCompression
-            // 
-            this.HTTPServerCompression.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.HTTPServerCompression.FormattingEnabled = true;
-            this.HTTPServerCompression.Items.AddRange(new object[] {
-            "none",
-            "deflate",
-            "gzip"});
-            this.HTTPServerCompression.Location = new System.Drawing.Point(6, 27);
-            this.HTTPServerCompression.Name = "HTTPServerCompression";
-            this.HTTPServerCompression.Size = new System.Drawing.Size(91, 24);
-            this.HTTPServerCompression.TabIndex = 0;
             // 
             // groupBox41
             // 
@@ -2305,7 +2263,7 @@
             this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerBody);
             this.HTTPServerLimitsBox.Controls.Add(this.label13);
             this.HTTPServerLimitsBox.Controls.Add(this.LimitsHTTPServerDrain);
-            this.HTTPServerLimitsBox.Location = new System.Drawing.Point(298, 76);
+            this.HTTPServerLimitsBox.Location = new System.Drawing.Point(14, 229);
             this.HTTPServerLimitsBox.Name = "HTTPServerLimitsBox";
             this.HTTPServerLimitsBox.Size = new System.Drawing.Size(371, 106);
             this.HTTPServerLimitsBox.TabIndex = 9;
@@ -5629,8 +5587,6 @@
             this.groupBox43.ResumeLayout(false);
             this.groupBox43.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox24)).EndInit();
-            this.CompressionBox.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox25)).EndInit();
             this.groupBox41.ResumeLayout(false);
             this.groupBox41.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox26)).EndInit();
@@ -5948,8 +5904,6 @@
         private System.Windows.Forms.CheckBox RLVEnabled;
         private System.Windows.Forms.GroupBox groupBox43;
         private System.Windows.Forms.CheckBox HTTPServerKeepAliveEnabled;
-        private System.Windows.Forms.GroupBox CompressionBox;
-        private System.Windows.Forms.ComboBox HTTPServerCompression;
         private System.Windows.Forms.GroupBox groupBox41;
         private System.Windows.Forms.TextBox HTTPServerPrefix;
         private System.Windows.Forms.GroupBox groupBox40;
@@ -6092,7 +6046,6 @@
         private System.Windows.Forms.PictureBox pictureBox21;
         private System.Windows.Forms.PictureBox pictureBox22;
         private System.Windows.Forms.PictureBox pictureBox24;
-        private System.Windows.Forms.PictureBox pictureBox25;
         private System.Windows.Forms.PictureBox pictureBox26;
         private System.Windows.Forms.PictureBox pictureBox23;
         private System.Windows.Forms.PictureBox pictureBox30;
