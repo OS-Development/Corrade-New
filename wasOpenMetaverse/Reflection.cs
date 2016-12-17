@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Globalization;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -648,7 +649,7 @@ namespace wasOpenMetaverse
                 if (data is int)
                 {
                     int intData;
-                    if (int.TryParse(d.Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out intData))
+                    if (int.TryParse(d.Value, NumberStyles.Integer, Utils.EnUsCulture, out intData))
                     {
                         wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, intData);
                         return;
@@ -657,7 +658,7 @@ namespace wasOpenMetaverse
                 if (data is uint)
                 {
                     uint uintData;
-                    if (uint.TryParse(d.Value, out uintData))
+                    if (uint.TryParse(d.Value, NumberStyles.Integer, Utils.EnUsCulture, out uintData))
                     {
                         wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, uintData);
                         return;
@@ -666,7 +667,7 @@ namespace wasOpenMetaverse
                 if (data is float)
                 {
                     float floatData;
-                    if (float.TryParse(d.Value, out floatData))
+                    if (float.TryParse(d.Value, NumberStyles.Float, Utils.EnUsCulture, out floatData))
                     {
                         wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, floatData);
                         return;
@@ -675,18 +676,9 @@ namespace wasOpenMetaverse
                 if (data is long)
                 {
                     long longData;
-                    if (long.TryParse(d.Value, out longData))
+                    if (long.TryParse(d.Value, NumberStyles.Float, Utils.EnUsCulture, out longData))
                     {
                         wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, longData);
-                        return;
-                    }
-                }
-                if (data is float)
-                {
-                    float singleData;
-                    if (float.TryParse(d.Value, out singleData))
-                    {
-                        wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, singleData);
                         return;
                     }
                 }
