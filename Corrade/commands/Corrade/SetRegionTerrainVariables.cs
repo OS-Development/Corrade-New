@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -38,7 +40,8 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WATERHEIGHT)),
-                                        corradeCommandParameters.Message)), out waterHeight))
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
+                                out waterHeight))
                         {
                             waterHeight = wasOpenMetaverse.Constants.REGION.DEFAULT_WATER_HEIGHT;
                         }
@@ -48,7 +51,8 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TERRAINRAISELIMIT)),
-                                        corradeCommandParameters.Message)), out terrainRaiseLimit))
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
+                                out terrainRaiseLimit))
                         {
                             terrainRaiseLimit = wasOpenMetaverse.Constants.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
                         }
@@ -58,7 +62,8 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TERRAINLOWERLIMIT)),
-                                        corradeCommandParameters.Message)), out terrainLowerLimit))
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
+                                out terrainLowerLimit))
                         {
                             terrainLowerLimit = wasOpenMetaverse.Constants.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
                         }
@@ -88,7 +93,8 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SUNPOSITION)),
-                                        corradeCommandParameters.Message)), out sunPosition))
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
+                                out sunPosition))
                         {
                             sunPosition = wasOpenMetaverse.Constants.REGION.SUNRISE;
                         }

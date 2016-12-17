@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -75,7 +76,8 @@ namespace Corrade
                         case Enumerations.Action.GET:
                             if (!uint.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
-                                    corradeCommandParameters.Message)), out index))
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                out index))
                             {
                                 index = 0;
                             }
@@ -100,7 +102,8 @@ namespace Corrade
                         case Enumerations.Action.REMOVE:
                             if (!uint.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
-                                    corradeCommandParameters.Message)), out index))
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                out index))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_INDEX_PROVIDED);
                             }

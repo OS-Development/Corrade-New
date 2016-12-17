@@ -6,11 +6,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
 using CorradeConfigurationSharp;
 using HtmlAgilityPack;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -106,7 +108,7 @@ namespace Corrade
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
-                            corradeCommandParameters.Message)), out duration))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out duration))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DURATION_PROVIDED);
 
                     var location = wasInput(
@@ -120,14 +122,14 @@ namespace Corrade
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
-                            corradeCommandParameters.Message)), out category))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out category))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CATEGORY_PROVIDED);
 
                     uint amount;
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                            corradeCommandParameters.Message)), out amount))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out amount))
                         amount = 0;
 
                     #endregion
@@ -274,7 +276,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_GET_EVENT_IDENTIFIER);
 
                     uint id;
-                    switch (uint.TryParse(idString.Split('=').Last(), out id))
+                    switch (uint.TryParse(idString.Split('=').Last(), NumberStyles.Integer, Utils.EnUsCulture, out id))
                     {
                         case true:
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

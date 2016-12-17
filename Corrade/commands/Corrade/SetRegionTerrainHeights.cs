@@ -6,8 +6,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -56,7 +58,8 @@ namespace Corrade
                             {
                                 float outFloat;
                                 setHeights[o] = data.ElementAtOrDefault(o) != null &&
-                                                float.TryParse(data[o], out outFloat)
+                                                float.TryParse(data[o], NumberStyles.Float, Utils.EnUsCulture,
+                                                    out outFloat)
                                     ? outFloat
                                     : simHeights[o];
                             });

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
@@ -70,7 +71,7 @@ namespace Corrade
                     float gain;
                     if (!float.TryParse(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.GAIN)),
-                            corradeCommandParameters.Message)),
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                         out gain))
                     {
                         gain = 1;

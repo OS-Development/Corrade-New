@@ -6,11 +6,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
 using CorradeConfigurationSharp;
 using HtmlAgilityPack;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -56,7 +58,7 @@ namespace Corrade
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
-                            corradeCommandParameters.Message)), out id))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out id))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
 
                     #region Event Parameters
@@ -105,7 +107,7 @@ namespace Corrade
                     int duration;
                     if (!int.TryParse(wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
-                        corradeCommandParameters.Message)), out duration))
+                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out duration))
                         duration = -1;
 
                     var location = wasInput(
@@ -117,14 +119,14 @@ namespace Corrade
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
-                            corradeCommandParameters.Message)), out category))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out category))
                         category = -1;
 
                     int amount;
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                            corradeCommandParameters.Message)), out amount))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out amount))
                         amount = -1;
 
                     #endregion
@@ -269,7 +271,9 @@ namespace Corrade
                         if (durationNode?.Attributes["value"].Value == null)
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
-                        if (!int.TryParse(durationNode.Attributes["value"].Value, out duration))
+                        if (
+                            !int.TryParse(durationNode.Attributes["value"].Value, NumberStyles.Integer,
+                                Utils.EnUsCulture, out duration))
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
@@ -291,7 +295,9 @@ namespace Corrade
                         if (categoryNode?.Attributes["value"].Value == null)
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
-                        if (!int.TryParse(categoryNode.Attributes["value"].Value, out category))
+                        if (
+                            !int.TryParse(categoryNode.Attributes["value"].Value, NumberStyles.Integer,
+                                Utils.EnUsCulture, out category))
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }
@@ -302,7 +308,9 @@ namespace Corrade
                         if (amoutNode?.Attributes["value"].Value == null)
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
-                        if (!int.TryParse(amoutNode.Attributes["value"].Value, out amount))
+                        if (
+                            !int.TryParse(amoutNode.Attributes["value"].Value, NumberStyles.Integer, Utils.EnUsCulture,
+                                out amount))
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.UNABLE_TO_RETRIEVE_FORM_PARAMETERS);
                     }

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Globalization;
 using OpenMetaverse;
 using wasOpenMetaverse;
 
@@ -23,17 +24,17 @@ namespace Corrade
                         return;
                     }
                     float globalX;
-                    if (!float.TryParse(coordinates[0], out globalX))
+                    if (!float.TryParse(coordinates[0], NumberStyles.Float, Utils.EnUsCulture, out globalX))
                     {
                         return;
                     }
                     float globalY;
-                    if (!float.TryParse(coordinates[1], out globalY))
+                    if (!float.TryParse(coordinates[1], NumberStyles.Float, Utils.EnUsCulture, out globalY))
                     {
                         return;
                     }
                     float altitude;
-                    if (!float.TryParse(coordinates[2], out altitude))
+                    if (!float.TryParse(coordinates[2], NumberStyles.Float, Utils.EnUsCulture, out altitude))
                     {
                         return;
                     }

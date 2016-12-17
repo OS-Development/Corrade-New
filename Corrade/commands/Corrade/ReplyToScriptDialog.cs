@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
@@ -84,7 +85,8 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
                                     corradeCommandParameters.Message));
                                 int labelIndex;
-                                if (string.IsNullOrEmpty(index) || !int.TryParse(index, out labelIndex))
+                                if (string.IsNullOrEmpty(index) ||
+                                    !int.TryParse(index, NumberStyles.Integer, Utils.EnUsCulture, out labelIndex))
                                     labelIndex = -1;
 
                                 if (string.IsNullOrEmpty(label) && labelIndex.Equals(-1))

@@ -6,11 +6,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
 using CorradeConfigurationSharp;
 using HtmlAgilityPack;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -56,7 +58,7 @@ namespace Corrade
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
-                            corradeCommandParameters.Message)), out id))
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out id))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
 
                     var cookieContainer = new CookieContainer();

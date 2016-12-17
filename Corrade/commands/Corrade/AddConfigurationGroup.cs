@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -79,13 +80,15 @@ namespace Corrade
                         uint groupWorkers;
                         if (!uint.TryParse(wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WORKERS)),
-                                corradeCommandParameters.Message)), out groupWorkers))
+                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                            out groupWorkers))
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_WORKERS_PROVIDED);
 
                         uint groupSchedules;
                         if (!uint.TryParse(wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCHEDULES)),
-                                corradeCommandParameters.Message)), out groupSchedules))
+                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                            out groupSchedules))
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_SCHEDULES_PROVIDED);
 
                         var groupDatabase = wasInput(

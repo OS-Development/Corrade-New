@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using CorradeConfigurationSharp;
@@ -30,12 +31,12 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        int price;
+                        uint price;
                         if (
-                            !int.TryParse(
+                            !uint.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PRICE)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Currency, Utils.EnUsCulture,
                                 out price))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
@@ -45,7 +46,7 @@ namespace Corrade
                             !float.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
                         {
                             range = corradeConfiguration.Range;
@@ -107,7 +108,7 @@ namespace Corrade
                                 primitive.LocalID, saleTypeInfo != null
                                     ? (SaleType)
                                         saleTypeInfo.GetValue(null)
-                                    : SaleType.Copy, price);
+                                    : SaleType.Copy, (int) price);
                         }
                     };
         }

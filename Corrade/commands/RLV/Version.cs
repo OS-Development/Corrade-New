@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Globalization;
 using Corrade.Constants;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -19,7 +20,7 @@ namespace Corrade
                 (message, rule, senderUUID) =>
                 {
                     int channel;
-                    if (!int.TryParse(rule.Param, out channel) || channel < 1)
+                    if (!int.TryParse(rule.Param, NumberStyles.Integer, Utils.EnUsCulture, out channel) || channel < 1)
                     {
                         return;
                     }

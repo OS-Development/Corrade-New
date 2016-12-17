@@ -179,13 +179,13 @@ namespace Corrade
                                             }
                                             break;
                                         default:
-                                            // notification destination is already there
-                                            if (notification.NotificationURLDestination[
-                                                (Configuration.Notifications) notificationValue].Contains(url))
-                                                break;
                                             switch (action)
                                             {
                                                 case Enumerations.Action.ADD:
+                                                    // notification destination is already there
+                                                    if (notification.NotificationURLDestination[
+                                                        (Configuration.Notifications) notificationValue].Contains(url))
+                                                        break;
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationURLDestination[

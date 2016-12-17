@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Corrade.Structures.Effects;
@@ -81,7 +82,8 @@ namespace Corrade
                                                     wasInput(KeyValue.Get(
                                                         wasOutput(
                                                             Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                                        corradeCommandParameters.Message)),
+                                                        corradeCommandParameters.Message)), NumberStyles.Float,
+                                                    Utils.EnUsCulture,
                                                     out range))
                                             {
                                                 range = corradeConfiguration.Range;
@@ -287,7 +289,8 @@ namespace Corrade
                                         wasInput(
                                             KeyValue.Get(
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ALPHA)),
-                                                corradeCommandParameters.Message)), out alpha))
+                                                corradeCommandParameters.Message)), NumberStyles.Float,
+                                        Utils.EnUsCulture, out alpha))
                                     {
                                         alpha = Client.Settings.DEFAULT_EFFECT_COLOR.A;
                                     }
@@ -298,7 +301,8 @@ namespace Corrade
                                                 KeyValue.Get(
                                                     wasOutput(
                                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
-                                                    corradeCommandParameters.Message)),
+                                                    corradeCommandParameters.Message)), NumberStyles.Float,
+                                            Utils.EnUsCulture,
                                             out duration))
                                     {
                                         duration = 1;

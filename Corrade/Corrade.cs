@@ -6303,24 +6303,30 @@ namespace Corrade
                             {
                                 case Sift.TAKE:
                                     // Take a specified amount from the results if requested.
-                                    int take;
-                                    if (!string.IsNullOrEmpty(data) && int.TryParse(wasInput(kvp.Value), out take))
+                                    uint take;
+                                    if (!string.IsNullOrEmpty(data) &&
+                                        uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
+                                            out take))
                                     {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take(take));
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take((int) take));
                                     }
                                     break;
                                 case Sift.SKIP:
                                     // Skip a number of elements if requested.
-                                    int skip;
-                                    if (!string.IsNullOrEmpty(data) && int.TryParse(wasInput(kvp.Value), out skip))
+                                    uint skip;
+                                    if (!string.IsNullOrEmpty(data) &&
+                                        uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
+                                            out skip))
                                     {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip(skip));
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip((int) skip));
                                     }
                                     break;
                                 case Sift.EACH:
                                     // Return a stride in case it was requested.
-                                    int each;
-                                    if (!string.IsNullOrEmpty(data) && int.TryParse(wasInput(kvp.Value), out each))
+                                    uint each;
+                                    if (!string.IsNullOrEmpty(data) &&
+                                        uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
+                                            out each))
                                     {
                                         data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i%each == 0));
                                     }

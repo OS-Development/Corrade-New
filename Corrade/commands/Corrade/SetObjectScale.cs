@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
@@ -33,7 +34,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)),
+                                corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
                     {
                         range = corradeConfiguration.Range;

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
@@ -33,7 +34,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)),
+                                corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -88,10 +89,10 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_SURFACE_COORDINATES);
                     }
-                    int faceIndex;
-                    if (!int.TryParse(wasInput(KeyValue.Get(
+                    uint faceIndex;
+                    if (!uint.TryParse(wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
-                        corradeCommandParameters.Message)),
+                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                         out faceIndex))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
@@ -138,7 +139,7 @@ namespace Corrade
                     {
                         Client.Objects.ClickObject(
                             simulator,
-                            primitive.LocalID, uvCoord, stCoord, faceIndex, position,
+                            primitive.LocalID, uvCoord, stCoord, (int) faceIndex, position,
                             normal, binormal);
                     }
                 };

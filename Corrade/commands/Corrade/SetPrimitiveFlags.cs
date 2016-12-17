@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using CorradeConfigurationSharp;
@@ -35,7 +36,7 @@ namespace Corrade
                             !float.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
                         {
                             range = corradeConfiguration.Range;
@@ -158,7 +159,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DENSITY)),
-                                        corradeCommandParameters.Message)),
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out density))
                         {
                             density = primitive.PhysicsProps.Density;
@@ -169,7 +170,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FRICTION)),
-                                        corradeCommandParameters.Message)),
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out friction))
                         {
                             friction = primitive.PhysicsProps.Friction;
@@ -180,7 +181,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RESTITUTION)),
-                                        corradeCommandParameters.Message)),
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out restitution))
                         {
                             restitution = primitive.PhysicsProps.Restitution;
@@ -191,7 +192,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.GRAVITY)),
-                                        corradeCommandParameters.Message)),
+                                        corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out gravity))
                         {
                             gravity = primitive.PhysicsProps.GravityMultiplier;

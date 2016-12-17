@@ -7,12 +7,14 @@
 using System;
 using System.Collections.Generic;
 using System.Compat.Web;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
 using Corrade.WebForms.SecondLife;
 using CorradeConfigurationSharp;
 using HtmlAgilityPack;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -170,7 +172,8 @@ namespace Corrade
                         )
                     {
                         uint duration;
-                        if (uint.TryParse(node.Attributes["value"].Value, out duration))
+                        if (uint.TryParse(node.Attributes["value"].Value, NumberStyles.Integer, Utils.EnUsCulture,
+                            out duration))
                         {
                             eventFormData.Duration.Add(HttpUtility.HtmlDecode(node.InnerText).Trim(), duration);
                         }
@@ -203,7 +206,8 @@ namespace Corrade
                         )
                     {
                         uint category;
-                        if (uint.TryParse(node.Attributes["value"].Value, out category))
+                        if (uint.TryParse(node.Attributes["value"].Value, NumberStyles.Integer, Utils.EnUsCulture,
+                            out category))
                         {
                             eventFormData.Category.Add(HttpUtility.HtmlDecode(node.InnerText).Trim(), category);
                         }

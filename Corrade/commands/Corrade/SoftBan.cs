@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -186,7 +187,9 @@ namespace Corrade
 
                                         // Get the hard time.
                                         ulong banTime;
-                                        if (!ulong.TryParse(times.ElementAtOrDefault(o.index), out banTime))
+                                        if (
+                                            !ulong.TryParse(times.ElementAtOrDefault(o.index), NumberStyles.Float,
+                                                Utils.EnUsCulture, out banTime))
                                         {
                                             banTime = 0;
                                         }
@@ -544,7 +547,9 @@ namespace Corrade
                             {
                                 // Get the hard time.
                                 ulong banTime;
-                                if (!ulong.TryParse(times.ElementAtOrDefault(o.index), out banTime))
+                                if (
+                                    !ulong.TryParse(times.ElementAtOrDefault(o.index), NumberStyles.Float,
+                                        Utils.EnUsCulture, out banTime))
                                     return;
 
                                 ObservableHashSet<SoftBan> groupSoftBans;

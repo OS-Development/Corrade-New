@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -110,12 +111,12 @@ namespace Corrade
                     {
                         classifiedUUID = UUID.Random();
                     }
-                    int price;
+                    uint price;
                     if (
-                        !int.TryParse(
+                        !uint.TryParse(
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PRICE)),
-                                corradeCommandParameters.Message)),
+                                corradeCommandParameters.Message)), NumberStyles.Currency, Utils.EnUsCulture,
                             out price))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
@@ -145,7 +146,7 @@ namespace Corrade
                         Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                             ? (DirectoryManager.ClassifiedCategories)
                                 classifiedCategoriesField.GetValue(null)
-                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, price, position,
+                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, (int) price, position,
                             name, classifiedDescription, renew);
                     }
                 };

@@ -6,8 +6,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -22,7 +24,7 @@ namespace Corrade
                     uint status;
                     if (!uint.TryParse(wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.STATUS)),
-                        corradeCommandParameters.Message)), out status))
+                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out status))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_STATUS_SUPPLIED);
                     }

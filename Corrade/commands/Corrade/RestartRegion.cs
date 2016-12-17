@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -34,8 +35,7 @@ namespace Corrade
                         !uint.TryParse(
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DELAY)),
-                                corradeCommandParameters.Message))
-                                .ToLowerInvariant(), out delay))
+                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out delay))
                     {
                         delay = wasOpenMetaverse.Constants.ESTATE.REGION_RESTART_DELAY;
                     }

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using CorradeConfigurationSharp;
@@ -49,23 +50,23 @@ namespace Corrade
                                 groupUUID = corradeCommandParameters.Group.UUID;
                                 break;
                         }
-                        int days;
+                        uint days;
                         if (
-                            !int.TryParse(
+                            !uint.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DAYS)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                 out days))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DAYS);
                         }
-                        int interval;
+                        uint interval;
                         if (
-                            !int.TryParse(
+                            !uint.TryParse(
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INTERVAL)),
-                                        corradeCommandParameters.Message)),
+                                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                 out interval))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_INTERVAL);
@@ -81,7 +82,7 @@ namespace Corrade
                         lock (Locks.ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                            Client.Groups.RequestGroupAccountSummary(groupUUID, days, interval);
+                            Client.Groups.RequestGroupAccountSummary(groupUUID, (int) days, (int) interval);
                             if (
                                 !RequestGroupAccountSummaryEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
                                     false))

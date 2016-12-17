@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
@@ -34,7 +35,7 @@ namespace Corrade
                             !float.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
                         {
                             range = corradeConfiguration.Range;
@@ -84,20 +85,20 @@ namespace Corrade
                         var face =
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
                                 corradeCommandParameters.Message));
-                        int i;
-                        switch (!int.TryParse(face, out i))
+                        uint i;
+                        switch (!uint.TryParse(face, NumberStyles.Integer, Utils.EnUsCulture, out i))
                         {
                             case true:
                                 switch (face.ToLowerInvariant())
                                 {
                                     case "all":
-                                        i = primitive.Textures.FaceTextures.Count() - 1;
+                                        i = (uint) primitive.Textures.FaceTextures.Count() - 1;
                                         do
                                         {
                                             if (primitive.Textures.FaceTextures[i] == null)
                                             {
                                                 primitive.Textures.FaceTextures[i] =
-                                                    primitive.Textures.CreateFace((uint) i);
+                                                    primitive.Textures.CreateFace(i);
                                             }
                                             primitive.Textures.FaceTextures[i] =
                                                 primitive.Textures.FaceTextures[i].wasCSVToStructure(wasInput(
@@ -105,7 +106,7 @@ namespace Corrade
                                                         wasOutput(
                                                             Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                         corradeCommandParameters.Message)));
-                                        } while (--i > -1);
+                                        } while (--i >= 0);
                                         break;
                                     case "default":
                                         primitive.Textures.DefaultTexture =
@@ -124,7 +125,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
                                 if (primitive.Textures.FaceTextures[i] == null)
                                 {
-                                    primitive.Textures.FaceTextures[i] = primitive.Textures.CreateFace((uint) i);
+                                    primitive.Textures.FaceTextures[i] = primitive.Textures.CreateFace(i);
                                 }
                                 primitive.Textures.FaceTextures[i] =
                                     primitive.Textures.FaceTextures[i].wasCSVToStructure(wasInput(

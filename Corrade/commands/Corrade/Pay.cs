@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -28,13 +29,13 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    int amount;
+                    uint amount;
                     if (
-                        !int.TryParse(
+                        !uint.TryParse(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Currency, Utils.EnUsCulture,
                             out amount))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
@@ -65,7 +66,7 @@ namespace Corrade
                         case Enumerations.Entity.GROUP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
+                                Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int) amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
@@ -98,7 +99,7 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.GiveAvatarMoney(targetUUID, amount,
+                                Client.Self.GiveAvatarMoney(targetUUID, (int) amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
@@ -118,7 +119,7 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.GiveObjectMoney(targetUUID, amount,
+                                Client.Self.GiveObjectMoney(targetUUID, (int) amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),

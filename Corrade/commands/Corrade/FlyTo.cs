@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using CorradeConfigurationSharp;
@@ -41,7 +42,7 @@ namespace Corrade
                     uint duration;
                     if (!uint.TryParse(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
-                            corradeCommandParameters.Message)),
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                         out duration))
                     {
                         duration = corradeConfiguration.ServicesTimeout;
@@ -49,15 +50,15 @@ namespace Corrade
                     float vicinity;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.VICINITY)),
-                            corradeCommandParameters.Message)),
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                         out vicinity))
                     {
                         vicinity = 2;
                     }
-                    int affinity;
-                    if (!int.TryParse(wasInput(
+                    uint affinity;
+                    if (!uint.TryParse(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AFFINITY)),
-                            corradeCommandParameters.Message)),
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                         out affinity))
                     {
                         affinity = 2;
@@ -65,7 +66,7 @@ namespace Corrade
 
                     // Generate the powers.
                     var segments =
-                        new HashSet<int>(Enumerable.Range(0, affinity).Select(x => (int) Math.Pow(2, x)).Reverse());
+                        new HashSet<int>(Enumerable.Range(0, (int) affinity).Select(x => (int) Math.Pow(2, x)).Reverse());
 
                     var PositionReachedEvent = new ManualResetEvent(false);
                     EventHandler<TerseObjectUpdateEventArgs> TerseObjectUpdateEvent = (sender, args) =>

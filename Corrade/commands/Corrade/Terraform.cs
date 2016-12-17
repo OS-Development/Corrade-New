@@ -35,8 +35,8 @@ namespace Corrade
                     if (!int.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                            corradeCommandParameters.Message)), NumberStyles.AllowLeadingSign,
-                        CultureInfo.InvariantCulture, out amount))
+                            corradeCommandParameters.Message)), NumberStyles.Integer,
+                        Utils.EnUsCulture, out amount))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
                     }
@@ -44,7 +44,7 @@ namespace Corrade
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WIDTH)),
-                            corradeCommandParameters.Message)), out width))
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out width))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_WIDTH);
                     }
@@ -52,7 +52,7 @@ namespace Corrade
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.HEIGHT)),
-                            corradeCommandParameters.Message)), out height))
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out height))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_HEIGHT);
                     }

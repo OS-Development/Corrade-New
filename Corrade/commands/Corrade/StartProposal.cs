@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
@@ -47,13 +48,13 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    int duration;
+                    uint duration;
                     if (
-                        !int.TryParse(
+                        !uint.TryParse(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                             out duration))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_DURATION);
@@ -64,18 +65,18 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MAJORITY)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out majority))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_MAJORITY);
                     }
-                    int quorum;
+                    uint quorum;
                     if (
-                        !int.TryParse(
+                        !uint.TryParse(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.QUORUM)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                             out quorum))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_QUORUM);
@@ -91,9 +92,9 @@ namespace Corrade
                     {
                         Client.Groups.StartProposal(corradeCommandParameters.Group.UUID, new GroupProposal
                         {
-                            Duration = duration,
+                            Duration = (int) duration,
                             Majority = majority,
-                            Quorum = quorum,
+                            Quorum = (int) quorum,
                             VoteText = text
                         });
                     }

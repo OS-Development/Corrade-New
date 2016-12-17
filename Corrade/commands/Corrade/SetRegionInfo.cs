@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -99,7 +100,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LIMIT)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant(), out limit))
+                                .ToLowerInvariant(), NumberStyles.Float, Utils.EnUsCulture, out limit))
                     {
                         limit = wasOpenMetaverse.Constants.REGION.DEFAULT_AGENT_LIMIT;
                     }
@@ -109,7 +110,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BONUS)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant(), out bonus))
+                                .ToLowerInvariant(), NumberStyles.Float, Utils.EnUsCulture, out bonus))
                     {
                         bonus = wasOpenMetaverse.Constants.REGION.DEFAULT_OBJECT_BONUS;
                     }

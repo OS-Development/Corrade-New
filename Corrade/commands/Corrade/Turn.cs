@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -31,7 +32,7 @@ namespace Corrade
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEGREES)),
-                            corradeCommandParameters.Message)), out degrees))
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out degrees))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ANGLE_PROVIDED);
                     }

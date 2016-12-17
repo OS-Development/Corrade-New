@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using CorradeConfigurationSharp;
@@ -89,18 +90,18 @@ namespace Corrade
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_TOP_TYPE);
                     }
-                    int amount;
+                    uint amount;
                     if (
-                        !int.TryParse(
+                        !uint.TryParse(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                             out amount))
                     {
-                        amount = topTasks.Count;
+                        amount = (uint) topTasks.Count;
                     }
-                    var data = new List<string>(topTasks.Take(amount).Select(o => new[]
+                    var data = new List<string>(topTasks.Take((int) amount).Select(o => new[]
                     {
                         o.Value.Score.ToString(Utils.EnUsCulture),
                         o.Value.TaskName,

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
@@ -34,7 +35,7 @@ namespace Corrade
                             !float.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                    corradeCommandParameters.Message)),
+                                    corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
                         {
                             range = corradeConfiguration.Range;
@@ -86,7 +87,8 @@ namespace Corrade
                             !uint.TryParse(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
-                                        corradeCommandParameters.Message)), out face))
+                                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                out face))
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
                         MediaEntry[] faceMediaEntries = null;
                         lock (Locks.ClientInstanceObjectsLock)
