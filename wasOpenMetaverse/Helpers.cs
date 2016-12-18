@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -183,7 +184,7 @@ namespace wasOpenMetaverse
                 var locSplit = location.Split('/');
 
                 int returnResult;
-                var stringToInt = int.TryParse(locSplit[1], out returnResult);
+                var stringToInt = int.TryParse(locSplit[1], NumberStyles.Integer, Utils.EnUsCulture, out returnResult);
 
                 return stringToInt ? returnResult : 128;
             }
@@ -198,7 +199,7 @@ namespace wasOpenMetaverse
                 if (locSplit.Length > 2)
                 {
                     int returnResult;
-                    var stringToInt = int.TryParse(locSplit[2], out returnResult);
+                    var stringToInt = int.TryParse(locSplit[2], NumberStyles.Integer, Utils.EnUsCulture, out returnResult);
 
                     if (stringToInt)
                         return returnResult;
@@ -217,7 +218,7 @@ namespace wasOpenMetaverse
                 if (locSplit.Length > 3)
                 {
                     int returnResult;
-                    var stringToInt = int.TryParse(locSplit[3], out returnResult);
+                    var stringToInt = int.TryParse(locSplit[3], NumberStyles.Integer, Utils.EnUsCulture, out returnResult);
 
                     if (stringToInt)
                         return returnResult;

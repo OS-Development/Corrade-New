@@ -375,17 +375,18 @@ namespace Configurator
             }
             corradeConfiguration.AutoActivateGroup = mainForm.AutoActivateGroup.Checked;
             uint outUint;
-            if (uint.TryParse(mainForm.AutoActivateGroupDelay.Text, out outUint))
+            if (uint.TryParse(mainForm.AutoActivateGroupDelay.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.AutoActivateGroupDelay = outUint;
             }
             corradeConfiguration.CacheEnableAutoPrune = mainForm.AutoPruneCache.Checked;
             double outDouble;
-            if (double.TryParse(mainForm.AutoPruneCacheInterval.Text, out outDouble))
+            if (double.TryParse(mainForm.AutoPruneCacheInterval.Text, NumberStyles.Float, Utils.EnUsCulture,
+                out outDouble))
             {
                 corradeConfiguration.CacheAutoPruneInterval = outDouble;
             }
-            if (uint.TryParse(mainForm.GroupCreateFee.Text, out outUint))
+            if (uint.TryParse(mainForm.GroupCreateFee.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.GroupCreateFee = outUint;
             }
@@ -448,35 +449,37 @@ namespace Configurator
             corradeConfiguration.UseExpect100Continue = mainForm.NetworkExpect100ContinueEnabled.Checked;
 
             // throttles
-            if (uint.TryParse(mainForm.ThrottlesTotalThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottlesTotalThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ThrottleTotal = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottlesResendThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottlesResendThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.ThrottleResend = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottleLandThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottleLandThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ThrottleLand = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottleTaskThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottleTaskThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ThrottleTask = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottleTextureThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottleTextureThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.ThrottleTexture = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottleWindThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottleWindThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ThrottleWind = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottleAssetThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottleAssetThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ThrottleAsset = outUint;
             }
-            if (uint.TryParse(mainForm.ThrottleCloudThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.ThrottleCloudThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ThrottleCloud = outUint;
             }
@@ -501,7 +504,8 @@ namespace Configurator
             // TCP
             corradeConfiguration.EnableTCPNotificationsServer = mainForm.TCPNotificationsServerEnabled.Checked;
             corradeConfiguration.TCPNotificationsServerAddress = mainForm.TCPNotificationsServerAddress.Text;
-            if (uint.TryParse(mainForm.TCPNotificationsServerPort.Text, out outUint))
+            if (uint.TryParse(mainForm.TCPNotificationsServerPort.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.TCPNotificationsServerPort = outUint;
             }
@@ -520,133 +524,146 @@ namespace Configurator
             }
 
             // limits
-            if (uint.TryParse(mainForm.LimitsRange.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsRange.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.Range = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsPOSTThreads.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsPOSTThreads.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.MaximumPOSTThreads = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsSchedulerExpiration.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsSchedulerExpiration.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.SchedulerExpiration = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsLoggingThreads.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsLoggingThreads.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.MaximumLogThreads = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsCommandsThreads.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsCommandsThreads.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.MaximumCommandThreads = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsRLVThreads.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsRLVThreads.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.MaximumRLVThreads = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsInstantMessageThreads.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsInstantMessageThreads.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.MaximumInstantMessageThreads = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsSchedulesResolution.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsSchedulesResolution.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.SchedulesResolution = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsClientConnections.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsClientConnections.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.ConnectionLimit = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsClientIdle.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsClientIdle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ConnectionIdleTime = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsCallbacksTimeout.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsCallbacksTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.CallbackTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsCallbacksThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsCallbacksThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.CallbackThrottle = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsCallbackQueue.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsCallbackQueue.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.CallbackQueueLength = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsNotificationsTimeout.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsNotificationsTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.NotificationTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsNotificationsThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsNotificationsThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.NotificationThrottle = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsNotificationsQueue.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsNotificationsQueue.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.NotificationQueueLength = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsNotificationsThreads.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsNotificationsThreads.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.MaximumNotificationThreads = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsTCPNotificationsQueue.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsTCPNotificationsQueue.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.TCPNotificationQueueLength = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsTCPNotificationsThrottle.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsTCPNotificationsThrottle.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.TCPNotificationThrottle = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHTTPServerDrain.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHTTPServerDrain.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.HTTPServerDrainTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHTTPServerBody.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHTTPServerBody.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.HTTPServerBodyTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHTTPServerHeader.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHTTPServerHeader.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.HTTPServerHeaderTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHTTPServerIdle.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHTTPServerIdle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.HTTPServerIdleTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHTTPServerQueue.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHTTPServerQueue.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.HTTPServerQueueTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHTTPServerTimeout.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHTTPServerTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.HTTPServerTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsServicesTimeout.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsServicesTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.ServicesTimeout = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsServicesRebake.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsServicesRebake.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.RebakeDelay = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsDataTimeout.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsDataTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.DataTimeout = outUint;
             }
             corradeConfiguration.DataDecayType =
                 Reflection.GetEnumValueFromName<DecayingAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
-            if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.MembershipSweepInterval = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsFeedsUpdate.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsFeedsUpdate.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.FeedsUpdateInterval = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.LogoutGrace = outUint;
             }
-            if (uint.TryParse(mainForm.LimitsHeartbeatLogInterval.Text, out outUint))
+            if (uint.TryParse(mainForm.LimitsHeartbeatLogInterval.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
             {
                 corradeConfiguration.HeartbeatLogInterval = outUint;
             }
@@ -1147,7 +1164,8 @@ namespace Configurator
                 GroupUUID.BackColor = Color.Empty;
 
                 uint groupWorkers;
-                if (GroupWorkers.Text.Equals(string.Empty) || !uint.TryParse(GroupWorkers.Text, out groupWorkers))
+                if (GroupWorkers.Text.Equals(string.Empty) ||
+                    !uint.TryParse(GroupWorkers.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupWorkers))
                 {
                     GroupWorkers.BackColor = Color.MistyRose;
                     return;
@@ -1156,7 +1174,7 @@ namespace Configurator
 
                 uint groupSchedules;
                 if (GroupSchedules.Text.Equals(string.Empty) ||
-                    !uint.TryParse(GroupSchedules.Text, out groupSchedules))
+                    !uint.TryParse(GroupSchedules.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupSchedules))
                 {
                     GroupSchedules.BackColor = Color.MistyRose;
                     return;
@@ -1254,7 +1272,8 @@ namespace Configurator
                 GroupUUID.BackColor = Color.Empty;
 
                 uint groupWorkers;
-                if (GroupWorkers.Text.Equals(string.Empty) || !uint.TryParse(GroupWorkers.Text, out groupWorkers))
+                if (GroupWorkers.Text.Equals(string.Empty) ||
+                    !uint.TryParse(GroupWorkers.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupWorkers))
                 {
                     GroupWorkers.BackColor = Color.MistyRose;
                     return;
@@ -1262,7 +1281,8 @@ namespace Configurator
                 GroupWorkers.BackColor = Color.Empty;
 
                 uint groupSchedules;
-                if (GroupSchedules.Text.Equals(string.Empty) || !uint.TryParse(GroupSchedules.Text, out groupSchedules))
+                if (GroupSchedules.Text.Equals(string.Empty) ||
+                    !uint.TryParse(GroupSchedules.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupSchedules))
                 {
                     GroupSchedules.BackColor = Color.MistyRose;
                     return;
@@ -1750,7 +1770,9 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.GROUP_CREATE_FEE:
                             uint groupCreateFee;
-                            if (!uint.TryParse(client.InnerText, out groupCreateFee))
+                            if (
+                                !uint.TryParse(client.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
+                                    out groupCreateFee))
                             {
                                 throw new Exception("error in client section");
                             }
@@ -1768,7 +1790,9 @@ namespace Configurator
                                 {
                                     case ConfigurationKeys.EXPECTED:
                                         int exitCodeExpected;
-                                        if (!int.TryParse(exitCodeNode.InnerText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out exitCodeExpected))
+                                        if (
+                                            !int.TryParse(exitCodeNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture, out exitCodeExpected))
                                         {
                                             throw new Exception("error in client section");
                                         }
@@ -1776,7 +1800,9 @@ namespace Configurator
                                         break;
                                     case ConfigurationKeys.ABNORMAL:
                                         int exitCodeAbnormal;
-                                        if (!int.TryParse(exitCodeNode.InnerText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out exitCodeAbnormal))
+                                        if (
+                                            !int.TryParse(exitCodeNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture, out exitCodeAbnormal))
                                         {
                                             throw new Exception("error in client section");
                                         }
@@ -2203,7 +2229,7 @@ namespace Configurator
                     {
                         case ConfigurationKeys.TOTAL:
                             uint throttleTotal;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleTotal))
                             {
                                 throw new Exception("error in throttles section");
@@ -2212,7 +2238,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.LAND:
                             uint throttleLand;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleLand))
                             {
                                 throw new Exception("error in throttles section");
@@ -2221,7 +2247,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.TASK:
                             uint throttleTask;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleTask))
                             {
                                 throw new Exception("error in throttles section");
@@ -2230,7 +2256,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.TEXTURE:
                             uint throttleTexture;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleTexture))
                             {
                                 throw new Exception("error in throttles section");
@@ -2239,7 +2265,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.WIND:
                             uint throttleWind;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleWind))
                             {
                                 throw new Exception("error in throttles section");
@@ -2248,7 +2274,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.RESEND:
                             uint throttleResend;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleResend))
                             {
                                 throw new Exception("error in throttles section");
@@ -2257,7 +2283,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.ASSET:
                             uint throttleAsset;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleAsset))
                             {
                                 throw new Exception("error in throttles section");
@@ -2266,7 +2292,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.CLOUD:
                             uint throttleCloud;
-                            if (!uint.TryParse(throttlesNode.InnerText,
+                            if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
                                 out throttleCloud))
                             {
                                 throw new Exception("error in throttles section");
@@ -2291,7 +2317,7 @@ namespace Configurator
                     {
                         case ConfigurationKeys.RANGE:
                             float range;
-                            if (!float.TryParse(limitsNode.InnerText,
+                            if (!float.TryParse(limitsNode.InnerText, NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
                             {
                                 throw new Exception("error in range limits section");
@@ -2311,7 +2337,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint maximumRLVThreads;
                                         if (
-                                            !uint.TryParse(rlvLimitNode.InnerText,
+                                            !uint.TryParse(rlvLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out maximumRLVThreads))
                                         {
                                             throw new Exception("error in RLV limits section");
@@ -2334,7 +2361,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint maximumCommandThreads;
                                         if (
-                                            !uint.TryParse(commandsLimitNode.InnerText,
+                                            !uint.TryParse(commandsLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out maximumCommandThreads))
                                         {
                                             throw new Exception("error in commands limits section");
@@ -2357,7 +2385,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint maximumInstantMessageThreads;
                                         if (
-                                            !uint.TryParse(instantMessageLimitNode.InnerText,
+                                            !uint.TryParse(instantMessageLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out maximumInstantMessageThreads))
                                         {
                                             throw new Exception("error in instant message limits section");
@@ -2380,7 +2409,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint expiration;
                                         if (
-                                            !uint.TryParse(schedulerLimitNode.InnerText,
+                                            !uint.TryParse(schedulerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out expiration))
                                         {
                                             throw new Exception("error in scheduler limits section");
@@ -2403,7 +2433,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint maximumLogThreads;
                                         if (
-                                            !uint.TryParse(logLimitNode.InnerText,
+                                            !uint.TryParse(logLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out maximumLogThreads))
                                         {
                                             throw new Exception("error in log limits section");
@@ -2426,7 +2457,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint maximumPOSTThreads;
                                         if (
-                                            !uint.TryParse(postLimitNode.InnerText,
+                                            !uint.TryParse(postLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out maximumPOSTThreads))
                                         {
                                             throw new Exception("error in post limits section");
@@ -2449,7 +2481,8 @@ namespace Configurator
                                     case ConfigurationKeys.CONNECTIONS:
                                         uint connectionLimit;
                                         if (
-                                            !uint.TryParse(clientLimitNode.InnerText,
+                                            !uint.TryParse(clientLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out connectionLimit))
                                         {
                                             throw new Exception("error in client limits section");
@@ -2459,7 +2492,8 @@ namespace Configurator
                                     case ConfigurationKeys.IDLE:
                                         uint connectionIdleTime;
                                         if (
-                                            !uint.TryParse(clientLimitNode.InnerText,
+                                            !uint.TryParse(clientLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out connectionIdleTime))
                                         {
                                             throw new Exception("error in client limits section");
@@ -2481,7 +2515,9 @@ namespace Configurator
                                 {
                                     case ConfigurationKeys.TIMEOUT:
                                         uint callbackTimeout;
-                                        if (!uint.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
+                                        if (
+                                            !uint.TryParse(callbackLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture, out callbackTimeout))
                                         {
                                             throw new Exception("error in callback limits section");
                                         }
@@ -2490,7 +2526,8 @@ namespace Configurator
                                     case ConfigurationKeys.THROTTLE:
                                         uint callbackThrottle;
                                         if (
-                                            !uint.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
+                                            !uint.TryParse(callbackLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture, out callbackThrottle))
                                         {
                                             throw new Exception("error in callback limits section");
                                         }
@@ -2499,7 +2536,8 @@ namespace Configurator
                                     case ConfigurationKeys.QUEUE_LENGTH:
                                         uint callbackQueueLength;
                                         if (
-                                            !uint.TryParse(callbackLimitNode.InnerText,
+                                            !uint.TryParse(callbackLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out callbackQueueLength))
                                         {
                                             throw new Exception("error in callback limits section");
@@ -2522,7 +2560,8 @@ namespace Configurator
                                     case ConfigurationKeys.TIMEOUT:
                                         uint notificationTimeout;
                                         if (
-                                            !uint.TryParse(notificationLimitNode.InnerText,
+                                            !uint.TryParse(notificationLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out notificationTimeout))
                                         {
                                             throw new Exception("error in notification limits section");
@@ -2532,7 +2571,8 @@ namespace Configurator
                                     case ConfigurationKeys.THROTTLE:
                                         uint notificationThrottle;
                                         if (
-                                            !uint.TryParse(notificationLimitNode.InnerText,
+                                            !uint.TryParse(notificationLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out notificationThrottle))
                                         {
                                             throw new Exception("error in notification limits section");
@@ -2542,7 +2582,8 @@ namespace Configurator
                                     case ConfigurationKeys.QUEUE_LENGTH:
                                         uint notificationQueueLength;
                                         if (
-                                            !uint.TryParse(notificationLimitNode.InnerText,
+                                            !uint.TryParse(notificationLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out notificationQueueLength))
                                         {
                                             throw new Exception("error in notification limits section");
@@ -2552,7 +2593,8 @@ namespace Configurator
                                     case ConfigurationKeys.THREADS:
                                         uint maximumNotificationThreads;
                                         if (
-                                            !uint.TryParse(notificationLimitNode.InnerText,
+                                            !uint.TryParse(notificationLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out maximumNotificationThreads))
                                         {
                                             throw new Exception("error in notification limits section");
@@ -2575,7 +2617,8 @@ namespace Configurator
                                     case ConfigurationKeys.TIMEOUT:
                                         uint HTTPServerTimeoutValue;
                                         if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText,
+                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out HTTPServerTimeoutValue))
                                         {
                                             throw new Exception("error in server limits section");
@@ -2585,7 +2628,8 @@ namespace Configurator
                                     case ConfigurationKeys.DRAIN:
                                         uint HTTPServerDrainTimeoutValue;
                                         if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText,
+                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out HTTPServerDrainTimeoutValue))
                                         {
                                             throw new Exception("error in server limits section");
@@ -2595,7 +2639,8 @@ namespace Configurator
                                     case ConfigurationKeys.BODY:
                                         uint HTTPServerBodyTimeoutValue;
                                         if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText,
+                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out HTTPServerBodyTimeoutValue))
                                         {
                                             throw new Exception("error in server limits section");
@@ -2605,7 +2650,8 @@ namespace Configurator
                                     case ConfigurationKeys.HEADER:
                                         uint HTTPServerHeaderTimeoutValue;
                                         if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText,
+                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out HTTPServerHeaderTimeoutValue))
                                         {
                                             throw new Exception("error in server limits section");
@@ -2615,7 +2661,8 @@ namespace Configurator
                                     case ConfigurationKeys.IDLE:
                                         uint HTTPServerIdleTimeoutValue;
                                         if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText,
+                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out HTTPServerIdleTimeoutValue))
                                         {
                                             throw new Exception("error in server limits section");
@@ -2625,7 +2672,8 @@ namespace Configurator
                                     case ConfigurationKeys.QUEUE:
                                         uint HTTPServerQueueTimeoutValue;
                                         if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText,
+                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out HTTPServerQueueTimeoutValue))
                                         {
                                             throw new Exception("error in server limits section");
@@ -2648,7 +2696,8 @@ namespace Configurator
                                     case ConfigurationKeys.TIMEOUT:
                                         uint servicesTimeout;
                                         if (
-                                            !uint.TryParse(servicesLimitNode.InnerText,
+                                            !uint.TryParse(servicesLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out servicesTimeout))
                                         {
                                             throw new Exception("error in services limits section");
@@ -2657,7 +2706,9 @@ namespace Configurator
                                         break;
                                     case ConfigurationKeys.REBAKE:
                                         uint rebakeDelay;
-                                        if (!uint.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
+                                        if (
+                                            !uint.TryParse(servicesLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture, out rebakeDelay))
                                         {
                                             throw new Exception("error in services limits section");
                                         }
@@ -2666,7 +2717,8 @@ namespace Configurator
                                     case ConfigurationKeys.ACTIVATE:
                                         uint activateDelay;
                                         if (
-                                            !uint.TryParse(servicesLimitNode.InnerText,
+                                            !uint.TryParse(servicesLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out activateDelay))
                                         {
                                             throw new Exception("error in services limits section");
@@ -2689,7 +2741,8 @@ namespace Configurator
                                     case ConfigurationKeys.TIMEOUT:
                                         uint dataTimeout;
                                         if (
-                                            !uint.TryParse(dataLimitNode.InnerText,
+                                            !uint.TryParse(dataLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out dataTimeout))
                                         {
                                             throw new Exception("error in data limits section");
@@ -2717,7 +2770,8 @@ namespace Configurator
                                     case ConfigurationKeys.SWEEP:
                                         uint membershipSweepInterval;
                                         if (
-                                            !uint.TryParse(servicesLimitNode.InnerText,
+                                            !uint.TryParse(servicesLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out membershipSweepInterval))
                                         {
                                             throw new Exception("error in membership limits section");
@@ -2740,7 +2794,8 @@ namespace Configurator
                                     case ConfigurationKeys.TIMEOUT:
                                         uint logoutGrace;
                                         if (
-                                            !uint.TryParse(logoutLimitNode.InnerText,
+                                            !uint.TryParse(logoutLimitNode.InnerText, NumberStyles.Integer,
+                                                Utils.EnUsCulture,
                                                 out logoutGrace))
                                         {
                                             throw new Exception("error in logout limits section");
@@ -2841,7 +2896,9 @@ namespace Configurator
                                 configGroup.Password = groupNode.InnerText;
                                 break;
                             case ConfigurationKeys.WORKERS:
-                                if (!uint.TryParse(groupNode.InnerText, out configGroup.Workers))
+                                if (
+                                    !uint.TryParse(groupNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
+                                        out configGroup.Workers))
                                 {
                                     throw new Exception("error in group section");
                                 }

@@ -309,7 +309,7 @@ namespace Corrade
         /// <summary>
         ///     Heartbeat timer.
         /// </summary>
-        private static readonly Timer CorradeHeartBeatTimer = new Timer(o =>
+        private static readonly Timer CorradeHeartBeatTimer = new Timer(() =>
         {
             // Send notification.
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -326,22 +326,22 @@ namespace Corrade
                     Version = CorradeHeartbeat.Version
                 }),
                 corradeConfiguration.MaximumNotificationThreads);
-        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        }, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
         /// <summary>
         ///     Heartbeat logging.
         /// </summary>
-        private static readonly Timer CorradeHeartBeatLogTimer = new Timer(o =>
+        private static readonly Timer CorradeHeartBeatLogTimer = new Timer(() =>
         {
             // Log heartbeat data.
             Feedback("Heartbeat",
                 $"CPU: {CorradeHeartbeat.AverageCPUUsage}% RAM: {CorradeHeartbeat.AverageRAMUsage/1024/1024:0.}MiB Uptime: {TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Days}d:{TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours}h:{TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes}m Commands: {CorradeHeartbeat.ProcessedCommands} Behaviours: {CorradeHeartbeat.ProcessedRLVBehaviours}");
-        }, null, TimeSpan.Zero, TimeSpan.Zero);
+        }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         ///     Effects expiration timer.
         /// </summary>
-        private static readonly Timer EffectsExpirationTimer = new Timer(callback =>
+        private static readonly Timer EffectsExpirationTimer = new Timer(() =>
         {
             lock (SphereEffectsLock)
             {
@@ -351,12 +351,12 @@ namespace Corrade
             {
                 BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
             }
-        }, null, TimeSpan.Zero, TimeSpan.Zero);
+        }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         ///     Group membership timer.
         /// </summary>
-        private static readonly Timer GroupMembershipTimer = new Timer(callback =>
+        private static readonly Timer GroupMembershipTimer = new Timer(() =>
         {
             lock (Locks.ClientInstanceNetworkLock)
             {
@@ -525,12 +525,12 @@ namespace Corrade
                 GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             });
-        }, null, TimeSpan.Zero, TimeSpan.Zero);
+        }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         ///     Group feeds timer.
         /// </summary>
-        private static readonly Timer GroupFeedsTimer = new Timer(callback =>
+        private static readonly Timer GroupFeedsTimer = new Timer(() =>
         {
             lock (GroupFeedsLock)
             {
@@ -579,12 +579,12 @@ namespace Corrade
                     }
                 });
             }
-        }, null, TimeSpan.Zero, TimeSpan.Zero);
+        }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         ///     Group schedules timer.
         /// </summary>
-        private static readonly Timer GroupSchedulesTimer = new Timer(callback =>
+        private static readonly Timer GroupSchedulesTimer = new Timer(() =>
         {
             var groupSchedules = new HashSet<GroupSchedule>();
             lock (GroupSchedulesLock)
@@ -612,7 +612,7 @@ namespace Corrade
                     });
                 SaveGroupSchedulesState.Invoke();
             }
-        }, null, TimeSpan.Zero, TimeSpan.Zero);
+        }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         ///     The various types of threads created by Corrade.
@@ -654,7 +654,7 @@ namespace Corrade
         ///     Schedules a load of the configuration file.
         /// </summary>
         private static readonly Timer ConfigurationChangedTimer =
-            new Timer(ConfigurationChanged =>
+            new Timer(() =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -728,7 +728,7 @@ namespace Corrade
         ///     Schedules a load of the notifications file.
         /// </summary>
         private static readonly Timer NotificationsChangedTimer =
-            new Timer(NotificationsChanged =>
+            new Timer(() =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -740,7 +740,7 @@ namespace Corrade
         ///     Schedules a load of the SIML configuration file.
         /// </summary>
         private static readonly Timer SIMLConfigurationChangedTimer =
-            new Timer(SIMLConfigurationChanged =>
+            new Timer(() =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -759,7 +759,7 @@ namespace Corrade
         ///     Schedules a load of the group schedules file.
         /// </summary>
         private static readonly Timer GroupSchedulesChangedTimer =
-            new Timer(GroupSchedulesChanged =>
+            new Timer(() =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -771,7 +771,7 @@ namespace Corrade
         ///     Schedules a load of the group feeds file.
         /// </summary>
         private static readonly Timer GroupFeedsChangedTimer =
-            new Timer(GroupFeedsChanged =>
+            new Timer(() =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.GROUP_FEEDS_FILE_MODIFIED));
@@ -782,7 +782,7 @@ namespace Corrade
         ///     Schedules a load of the group soft bans file.
         /// </summary>
         private static readonly Timer GroupSoftBansChangedTimer =
-            new Timer(GroupSoftBansChanged =>
+            new Timer(() =>
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
@@ -793,7 +793,7 @@ namespace Corrade
         /// <summary>
         ///     Global rebake timer.
         /// </summary>
-        private static readonly Timer RebakeTimer = new Timer(Rebake =>
+        private static readonly Timer RebakeTimer = new Timer(() =>
         {
             lock (Locks.ClientInstanceAppearanceLock)
             {
@@ -811,7 +811,7 @@ namespace Corrade
         ///     Current land group activation timer.
         /// </summary>
         private static readonly Timer ActivateCurrentLandGroupTimer =
-            new Timer(ActivateCurrentLandGroup =>
+            new Timer(() =>
             {
                 Parcel parcel = null;
                 if (

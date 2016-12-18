@@ -61,7 +61,7 @@ namespace Corrade.Structures
             }
 
             // Start the heartbeat timer.
-            HeartbeatTimer = new Timer(o =>
+            HeartbeatTimer = new Timer(() =>
             {
                 ++Heartbeats;
                 ++Uptime;
@@ -75,7 +75,7 @@ namespace Corrade.Structures
                               Convert.ToDouble(Environment.ProcessorCount)));
                     AverageRAMUsage = (AverageRAMUsage + currentProcess.PrivateMemorySize64)/2;
                 }
-            }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+            }, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
 
         /// <summary>
