@@ -466,15 +466,13 @@ namespace wasOpenMetaverse
             lock (Locks.ClientInstanceNetworkLock)
             {
                 var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                    .Select(o => o.ObjectsPrimitives)
-                    .Select(o => o.Copy().Values)
-                    .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+                    .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
+                    .ToDictionary(o => o.LocalID, p => p);
                 var objectsAvatars = Client.Network.Simulators.AsParallel()
-                    .Select(o => o.ObjectsAvatars)
-                    .Select(o => o.Copy().Values)
-                    .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+                    .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
+                    .ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                    .Select(o => new {s = o, a = o?.ObjectsPrimitives?.Copy()?.Values})
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
@@ -509,9 +507,8 @@ namespace wasOpenMetaverse
             lock (Locks.ClientInstanceNetworkLock)
             {
                 var objectsAvatars = Client.Network.Simulators.AsParallel()
-                    .Select(o => o.ObjectsAvatars)
-                    .Select(o => o.Copy().Values)
-                    .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+                    .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
+                    .ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                     .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
                     .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -543,15 +540,13 @@ namespace wasOpenMetaverse
             lock (Locks.ClientInstanceNetworkLock)
             {
                 var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                    .Select(o => o.ObjectsPrimitives)
-                    .Select(o => o.Copy().Values)
-                    .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+                    .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
+                    .ToDictionary(o => o.LocalID, p => p);
                 var objectsAvatars = Client.Network.Simulators.AsParallel()
-                    .Select(o => o.ObjectsAvatars)
-                    .Select(o => o.Copy().Values)
-                    .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+                    .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
+                    .ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Avatar>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new {s = o, a = o.ObjectsAvatars.Copy().Values})
+                    .Select(o => new {s = o, a = o?.ObjectsAvatars?.Copy()?.Values})
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
