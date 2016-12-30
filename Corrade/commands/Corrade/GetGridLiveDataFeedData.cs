@@ -38,7 +38,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant()))
+                                ))
                         {
                             case Enumerations.Entity.STATISTICS:
                                 liveData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(

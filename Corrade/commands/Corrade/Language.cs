@@ -31,7 +31,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant()))
+                            ))
                     {
                         case Enumerations.Action.DETECT:
                             var message = wasInput(

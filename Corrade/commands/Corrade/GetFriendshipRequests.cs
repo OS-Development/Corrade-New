@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -28,19 +29,22 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
+                        Dictionary<UUID, UUID> friendshipRequests;
+                        lock (Locks.ClientInstanceFriendsLock)
+                        {
+                            friendshipRequests = Client.Friends.FriendRequests.Copy();
+                        }
                         var csv = new List<string>();
                         var LockObject = new object();
-                        Client.Friends.FriendRequests.Copy().AsParallel().ForAll(o =>
+                        friendshipRequests.AsParallel().ForAll(o =>
                         {
-                            var name = string.Empty;
-                            if (
-                                !Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout,
-                                    ref name))
-                                return;
-                            lock (LockObject)
+                            var agentName = string.Empty;
+                            if (Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout, ref agentName))
                             {
-                                csv.Add(name);
-                                csv.Add(o.Key.ToString());
+                                lock (LockObject)
+                                {
+                                    csv.AddRange(new[] { agentName, o.Key.ToString(), o.Value.ToString() });
+                                }
                             }
                         });
                         if (csv.Any())

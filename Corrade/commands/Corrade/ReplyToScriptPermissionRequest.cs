@@ -33,7 +33,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant());
+                                );
                         switch (action)
                         {
                             case Enumerations.Action.REPLY:

@@ -40,7 +40,7 @@ namespace Corrade
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIRECTION)),
                             corradeCommandParameters.Message))
-                            .ToLowerInvariant()))
+                            ))
                     {
                         case Enumerations.Direction.LEFT:
                             lock (Locks.ClientInstanceSelfLock)

@@ -29,7 +29,7 @@ namespace Corrade
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
-                        .ToLowerInvariant()))
+                        ))
                     {
                         case Enumerations.Action.PURGE:
                             Client.Assets.Cache.BeginPrune();

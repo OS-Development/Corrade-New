@@ -31,7 +31,7 @@ namespace Corrade
                         Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant());
+                            );
                     switch (action)
                     {
                         case Enumerations.Action.START:

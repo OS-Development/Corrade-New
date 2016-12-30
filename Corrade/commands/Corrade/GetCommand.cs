@@ -47,7 +47,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                    corradeCommandParameters.Message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message))))
                     {
                         case Enumerations.Entity.SYNTAX:
                             switch (
@@ -55,7 +55,7 @@ namespace Corrade
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                                            corradeCommandParameters.Message)).ToLowerInvariant()))
+                                            corradeCommandParameters.Message))))
                             {
                                 case Enumerations.Type.INPUT:
                                     var commandInputSyntaxAttribute = Reflection

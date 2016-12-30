@@ -113,8 +113,8 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                     corradeCommandParameters.Message)))
                                 .AsParallel()
-                                .Select(
-                                    Reflection.GetEnumValueFromName<Configuration.Permissions>),
+                                .Select(o =>
+                                    Reflection.GetEnumValueFromName<Configuration.Permissions>(o)),
                                 o => !o.Equals(default(Configuration.Permissions))));
 
                         var groupNotifications =
@@ -123,8 +123,8 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NOTIFICATIONS)),
                                     corradeCommandParameters.Message)))
                                 .AsParallel()
-                                .Select(
-                                    Reflection.GetEnumValueFromName<Configuration.Notifications>),
+                                .Select(o =>
+                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o)),
                                 o => !o.Equals(default(Configuration.Notifications))));
 
                         corradeConfiguration.Groups.Add(new Configuration.Group

@@ -31,7 +31,7 @@ namespace Corrade
                     switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                corradeCommandParameters.Message)).ToLowerInvariant()))
+                                corradeCommandParameters.Message))))
                     {
                         case Enumerations.Entity.DESCRIPTION:
                             var scriptErrorFieldInfo = typeof(Enumerations.ScriptError).GetFields(

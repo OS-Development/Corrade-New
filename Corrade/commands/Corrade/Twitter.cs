@@ -80,7 +80,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant()))
+                            ))
                     {
                         case Enumerations.Action.TWEET:
                             var message = wasInput(

@@ -98,7 +98,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant());
+                            );
                     var succeeded = false;
                     var LockObject = new object();
                     var softBans = new List<SoftBan>();
@@ -579,7 +579,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                         corradeCommandParameters.Message))
-                                    .ToLowerInvariant()))
+                                    ))
                             {
                                 case Enumerations.Entity.GROUP:
                                     // Generate the softban list.
@@ -698,7 +698,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                         corradeCommandParameters.Message))
-                                    .ToLowerInvariant()))
+                                    ))
                             {
                                 case Enumerations.Entity.MUTE:
                                     if (

@@ -28,7 +28,7 @@ namespace Corrade
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                corradeCommandParameters.Message)).ToLowerInvariant()))
+                                corradeCommandParameters.Message))))
                     {
                         case Enumerations.Action.SET:
                             var inputFilters = new List<Configuration.Filter>();
@@ -72,7 +72,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                                        corradeCommandParameters.Message)).ToLowerInvariant()))
+                                        corradeCommandParameters.Message))))
                             {
                                 case Enumerations.Type.INPUT:
                                     lock (InputFiltersLock)

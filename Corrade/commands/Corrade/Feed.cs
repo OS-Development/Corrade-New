@@ -35,7 +35,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                                .ToLowerInvariant());
+                                );
                     // Check for passed parameters.
                     var name = string.Empty;
                     var url = string.Empty;

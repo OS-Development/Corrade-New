@@ -540,8 +540,7 @@ namespace Corrade
                     {
                         using (var reader = XmlReader.Create(o.Key))
                         {
-                            var syndicationFeed = SyndicationFeed.Load(reader);
-                            syndicationFeed?.Items.AsParallel()
+                            SyndicationFeed.Load(reader)?.Items.AsParallel()
                                 .Where(
                                     p =>
                                         p != null && p.Title != null && p.Summary != null &&
@@ -2553,15 +2552,15 @@ namespace Corrade
         /// <param name="messages">a list of messages</param>
         public static void Feedback(bool multiline, params string[] messages)
         {
+            if (!multiline)
+            {
+                Feedback(messages);
+                return;
+            }
+
             CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
                 () =>
                 {
-                    if (!multiline)
-                    {
-                        Feedback(messages);
-                        return;
-                    }
-
                     var output =
                         new List<string>(
                             messages.Select(
@@ -3819,7 +3818,7 @@ namespace Corrade
                     Configuration.HordeDataSynchronization dataSynchronizationType;
                     Configuration.HordeDataSynchronizationOption dataSynchronizationOption;
                     switch (
-                        Reflection.GetEnumValueFromName<Enumerations.WebResource>(urlPath[0].ToLowerInvariant())
+                        Reflection.GetEnumValueFromName<Enumerations.WebResource>(urlPath[0])
                         )
                     {
                         case Enumerations.WebResource.CACHE: /* /cache/{asset}/add | /cache/{asset}/remove */
@@ -3830,7 +3829,7 @@ namespace Corrade
 
                             dataSynchronizationType =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[1].ToLowerInvariant());
+                                    urlPath[1]);
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
@@ -3855,7 +3854,7 @@ namespace Corrade
                                     // Get the synchronization option.
                                     dataSynchronizationOption =
                                         Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                            urlPath[2].ToLowerInvariant());
+                                            urlPath[2]);
 
                                     // If this synchronization option is not allowed with this peer, then break.
                                     if (
@@ -3939,7 +3938,7 @@ namespace Corrade
                                     // Get the synchronization option.
                                     dataSynchronizationOption =
                                         Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                            urlPath[2].ToLowerInvariant());
+                                            urlPath[2]);
 
                                     // If this synchronization option is not allowed with this peer, then break.
                                     if (
@@ -4010,7 +4009,7 @@ namespace Corrade
 
                             dataSynchronizationType =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0].ToLowerInvariant());
+                                    urlPath[0]);
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
@@ -4025,7 +4024,7 @@ namespace Corrade
                             // Get the synchronization option.
                             dataSynchronizationOption =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1].ToLowerInvariant());
+                                    urlPath[1]);
 
                             // If this synchronization option is not allowed with this peer, then break.
                             if (
@@ -4128,7 +4127,7 @@ namespace Corrade
 
                             dataSynchronizationType =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0].ToLowerInvariant());
+                                    urlPath[0]);
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
@@ -4143,7 +4142,7 @@ namespace Corrade
                             // Get the synchronization option.
                             dataSynchronizationOption =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1].ToLowerInvariant());
+                                    urlPath[1]);
 
                             // If this synchronization option is not allowed with this peer, then break.
                             if (
@@ -4238,7 +4237,7 @@ namespace Corrade
 
                             dataSynchronizationType =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0].ToLowerInvariant());
+                                    urlPath[0]);
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
@@ -4253,7 +4252,7 @@ namespace Corrade
                             // Get the synchronization option.
                             dataSynchronizationOption =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1].ToLowerInvariant());
+                                    urlPath[1]);
 
                             // If this synchronization option is not allowed with this peer, then break.
                             if (
@@ -4353,7 +4352,7 @@ namespace Corrade
 
                             dataSynchronizationType =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0].ToLowerInvariant());
+                                    urlPath[0]);
 
                             // Log the attempt to put cache objects.
                             Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
@@ -4368,7 +4367,7 @@ namespace Corrade
                             // Get the synchronization option.
                             dataSynchronizationOption =
                                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1].ToLowerInvariant());
+                                    urlPath[1]);
 
                             // If this synchronization option is not allowed with this peer, then break.
                             if (
@@ -4952,17 +4951,17 @@ namespace Corrade
             if (
                 corradeConfiguration.Masters.AsParallel().Select(
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
-                    .Any(p => Strings.StringEquals(e.Offer.FromAgentName, p, StringComparison.OrdinalIgnoreCase)))
+                    .Any(p => Strings.StringEquals(inventoryOffer.Args.Offer.FromAgentName, p, StringComparison.OrdinalIgnoreCase)))
             {
-                e.Accept = true;
+                inventoryOffer.Args.Accept = true;
                 // It is accepted, so update the inventory.
                 InventoryNode node;
                 // Find the node.
                 lock (Locks.ClientInstanceInventoryLock)
                 {
-                    node = Client.Inventory.Store.GetNodeFor(e.FolderID.Equals(UUID.Zero)
-                        ? Client.Inventory.FindFolderForType(e.AssetType)
-                        : e.FolderID);
+                    node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
+                        ? Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)
+                        : inventoryOffer.Args.FolderID);
                 }
                 if (node != null)
                 {
@@ -4979,7 +4978,7 @@ namespace Corrade
                                 break;
                             default:
                                 Inventory.UpdateInventoryRecursive(Client,
-                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)]
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
                                         .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
                                 break;
                         }
@@ -4993,7 +4992,7 @@ namespace Corrade
                 }
                 // Send notification
                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                    () => SendNotification(Configuration.Notifications.Inventory, e),
+                    () => SendNotification(Configuration.Notifications.Inventory, inventoryOffer.Args),
                     corradeConfiguration.MaximumNotificationThreads);
                 return;
             }
@@ -5001,25 +5000,42 @@ namespace Corrade
             // It is temporary, so update the inventory.
             lock (Locks.ClientInstanceInventoryLock)
             {
-                Client.Inventory.Store.GetNodeFor(e.FolderID.Equals(UUID.Zero)
-                    ? Client.Inventory.FindFolderForType(e.AssetType)
-                    : e.FolderID).NeedsUpdate =
+                Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
+                    ? Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)
+                    : inventoryOffer.Args.FolderID).NeedsUpdate =
                     true;
             }
 
+            // Update the inventory.
+            try
+            {
+                Inventory.UpdateInventoryRecursive(Client,
+                    Client.Inventory.Store.Items[inventoryOffer.Args.FolderID]
+                        .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+            }
+            catch (Exception)
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+            }
+
             // Find the item in the inventory.
-            InventoryBase inventoryBaseItem = null;
+            InventoryBase inventoryBaseItem;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                var itemUUID = new UUID(e.Offer.BinaryBucket, 1);
-                if (Client.Inventory.Store.Contains(itemUUID))
-                {
-                    inventoryBaseItem = Client.Inventory.Store[itemUUID];
-                }
+                var groups = CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
+                var name = groups.Count > 0 ? groups[1].Value : e.Offer.Message;
+                inventoryBaseItem = Inventory.FolderContents(Client, inventoryOffer.Args.FolderID, Client.Self.AgentID,
+                    true, true,
+                    InventorySortOrder.ByDate, (int) corradeConfiguration.ServicesTimeout)
+                    .AsParallel()
+                    .FirstOrDefault(o => Strings.StringEquals(o.Name, name));
             }
 
             if (inventoryBaseItem != null)
             {
+                var parentUUID = inventoryBaseItem.ParentUUID;
                 // Assume we do not want the item.
                 lock (Locks.ClientInstanceInventoryLock)
                 {
@@ -5027,18 +5043,32 @@ namespace Corrade
                         inventoryBaseItem,
                         Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
                             InventoryFolder);
-                }
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    Client.Inventory.Store.GetNodeFor(inventoryBaseItem.ParentUUID).NeedsUpdate = true;
+                    Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
                     Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
                         .NeedsUpdate = true;
+                }
+
+                // Update the inventory.
+                try
+                {
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[parentUUID]
+                            .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)]
+                            .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                }
+                catch (Exception)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                 }
             }
 
             // Send notification
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Configuration.Notifications.Inventory, e),
+                () => SendNotification(Configuration.Notifications.Inventory, inventoryOffer.Args),
                 corradeConfiguration.MaximumNotificationThreads);
 
             // Wait for a reply.
@@ -5046,7 +5076,8 @@ namespace Corrade
 
             if (inventoryBaseItem == null) return;
 
-            var itemParentUUID = UUID.Zero;
+            var sourceParentUUID = UUID.Zero;
+            var destinationParentUUID = UUID.Zero;
             switch (inventoryBaseItem.ParentUUID.Equals(UUID.Zero))
             {
                 case true:
@@ -5059,20 +5090,20 @@ namespace Corrade
                     }
                     if (inventoryBaseItem.UUID.Equals(rootFolderUUID))
                     {
-                        itemParentUUID = rootFolderUUID;
+                        sourceParentUUID = rootFolderUUID;
                         break;
                     }
                     if (inventoryBaseItem.UUID.Equals(libraryFolderUUID))
                     {
-                        itemParentUUID = libraryFolderUUID;
+                        sourceParentUUID = libraryFolderUUID;
                     }
                     break;
                 default:
-                    itemParentUUID = inventoryBaseItem.ParentUUID;
+                    sourceParentUUID = inventoryBaseItem.ParentUUID;
                     break;
             }
 
-            switch (e.Accept)
+            switch (inventoryOffer.Args.Accept)
             {
                 case false: // if the item is to be discarded, then remove the item from inventory
                     switch (inventoryBaseItem is InventoryFolder)
@@ -5092,21 +5123,38 @@ namespace Corrade
                     }
                     lock (Locks.ClientInstanceInventoryLock)
                     {
-                        Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                        Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
                         Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
                             .NeedsUpdate = true;
+                    }
+
+                    // Update the inventory.
+                    try
+                    {
+                        Inventory.UpdateInventoryRecursive(Client,
+                            Client.Inventory.Store.Items[sourceParentUUID]
+                                .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                        Inventory.UpdateInventoryRecursive(Client,
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)]
+                                .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                    }
+                    catch (Exception)
+                    {
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                     }
                     return;
             }
 
             // If no folder UUID was specified, move it to the default folder for the asset type.
-            switch (!e.FolderID.Equals(UUID.Zero))
+            switch (!inventoryOffer.Args.FolderID.Equals(UUID.Zero))
             {
-                case true:
+                case true: // a destination folder was specified
                     InventoryFolder inventoryFolder = null;
                     lock (Locks.ClientInstanceInventoryLock)
                     {
-                        var node = Client.Inventory.Store.GetNodeFor(e.FolderID);
+                        var node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID);
                         if (node != null)
                         {
                             inventoryFolder = node.Data as InventoryFolder;
@@ -5114,11 +5162,13 @@ namespace Corrade
                     }
                     if (inventoryFolder != null)
                     {
+                        // grab the destination parent UUID for updates.
+                        destinationParentUUID = inventoryFolder.ParentUUID;
+
                         switch (inventoryBaseItem is InventoryFolder)
                         {
                             case true: // folders
                                 // if a name was specified, rename the item as well.
-
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
                                     case false:
@@ -5159,17 +5209,18 @@ namespace Corrade
                         }
                         lock (Locks.ClientInstanceInventoryLock)
                         {
-                            Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                            Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
                             Client.Inventory.Store.GetNodeFor(inventoryFolder.UUID).NeedsUpdate = true;
                         }
                     }
                     break;
-                default:
+                default: // no destination folder was specified
                     switch (inventoryBaseItem is InventoryFolder)
                     {
                         case true: // move inventory folders into the root
                             lock (Locks.ClientInstanceInventoryLock)
                             {
+                                destinationParentUUID = Client.Inventory.Store.RootFolder.UUID;
                                 // if a name was specified, rename the item as well.
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
@@ -5183,23 +5234,24 @@ namespace Corrade
                                             inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID);
                                         break;
                                 }
-                                Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                                Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
                                 Client.Inventory.Store.GetNodeFor(Client.Inventory.Store.RootFolder.UUID).NeedsUpdate =
                                     true;
                             }
                             break;
-                        default:
+                        default: // move items to their respective asset folder type
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 InventoryFolder destinationFolder = null;
                                 var node =
-                                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(e.AssetType));
+                                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType));
                                 if (node != null)
                                 {
                                     destinationFolder = node.Data as InventoryFolder;
                                 }
                                 if (destinationFolder != null)
                                 {
+                                    destinationParentUUID = destinationFolder.ParentUUID;
                                     switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                     {
                                         case false:
@@ -5211,7 +5263,7 @@ namespace Corrade
                                             Client.Inventory.Move(inventoryBaseItem, destinationFolder);
                                             break;
                                     }
-                                    Client.Inventory.Store.GetNodeFor(itemParentUUID).NeedsUpdate = true;
+                                    Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
                                     Client.Inventory.Store.GetNodeFor(destinationFolder.UUID).NeedsUpdate = true;
                                 }
                             }
@@ -5219,20 +5271,47 @@ namespace Corrade
                     }
                     break;
             }
+
+            // Update the source parent.
             try
             {
-                switch (inventoryBaseItem is InventoryFolder)
+                if (!sourceParentUUID.Equals(UUID.Zero))
                 {
-                    case true:
-                        Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
-                            corradeConfiguration.ServicesTimeout);
-                        break;
-                    default:
-                        Inventory.UpdateInventoryRecursive(Client,
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)]
-                                .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
-                        break;
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[sourceParentUUID]
+                            .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
                 }
+            }
+            catch (Exception)
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+            }
+
+            // Update the destination parent.
+            try
+            {
+                if (!destinationParentUUID.Equals(UUID.Zero))
+                {
+                    Inventory.UpdateInventoryRecursive(Client,
+                        Client.Inventory.Store.Items[destinationParentUUID]
+                            .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
+                }
+            }
+            catch (Exception)
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+            }
+
+            // Update the trash folder.
+            try
+            {
+                Inventory.UpdateInventoryRecursive(Client,
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)]
+                        .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
             }
             catch (Exception)
             {
@@ -5244,10 +5323,8 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
+            // Get the full name of the avatar sending a script permission request.
             var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.ObjectOwnerName));
-            // Check if we have a valid agent name.
-            if (fullName == null)
-                return;
             var ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
             if (
@@ -6299,7 +6376,7 @@ namespace Corrade
                     {
                         foreach (var kvp in CSV.ToKeyValue(sift))
                         {
-                            switch (Reflection.GetEnumValueFromName<Sift>(wasInput(kvp.Key).ToLowerInvariant()))
+                            switch (Reflection.GetEnumValueFromName<Sift>(wasInput(kvp.Key)))
                             {
                                 case Sift.TAKE:
                                     // Take a specified amount from the results if requested.

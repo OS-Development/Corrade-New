@@ -78,7 +78,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                    corradeCommandParameters.Message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message))))
                     {
                         case Enumerations.Entity.PARCEL:
                             Vector3 position;
@@ -130,10 +130,7 @@ namespace Corrade
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Name.Equals(type
-                                            .ToLowerInvariant(),
-                                            StringComparison.Ordinal));
+                                    o => Strings.StringEquals(o.Name, type, StringComparison.OrdinalIgnoreCase));
                             var returnType = objectReturnTypeField != null
                                 ? (ObjectReturnType)
                                     objectReturnTypeField

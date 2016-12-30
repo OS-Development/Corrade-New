@@ -121,7 +121,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant()))
+                            ))
                     {
                         case Enumerations.Type.ZIP:
                             byte[] byteData;

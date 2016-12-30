@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -30,8 +31,18 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        UUID agentUUID;
-                        if (
+                        var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                        corradeCommandParameters.Message)));
+                        var agentUUID = UUID.Zero;
+                        var session = UUID.Zero;
+                        switch (action)
+                        {
+                            case Enumerations.Action.ACCEPT:
+                            case Enumerations.Action.DECLINE:
+                                if (
                             !UUID.TryParse(
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
@@ -48,30 +59,19 @@ namespace Corrade
                                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                        }
-                        var session = UUID.Zero;
-                        lock (Locks.ClientInstanceFriendsLock)
-                        {
-                            Client.Friends.FriendRequests.ForEach(o =>
-                            {
-                                if (o.Key.Equals(agentUUID))
                                 {
-                                    session = o.Value;
+                                    throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                                 }
-                            });
+                                lock (Locks.ClientInstanceFriendsLock)
+                                {
+                                    if (!Client.Friends.FriendRequests.TryGetValue(agentUUID, out session))
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
+                                    }
+                                }
+                                break;
                         }
-                        if (session.Equals(UUID.Zero))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
-                        }
-                        switch (
-                            Reflection.GetEnumValueFromName<Enumerations.Action>(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                        corradeCommandParameters.Message)).ToLowerInvariant()))
+                        switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
                                 lock (Locks.ClientInstanceFriendsLock)

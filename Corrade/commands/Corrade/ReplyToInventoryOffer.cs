@@ -40,7 +40,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                        corradeCommandParameters.Message)).ToLowerInvariant());
+                                        corradeCommandParameters.Message)));
                         switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
@@ -48,48 +48,36 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                                         corradeCommandParameters.Message));
-                                switch (!string.IsNullOrEmpty(folder))
+                                if (!string.IsNullOrEmpty(folder))
                                 {
-                                    case true:
-                                        UUID folderUUID;
-                                        switch (UUID.TryParse(folder, out folderUUID))
-                                        {
-                                            case true:
-                                                lock (Locks.ClientInstanceInventoryLock)
+                                    UUID folderUUID;
+                                    switch (UUID.TryParse(folder, out folderUUID))
+                                    {
+                                        case true:
+                                            lock (Locks.ClientInstanceInventoryLock)
+                                            {
+                                                if (Client.Inventory.Store.Contains(folderUUID))
                                                 {
-                                                    if (Client.Inventory.Store.Contains(folderUUID))
-                                                    {
-                                                        inventoryFolder =
-                                                            Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                                    }
+                                                    inventoryFolder =
+                                                        Client.Inventory.Store[folderUUID] as InventoryFolder;
                                                 }
-                                                break;
-                                            default:
-                                                inventoryFolder =
-                                                    Inventory.FindInventory<InventoryFolder>(Client, folder,
-                                                        CORRADE_CONSTANTS.PATH_SEPARATOR,
-                                                        CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
-                                                        corradeConfiguration.ServicesTimeout);
-                                                break;
-                                        }
-                                        if (inventoryFolder == null)
-                                        {
-                                            throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
-                                        }
-                                        break;
-                                    default:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
+                                            }
+                                            break;
+                                        default:
                                             inventoryFolder =
-                                                Client.Inventory.Store.Items[
-                                                    Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
-                                                    .Data as InventoryFolder;
-                                        }
-                                        break;
+                                                Inventory.FindInventory<InventoryFolder>(Client, folder,
+                                                    CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                    CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                                    corradeConfiguration.ServicesTimeout);
+                                            break;
+                                    }
+                                    if (inventoryFolder == null)
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
+                                    }
                                 }
-                                goto case Enumerations.Action.IGNORE;
+                                goto case Enumerations.Action.DECLINE;
                             case Enumerations.Action.DECLINE:
-                            case Enumerations.Action.IGNORE:
                                 if (
                                     !UUID.TryParse(
                                         wasInput(
@@ -114,7 +102,8 @@ namespace Corrade
                             case Enumerations.Action.ACCEPT:
                                 lock (InventoryOffersLock)
                                 {
-                                    if (!inventoryFolder.UUID.Equals(UUID.Zero))
+                                    // Set the folder if specified.
+                                    if (inventoryFolder != null && !inventoryFolder.UUID.Equals(UUID.Zero))
                                     {
                                         inventoryOffer.Args.FolderID = inventoryFolder.UUID;
                                     }

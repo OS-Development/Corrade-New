@@ -50,7 +50,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_TYPE_PROVIDED);
                     }
-                    var detachType = Reflection.GetEnumValueFromName<Enumerations.Type>(type.ToLowerInvariant());
+                    var detachType = Reflection.GetEnumValueFromName<Enumerations.Type>(type);
 
                     // build a look-up table for the attachment points
                     var attachmentPoints =

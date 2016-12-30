@@ -39,7 +39,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                                .ToLowerInvariant());
+                                );
                     switch (type)
                     {
                         case Enumerations.Type.BAN:

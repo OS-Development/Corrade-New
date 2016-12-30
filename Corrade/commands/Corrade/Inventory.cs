@@ -49,7 +49,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant());
+                            );
                     var updateFolders = new HashSet<UUID>();
                     switch (action)
                     {

@@ -32,7 +32,7 @@ namespace Corrade
                     var action = Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
-                        .ToLowerInvariant());
+                        );
 
                     switch (action)
                     {

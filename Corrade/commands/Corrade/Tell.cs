@@ -47,7 +47,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                    corradeCommandParameters.Message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message))))
                     {
                         case Enumerations.Entity.CONFERENCE:
                             // check message length for SecondLife grids

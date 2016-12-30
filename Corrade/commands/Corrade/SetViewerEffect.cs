@@ -57,7 +57,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant());
+                            );
                     var targetUUID = UUID.Zero;
                     switch (viewerEffectType)
                     {

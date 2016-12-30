@@ -27,7 +27,7 @@ namespace Corrade
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                corradeCommandParameters.Message)).ToLowerInvariant()))
+                                corradeCommandParameters.Message))))
                     {
                         case Enumerations.Action.ENABLE:
                             corradeConfiguration.EnableRLV = true;

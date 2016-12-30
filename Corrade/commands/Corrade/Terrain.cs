@@ -50,7 +50,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            .ToLowerInvariant()))
+                            ))
                     {
                         case Enumerations.Action.GET:
                             ManualResetEvent[] DownloadTerrainEvents =
