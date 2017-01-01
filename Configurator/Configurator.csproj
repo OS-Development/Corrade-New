@@ -125,6 +125,10 @@
       <Project>{2ca04070-f3e8-4e39-9f43-4bb7090d7a77}</Project>
       <Name>CorradeConfigurationSharp</Name>
     </ProjectReference>
+    <ProjectReference Include="..\wasOpenMetaverse\wasOpenMetaverse.csproj">
+      <Project>{b9537c43-94dc-4bd4-b6fb-b7ca77c11824}</Project>
+      <Name>wasOpenMetaverse</Name>
+    </ProjectReference>
     <ProjectReference Include="..\wasSharp\wasSharp.csproj">
       <Project>{a971e1c9-776c-4cd2-88ac-71197c7b955e}</Project>
       <Name>wasSharp</Name>

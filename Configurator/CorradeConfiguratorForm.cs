@@ -3687,19 +3687,28 @@ namespace Configurator
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
             {
+                // If no location is entered then refuse to continue.
                 if (string.IsNullOrEmpty(StartLocationTextBox.Text))
                 {
                     StartLocationTextBox.BackColor = Color.MistyRose;
                     return;
                 }
-                var location = StartLocationTextBox.Text;
+
+                // Check if the start location is properly formatted.
+                if (!new wasOpenMetaverse.Helpers.GridLocation(StartLocationTextBox.Text).isValid)
+                {
+                    StartLocationTextBox.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                // Add the start location to the list.
                 StartLocationTextBox.BackColor = Color.Empty;
                 StartLocations.Items.Add(new ListViewItem
                 {
-                    Text = location,
-                    Tag = location
+                    Text = StartLocationTextBox.Text,
+                    Tag = StartLocationTextBox.Text
                 });
-                corradeConfiguration.StartLocations.Add(location);
+                corradeConfiguration.StartLocations.Add(StartLocationTextBox.Text);
             }));
         }
 

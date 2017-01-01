@@ -2295,7 +2295,7 @@ namespace Corrade
                                         if (notificationTCPQueueElement.Equals(default(NotificationTCPQueueElement)) ||
                                             !notificationTCPQueueElement.IPEndPoint.Equals(remoteEndPoint))
                                             continue;
-                                        streamWriter.WriteLine(KeyValue.Encode(notificationTCPQueueElement.message));
+                                        streamWriter.WriteLine(KeyValue.Encode(notificationTCPQueueElement.Message));
                                         streamWriter.Flush();
                                     } while (runTCPNotificationsServer && TCPClient.Connected);
                                 }
@@ -3077,7 +3077,7 @@ namespace Corrade
                                 {
                                     await
                                         wasHTTPClient.POST(notificationQueueElement.URL,
-                                            notificationQueueElement.message);
+                                            notificationQueueElement.Message);
                                 }
                             },
                                 corradeConfiguration.MaximumPOSTThreads);
@@ -3192,7 +3192,7 @@ namespace Corrade
                 }
 
                 var startLocation = new
-                    wasOpenMetaverse.Helpers.StartLocationParser(location);
+                    wasOpenMetaverse.Helpers.GridLocation(location);
 
                 // Proceed to log-in.
                 Login = new LoginParams(
@@ -4653,7 +4653,7 @@ namespace Corrade
                                     {
                                         GroupUUID = z.GroupUUID,
                                         URL = p,
-                                        message = KeyValue.Escape(notificationData, wasOutput)
+                                        Message = KeyValue.Escape(notificationData, wasOutput)
                                     });
                                     break;
                                 default:
@@ -4680,7 +4680,7 @@ namespace Corrade
                                 case true:
                                     NotificationTCPQueue.Enqueue(new NotificationTCPQueueElement
                                     {
-                                        message = KeyValue.Escape(notificationData, wasOutput),
+                                        Message = KeyValue.Escape(notificationData, wasOutput),
                                         IPEndPoint = p
                                     });
                                     break;

@@ -60,7 +60,7 @@ namespace Corrade
     /// </summary>
     public struct NotificationQueueElement
     {
-        public Dictionary<string, string> message;
+        public Dictionary<string, string> Message;
         public string URL;
         public UUID GroupUUID;
     }
@@ -68,6 +68,6 @@ namespace Corrade
     public struct NotificationTCPQueueElement
     {
         public IPEndPoint IPEndPoint;
-        public Dictionary<string, string> message;
+        public Dictionary<string, string> Message;
     }
 }

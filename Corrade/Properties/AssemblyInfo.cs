@@ -40,5 +40,5 @@ using CommandLine;
 //      Revision
 //
 
-[assembly: AssemblyVersion("9.152.*")]
+[assembly: AssemblyVersion("9.153.*")]
 [assembly: AssemblyMetadata("configuration", "1.23")]
