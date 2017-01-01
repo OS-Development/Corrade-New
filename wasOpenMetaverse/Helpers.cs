@@ -134,17 +134,14 @@ namespace wasOpenMetaverse
         //    Copyright (C) 2016 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Determines whether a vector falls within a parcel.
+        ///     A simple start location reader for an SLURL formatted location.
         /// </summary>
-        /// <param name="position">a 3D vector</param>
-        /// <param name="parcel">a parcel</param>
-        /// <returns>true if the vector falls within the parcel bounds</returns>
         /// <copyright>Copyright (c) 2009-2014, Radegast Development Team with changes by Wizardry and Steamworks</copyright>
-        public class StartLocationParser
+        public class GridLocation
         {
             private readonly string location;
 
-            public StartLocationParser(string location)
+            public GridLocation(string location)
             {
                 switch (string.IsNullOrEmpty(location))
                 {
@@ -156,6 +153,10 @@ namespace wasOpenMetaverse
                         break;
                 }
             }
+
+
+            public bool isValid
+                => !string.IsNullOrEmpty(Sim) && X >= 0 && X <= 255 && Y >= 0 && Y <= 255 && Z >= 0 && Z <= 255;
 
             public bool isCustom => location.Contains("/");
 
