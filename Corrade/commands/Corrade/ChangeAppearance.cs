@@ -65,12 +65,6 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
                     }
 
-                    // Get exclusion list.
-                    var exclude = new HashSet<string>(CSV.ToEnumerable(wasInput(
-                        KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EXCLUDE)),
-                            corradeCommandParameters.Message))));
-
                     // Get folder contents.
                     var contents = new List<InventoryBase>();
                     lock (Locks.ClientInstanceInventoryLock)
@@ -81,12 +75,7 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => o is InventoryItem)
                         .Select(o => Inventory.ResolveItemLink(Client, o as InventoryItem))
-                        .Where(Inventory.CanBeWorn)
-                        .Where(o => ((Inventory.IsBodyPart(Client, o) || o is InventoryWearable) &&
-                                     !exclude.Contains((o as InventoryWearable).WearableType.ToString())) ||
-                                    (o is InventoryAttachment &&
-                                     !exclude.Contains((o as InventoryAttachment).AttachmentPoint.ToString())) ||
-                                    o is InventoryObject));
+                        .Where(Inventory.CanBeWorn));
 
                     // Check if any items are left over.
                     if (!equipItems.Any())
@@ -118,9 +107,8 @@ namespace Corrade
                     var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
                         .ToDictionary(o => o.Key, o => o.Value);
-                    new List<InventoryItem>(Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder,
-                        corradeConfiguration.ServicesTimeout))
-                        .AsParallel().ForAll(
+                    Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder,
+                        corradeConfiguration.ServicesTimeout).AsParallel().ForAll(
                             o =>
                             {
                                 var inventoryItem = Inventory.ResolveItemLink(Client, o);
