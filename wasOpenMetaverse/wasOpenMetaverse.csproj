@@ -62,6 +62,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cache.cs" />
+    <Compile Include="Caches\AgentCache.cs" />
+    <Compile Include="Caches\GroupCache.cs" />
+    <Compile Include="Caches\MuteCache.cs" />
+    <Compile Include="Caches\RegionCache.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Graphics.cs" />
     <Compile Include="Helpers.cs" />
@@ -73,6 +77,7 @@
     <Compile Include="Resolvers.cs" />
     <Compile Include="RLV.cs" />
     <Compile Include="Services.cs" />
+    <Compile Include="SLT.cs" />
     <Compile Include="wasOpenMetaverse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -86,6 +91,7 @@
       <Name>wasSharp</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

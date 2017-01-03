@@ -150,12 +150,12 @@ namespace wasOpenMetaverse
 
             foreach (var name in textures.Values)
             {
-                var colladaName = name + "_" + imageFormat.ToLower();
+                var colladaName = name + "_" + imageFormat.ToLowerInvariant();
                 var image = images.AppendChild(Doc.CreateElement("image"));
                 image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
                 image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
                 image.AppendChild(Doc.CreateElement("init_from")).InnerText =
-                    (name + "." + imageFormat.ToLower()).URIUnescapeDataString();
+                    (name + "." + imageFormat.ToLowerInvariant()).URIUnescapeDataString();
             }
 
             Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>
@@ -375,7 +375,7 @@ namespace wasOpenMetaverse
                     if (!kvp.Equals(default(KeyValuePair<UUID, string>)))
                     {
                         var textID = kvp.Key;
-                        colladaName = textures[textID] + "_" + imageFormat.ToLower();
+                        colladaName = textures[textID] + "_" + imageFormat.ToLowerInvariant();
                         var newparam = profile.AppendChild(Doc.CreateElement("newparam"));
                         newparam.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = colladaName + "-surface";
                         var surface = newparam.AppendChild(Doc.CreateElement("surface"));

@@ -86,7 +86,7 @@ namespace wasOpenMetaverse
             {
                 if (Cache.MuteCache.Any())
                 {
-                    mutes = Cache.MuteCache;
+                    mutes = Cache.MuteCache.OfType<MuteEntry>();
                     return true;
                 }
 
@@ -94,7 +94,7 @@ namespace wasOpenMetaverse
 
                 if (succeeded)
                 {
-                    Cache.MuteCache.UnionWith(mutes);
+                    Cache.MuteCache.UnionWith(mutes.OfType<Cache.MuteEntry>());
                 }
             }
             return succeeded;
