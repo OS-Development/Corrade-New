@@ -83,9 +83,10 @@ namespace Corrade
                         .Select(o => Inventory.ResolveItemLink(Client, o as InventoryItem))
                         .Where(Inventory.CanBeWorn)
                         .Where(o => ((Inventory.IsBodyPart(Client, o) || o is InventoryWearable) &&
-                                     exclude.Contains((o as InventoryWearable).WearableType.ToString())) ||
+                                     !exclude.Contains((o as InventoryWearable).WearableType.ToString())) ||
                                     (o is InventoryAttachment &&
-                                     exclude.Contains((o as InventoryAttachment).AttachmentPoint.ToString()))));
+                                     !exclude.Contains((o as InventoryAttachment).AttachmentPoint.ToString())) ||
+                                    o is InventoryObject));
 
                     // Check if any items are left over.
                     if (!equipItems.Any())
