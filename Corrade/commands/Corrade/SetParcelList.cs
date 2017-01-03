@@ -175,7 +175,7 @@ namespace Corrade
                             {
                                 AgentID = targetUUID,
                                 Flags = accessType,
-                                Time = DateTime.Now.ToUniversalTime()
+                                Time = DateTime.UtcNow
                             });
                             break;
                         case Enumerations.Action.REMOVE:

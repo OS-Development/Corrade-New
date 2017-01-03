@@ -65,6 +65,13 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
                     }
 
+                    // Get exclusion list.
+                    var exclude = new HashSet<string>(CSV.ToEnumerable(wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EXCLUDE)),
+                            corradeCommandParameters.Message))));
+
+                    // Get folder contents.
                     var contents = new List<InventoryBase>();
                     lock (Locks.ClientInstanceInventoryLock)
                     {
@@ -74,7 +81,11 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => o is InventoryItem)
                         .Select(o => Inventory.ResolveItemLink(Client, o as InventoryItem))
-                        .Where(Inventory.CanBeWorn));
+                        .Where(Inventory.CanBeWorn)
+                        .Where(o => ((Inventory.IsBodyPart(Client, o) || o is InventoryWearable) &&
+                                     exclude.Contains((o as InventoryWearable).WearableType.ToString())) ||
+                                    (o is InventoryAttachment &&
+                                     exclude.Contains((o as InventoryAttachment).AttachmentPoint.ToString()))));
 
                     // Check if any items are left over.
                     if (!equipItems.Any())

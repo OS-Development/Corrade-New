@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using CorradeConfigurationSharp;
@@ -30,9 +31,49 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var text =
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXT)),
-                            corradeCommandParameters.Message));
+                    string text;
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                corradeCommandParameters.Message))
+                        ))
+                    {
+                        case Enumerations.Entity.FILE:
+                            var path =
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
+                                        corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
+                            }
+                            // Read from file.
+                            try
+                            {
+                                using (var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                {
+                                    using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                    {
+                                        text = streamReader.ReadToEnd();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_READ_FILE);
+                            }
+                            break;
+                        case Enumerations.Entity.TEXT:
+                            text =
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXT)),
+                                        corradeCommandParameters.Message));
+                            break;
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                    }
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         Encoding.UTF8.GetByteCount(text) >
                         wasOpenMetaverse.Constants.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)

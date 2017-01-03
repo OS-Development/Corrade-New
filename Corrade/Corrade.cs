@@ -345,11 +345,11 @@ namespace Corrade
         {
             lock (SphereEffectsLock)
             {
-                SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.UtcNow, o.Termination) > 0);
             }
             lock (BeamEffectsLock)
             {
-                BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.UtcNow, o.Termination) > 0);
             }
         }, TimeSpan.Zero, TimeSpan.Zero);
 
@@ -591,8 +591,7 @@ namespace Corrade
                 groupSchedules.UnionWith(GroupSchedules.AsParallel()
                     .Where(
                         o =>
-                            DateTime.Compare(DateTime.Now.ToUniversalTime(),
-                                o.At) >= 0));
+                            DateTime.Compare(DateTime.UtcNow, o.At) >= 0));
             }
             if (groupSchedules.Any())
             {
@@ -1084,9 +1083,17 @@ namespace Corrade
                     {
                         if (!GroupBayesClassifiers.ContainsKey(group.UUID))
                             return;
+                    }
 
-                        GroupBayesClassifiers[group.UUID].Save(Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
-                            group.UUID.ToString()) + @"." + CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION);
+                    using (var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY, string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION)), FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        using (var streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                        {
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                streamWriter.WriteLine(GroupBayesClassifiers[group.UUID].ExportJsonData());
+                            }
+                        }
                     }
                 }
                 catch (Exception e)
@@ -1104,6 +1111,7 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadGroupBayesClassificiations = () =>
         {
+
             corradeConfiguration.Groups.AsParallel().ForAll(group =>
             {
                 lock (GroupBayesClassifiersLock)
@@ -1113,15 +1121,22 @@ namespace Corrade
                         GroupBayesClassifiers.Add(group.UUID, new BayesSimpleTextClassifier());
                     }
                 }
-                var groupBayesDataFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY, group.UUID.ToString()) + @"." +
-                                         CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION;
-                if (!File.Exists(groupBayesDataFile))
+
+                var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY, string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION));
+                if (!File.Exists(bayesClassifierFile))
                     return;
+
                 try
                 {
-                    lock (GroupBayesClassifiersLock)
+                    using (var fileStream = File.Open(bayesClassifierFile, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        GroupBayesClassifiers[group.UUID].Load(groupBayesDataFile);
+                        using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                        {
+                            lock (GroupBayesClassifiersLock)
+                            {
+                                GroupBayesClassifiers[group.UUID].ImportJsonData(streamReader.ReadToEnd());
+                            }
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -4063,7 +4078,7 @@ namespace Corrade
                                         ref mutes);
                                     break;
                                 default:
-                                    mutes = Cache.MuteCache.AsEnumerable();
+                                    mutes = Cache.MuteCache.OfType<OpenMetaverse.MuteEntry>();
                                     mutesRetrieved = true;
                                     break;
                             }
@@ -4514,7 +4529,7 @@ namespace Corrade
                                                 requestEncoding = preferredEncoding;
                                         }
                                     }
-                                    switch (requestEncoding.Name.ToLower())
+                                    switch (requestEncoding.Name.ToLowerInvariant())
                                     {
                                         case "gzip":
                                             using (var dataGZipStream = new GZipStream(outputStream,
@@ -5523,7 +5538,7 @@ namespace Corrade
                             var mutes = Enumerable.Empty<MuteEntry>();
                             if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                                 return;
-                            Cache.MuteCache.UnionWith(mutes);
+                            Cache.MuteCache.UnionWith(mutes.OfType<Cache.MuteEntry>());
                         });
 
                     // Set current group to land group.
@@ -6466,7 +6481,7 @@ namespace Corrade
 
             // add the time stamp
             result.Add(Reflection.GetNameFromEnumValue(ResultKeys.TIME),
-                DateTime.Now.ToUniversalTime().ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP));
+                DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP));
 
             // build afterburn
             var AfterBurnLock = new object();

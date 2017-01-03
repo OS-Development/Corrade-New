@@ -350,7 +350,7 @@ namespace Corrade
                                                     Alpha = color.A,
                                                     Duration = duration,
                                                     Offset = offset,
-                                                    Termination = DateTime.Now.AddSeconds(duration)
+                                                    Termination = DateTime.UtcNow.AddSeconds(duration)
                                                 });
                                             }
                                             break;
@@ -392,7 +392,7 @@ namespace Corrade
                                                     Duration = duration,
                                                     Effect = effectUUID,
                                                     Offset = offset,
-                                                    Termination = DateTime.Now.AddSeconds(duration)
+                                                    Termination = DateTime.UtcNow.AddSeconds(duration)
                                                 });
                                             }
                                             break;

@@ -303,7 +303,9 @@ namespace Corrade
             [Reflection.NameAttribute("conference")] CONFERENCE,
             [Reflection.NameAttribute("mute")] MUTE,
             [Reflection.NameAttribute("global")] GLOBAL,
-            [Reflection.NameAttribute("landmark")] LANDMARK
+            [Reflection.NameAttribute("landmark")] LANDMARK,
+            [Reflection.NameAttribute("file")] FILE,
+            [Reflection.NameAttribute("text")] TEXT
         }
 
         /// <summary>

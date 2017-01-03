@@ -159,7 +159,7 @@ namespace Corrade
                                     var scriptError = Enumerations.ScriptError.NONE;
                                     Parallel.ForEach(zipInputStream.Entries, (o, s) =>
                                     {
-                                        var filename = o.Name.ToLowerInvariant();
+                                        var filename = o.Name.ToLower();
                                         var fileBasename = Path.GetFileNameWithoutExtension(filename);
                                         var fileExtension = Path.GetExtension(filename);
 

@@ -98,7 +98,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            );
+                        );
                     var succeeded = false;
                     var LockObject = new object();
                     var softBans = new List<SoftBan>();
@@ -579,7 +579,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Entity.GROUP:
                                     // Generate the softban list.
@@ -644,7 +644,7 @@ namespace Corrade
                                                     Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                                             break;
                                         default:
-                                            mutes = Cache.MuteCache.AsEnumerable();
+                                            mutes = Cache.MuteCache.OfType<MuteEntry>();
                                             break;
                                     }
                                     // Generate the softban list.
@@ -698,7 +698,7 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Entity.MUTE:
                                     if (
@@ -726,7 +726,7 @@ namespace Corrade
                                                     Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                                             break;
                                         default:
-                                            mutes = Cache.MuteCache.AsEnumerable();
+                                            mutes = Cache.MuteCache.OfType<MuteEntry>();
                                             break;
                                     }
                                     // Get the mute flags - default is "Default" equivalent to 0

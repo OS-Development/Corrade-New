@@ -41,7 +41,6 @@ namespace Corrade
                                 Client.Self.LastName)));
                     UUID sessionUUID;
                     var currentGroups = Enumerable.Empty<UUID>();
-                    bool gotChatSession;
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Entity>(
                             wasInput(
@@ -190,8 +189,6 @@ namespace Corrade
                                 var fullName =
                                     new List<string>(
                                         wasOpenMetaverse.Helpers.GetAvatarNames(agentName));
-                                if (fullName == null)
-                                    break;
 
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
@@ -267,6 +264,7 @@ namespace Corrade
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
+                            bool gotChatSession;
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 gotChatSession =
@@ -407,8 +405,6 @@ namespace Corrade
                                                 wasOpenMetaverse.Helpers.GetAvatarNames(string.Join(" ",
                                                     Client.Self.FirstName,
                                                     Client.Self.LastName)));
-                                        if (fullName == null)
-                                            break;
 
                                         CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                         {

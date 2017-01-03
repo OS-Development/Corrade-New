@@ -34,6 +34,9 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("exclude")]
+            EXCLUDE,
+
             [CommandInputSyntax(
                 "<command=exportoar>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<STRING>>&entity=object:<item=<STRING|UUID>>&entity=object:[range=<FLOAT>]&[path=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Interact)] [CorradeCommand("exportoar")] [Reflection.NameAttribute("exportoar")] EXPORTOAR,

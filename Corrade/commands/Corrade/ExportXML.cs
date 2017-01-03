@@ -256,7 +256,7 @@ namespace Corrade
                                     lock (LockObject)
                                     {
                                         exportTextureSetFiles.Add(
-                                            o + "." + format.ToLower(),
+                                            o + "." + format.ToLowerInvariant(),
                                             imageStream.ToArray());
                                     }
                                 }

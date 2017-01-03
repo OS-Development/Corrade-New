@@ -40,7 +40,7 @@ namespace Corrade
                             }
                             break;
                         default:
-                            mutes = Cache.MuteCache.AsEnumerable();
+                            mutes = Cache.MuteCache.OfType<MuteEntry>();
                             break;
                     }
 

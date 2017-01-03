@@ -7,7 +7,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -118,8 +117,8 @@ namespace Corrade.Helpers
                             if (process.ToLower != null)
                             {
                                 value = process.ToLower.Culture != null
-                                    ? value.ToString().ToLower(CultureInfo.GetCultureInfo(process.ToLower.Culture))
-                                    : value.ToString().ToLower(CultureInfo.InvariantCulture);
+                                    ? value.ToString().ToLower()
+                                    : value.ToString().ToLowerInvariant();
 
                                 continue;
                             }
