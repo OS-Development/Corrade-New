@@ -40,6 +40,12 @@ namespace Corrade
                         ))
                     {
                         case Enumerations.Entity.FILE:
+                            if (
+                                !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                    (int) Configuration.Permissions.System))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                            }
                             var path =
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
