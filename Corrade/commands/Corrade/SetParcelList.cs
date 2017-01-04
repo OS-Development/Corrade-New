@@ -168,7 +168,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                                ))
+                            ))
                     {
                         case Enumerations.Action.ADD:
                             accessList.Add(new ParcelManager.ParcelAccessEntry

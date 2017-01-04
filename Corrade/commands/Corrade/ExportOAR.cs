@@ -320,7 +320,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
-                            );
+                        );
                     switch (entity)
                     {
                         case Enumerations.Entity.OBJECT:

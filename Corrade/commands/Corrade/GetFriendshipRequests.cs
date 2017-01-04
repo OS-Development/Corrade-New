@@ -39,11 +39,12 @@ namespace Corrade
                         friendshipRequests.AsParallel().ForAll(o =>
                         {
                             var agentName = string.Empty;
-                            if (Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout, ref agentName))
+                            if (Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout,
+                                ref agentName))
                             {
                                 lock (LockObject)
                                 {
-                                    csv.AddRange(new[] { agentName, o.Key.ToString(), o.Value.ToString() });
+                                    csv.AddRange(new[] {agentName, o.Key.ToString(), o.Value.ToString()});
                                 }
                             }
                         });

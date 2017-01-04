@@ -152,6 +152,7 @@ namespace Corrade
             [Reflection.DescriptionAttribute("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
             [Reflection.DescriptionAttribute("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
             [Reflection.DescriptionAttribute("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
+            [Reflection.DescriptionAttribute("could not read from local message log file")] COULD_NOT_READ_FROM_LOCAL_MESSAGE_LOG_FILE,
             [Reflection.DescriptionAttribute("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
             [Reflection.DescriptionAttribute("unknown IP address")] UNKNOWN_IP_ADDRESS,
             [Reflection.DescriptionAttribute("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
@@ -672,7 +673,8 @@ namespace Corrade
             [Command.StatusAttribute(01488)] [Reflection.DescriptionAttribute("no dialog specified")] NO_DIALOG_SPECIFIED,
             [Command.StatusAttribute(55394)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
             [Command.StatusAttribute(64179)] [Reflection.DescriptionAttribute("unable to serialize primitive")] UNABLE_TO_SERIALIZE_PRIMITIVE,
-            [Command.StatusAttribute(58212)] [Reflection.DescriptionAttribute("platform not supported")] PLATFORM_NOT_SUPPORTED
+            [Command.StatusAttribute(58212)] [Reflection.DescriptionAttribute("platform not supported")] PLATFORM_NOT_SUPPORTED,
+            [Command.StatusAttribute(16233)] [Reflection.DescriptionAttribute("invalid asset")] INVALID_ASSET
         }
 
 

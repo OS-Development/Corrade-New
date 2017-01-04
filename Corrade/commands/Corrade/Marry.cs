@@ -112,7 +112,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Action.PROPOSE: // Send a proposal
 

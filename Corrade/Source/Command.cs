@@ -34,6 +34,14 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=copynotecardasset>&<group=<UUID|STRING>>&<password=<STRING>>&[name=<STRING>]&<asset=<UUID>>&<item=<STRING|UUID>&<folder=<STRING|UUID>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("copynotecardasset")]
+            [Reflection.NameAttribute("copynotecardasset")]
+            COPYNOTECARDASSET,
+            
             [Reflection.NameAttribute("exclude")]
             EXCLUDE,
 

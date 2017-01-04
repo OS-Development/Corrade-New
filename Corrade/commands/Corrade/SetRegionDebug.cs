@@ -36,7 +36,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCRIPTS)),
                                     corradeCommandParameters.Message))
-                                , out scripts))
+                            , out scripts))
                     {
                         scripts = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipScripts);
                     }
@@ -47,7 +47,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.COLLISIONS)),
                                     corradeCommandParameters.Message))
-                                , out collisions))
+                            , out collisions))
                     {
                         collisions = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipCollisions);
                     }
@@ -58,7 +58,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PHYSICS)),
                                     corradeCommandParameters.Message))
-                                , out physics))
+                            , out physics))
                     {
                         physics = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipPhysics);
                     }

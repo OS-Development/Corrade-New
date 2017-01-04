@@ -82,7 +82,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            );
+                        );
                     var succeeded = false;
                     var LockObject = new object();
                     Dictionary<UUID, DateTime> bannedAgents = null;

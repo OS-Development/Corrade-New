@@ -50,7 +50,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message))
-                                ))
+                            ))
                         {
                             case Enumerations.Entity.RANGE:
                                 updatePrimitives.UnionWith(Services.GetPrimitives(Client, range));

@@ -63,7 +63,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Action.SET:
                             var GroupRoleDataReplyEvent = new ManualResetEvent(false);

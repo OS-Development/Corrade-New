@@ -42,7 +42,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                     corradeCommandParameters.Message))
-                                );
+                            );
                         switch (viewerEffectType)
                         {
                             case Enumerations.ViewerEffectType.LOOK:

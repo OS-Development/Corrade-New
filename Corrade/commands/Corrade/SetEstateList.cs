@@ -50,7 +50,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                                ))
+                            ))
                     {
                         case Enumerations.Type.BAN:
                             if (
@@ -82,7 +82,7 @@ namespace Corrade
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                        ))
+                                    ))
                             {
                                 case Enumerations.Action.ADD:
                                     // if this is SecondLife check that we would not exeed the maximum amount of bans
@@ -167,7 +167,7 @@ namespace Corrade
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                        ))
+                                    ))
                             {
                                 case Enumerations.Action.ADD:
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
@@ -256,7 +256,7 @@ namespace Corrade
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                        ))
+                                    ))
                             {
                                 case Enumerations.Action.ADD:
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
@@ -345,7 +345,7 @@ namespace Corrade
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                        ))
+                                    ))
                             {
                                 case Enumerations.Action.ADD:
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))

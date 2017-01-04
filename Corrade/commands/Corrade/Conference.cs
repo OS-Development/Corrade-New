@@ -39,7 +39,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Action.CREATE: //starts a new conference
                             var conferenceParticipants = new HashSet<UUID>();

@@ -17,7 +17,6 @@
     <GenerateManifests>false</GenerateManifests>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <ApplicationIcon>Corrade.ico</ApplicationIcon>
-    <ApplicationManifest>Corrade.exe.manifest</ApplicationManifest>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <UpgradeBackupLocation>
@@ -52,7 +51,7 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
+    <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
@@ -90,6 +89,10 @@
     <Reference Include="LanguageDetection, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\LanguageDetection.1.2.0\lib\net45\LanguageDetection.dll</HintPath>
       <Private>True</Private>
+    </Reference>
+    <Reference Include="log4net, Version=1.2.10.0, Culture=neutral, PublicKeyToken=1b44e1d426115821, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\libopenmetaverse\bin\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
       <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.902\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
@@ -191,6 +194,9 @@
     <Compile Include="commands\Corrade\Bayes.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\CopyNotecardAsset.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Deactivate.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -230,6 +236,15 @@
     <Compile Include="commands\Corrade\Shoot.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\RLV\AttachAll.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\RLV\AttachAllOver.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\RLV\AttachAllOverOrReplace.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\RLV\DetachAll.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -261,6 +276,7 @@
     <Compile Include="Source\Events\OutfitEventArgs.cs" />
     <Compile Include="Source\Events\TypingEventArgs.cs" />
     <Compile Include="Source\Helpers\Utilities.cs" />
+    <Compile Include="Source\Logs\LocalChatLog.cs" />
     <Compile Include="Source\Notification.cs" />
     <Compile Include="Source\RLV.cs" />
     <Compile Include="Source\Structures\SerializedNotification.cs" />
@@ -1232,10 +1248,6 @@
       <Link>Configurator.exe.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="..\Configurator\bin\Release\Configurator.exe.manifest">
-      <Link>Configurator.exe.manifest</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1572,7 +1584,7 @@
       <Link>libs\Mono.Data.Sqlite.dll.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="app.config" />
+    <None Include="App.config" />
     <None Include="Corrade.ini.default">
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1740,10 +1752,6 @@
     <Content Include="templates\notifications\url.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Include="..\Configurator\bin\Release\Configurator.exe">
-      <Link>Configurator.exe</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <Content Include="..\libopenmetaverse\bin\log4net.dll">
       <Link>libs\log4net.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -2000,12 +2008,6 @@
       <Link>openmetaverse_data\avatar_lad.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Corrade.exe.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <EmbeddedResource Include="Corrade.exe.manifest">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
     <Content Include="..\libopenmetaverse\bin\XMLRPC.dll">
       <Link>libs\XMLRPC.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

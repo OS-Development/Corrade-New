@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 
-[assembly: AssemblyTitle("Corrade")]
-[assembly: AssemblyDescription("Linden Virtual World Scripted Agent")]
+[assembly: AssemblyTitle("Configurator")]
+[assembly: AssemblyDescription("The Corrade Configurator")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
-[assembly: AssemblyProduct("Corrade")]
+[assembly: AssemblyProduct("Configurator")]
 [assembly: AssemblyCopyright("(c) Copyright 2013, Wizardry and Steamworks")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

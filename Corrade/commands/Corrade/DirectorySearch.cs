@@ -47,7 +47,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                                ))
+                            ))
                     {
                         case Enumerations.Type.CLASSIFIED:
                             var searchClassified = new DirectoryManager.Classified();

@@ -124,10 +124,10 @@ namespace Corrade.Constants
         /// <summary>
         ///     Corrade Logo.
         /// </summary>
-        public static readonly List<string> LOGO = new List<string>
+        public static readonly object[] LOGO = new []
         {
             @"",
-            @"       _..--=--..._  ",
+            @"       _..--=--..._  " ,
             @"    .-'            '-.  .-.  ",
             @"   /.'              '.\/  /  ",
             @"  |=-     Corrade    -=| (  ",

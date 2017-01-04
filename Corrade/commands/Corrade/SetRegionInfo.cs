@@ -37,7 +37,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TERRAFORM)),
                                     corradeCommandParameters.Message))
-                                , out terraform))
+                            , out terraform))
                     {
                         terraform = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.BlockTerraform);
                     }
@@ -47,7 +47,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLY)),
                                     corradeCommandParameters.Message))
-                                , out fly))
+                            , out fly))
                     {
                         fly = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.NoFly);
                     }
@@ -58,7 +58,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DAMAGE)),
                                     corradeCommandParameters.Message))
-                                , out damage))
+                            , out damage))
                     {
                         damage = Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.AllowDamage);
                     }
@@ -69,7 +69,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RESELL)),
                                     corradeCommandParameters.Message))
-                                , out resell))
+                            , out resell))
                     {
                         resell = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.BlockLandResell);
                     }
@@ -79,7 +79,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PUSH)),
                                     corradeCommandParameters.Message))
-                                , out push))
+                            , out push))
                     {
                         push = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.RestrictPushObject);
                     }
@@ -90,7 +90,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PARCEL)),
                                     corradeCommandParameters.Message))
-                                , out parcel))
+                            , out parcel))
                     {
                         parcel = Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.AllowParcelChanges);
                     }
@@ -100,7 +100,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LIMIT)),
                                     corradeCommandParameters.Message))
-                                , NumberStyles.Float, Utils.EnUsCulture, out limit))
+                            , NumberStyles.Float, Utils.EnUsCulture, out limit))
                     {
                         limit = wasOpenMetaverse.Constants.REGION.DEFAULT_AGENT_LIMIT;
                     }
@@ -110,7 +110,7 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BONUS)),
                                     corradeCommandParameters.Message))
-                                , NumberStyles.Float, Utils.EnUsCulture, out bonus))
+                            , NumberStyles.Float, Utils.EnUsCulture, out bonus))
                     {
                         bonus = wasOpenMetaverse.Constants.REGION.DEFAULT_OBJECT_BONUS;
                     }
@@ -121,7 +121,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MATURE)),
                                     corradeCommandParameters.Message))
-                                , out mature))
+                            , out mature))
                     {
                         mature = Client.Network.CurrentSim.Access.Equals(SimAccess.Mature);
                     }

@@ -7,7 +7,6 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using Corrade.Constants;
 using OpenMetaverse;
 using wasSharp;
@@ -38,25 +37,7 @@ namespace Corrade.Structures
             if (inventoryBase is InventoryFolder)
             {
                 item.Type = Enumerations.DirItemType.FOLDER;
-                var folder = inventoryBase as InventoryFolder;
-                var FolderUpdatedEvent = new ManualResetEvent(false);
-                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-                {
-                    // Enqueue all the new folders.
-                    var firstInventoryBase = Client.Inventory.Store.GetContents(q.FolderID)
-                        .AsParallel()
-                        .FirstOrDefault(r => r is InventoryItem);
-
-                    if (firstInventoryBase is InventoryItem)
-                        item.Time = (firstInventoryBase as InventoryItem).CreationDate;
-                    FolderUpdatedEvent.Set();
-                };
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                FolderUpdatedEvent.Reset();
-                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                    InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                item.Time = Client.Inventory.Store.GetNodeFor(inventoryBase.UUID).ModifyTime;
                 return item;
             }
 
@@ -64,7 +45,7 @@ namespace Corrade.Structures
 
             var inventoryItem = inventoryBase as InventoryItem;
             item.Permissions = Inventory.wasPermissionsToString(inventoryItem.Permissions);
-            item.Time = inventoryItem.CreationDate;
+            item.Time = Client.Inventory.Store.GetNodeFor(inventoryItem.UUID).ModifyTime;
 
             if (inventoryItem is InventoryWearable)
             {

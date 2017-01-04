@@ -70,6 +70,7 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
+            AttachmentPoint attachmentPoint = AttachmentPoint.Default;
             lock (Locks.ClientInstanceAppearanceLock)
             {
                 var objectAttachedEvent = new ManualResetEvent(false);
@@ -92,6 +93,9 @@ namespace wasOpenMetaverse
                         .Any(o => Strings.StringEquals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
+                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
+                                       ((prim.PrimData.State & ~0xF0) << 4));
+
                     objectAttachedEvent.Set();
                 };
 
@@ -103,6 +107,15 @@ namespace wasOpenMetaverse
                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                 }
             }
+            if (realItem is InventoryAttachment)
+            {
+                (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
+            }
+            if (realItem is InventoryObject)
+            {
+                (realItem as InventoryObject).AttachPoint = attachmentPoint;
+            }
+            Client.Inventory.RequestUpdateItem(realItem);
             AddLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
@@ -113,6 +126,7 @@ namespace wasOpenMetaverse
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
+            AttachmentPoint attachmentPoint = AttachmentPoint.Default;
             lock (Locks.ClientInstanceAppearanceLock)
             {
                 var objectDetachedEvent = new ManualResetEvent(false);
@@ -135,6 +149,9 @@ namespace wasOpenMetaverse
                         .Any(o => Strings.StringEquals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
+                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
+                                       ((prim.PrimData.State & ~0xF0) << 4));
+
                     objectDetachedEvent.Set();
                 };
 
@@ -146,6 +163,15 @@ namespace wasOpenMetaverse
                     Client.Objects.KillObject -= KillObjectEventHandler;
                 }
             }
+            if (realItem is InventoryAttachment)
+            {
+                (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
+            }
+            if (realItem is InventoryObject)
+            {
+                (realItem as InventoryObject).AttachPoint = attachmentPoint;
+            }
+            Client.Inventory.RequestUpdateItem(realItem);
             UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
 
@@ -732,7 +758,7 @@ namespace wasOpenMetaverse
                 lock (Locks.ClientInstanceInventoryLock)
                 {
                     contents.UnionWith(Client.Inventory.FolderContents(queueFolder.UUID, clientUUID, true, true,
-                        InventorySortOrder.ByDate, (int) millisecondsTimeout));
+                        InventorySortOrder.ByDate, (int)millisecondsTimeout));
                 }
                 foreach (var item in contents)
                 {

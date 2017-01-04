@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
@@ -32,10 +31,10 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                        corradeCommandParameters.Message)));
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message)));
                         var agentUUID = UUID.Zero;
                         var session = UUID.Zero;
                         switch (action)
@@ -43,22 +42,24 @@ namespace Corrade
                             case Enumerations.Action.ACCEPT:
                             case Enumerations.Action.DECLINE:
                                 if (
-                            !UUID.TryParse(
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
-                                    corradeCommandParameters.Message)),
-                                out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                    !UUID.TryParse(
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)),
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                    ref agentUUID))
+                                        out agentUUID) && !Resolvers.AgentNameToUUID(Client,
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(
+                                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                                    corradeCommandParameters.Message)),
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(
+                                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                                    corradeCommandParameters.Message)),
+                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                            new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                            ref agentUUID))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                                 }
@@ -66,7 +67,8 @@ namespace Corrade
                                 {
                                     if (!Client.Friends.FriendRequests.TryGetValue(agentUUID, out session))
                                     {
-                                        throw new Command.ScriptException(Enumerations.ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
                                     }
                                 }
                                 break;

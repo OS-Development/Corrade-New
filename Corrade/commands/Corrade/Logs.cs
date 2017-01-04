@@ -38,7 +38,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Entity.GROUP:
                             // read the log file
@@ -94,7 +94,7 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.GET:
                                     // search by date
@@ -288,7 +288,7 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.GET:
                                     // search by date
@@ -500,7 +500,7 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.GET:
                                     // search by date
@@ -709,7 +709,7 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.GET:
                                     // search by date
@@ -965,7 +965,7 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                         corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.GET:
                                     // search by date

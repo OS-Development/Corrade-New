@@ -31,7 +31,7 @@ namespace Corrade
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIRECTION)),
                             corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Direction.BACK:
                             lock (Locks.ClientInstanceSelfLock)

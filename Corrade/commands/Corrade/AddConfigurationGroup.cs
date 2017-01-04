@@ -109,23 +109,23 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CHATLOG_PATH_PROVIDED);
 
                         var groupPermissions =
-                            new HashSet<Configuration.Permissions>(ParallelEnumerable.Where(CSV.ToEnumerable(wasInput(
+                            new HashSet<Configuration.Permissions>(CSV.ToEnumerable(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                     corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Select(o =>
-                                    Reflection.GetEnumValueFromName<Configuration.Permissions>(o)),
-                                o => !o.Equals(default(Configuration.Permissions))));
+                                    Reflection.GetEnumValueFromName<Configuration.Permissions>(o))
+                                .Where(o => !o.Equals(default(Configuration.Permissions))));
 
                         var groupNotifications =
-                            new HashSet<Configuration.Notifications>(ParallelEnumerable.Where(CSV.ToEnumerable(wasInput(
+                            new HashSet<Configuration.Notifications>(CSV.ToEnumerable(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NOTIFICATIONS)),
                                     corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Select(o =>
-                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o)),
-                                o => !o.Equals(default(Configuration.Notifications))));
+                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
+                                .Where(o => !o.Equals(default(Configuration.Notifications))));
 
                         corradeConfiguration.Groups.Add(new Configuration.Group
                         {

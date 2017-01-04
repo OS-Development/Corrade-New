@@ -102,7 +102,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                                );
+                            );
                     switch (type)
                     {
                         case Enumerations.Type.TEXT:

@@ -58,6 +58,8 @@ using wasSharp.Timers;
 using wasSharp.Web;
 using wasSharp.Web.Utilities;
 using wasSharpNET.Cryptography;
+using log4net;
+using log4net.Config;
 using static Corrade.Command;
 using Group = OpenMetaverse.Group;
 using GroupNotice = Corrade.Structures.GroupNotice;
@@ -66,13 +68,15 @@ using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 using ThreadState = System.Threading.ThreadState;
 using Timer = wasSharp.Timers.Timer;
-
+using log4net.Appender;
 #endregion
 
 namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(Corrade));
+
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
@@ -2498,64 +2502,7 @@ namespace Corrade
             CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
                 () =>
                 {
-                    var output = new List<string>
-                    {
-                        !string.IsNullOrEmpty(InstalledServiceName)
-                            ? InstalledServiceName
-                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
-                        string.Format(Utils.EnUsCulture, "[{0}]",
-                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                Utils.EnUsCulture.DateTimeFormat))
-                    };
-
-                    output.AddRange(messages.Select(o => o));
-
-                    // Attempt to write to log file,
-                    if (corradeConfiguration.ClientLogEnabled)
-                    {
-                        try
-                        {
-                            lock (ClientLogFileLock)
-                            {
-                                using (
-                                    var fileStream = File.Open(corradeConfiguration.ClientLogFile,
-                                        FileMode.Append,
-                                        FileAccess.Write, FileShare.None))
-                                {
-                                    using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
-                                    {
-                                        logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                                            output.ToArray()));
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            // or fail and append the fail message.
-                            output.Add(string.Format(Utils.EnUsCulture, "{0} {1}",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
-                                ex.Message));
-                        }
-                    }
-
-                    switch (Environment.UserInteractive)
-                    {
-                        case false:
-                            switch (Environment.OSVersion.Platform)
-                            {
-                                case PlatformID.Win32NT:
-                                    CorradeEventLog.WriteEntry(
-                                        string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
-                                        EventLogEntryType.Information);
-                                    break;
-                            }
-                            break;
-                        default:
-                            Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
-                            break;
-                    }
+                    log.Info(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, messages));
                 },
                 corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
@@ -2563,83 +2510,14 @@ namespace Corrade
         /// <summary>
         ///     Posts messages to console or log-files.
         /// </summary>
-        /// <param name="multiline">whether to treat the messages as separate lines</param>
         /// <param name="messages">a list of messages</param>
-        public static void Feedback(bool multiline, params string[] messages)
+        public static void Feedback(object[] messages)
         {
-            if (!multiline)
-            {
-                Feedback(messages);
-                return;
-            }
-
             CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
                 () =>
                 {
-                    var output =
-                        new List<string>(
-                            messages.Select(
-                                o => string.Format(Utils.EnUsCulture, "{0}{1}[{2}]{3}{4}",
-                                    !string.IsNullOrEmpty(InstalledServiceName)
-                                        ? InstalledServiceName
-                                        : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME, CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                        Utils.EnUsCulture.DateTimeFormat),
-                                    CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                                    o)));
-
-                    // Attempt to write to log file,
-                    if (corradeConfiguration.ClientLogEnabled)
-                    {
-                        try
-                        {
-                            lock (ClientLogFileLock)
-                            {
-                                using (
-                                    var fileStream = File.Open(corradeConfiguration.ClientLogFile,
-                                        FileMode.Append,
-                                        FileAccess.Write, FileShare.None))
-                                {
-                                    using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
-                                    {
-                                        foreach (var message in output)
-                                        {
-                                            logWriter.WriteLine(message);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            // or fail and append the fail message.
-                            output.Add(string.Format(Utils.EnUsCulture, "{0} {1}",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
-                                ex.Message));
-                        }
-                    }
-
-                    switch (Environment.UserInteractive)
-                    {
-                        case false:
-                            switch (Environment.OSVersion.Platform)
-                            {
-                                case PlatformID.Win32NT:
-                                    foreach (var message in output)
-                                    {
-                                        CorradeEventLog.WriteEntry(message, EventLogEntryType.Information);
-                                    }
-                                    break;
-                            }
-                            break;
-                        default:
-                            foreach (var message in output)
-                            {
-                                Console.WriteLine(message);
-                            }
-                            break;
-                    }
+                    foreach (var message in messages)
+                        log.Info(message);
                 },
                 corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
@@ -2831,18 +2709,9 @@ namespace Corrade
                     break;
             }
 
-            // Write the logo.
-            Feedback(true, CORRADE_CONSTANTS.LOGO.ToArray());
-
-            // Suppress standard OpenMetaverse logs, we have better ones.
-            Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
-
             // Load the configuration file.
             lock (ConfigurationFileLock)
             {
-                Feedback(
-                    Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.READING_CORRADE_CONFIGURATION));
                 try
                 {
                     using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open))
@@ -2852,28 +2721,90 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(
+                    Console.WriteLine("{0} {1}",
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
                         ex.Message);
                     return;
                 }
+            }
 
-                // Check configuration file compatiblity.
-                Version minimalConfig;
-                Version versionConfig;
-                if (
-                    !Version.TryParse(CORRADE_CONSTANTS.ASSEMBLY_CUSTOM_ATTRIBUTES["configuration"], out minimalConfig) ||
-                    !Version.TryParse(corradeConfiguration.Version, out versionConfig) ||
-                    !minimalConfig.Major.Equals(versionConfig.Major) || !minimalConfig.Minor.Equals(versionConfig.Minor))
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.CONFIGURATION_FILE_VERSION_MISMATCH));
+            // Initialize the console logger if we are running in interactive mode.
+            if (Environment.UserInteractive)
+            {
+                var consoleAppender = new log4net.Appender.ConsoleAppender();
+                var layout = new log4net.Layout.PatternLayout
+                {
+                    ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " + corradeConfiguration.FirstName +
+                        @" " +
+                        corradeConfiguration.LastName + @" : %message%newline"
+                };
+                consoleAppender.Layout = layout;
+                layout.ActivateOptions();
+                consoleAppender.ActivateOptions();
+                log4net.Config.BasicConfigurator.Configure(consoleAppender);
+            }
+            // Only enable the logging file if it has been enabled.
+            if (corradeConfiguration.ClientLogEnabled)
+            {
+                var rollingFileAppender = new log4net.Appender.RollingFileAppender();
+                var layout = new log4net.Layout.PatternLayout
+                {
+                    ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
+                        corradeConfiguration.FirstName +
+                        @" " +
+                        corradeConfiguration.LastName + " : %message%newline"
+                };
+                rollingFileAppender.Layout = layout;
+                layout.ActivateOptions();
+                rollingFileAppender.File = corradeConfiguration.ClientLogFile;
+                rollingFileAppender.StaticLogFileName = true;
+                rollingFileAppender.RollingStyle = log4net.Appender.RollingFileAppender.RollingMode.Size;
+                rollingFileAppender.MaxSizeRollBackups = 10;
+                rollingFileAppender.MaximumFileSize = "1MB";
+                rollingFileAppender.ActivateOptions();
+                log4net.Config.BasicConfigurator.Configure(rollingFileAppender);
+            }
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Win32NT: // only initialize the event logger on Windows in service mode
+                    if (!Environment.UserInteractive)
+                    {
+                        var eventLogAppender = new log4net.Appender.EventLogAppender();
+                        var layout = new log4net.Layout.PatternLayout
+                        {
+                            ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
+                        corradeConfiguration.FirstName +
+                        @" " +
+                        corradeConfiguration.LastName + " : %message%newline"
+                        };
+                        eventLogAppender.Layout = layout;
+                        layout.ActivateOptions();
+                        eventLogAppender.ApplicationName = !string.IsNullOrEmpty(InstalledServiceName)
+                            ? InstalledServiceName
+                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
+                        eventLogAppender.ActivateOptions();
+                        log4net.Config.BasicConfigurator.Configure(eventLogAppender);
+                    }
+                    break;
+            }
 
+            // Suppress standard OpenMetaverse logs for now.
+            Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
+
+            // Write the logo.
+            Feedback(CORRADE_CONSTANTS.LOGO);
+
+            // Check configuration file compatiblity.
+            Version minimalConfig;
+            Version versionConfig;
+            if (
+                !Version.TryParse(CORRADE_CONSTANTS.ASSEMBLY_CUSTOM_ATTRIBUTES["configuration"], out minimalConfig) ||
+                !Version.TryParse(corradeConfiguration.Version, out versionConfig) ||
+                !minimalConfig.Major.Equals(versionConfig.Major) || !minimalConfig.Minor.Equals(versionConfig.Minor))
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.READ_CORRADE_CONFIGURATION));
-            }
+                        Enumerations.ConsoleMessage.CONFIGURATION_FILE_VERSION_MISMATCH));
 
             // Load language detection
             try
