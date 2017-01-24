@@ -200,7 +200,8 @@ namespace wasOpenMetaverse
                 if (locSplit.Length > 2)
                 {
                     int returnResult;
-                    var stringToInt = int.TryParse(locSplit[2], NumberStyles.Integer, Utils.EnUsCulture, out returnResult);
+                    var stringToInt = int.TryParse(locSplit[2], NumberStyles.Integer, Utils.EnUsCulture,
+                        out returnResult);
 
                     if (stringToInt)
                         return returnResult;
@@ -219,7 +220,8 @@ namespace wasOpenMetaverse
                 if (locSplit.Length > 3)
                 {
                     int returnResult;
-                    var stringToInt = int.TryParse(locSplit[3], NumberStyles.Integer, Utils.EnUsCulture, out returnResult);
+                    var stringToInt = int.TryParse(locSplit[3], NumberStyles.Integer, Utils.EnUsCulture,
+                        out returnResult);
 
                     if (stringToInt)
                         return returnResult;

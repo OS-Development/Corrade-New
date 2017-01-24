@@ -70,7 +70,7 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
-            AttachmentPoint attachmentPoint = AttachmentPoint.Default;
+            var attachmentPoint = AttachmentPoint.Default;
             lock (Locks.ClientInstanceAppearanceLock)
             {
                 var objectAttachedEvent = new ManualResetEvent(false);
@@ -93,8 +93,8 @@ namespace wasOpenMetaverse
                         .Any(o => Strings.StringEquals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
-                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
-                                       ((prim.PrimData.State & ~0xF0) << 4));
+                    attachmentPoint = (AttachmentPoint) (((prim.PrimData.State & 0xF0) >> 4) |
+                                                         ((prim.PrimData.State & ~0xF0) << 4));
 
                     objectAttachedEvent.Set();
                 };
@@ -126,7 +126,7 @@ namespace wasOpenMetaverse
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
-            AttachmentPoint attachmentPoint = AttachmentPoint.Default;
+            var attachmentPoint = AttachmentPoint.Default;
             lock (Locks.ClientInstanceAppearanceLock)
             {
                 var objectDetachedEvent = new ManualResetEvent(false);
@@ -149,8 +149,8 @@ namespace wasOpenMetaverse
                         .Any(o => Strings.StringEquals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
-                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
-                                       ((prim.PrimData.State & ~0xF0) << 4));
+                    attachmentPoint = (AttachmentPoint) (((prim.PrimData.State & 0xF0) >> 4) |
+                                                         ((prim.PrimData.State & ~0xF0) << 4));
 
                     objectDetachedEvent.Set();
                 };
@@ -758,7 +758,7 @@ namespace wasOpenMetaverse
                 lock (Locks.ClientInstanceInventoryLock)
                 {
                     contents.UnionWith(Client.Inventory.FolderContents(queueFolder.UUID, clientUUID, true, true,
-                        InventorySortOrder.ByDate, (int)millisecondsTimeout));
+                        InventorySortOrder.ByDate, (int) millisecondsTimeout));
                 }
                 foreach (var item in contents)
                 {
