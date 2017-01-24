@@ -23,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Execute))
+                            (int)Configuration.Permissions.Execute))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -34,6 +34,18 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
                     }
+                    bool shellExecute;
+                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SHELL)),
+                            corradeCommandParameters.Message)), out shellExecute))
+                    {
+                        shellExecute = false;
+                    }
+                    bool createWindow;
+                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WINDOW)),
+                            corradeCommandParameters.Message)), out createWindow))
+                    {
+                        createWindow = false;
+                    }
                     var p = new ProcessStartInfo(file,
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PARAMETER)),
@@ -41,8 +53,8 @@ namespace Corrade
                     {
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
-                        WindowStyle = ProcessWindowStyle.Normal,
-                        UseShellExecute = false
+                        UseShellExecute = shellExecute,
+                        CreateNoWindow = !createWindow
                     };
                     var stdout = new StringBuilder();
                     var stderr = new StringBuilder();

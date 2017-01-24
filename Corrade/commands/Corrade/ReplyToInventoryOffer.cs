@@ -77,6 +77,7 @@ namespace Corrade
                                     }
                                 }
                                 goto case Enumerations.Action.DECLINE;
+                            case Enumerations.Action.IGNORE:
                             case Enumerations.Action.DECLINE:
                                 if (
                                     !UUID.TryParse(
@@ -93,6 +94,14 @@ namespace Corrade
                                     if (!InventoryOffers.TryGetValue(sessionUUID, out inventoryOffer))
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.INVENTORY_OFFER_NOT_FOUND);
+
+                                    // If the asset folder exists, then set the accept folder to the asset folder.
+                                    var folderUUID = Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType);
+                                    if (Client.Inventory.Store.Contains(folderUUID))
+                                    {
+                                        inventoryFolder =
+                                            Client.Inventory.Store[folderUUID] as InventoryFolder;
+                                    }
                                 }
                                 break;
                         }
@@ -116,12 +125,78 @@ namespace Corrade
                                     inventoryOffer.Args.Accept = true;
                                     inventoryOffer.Event.Set();
                                 }
+
+                                // Send the reply.
+                                switch (inventoryOffer.Args.Offer.Dialog)
+                                {
+                                    case InstantMessageDialog.InventoryOffered:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Self.InstantMessage(Client.Self.Name,
+                                                inventoryOffer.Args.Offer.FromAgentID,
+                                                string.Empty, inventoryOffer.Args.Offer.IMSessionID,
+                                                InstantMessageDialog.InventoryAccepted,
+                                                InstantMessageOnline.Offline,
+                                                Client.Self.SimPosition,
+                                                Client.Network.CurrentSim.RegionID,
+                                                inventoryOffer.Args.FolderID.GetBytes()
+                                                );
+                                        }
+                                        break;
+                                    case InstantMessageDialog.TaskInventoryOffered:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Self.InstantMessage(Client.Self.Name,
+                                                inventoryOffer.Args.Offer.FromAgentID,
+                                                string.Empty, inventoryOffer.Args.Offer.IMSessionID,
+                                                InstantMessageDialog.TaskInventoryAccepted,
+                                                InstantMessageOnline.Offline,
+                                                Client.Self.SimPosition,
+                                                Client.Network.CurrentSim.RegionID,
+                                                inventoryOffer.Args.FolderID.GetBytes()
+                                                );
+                                        }
+                                        break;
+                                }
                                 break;
                             case Enumerations.Action.DECLINE:
                                 lock (InventoryOffersLock)
                                 {
                                     inventoryOffer.Args.Accept = false;
                                     inventoryOffer.Event.Set();
+                                }
+
+                                // Send the reply.
+                                switch (inventoryOffer.Args.Offer.Dialog)
+                                {
+                                    case InstantMessageDialog.InventoryOffered:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Self.InstantMessage(Client.Self.Name,
+                                                inventoryOffer.Args.Offer.FromAgentID,
+                                                string.Empty, inventoryOffer.Args.Offer.IMSessionID,
+                                                InstantMessageDialog.InventoryDeclined,
+                                                InstantMessageOnline.Offline,
+                                                Client.Self.SimPosition,
+                                                Client.Network.CurrentSim.RegionID,
+                                                Utils.EmptyBytes
+                                                );
+                                        }
+                                        break;
+                                    case InstantMessageDialog.TaskInventoryOffered:
+                                        lock (Locks.ClientInstanceInventoryLock)
+                                        {
+                                            Client.Self.InstantMessage(Client.Self.Name,
+                                                inventoryOffer.Args.Offer.FromAgentID,
+                                                string.Empty, inventoryOffer.Args.Offer.IMSessionID,
+                                                InstantMessageDialog.TaskInventoryDeclined,
+                                                InstantMessageOnline.Offline,
+                                                Client.Self.SimPosition,
+                                                Client.Network.CurrentSim.RegionID,
+                                                Utils.EmptyBytes
+                                                );
+                                        }
+                                        break;
                                 }
                                 break;
                             case Enumerations.Action.PURGE:

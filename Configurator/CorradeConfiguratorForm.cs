@@ -156,13 +156,20 @@ namespace Configurator
             mainForm.ThrottleAssetThrottle.Text = corradeConfiguration.ThrottleAsset.ToString();
             mainForm.ThrottleCloudThrottle.Text = corradeConfiguration.ThrottleCloud.ToString();
 
-            // server
+            // HTTP server
             mainForm.HTTPServerEnabled.Checked = corradeConfiguration.EnableHTTPServer;
             mainForm.HTTPServerPrefix.Text = corradeConfiguration.HTTPServerPrefix;
-            mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
             mainForm.HTTPServerAuthenticationEnabled.Checked = corradeConfiguration.EnableHTTPServerAuthentication;
             mainForm.HTTPServerUsername.Text = corradeConfiguration.HTTPServerUsername;
             mainForm.HTTPServerPassword.Text = corradeConfiguration.HTTPServerPassword;
+
+            // Nucleus
+            mainForm.NucleusServerEnabled.Checked = corradeConfiguration.EnableNucleusServer;
+            mainForm.NucleusServerPrefix.Text = corradeConfiguration.NucleusServerPrefix;
+            mainForm.NucleusServerUsername.Text = corradeConfiguration.NucleusServerUsername;
+            mainForm.NucleusServerPassword.Text = corradeConfiguration.NucleusServerPassword;
+            mainForm.NucleusServerCacheEnabled.Checked = corradeConfiguration.EnableNucleusServerCache;
+            mainForm.NucleusServerCachePurgeInterval.Text = corradeConfiguration.NucleusServerCachePurgeInterval.ToString();
 
             // TCP
             mainForm.TCPNotificationsServerEnabled.Checked = corradeConfiguration.EnableTCPNotificationsServer;
@@ -202,12 +209,6 @@ namespace Configurator
             mainForm.LimitsNotificationsThreads.Text = corradeConfiguration.MaximumNotificationThreads.ToString();
             mainForm.LimitsTCPNotificationsThrottle.Text = corradeConfiguration.TCPNotificationThrottle.ToString();
             mainForm.LimitsTCPNotificationsQueue.Text = corradeConfiguration.TCPNotificationQueueLength.ToString();
-            mainForm.LimitsHTTPServerDrain.Text = corradeConfiguration.HTTPServerDrainTimeout.ToString();
-            mainForm.LimitsHTTPServerBody.Text = corradeConfiguration.HTTPServerBodyTimeout.ToString();
-            mainForm.LimitsHTTPServerHeader.Text = corradeConfiguration.HTTPServerHeaderTimeout.ToString();
-            mainForm.LimitsHTTPServerIdle.Text = corradeConfiguration.HTTPServerIdleTimeout.ToString();
-            mainForm.LimitsHTTPServerQueue.Text = corradeConfiguration.HTTPServerQueueTimeout.ToString();
-            mainForm.LimitsHTTPServerTimeout.Text = corradeConfiguration.HTTPServerTimeout.ToString();
             mainForm.LimitsServicesTimeout.Text = corradeConfiguration.ServicesTimeout.ToString();
             mainForm.LimitsServicesRebake.Text = corradeConfiguration.RebakeDelay.ToString();
             mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
@@ -275,6 +276,7 @@ namespace Configurator
                             mainForm.SIMLTabPage.Enabled = false;
                             mainForm.RLVTabPage.Enabled = false;
                             mainForm.HTTPTabPage.Enabled = false;
+                            mainForm.NucleusTabPage.Enabled = false;
                             mainForm.HordeTabPage.Enabled = false;
                             mainForm.TCPTabPage.Enabled = false;
                             mainForm.NetworkTabPage.Enabled = false;
@@ -287,7 +289,6 @@ namespace Configurator
                             mainForm.ClientIdentificationTagBox.Visible = false;
                             mainForm.ExpectedExitCodeBox.Visible = false;
                             mainForm.AbnormalExitCodeBox.Visible = false;
-                            mainForm.HTTPServerLimitsBox.Visible = false;
                             break;
                         case "Intermediary":
                             /* Hide non-advanced experience tabs. */
@@ -297,6 +298,7 @@ namespace Configurator
                             mainForm.SIMLTabPage.Enabled = true;
                             mainForm.RLVTabPage.Enabled = true;
                             mainForm.HTTPTabPage.Enabled = true;
+                            mainForm.NucleusTabPage.Enabled = true;
                             mainForm.HordeTabPage.Enabled = true;
                             mainForm.TCPTabPage.Enabled = false;
                             mainForm.NetworkTabPage.Enabled = false;
@@ -309,7 +311,6 @@ namespace Configurator
                             mainForm.ClientIdentificationTagBox.Visible = false;
                             mainForm.ExpectedExitCodeBox.Visible = false;
                             mainForm.AbnormalExitCodeBox.Visible = false;
-                            mainForm.HTTPServerLimitsBox.Visible = false;
                             break;
                         case "Advanced":
                             /* Show everything. */
@@ -319,6 +320,7 @@ namespace Configurator
                             mainForm.SIMLTabPage.Enabled = true;
                             mainForm.RLVTabPage.Enabled = true;
                             mainForm.HTTPTabPage.Enabled = true;
+                            mainForm.NucleusTabPage.Enabled = true;
                             mainForm.HordeTabPage.Enabled = true;
                             mainForm.TCPTabPage.Enabled = true;
                             mainForm.NetworkTabPage.Enabled = true;
@@ -331,7 +333,6 @@ namespace Configurator
                             mainForm.ClientIdentificationTagBox.Visible = true;
                             mainForm.ExpectedExitCodeBox.Visible = true;
                             mainForm.AbnormalExitCodeBox.Visible = true;
-                            mainForm.HTTPServerLimitsBox.Visible = true;
                             break;
                     }
                     mainForm.Tabs.Enabled = true;
@@ -484,10 +485,9 @@ namespace Configurator
                 corradeConfiguration.ThrottleCloud = outUint;
             }
 
-            // server
+            // HTTP server
             corradeConfiguration.EnableHTTPServer = mainForm.HTTPServerEnabled.Checked;
             corradeConfiguration.HTTPServerPrefix = mainForm.HTTPServerPrefix.Text;
-            corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
             corradeConfiguration.EnableHTTPServerAuthentication = mainForm.HTTPServerAuthenticationEnabled.Checked;
             corradeConfiguration.HTTPServerUsername = mainForm.HTTPServerUsername.Text;
             // Hash HTTP password.
@@ -501,6 +501,26 @@ namespace Configurator
                     break;
             }
 
+            // Nucleus
+            corradeConfiguration.EnableNucleusServer = mainForm.NucleusServerEnabled.Checked;
+            corradeConfiguration.NucleusServerPrefix = mainForm.NucleusServerPrefix.Text;
+            corradeConfiguration.NucleusServerUsername = mainForm.NucleusServerUsername.Text;
+            // Hash HTTP password.
+            switch (Regex.IsMatch(mainForm.NucleusServerPassword.Text, "[a-fA-F0-9]{40}"))
+            {
+                case false:
+                    corradeConfiguration.NucleusServerPassword =
+                        string.IsNullOrEmpty(mainForm.NucleusServerPassword.Text)
+                            ? mainForm.HTTPServerPassword.Text
+                            : Utils.SHA1String(mainForm.NucleusServerPassword.Text);
+                    break;
+            }
+            corradeConfiguration.EnableNucleusServerCache = mainForm.NucleusServerCacheEnabled.Checked;
+            if (uint.TryParse(mainForm.NucleusServerCachePurgeInterval.Text, out outUint))
+            {
+                corradeConfiguration.NucleusServerCachePurgeInterval = outUint;
+            }
+            
             // TCP
             corradeConfiguration.EnableTCPNotificationsServer = mainForm.TCPNotificationsServerEnabled.Checked;
             corradeConfiguration.TCPNotificationsServerAddress = mainForm.TCPNotificationsServerAddress.Text;
@@ -610,31 +630,6 @@ namespace Configurator
                 out outUint))
             {
                 corradeConfiguration.TCPNotificationThrottle = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsHTTPServerDrain.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
-            {
-                corradeConfiguration.HTTPServerDrainTimeout = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsHTTPServerBody.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
-            {
-                corradeConfiguration.HTTPServerBodyTimeout = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsHTTPServerHeader.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
-            {
-                corradeConfiguration.HTTPServerHeaderTimeout = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsHTTPServerIdle.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
-            {
-                corradeConfiguration.HTTPServerIdleTimeout = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsHTTPServerQueue.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
-            {
-                corradeConfiguration.HTTPServerQueueTimeout = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsHTTPServerTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture,
-                out outUint))
-            {
-                corradeConfiguration.HTTPServerTimeout = outUint;
             }
             if (uint.TryParse(mainForm.LimitsServicesTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
@@ -1565,6 +1560,13 @@ namespace Configurator
             mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
         }
 
+        private void ClearNucleusServerPasswordRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() => {
+                mainForm.NucleusServerPassword.Text = string.Empty;
+            }));
+        }
+
         private void ClearGroupPasswordRequested(object sender, EventArgs e)
         {
             mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.GroupPassword.Text = string.Empty; }));
@@ -2153,14 +2155,6 @@ namespace Configurator
                             }
                             corradeConfiguration.HTTPServerPrefix = serverNode.InnerText;
                             break;
-                        case ConfigurationKeys.KEEP_ALIVE:
-                            bool HTTPKeepAlive;
-                            if (!bool.TryParse(serverNode.InnerText, out HTTPKeepAlive))
-                            {
-                                throw new Exception("error in server section");
-                            }
-                            corradeConfiguration.HTTPServerKeepAlive = HTTPKeepAlive;
-                            break;
                     }
             }
             catch (Exception ex)
@@ -2625,50 +2619,6 @@ namespace Configurator
                                         }
                                         corradeConfiguration.HTTPServerTimeout = HTTPServerTimeoutValue;
                                         break;
-                                    case ConfigurationKeys.DRAIN:
-                                        uint HTTPServerDrainTimeoutValue;
-                                        if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out HTTPServerDrainTimeoutValue))
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        corradeConfiguration.HTTPServerDrainTimeout = HTTPServerDrainTimeoutValue;
-                                        break;
-                                    case ConfigurationKeys.BODY:
-                                        uint HTTPServerBodyTimeoutValue;
-                                        if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out HTTPServerBodyTimeoutValue))
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        corradeConfiguration.HTTPServerBodyTimeout = HTTPServerBodyTimeoutValue;
-                                        break;
-                                    case ConfigurationKeys.HEADER:
-                                        uint HTTPServerHeaderTimeoutValue;
-                                        if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out HTTPServerHeaderTimeoutValue))
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        corradeConfiguration.HTTPServerHeaderTimeout = HTTPServerHeaderTimeoutValue;
-                                        break;
-                                    case ConfigurationKeys.IDLE:
-                                        uint HTTPServerIdleTimeoutValue;
-                                        if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out HTTPServerIdleTimeoutValue))
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        corradeConfiguration.HTTPServerIdleTimeout = HTTPServerIdleTimeoutValue;
-                                        break;
                                     case ConfigurationKeys.QUEUE:
                                         uint HTTPServerQueueTimeoutValue;
                                         if (
@@ -3087,6 +3037,12 @@ namespace Configurator
                             mainForm.StatusProgress.Value = 50;
                             mainForm.StatusText.Text = @"applying settings...";
                             GetUserConfiguration.Invoke();
+
+                            var experienceLevel = Settings.Default["ExperienceLevel"];
+                            mainForm.ExperienceLevel.SelectedIndex =
+                                mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                            mainForm.ExperienceLevel.SelectedItem = experienceLevel;
+
                             mainForm.StatusText.Text = @"configuration loaded";
                             mainForm.StatusProgress.Value = 100;
                         }

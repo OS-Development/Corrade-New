@@ -194,14 +194,15 @@ namespace Corrade
                                 {
                                     try
                                     {
+                                        var path = string.Format("{0}.{1}", Path.Combine(
+                                            corradeConfiguration.InstantMessageLogDirectory,
+                                            string.Format("{0} {1}", fullName.First(), fullName.Last())),
+                                            CORRADE_CONSTANTS
+                                                .LOG_FILE_EXTENSION);
                                         lock (InstantMessageLogFileLock)
                                         {
-                                            using (var fileStream = File.Open(Path.Combine(
-                                                corradeConfiguration.InstantMessageLogDirectory,
-                                                string.Join(" ", fullName.First(), fullName.Last())) + "." +
-                                                                              CORRADE_CONSTANTS
-                                                                                  .LOG_FILE_EXTENSION,
-                                                FileMode.Append, FileAccess.Write, FileShare.None))
+                                            using (var fileStream = new FileStream(path,
+                                                FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
                                             {
                                                 using (
                                                     var logWriter = new StreamWriter(fileStream, Encoding.UTF8)
@@ -305,8 +306,8 @@ namespace Corrade
                                             {
                                                 lock (GroupLogFileLock)
                                                 {
-                                                    using (var fileStream = File.Open(o.ChatLog,
-                                                        FileMode.Append, FileAccess.Write, FileShare.None))
+                                                    using (var fileStream = new FileStream(o.ChatLog,
+                                                        FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
                                                     {
                                                         using (
                                                             var logWriter = new StreamWriter(fileStream,
@@ -410,14 +411,14 @@ namespace Corrade
                                         {
                                             try
                                             {
+                                                var path = string.Format("{0}.{1}", Path.Combine(
+                                                    corradeConfiguration.LocalMessageLogDirectory,
+                                                    Client.Network.CurrentSim.Name), CORRADE_CONSTANTS
+                                                        .LOG_FILE_EXTENSION);
                                                 lock (LocalLogFileLock)
                                                 {
-                                                    using (var fileStream = File.Open(Path.Combine(
-                                                        corradeConfiguration.LocalMessageLogDirectory,
-                                                        Client.Network.CurrentSim.Name) + "." +
-                                                                                      CORRADE_CONSTANTS
-                                                                                          .LOG_FILE_EXTENSION,
-                                                        FileMode.Append, FileAccess.Write, FileShare.None))
+                                                    using (var fileStream = new FileStream(path,
+                                                        FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
                                                     {
                                                         using (
                                                             var logWriter = new StreamWriter(fileStream,

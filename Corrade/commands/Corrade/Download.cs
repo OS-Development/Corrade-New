@@ -394,7 +394,9 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     // Otherwise, save it to the specified file.
-                    using (var fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (
+                        var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 16384,
+                            true))
                     {
                         using (var binaryWriter = new BinaryWriter(fileStream, Encoding.UTF8))
                         {

@@ -59,7 +59,9 @@ namespace Corrade.Structures
         /// <param name="FileName">File path of the new xml file</param>
         public void SaveToFile(string FileName)
         {
-            using (var fileStream = File.Open(FileName, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (
+                var fileStream = new FileStream(FileName, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true)
+                )
             {
                 using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                 {
@@ -80,7 +82,8 @@ namespace Corrade.Structures
             if (!File.Exists(FileName))
                 return null;
 
-            using (var fileStream = File.Open(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (
+                var fileStream = new FileStream(FileName, FileMode.Open, FileAccess.Read, FileShare.Read, 16384, true))
             {
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
@@ -114,7 +117,8 @@ namespace Corrade.Structures
              XmlElement(Type = typeof(int)),
              XmlElement(Type = typeof(uint)),
              XmlElement(Type = typeof(bool)),
-             XmlElement(Type = typeof(string))]
+             XmlElement(Type = typeof(string)),
+             XmlElement(Type = typeof(InstantMessageDialog))]
             public object Value { get; set; }
         }
 

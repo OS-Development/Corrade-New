@@ -20,22 +20,13 @@ namespace Corrade.Source
         }
 
         [VerbOption("install", HelpText = "Install Corrade as a service.")]
-        public InstallSubOptions InstallSubOptions
-        {
-            get; set;
-        }
+        public InstallSubOptions InstallSubOptions { get; set; }
 
         [VerbOption("uninstall", HelpText = "Uninstall a Corrade service.")]
-        public UninstallSubOptions UninstallSubOptions
-        {
-            get; set;
-        }
+        public UninstallSubOptions UninstallSubOptions { get; set; }
 
         [VerbOption("info", HelpText = "Various information about Corrade.")]
-        public InfoSubOptions InfoSubOptions
-        {
-            get; set;
-        }
+        public InfoSubOptions InfoSubOptions { get; set; }
 
         [HelpVerbOption]
         public string GetUsage(string verb)
@@ -48,10 +39,7 @@ namespace Corrade.Source
     {
         [Option('n', "service-name", DefaultValue = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
             HelpText = @"The name to give the Corrade service that will show up in Windows tools.")]
-        public string Name
-        {
-            get; set;
-        }
+        public string Name { get; set; }
 
         [HelpOption]
         public string GetUsage()
@@ -65,10 +53,7 @@ namespace Corrade.Source
     {
         [Option('n', "service-name", DefaultValue = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
             HelpText = @"The name of the Corrade service to uninstall.")]
-        public string Name
-        {
-            get; set;
-        }
+        public string Name { get; set; }
 
         [HelpOption]
         public string GetUsage()

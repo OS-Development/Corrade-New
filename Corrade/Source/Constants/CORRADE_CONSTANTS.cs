@@ -124,19 +124,23 @@ namespace Corrade.Constants
         /// <summary>
         ///     Corrade Logo.
         /// </summary>
-        public static readonly object[] LOGO = new []
+        public static readonly object[] LOGO =
         {
             @"",
-            @"       _..--=--..._  " ,
+            @"       _..--=--..._  ",
             @"    .-'            '-.  .-.  ",
             @"   /.'              '.\/  /  ",
             @"  |=-     Corrade    -=| (  ",
             @"   \'.              .'/\  \  ",
-            @"    '-.,_____ _____.-'  '-'  ",
+            @"    '-.._____ _____.-'  '-'  ",
             @"          [_____]=8  ",
             @"               \  ",
             @"                 Good day!  ",
-            @"",
+            @""
+        };
+
+        public static readonly object[] SUB_LOGO =
+        {
             string.Format(Utils.EnUsCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION, CORRADE_COMPILE_DATE),
             string.Format(Utils.EnUsCulture, "Copyright: {0}", COPYRIGHT)
         };
@@ -148,6 +152,10 @@ namespace Corrade.Constants
                 .GetCustomAttributes(typeof(AssemblyMetadataAttribute), true)
                 .OfType<AssemblyMetadataAttribute>()
                 .ToDictionary(o => o.Key, o => o.Value);
+
+        public static readonly string NUCLEUS_ROOT = @"Nucleus";
+
+        public static readonly string NUCLEUS_DEFAULT_DOCUMENT = @"index.html";
 
         /// <summary>
         ///     Conten-types that Corrade can send and receive.

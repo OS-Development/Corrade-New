@@ -95,7 +95,7 @@
       <HintPath>..\libopenmetaverse\bin\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.3.902\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.4.400\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -103,8 +103,8 @@
       <HintPath>..\packages\Mono.Data.Sqlite.Portable.1.0.3.5\lib\net4\Mono.Data.Sqlite.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NAudio, Version=1.7.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.1.7.3\lib\net35\NAudio.dll</HintPath>
+    <Reference Include="NAudio, Version=1.8.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.1.8.0\lib\net35\NAudio.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NAudio.Vorbis, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -135,12 +135,12 @@
       <HintPath>..\packages\SmartThreadPool.dll.2.2.4\lib\net45\SmartThreadPool.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Bot, Version=1.2.6.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Bot.1.2.6\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Bot.dll</HintPath>
+    <Reference Include="Syn.Bot, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Bot.2.0.0\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Bot.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Log, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Log.1.0.4\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Log.dll</HintPath>
+    <Reference Include="Syn.Log, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Log.1.0.5\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Log.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Syn.VA, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
@@ -178,6 +178,7 @@
       <HintPath>..\packages\Mono.Data.Sqlite.Portable.1.0.3.5\lib\net4\System.Transactions.Portable.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml">
       <Private>False</Private>
     </Reference>
@@ -219,6 +220,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetRemoteParcelInfoData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\Nucleus.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\RemoveConfigurationGroup.cs">
@@ -263,6 +267,8 @@
     <Compile Include="notifications\Preload.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Source\HTTP\CorradeHTTPServer.cs" />
+    <Compile Include="Source\HTTP\NucleusHTTPServer.cs" />
     <Compile Include="Source\Attributes.cs" />
     <Compile Include="Source\Command.cs" />
     <Compile Include="Source\CommandLineOptions.cs" />
@@ -276,9 +282,10 @@
     <Compile Include="Source\Events\OutfitEventArgs.cs" />
     <Compile Include="Source\Events\TypingEventArgs.cs" />
     <Compile Include="Source\Helpers\Utilities.cs" />
-    <Compile Include="Source\Logs\LocalChatLog.cs" />
     <Compile Include="Source\Notification.cs" />
     <Compile Include="Source\RLV.cs" />
+    <Compile Include="Source\Structures\HTTPException.cs" />
+    <Compile Include="Source\Structures\HTTPRequestMapping.cs" />
     <Compile Include="Source\Structures\SerializedNotification.cs" />
     <Compile Include="Source\Structures\Agent.cs" />
     <Compile Include="Source\Structures\AgentMovement.cs" />
@@ -1585,8 +1592,14 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="App.config" />
-    <None Include="Corrade.ini.default">
+    <EmbeddedResource Include="Corrade.ini.default">
       <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <None Include="Nucleus\000_base.zip">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Nucleus\001_bootstrap.zip">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
@@ -2031,6 +2044,10 @@
     <Folder Include="state\" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Configurator\Configurator.csproj">
+      <Project>{695d4bed-5254-4092-b5dc-bfa13228a151}</Project>
+      <Name>Configurator</Name>
+    </ProjectReference>
     <ProjectReference Include="..\corrade-configuration-sharp\CorradeConfigurationSharp\CorradeConfigurationSharp.csproj">
       <Project>{2ca04070-f3e8-4e39-9f43-4bb7090d7a77}</Project>
       <Name>CorradeConfigurationSharp</Name>

@@ -15,7 +15,6 @@ using System.Configuration.Install;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Management;
 using System.Net;
@@ -40,11 +39,15 @@ using BayesSharp;
 using CommandLine;
 using Corrade.Constants;
 using Corrade.Events;
-using Corrade.Helpers;
+using Corrade.HTTP;
 using Corrade.Source;
 using Corrade.Structures;
 using Corrade.Structures.Effects;
 using CorradeConfigurationSharp;
+using log4net;
+using log4net.Appender;
+using log4net.Config;
+using log4net.Layout;
 using LanguageDetection;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
@@ -57,9 +60,9 @@ using wasSharp.Collections.Specialized;
 using wasSharp.Timers;
 using wasSharp.Web;
 using wasSharp.Web.Utilities;
+using wasSharpNET.Console;
 using wasSharpNET.Cryptography;
-using log4net;
-using log4net.Config;
+using wasSharpNET.Network.TCP;
 using static Corrade.Command;
 using Group = OpenMetaverse.Group;
 using GroupNotice = Corrade.Structures.GroupNotice;
@@ -68,16 +71,16 @@ using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 using ThreadState = System.Threading.ThreadState;
 using Timer = wasSharp.Timers.Timer;
-using log4net.Appender;
+
 #endregion
 
 namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(Corrade));
-
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
+
+        private static readonly ILog log = LogManager.GetLogger(typeof(Corrade));
 
         /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
@@ -146,19 +149,68 @@ namespace Corrade
         public static HashSet<string> CorradeScriptKeys =
             new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>().AsParallel().Select(o => string.Intern(o)));
 
+        public static Configuration corradeConfiguration = new Configuration();
+
+        public static GridClient Client = new GridClient
+        {
+            // Set the initial client configuration.
+            Settings =
+            {
+                ALWAYS_REQUEST_PARCEL_ACL = true,
+                ALWAYS_DECODE_OBJECTS = true,
+                ALWAYS_REQUEST_OBJECTS = true,
+                SEND_AGENT_APPEARANCE = true,
+                AVATAR_TRACKING = true,
+                OBJECT_TRACKING = true,
+                PARCEL_TRACKING = true,
+                ALWAYS_REQUEST_PARCEL_DWELL = true,
+                // Smoother movement for autopilot.
+                SEND_AGENT_UPDATES = true,
+                DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
+                ENABLE_CAPS = true,
+                // Inventory settings.
+                FETCH_MISSING_INVENTORY = true,
+                HTTP_INVENTORY = true,
+                // Set the asset cache directory.
+                ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                    CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY),
+                USE_ASSET_CACHE = true,
+                // More precision for object and avatar tracking updates.
+                USE_INTERPOLATION_TIMER = true,
+                // Transfer textures over HTTP if possible.
+                USE_HTTP_TEXTURES = true,
+                // Needed for commands dealing with terrain height.
+                STORE_LAND_PATCHES = true,
+                // Decode simulator statistics.
+                ENABLE_SIMSTATS = true,
+                // Send pings for lag measurement.
+                SEND_PINGS = true,
+                // Throttling.
+                SEND_AGENT_THROTTLE = true,
+                // Enable multiple simulators.
+                MULTIPLE_SIMS = true
+            }
+        };
+
         public static string InstalledServiceName;
-        private static Configuration corradeConfiguration = new Configuration();
         private static Thread programThread;
-        private static Thread HTTPListenerThread;
         private static Thread TCPNotificationsThread;
         private static readonly ManualResetEvent CallbackThreadState = new ManualResetEvent(false);
         private static readonly ManualResetEvent NotificationThreadState = new ManualResetEvent(false);
-        private static readonly ManualResetEvent HTTPListenerThreadState = new ManualResetEvent(false);
         private static readonly ManualResetEvent TCPNotificationsThreadState = new ManualResetEvent(false);
         private static TcpListener TCPListener;
-        private static HttpListener HTTPListener;
+
+        private static readonly CorradeHTTPServer CorradeHTTPServer = new CorradeHTTPServer
+        {
+            AuthenticationSchemes = AuthenticationSchemes.Anonymous | AuthenticationSchemes.Basic
+        };
+
+        private static readonly NucleusHTTPServer NucleusHTTPServer = new NucleusHTTPServer
+        {
+            AuthenticationSchemes = AuthenticationSchemes.Basic
+        };
+
         private static readonly EventLog CorradeEventLog = new EventLog();
-        private static GridClient Client;
         private static LoginParams Login;
         private static int LoginLocationIndex;
         private static InventoryFolder CurrentOutfitFolder;
@@ -172,7 +224,7 @@ namespace Corrade
         private static readonly FileSystemWatcher GroupFeedWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher GroupSoftBansWatcher = new FileSystemWatcher();
         private static readonly object SIMLBotLock = new object();
-        private static readonly object ConfigurationFileLock = new object();
+        public static readonly object ConfigurationFileLock = new object();
         private static readonly object ClientLogFileLock = new object();
         private static readonly object GroupLogFileLock = new object();
         private static readonly object LocalLogFileLock = new object();
@@ -205,6 +257,8 @@ namespace Corrade
             new Dictionary<UUID, InventoryOffer>();
 
         private static readonly object InventoryOffersLock = new object();
+
+        private static readonly object InventoryRequestsLock = new object();
 
         private static readonly
             SerializableDictionary<string, SerializableDictionary<UUID, string>> GroupFeeds =
@@ -253,7 +307,7 @@ namespace Corrade
             GroupSoftBans =
                 new SerializableDictionary<UUID, ObservableHashSet<SoftBan>>();
 
-        private static readonly object GroupSoftBansLock = new object();
+        public static readonly object GroupSoftBansLock = new object();
 
         private static readonly Hashtable GroupWorkers = new Hashtable();
         private static readonly object GroupWorkersLock = new object();
@@ -297,10 +351,10 @@ namespace Corrade
 
         private static readonly object HordeHTTPClientsLock = new object();
 
-        private static readonly Dictionary<UUID, BayesSimpleTextClassifier> GroupBayesClassifiers =
+        public static readonly Dictionary<UUID, BayesSimpleTextClassifier> GroupBayesClassifiers =
             new Dictionary<UUID, BayesSimpleTextClassifier>();
 
-        private static readonly object GroupBayesClassifiersLock = new object();
+        public static readonly object GroupBayesClassifiersLock = new object();
 
         private static string CorradePOSTMediaType;
 
@@ -619,7 +673,7 @@ namespace Corrade
         /// <summary>
         ///     The various types of threads created by Corrade.
         /// </summary>
-        private static readonly Dictionary<Threading.Enumerations.ThreadType, Threading.Thread> CorradeThreadPool =
+        public static readonly Dictionary<Threading.Enumerations.ThreadType, Threading.Thread> CorradeThreadPool =
             new Dictionary<Threading.Enumerations.ThreadType, Threading.Thread>
             {
                 {
@@ -818,9 +872,11 @@ namespace Corrade
                 Parcel parcel = null;
                 if (
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
-                        corradeConfiguration.ServicesTimeout, ref parcel)) return;
+                        corradeConfiguration.ServicesTimeout, ref parcel))
+                    return;
                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                if (!groups.Contains(parcel.GroupID)) return;
+                if (!groups.Contains(parcel.GroupID))
+                    return;
                 Client.Groups.ActivateGroup(parcel.GroupID);
             });
 
@@ -831,7 +887,8 @@ namespace Corrade
         /// </summary>
         private static readonly Func<string, string> wasInput = o =>
         {
-            if (string.IsNullOrEmpty(o)) return string.Empty;
+            if (string.IsNullOrEmpty(o))
+                return string.Empty;
 
             List<Configuration.Filter> safeFilters;
             lock (InputFiltersLock)
@@ -873,9 +930,10 @@ namespace Corrade
         /// <summary>
         ///     Corrade's output filter function.
         /// </summary>
-        private static readonly Func<string, string> wasOutput = o =>
+        public static readonly Func<string, string> wasOutput = o =>
         {
-            if (string.IsNullOrEmpty(o)) return string.Empty;
+            if (string.IsNullOrEmpty(o))
+                return string.Empty;
 
             List<Configuration.Filter> safeFilters;
             lock (OutputFiltersLock)
@@ -1077,7 +1135,7 @@ namespace Corrade
         /// <summary>
         ///     Saves Corrade group members.
         /// </summary>
-        private static readonly Action SaveGroupBayesClassificiations = () =>
+        public static readonly Action SaveGroupBayesClassificiations = () =>
         {
             corradeConfiguration.Groups.AsParallel().ForAll(group =>
             {
@@ -1089,7 +1147,11 @@ namespace Corrade
                             return;
                     }
 
-                    using (var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY, string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION)), FileMode.Create, FileAccess.Write, FileShare.None))
+                    var path = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
+                        string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION));
+                    using (
+                        var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 16384,
+                            true))
                     {
                         using (var streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1115,7 +1177,6 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadGroupBayesClassificiations = () =>
         {
-
             corradeConfiguration.Groups.AsParallel().ForAll(group =>
             {
                 lock (GroupBayesClassifiersLock)
@@ -1126,13 +1187,16 @@ namespace Corrade
                     }
                 }
 
-                var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY, string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION));
+                var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
+                    string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION));
                 if (!File.Exists(bayesClassifierFile))
                     return;
 
                 try
                 {
-                    using (var fileStream = File.Open(bayesClassifierFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (
+                        var fileStream = new FileStream(bayesClassifierFile, FileMode.Open, FileAccess.Read,
+                            FileShare.Read, 16384, true))
                     {
                         using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                         {
@@ -1162,10 +1226,11 @@ namespace Corrade
             {
                 lock (GroupMembersStateFileLock)
                 {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1205,8 +1270,8 @@ namespace Corrade
                     lock (GroupMembersStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(groupMembersStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(groupMembersStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -1253,17 +1318,18 @@ namespace Corrade
         /// <summary>
         ///     Saves Corrade group soft bans.
         /// </summary>
-        private static readonly Action SaveGroupSoftBansState = () =>
+        public static readonly Action SaveGroupSoftBansState = () =>
         {
             GroupSoftBansWatcher.EnableRaisingEvents = false;
             try
             {
+                var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE);
                 lock (GroupSoftBansStateFileLock)
                 {
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1305,8 +1371,8 @@ namespace Corrade
                     lock (GroupSoftBansStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(groupSoftBansStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(groupSoftBansStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -1361,10 +1427,11 @@ namespace Corrade
             {
                 lock (GroupSchedulesStateFileLock)
                 {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1403,8 +1470,8 @@ namespace Corrade
                     lock (GroupSchedulesStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(groupSchedulesStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -1456,9 +1523,9 @@ namespace Corrade
                 lock (GroupNotificationsStateFileLock)
                 {
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        var fileStream = new FileStream(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                             CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                            FileAccess.Write, FileShare.None, 4096, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1498,8 +1565,8 @@ namespace Corrade
                     lock (GroupNotificationsStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(groupNotificationsStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -1565,10 +1632,11 @@ namespace Corrade
             {
                 lock (MovementStateFileLock)
                 {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1619,8 +1687,8 @@ namespace Corrade
                     lock (MovementStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(movementStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(movementStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -1664,10 +1732,11 @@ namespace Corrade
             {
                 lock (ConferencesStateFileLock)
                 {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.CONFERENCE_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1704,8 +1773,8 @@ namespace Corrade
                     lock (ConferencesStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(conferenceStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(conferenceStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -1776,8 +1845,8 @@ namespace Corrade
                     lock (GroupCookiesStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(groupCookiesStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(groupCookiesStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                             var serializer = new BinaryFormatter();
@@ -1818,10 +1887,11 @@ namespace Corrade
             {
                 lock (GroupCookiesStateFileLock)
                 {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         var serializer = new BinaryFormatter();
                         lock (GroupCookieContainersLock)
@@ -1850,10 +1920,11 @@ namespace Corrade
             {
                 lock (GroupFeedsStateFileLock)
                 {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.FEEDS_STATE_FILE);
                     using (
-                        var fileStream = File.Open(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.FEEDS_STATE_FILE), FileMode.Create,
-                            FileAccess.Write, FileShare.None))
+                        var fileStream = new FileStream(path, FileMode.Create,
+                            FileAccess.Write, FileShare.None, 16384, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
@@ -1894,8 +1965,8 @@ namespace Corrade
                     lock (GroupFeedsStateFileLock)
                     {
                         using (
-                            var fileStream = File.Open(feedStateFile, FileMode.Open, FileAccess.Read,
-                                FileShare.Read))
+                            var fileStream = new FileStream(feedStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
@@ -2020,14 +2091,14 @@ namespace Corrade
                 SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
         };
 
-        private static volatile bool runHTTPServer;
         private static volatile bool runTCPNotificationsServer;
         private static volatile bool runCallbackThread = true;
         private static volatile bool runNotificationThread = true;
 
         public Corrade()
         {
-            if (Environment.UserInteractive) return;
+            if (Environment.UserInteractive)
+                return;
             switch (Environment.OSVersion.Platform)
             {
                 case PlatformID.Win32NT:
@@ -2104,7 +2175,7 @@ namespace Corrade
                                     var streamWriter = new StreamWriter(networkStream,
                                         Encoding.UTF8))
                                 {
-                                    commandGroup = GetCorradeGroupFromMessage(receiveLine);
+                                    commandGroup = GetCorradeGroupFromMessage(receiveLine, corradeConfiguration);
                                     switch (
                                         commandGroup != null &&
                                         !commandGroup.Equals(default(Configuration.Group)) &&
@@ -2410,7 +2481,9 @@ namespace Corrade
                         }
                     }
                 })
-                {IsBackground = true}.Start();
+                {
+                    IsBackground = true
+                }.Start();
             } while (runTCPNotificationsServer);
         }
 
@@ -2468,7 +2541,7 @@ namespace Corrade
         /// </summary>
         /// <param name="message">the message to inspect</param>
         /// <returns>the configured group</returns>
-        private static Configuration.Group GetCorradeGroupFromMessage(string message)
+        public static Configuration.Group GetCorradeGroupFromMessage(string message, Configuration corradeConfiguration)
         {
             var group =
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
@@ -2500,10 +2573,7 @@ namespace Corrade
         public static void Feedback(params string[] messages)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
-                () =>
-                {
-                    log.Info(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, messages));
-                },
+                () => { log.Info(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, messages)); },
                 corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
 
@@ -2609,7 +2679,7 @@ namespace Corrade
                                             Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
                                             exitCode = we.ErrorCode;
                                         }
-                                        Console.WriteLine(ex.ToString());
+                                        Console.WriteLine(ex);
                                         exitCode = -1;
                                     }
                                     break;
@@ -2648,7 +2718,7 @@ namespace Corrade
                                             Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
                                             exitCode = we.ErrorCode;
                                         }
-                                        Console.WriteLine(ex.ToString());
+                                        Console.WriteLine(ex);
                                         exitCode = -1;
                                     }
                                     break;
@@ -2691,6 +2761,173 @@ namespace Corrade
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
 
+            var initialNucleusPort = 0;
+            // Enter configuration stage in case no configuration file is found.
+            switch (!File.Exists(CORRADE_CONSTANTS.CONFIGURATION_FILE))
+            {
+                case true:
+                    // Check that the HTTP listener is supported.
+                    if (!HttpListener.IsSupported)
+                    {
+                        ConsoleExtensions.WriteLine(string.Format("{0} {1}",
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.HTTP_SERVER_NOT_SUPPORTED),
+                            "Could not enter configuration stage - please configure Corrade with a different tool or manually."),
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        return;
+                    }
+                    // Attempt to retrieve a new unbound port.
+                    if (!Utilities.TryGetUnusedPort(IPAddress.Any, out initialNucleusPort))
+                    {
+                        ConsoleExtensions.WriteLine(
+                            "Could not find a port to bind to! You will need to configure Corrade manually using a different tool.",
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        return;
+                    }
+                    // Compose prefix.
+                    var prefix = string.Format("http://+:{0}/", initialNucleusPort);
+                    // Add prefix.
+                    NucleusHTTPServer.Prefixes.Add(prefix);
+                    // Start Nucleus without authentication.
+                    NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Anonymous;
+                    NucleusHTTPServer.Start();
+                    ConsoleCancelEventHandler ConsoleCancelKeyPress = (sender, args) => {
+                        try
+                        {
+                            NucleusHTTPServer.Stop();
+                        }
+                        catch (Exception)
+                        {
+                            /* We are going down and we do not care. */
+                        }
+                    };
+                    EventHandler ConsoleXButton = o =>
+                    {
+                        try
+                        {
+                            NucleusHTTPServer.Stop();
+                        }
+                        catch (Exception)
+                        {
+                            /* We are going down and we do not care. */
+                        }
+                        return true;
+                    };
+                    var consoleSpinner = new ConsoleSpin(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                    if (Environment.UserInteractive)
+                    {
+                        if (Environment.OSVersion.Platform.Equals(PlatformID.Win32NT))
+                        {
+                            // Setup native console handler.
+                            ConsoleEventHandler += ConsoleXButton;
+                            NativeMethods.SetConsoleCtrlHandler(ConsoleEventHandler, true);
+                        }
+                        Console.CancelKeyPress += ConsoleCancelKeyPress;
+                        Console.WriteLine();
+                        // Write Logo.
+                        ConsoleExtensions.WriteLine(CORRADE_CONSTANTS.LOGO,
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        // Write Sub-Logo.
+                        ConsoleExtensions.WriteLine(CORRADE_CONSTANTS.SUB_LOGO,
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        Console.WriteLine();
+                        ConsoleExtensions.WriteLine(
+                            "No Corrade configuration file has been found - you will need to bootstrap Corrade or shut down and use a different configuration tool to configure Corrade.",
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        ConsoleExtensions.WriteLine("The configuration panel is available at: ", 
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        Console.WriteLine();
+                        ConsoleExtensions.WriteLine(string.Format("http://{0}:{1}/bootstrap", 
+                            Dns.GetHostEntry(Environment.MachineName).HostName, initialNucleusPort), 
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER,
+                            ConsoleColor.Yellow);
+                        Console.WriteLine();
+                        ConsoleExtensions.WriteLine("Waiting for bootstrap...",
+                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        Console.WriteLine();
+                        consoleSpinner.Start();
+                    }
+                    // Open browser to bootstrap Corrade.
+                    try
+                    {
+                        Process.Start(string.Format("http://127.0.0.1:{0}/bootstrap", initialNucleusPort));
+                    }
+                    catch
+                    {
+                        // Could not open the URL automatically.
+                    }
+                    // Watch the directory for files.
+                    var watchConfiguration = new FileSystemWatcher(Directory.GetCurrentDirectory(),
+                        CORRADE_CONSTANTS.CONFIGURATION_FILE) {EnableRaisingEvents = true};
+                    // Wait for the Corrade configuration to be created.
+                    watchConfiguration.WaitForChanged(WatcherChangeTypes.Created);
+                    // Attempt to acquire an exclusive lock on the configuration file.
+                    lock (ConfigurationFileLock)
+                    {
+                        ACQUIRE_EXCLUSIVE_LOCK:
+                        Thread.Sleep(100);
+                        try
+                        {
+                            using (
+                                var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open,
+                                    FileAccess.ReadWrite, FileShare.None, 16384, true))
+                            {
+                                corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                            }
+                        }
+                        catch (IOException)
+                        {
+                            goto ACQUIRE_EXCLUSIVE_LOCK;
+                        }
+                        catch (Exception)
+                        {
+                            consoleSpinner.Stop();
+                            Console.WriteLine();
+                            ConsoleExtensions.WriteLine(
+                                "Unable to create configuration file! Please use a different tool to configure Corrade.",
+                                ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                            return;
+                        }
+                    }
+                    // Unbind from console keypress event.
+                    if (Environment.UserInteractive)
+                    {
+                        // Stop the console spinner.
+                        consoleSpinner.Stop();
+                        consoleSpinner.Dispose();
+                        Console.Clear();
+                        if (Environment.OSVersion.Platform.Equals(PlatformID.Win32NT))
+                        {
+                            ConsoleEventHandler -= ConsoleXButton;
+                        }
+                        Console.CancelKeyPress -= ConsoleCancelKeyPress;
+                    }
+                    break;
+                default:
+                    // Load the configuration file.
+                    lock (ConfigurationFileLock)
+                    {
+                        try
+                        {
+                            using (
+                                var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open,
+                                    FileAccess.Read, FileShare.Read, 16384, true))
+                            {
+                                corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("{0} {1}",
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
+                                ex.Message);
+                            return;
+                        }
+                    }
+                    break;
+            }
+
             // Branch on platform and set-up termination handlers.
             switch (Environment.OSVersion.Platform)
             {
@@ -2709,74 +2946,72 @@ namespace Corrade
                     break;
             }
 
-            // Load the configuration file.
-            lock (ConfigurationFileLock)
+            // Nucleus would have generated the prefix by now and saved it to the configuration.
+            // Either there is no prefix set in the configuration and nucleus has not ran -
+            // in which case we need to generate a prefix for Nucleus if Nucleus is enabled.
+            if (corradeConfiguration.EnableNucleusServer &&
+                string.IsNullOrEmpty(corradeConfiguration.NucleusServerPrefix) && initialNucleusPort.Equals(0) &&
+                Utilities.TryGetUnusedPort(IPAddress.Any, out initialNucleusPort))
             {
-                try
+                corradeConfiguration.NucleusServerPrefix = string.Format("http://+:{0}/", initialNucleusPort);
+                lock (ConfigurationFileLock)
                 {
-                    using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open))
+                    using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
                     {
-                        corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                        corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("{0} {1}",
-                        Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
-                        ex.Message);
-                    return;
                 }
             }
 
             // Initialize the console logger if we are running in interactive mode.
             if (Environment.UserInteractive)
             {
-                var consoleAppender = new log4net.Appender.ConsoleAppender();
-                var layout = new log4net.Layout.PatternLayout
+                var consoleAppender = new ConsoleAppender();
+                var layout = new PatternLayout
                 {
-                    ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " + corradeConfiguration.FirstName +
+                    ConversionPattern =
+                        @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " + corradeConfiguration.FirstName +
                         @" " +
                         corradeConfiguration.LastName + @" : %message%newline"
                 };
                 consoleAppender.Layout = layout;
                 layout.ActivateOptions();
                 consoleAppender.ActivateOptions();
-                log4net.Config.BasicConfigurator.Configure(consoleAppender);
+                BasicConfigurator.Configure(consoleAppender);
             }
             // Only enable the logging file if it has been enabled.
             if (corradeConfiguration.ClientLogEnabled)
             {
-                var rollingFileAppender = new log4net.Appender.RollingFileAppender();
-                var layout = new log4net.Layout.PatternLayout
+                var rollingFileAppender = new RollingFileAppender();
+                var layout = new PatternLayout
                 {
                     ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
-                        corradeConfiguration.FirstName +
-                        @" " +
-                        corradeConfiguration.LastName + " : %message%newline"
+                                        corradeConfiguration.FirstName +
+                                        @" " +
+                                        corradeConfiguration.LastName + " : %message%newline"
                 };
                 rollingFileAppender.Layout = layout;
                 layout.ActivateOptions();
                 rollingFileAppender.File = corradeConfiguration.ClientLogFile;
                 rollingFileAppender.StaticLogFileName = true;
-                rollingFileAppender.RollingStyle = log4net.Appender.RollingFileAppender.RollingMode.Size;
+                rollingFileAppender.RollingStyle = RollingFileAppender.RollingMode.Size;
                 rollingFileAppender.MaxSizeRollBackups = 10;
                 rollingFileAppender.MaximumFileSize = "1MB";
                 rollingFileAppender.ActivateOptions();
-                log4net.Config.BasicConfigurator.Configure(rollingFileAppender);
+                BasicConfigurator.Configure(rollingFileAppender);
             }
             switch (Environment.OSVersion.Platform)
             {
                 case PlatformID.Win32NT: // only initialize the event logger on Windows in service mode
                     if (!Environment.UserInteractive)
                     {
-                        var eventLogAppender = new log4net.Appender.EventLogAppender();
-                        var layout = new log4net.Layout.PatternLayout
+                        var eventLogAppender = new EventLogAppender();
+                        var layout = new PatternLayout
                         {
                             ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
-                        corradeConfiguration.FirstName +
-                        @" " +
-                        corradeConfiguration.LastName + " : %message%newline"
+                                                corradeConfiguration.FirstName +
+                                                @" " +
+                                                corradeConfiguration.LastName + " : %message%newline"
                         };
                         eventLogAppender.Layout = layout;
                         layout.ActivateOptions();
@@ -2784,7 +3019,7 @@ namespace Corrade
                             ? InstalledServiceName
                             : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
                         eventLogAppender.ActivateOptions();
-                        log4net.Config.BasicConfigurator.Configure(eventLogAppender);
+                        BasicConfigurator.Configure(eventLogAppender);
                     }
                     break;
             }
@@ -2794,6 +3029,8 @@ namespace Corrade
 
             // Write the logo.
             Feedback(CORRADE_CONSTANTS.LOGO);
+            // Write the sub-logo.
+            Feedback(CORRADE_CONSTANTS.SUB_LOGO);
 
             // Check configuration file compatiblity.
             Version minimalConfig;
@@ -2983,7 +3220,9 @@ namespace Corrade
                                 }
                                 if (wasHTTPClient != null)
                                 {
-                                    await wasHTTPClient.POST(callbackQueueElement.URL, callbackQueueElement.message);
+                                    await
+                                        wasHTTPClient.POST(callbackQueueElement.URL,
+                                            KeyValue.Escape(callbackQueueElement.message, wasOutput));
                                 }
                             }, corradeConfiguration.MaximumPOSTThreads);
                         }
@@ -2996,7 +3235,9 @@ namespace Corrade
                     }
                 } while (runCallbackThread);
             })
-            {IsBackground = true};
+            {
+                IsBackground = true
+            };
             CallbackThread.Start();
             // Start the notification thread for notifications.
             var NotificationThread = new Thread(() =>
@@ -3023,7 +3264,7 @@ namespace Corrade
                                 {
                                     await
                                         wasHTTPClient.POST(notificationQueueElement.URL,
-                                            notificationQueueElement.Message);
+                                            KeyValue.Escape(notificationQueueElement.Message, wasOutput));
                                 }
                             },
                                 corradeConfiguration.MaximumPOSTThreads);
@@ -3038,56 +3279,92 @@ namespace Corrade
                     }
                 } while (runNotificationThread);
             })
-            {IsBackground = true};
+            {
+                IsBackground = true
+            };
             NotificationThread.Start();
 
+            if (HttpListener.IsSupported && !CorradeHTTPServer.IsRunning && corradeConfiguration.EnableHTTPServer)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_HTTP_SERVER), corradeConfiguration.HTTPServerPrefix);
+                try
+                {
+                    CorradeHTTPServer.Prefixes.Add(corradeConfiguration.HTTPServerPrefix);
+                    CorradeHTTPServer.Start();
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
+                        ex.Message);
+                    Console.WriteLine(ex);
+                }
+            }
+            if (HttpListener.IsSupported && !NucleusHTTPServer.IsRunning && corradeConfiguration.EnableNucleusServer)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER), corradeConfiguration.NucleusServerPrefix);
+                try
+                {
+                    NucleusHTTPServer.Prefixes.Add(corradeConfiguration.NucleusServerPrefix);
+                    NucleusHTTPServer.Start();
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
+                        ex.Message);
+                }
+            }
+
+            var initializeClient = false;
             do
             {
-                // If the client has already been initialized, then we cycle the simulators.
-                if (Client == null)
-                    Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
-
-                // Create a new client.
-                Client = new GridClient
+                // Create a new grid client.
+                if (initializeClient)
                 {
-                    // Set the initial client configuration.
-                    Settings =
+                    Client = new GridClient
                     {
-                        ALWAYS_REQUEST_PARCEL_ACL = true,
-                        ALWAYS_DECODE_OBJECTS = true,
-                        ALWAYS_REQUEST_OBJECTS = true,
-                        SEND_AGENT_APPEARANCE = true,
-                        AVATAR_TRACKING = true,
-                        OBJECT_TRACKING = true,
-                        PARCEL_TRACKING = true,
-                        ALWAYS_REQUEST_PARCEL_DWELL = true,
-                        // Smoother movement for autopilot.
-                        SEND_AGENT_UPDATES = true,
-                        DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
-                        ENABLE_CAPS = true,
-                        // Inventory settings.
-                        FETCH_MISSING_INVENTORY = true,
-                        HTTP_INVENTORY = true,
-                        // Set the asset cache directory.
-                        ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                            CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY),
-                        USE_ASSET_CACHE = true,
-                        // More precision for object and avatar tracking updates.
-                        USE_INTERPOLATION_TIMER = true,
-                        // Transfer textures over HTTP if possible.
-                        USE_HTTP_TEXTURES = true,
-                        // Needed for commands dealing with terrain height.
-                        STORE_LAND_PATCHES = true,
-                        // Decode simulator statistics.
-                        ENABLE_SIMSTATS = true,
-                        // Send pings for lag measurement.
-                        SEND_PINGS = true,
-                        // Throttling.
-                        SEND_AGENT_THROTTLE = true,
-                        // Enable multiple simulators.
-                        MULTIPLE_SIMS = true
-                    }
-                };
+                        // Set the initial client configuration.
+                        Settings =
+                        {
+                            ALWAYS_REQUEST_PARCEL_ACL = true,
+                            ALWAYS_DECODE_OBJECTS = true,
+                            ALWAYS_REQUEST_OBJECTS = true,
+                            SEND_AGENT_APPEARANCE = true,
+                            AVATAR_TRACKING = true,
+                            OBJECT_TRACKING = true,
+                            PARCEL_TRACKING = true,
+                            ALWAYS_REQUEST_PARCEL_DWELL = true,
+                            // Smoother movement for autopilot.
+                            SEND_AGENT_UPDATES = true,
+                            DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
+                            ENABLE_CAPS = true,
+                            // Inventory settings.
+                            FETCH_MISSING_INVENTORY = true,
+                            HTTP_INVENTORY = true,
+                            // Set the asset cache directory.
+                            ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                                CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY),
+                            USE_ASSET_CACHE = true,
+                            // More precision for object and avatar tracking updates.
+                            USE_INTERPOLATION_TIMER = true,
+                            // Transfer textures over HTTP if possible.
+                            USE_HTTP_TEXTURES = true,
+                            // Needed for commands dealing with terrain height.
+                            STORE_LAND_PATCHES = true,
+                            // Decode simulator statistics.
+                            ENABLE_SIMSTATS = true,
+                            // Send pings for lag measurement.
+                            SEND_PINGS = true,
+                            // Throttling.
+                            SEND_AGENT_THROTTLE = true,
+                            // Enable multiple simulators.
+                            MULTIPLE_SIMS = true
+                        }
+                    };
+                }
 
                 // Update the configuration.
                 UpdateDynamicConfiguration(corradeConfiguration);
@@ -3106,11 +3383,7 @@ namespace Corrade
                 Client.Groups.GroupJoinedReply += HandleGroupJoined;
                 Client.Groups.GroupLeaveReply += HandleGroupLeave;
                 Client.Sound.PreloadSound += HandlePreloadSound;
-                // Each Instant Message is processed in its own thread.
-                Client.Self.IM +=
-                    (o, p) => CorradeThreadPool[Threading.Enumerations.ThreadType.INSTANT_MESSAGE].Spawn(
-                        () => HandleSelfIM(o, p),
-                        corradeConfiguration.MaximumInstantMessageThreads);
+                Client.Self.IM += HandleSelfIM;
 
                 // Start all event watchers.
                 SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -3125,7 +3398,6 @@ namespace Corrade
                     TimeSpan.FromMilliseconds(corradeConfiguration.MembershipSweepInterval));
                 NotificationThreadState.Set();
                 CallbackThreadState.Set();
-                HTTPListenerThreadState.Set();
                 TCPNotificationsThreadState.Set();
 
                 // Get the custom location.
@@ -3226,8 +3498,9 @@ namespace Corrade
                 GroupMembershipTimer.Change(0, 0);
                 NotificationThreadState.Reset();
                 CallbackThreadState.Reset();
-                HTTPListenerThreadState.Reset();
                 TCPNotificationsThreadState.Reset();
+                initializeClient = true;
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
             } while (!ConnectionSemaphores['u'].WaitOne(0));
 
             // Now log-out.
@@ -3405,34 +3678,32 @@ namespace Corrade
             }
 
             // Close HTTP server
-            if (HttpListener.IsSupported && corradeConfiguration.EnableHTTPServer)
+            if (HttpListener.IsSupported && CorradeHTTPServer.IsRunning)
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
-                runHTTPServer = false;
                 try
                 {
-                    if (HTTPListenerThread != null)
-                    {
-                        HTTPListener.Stop();
-                        if (
-                            HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
-                            HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                        {
-                            if (!HTTPListenerThread.Join(1000))
-                            {
-                                HTTPListenerThread.Abort();
-                                HTTPListenerThread.Join();
-                            }
-                        }
-                    }
+                    CorradeHTTPServer.Stop();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    /* We are going down and we do not care. */
+                    Feedback(Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex.Message);
                 }
-                finally
+            }
+
+            // Close Nucleus server
+            if (HttpListener.IsSupported && NucleusHTTPServer.IsRunning)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
+                try
                 {
-                    HTTPListenerThread = null;
+                    NucleusHTTPServer.Stop();
+                }
+                catch (Exception ex)
+                {
+                    Feedback(Reflection.GetDescriptionFromEnumValue(
+                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.Message);
                 }
             }
 
@@ -3511,7 +3782,8 @@ namespace Corrade
             Primitive primitive;
             lock (RadarObjectsLock)
             {
-                if (!RadarObjects.TryGetValue(e.ObjectLocalID, out primitive)) return;
+                if (!RadarObjects.TryGetValue(e.ObjectLocalID, out primitive))
+                    return;
             }
             switch (primitive is Avatar)
             {
@@ -3601,928 +3873,6 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Processes HTTP POST web-requests.
-        /// </summary>
-        /// <param name="ar">the async HTTP listener object</param>
-        private static void ProcessHTTPRequest(IAsyncResult ar)
-        {
-            // We need to grab the context and everything else outside of the main request.
-            HttpListenerContext httpContext = null;
-            HttpListenerRequest httpRequest;
-            byte[] requestData;
-            // Now grab the message and check that the group is set or abandon.
-            try
-            {
-                var httpListener = (HttpListener) ar.AsyncState;
-                // bail if we are not listening
-                if (httpListener == null || !httpListener.IsListening) return;
-                httpContext = httpListener.EndGetContext(ar);
-                if (httpContext.Request == null) throw new HTTPCommandException();
-                httpRequest = httpContext.Request;
-                // only accept connected remote endpoints
-                if (httpRequest.RemoteEndPoint == null) throw new HTTPCommandException();
-                // perform decompression in case the client sent compressed data
-                var requestEncoding = new QValue("identity");
-                var acceptEncoding = httpRequest.Headers.GetValues("Content-Encoding");
-                if (acceptEncoding != null && acceptEncoding.Any())
-                {
-                    var acceptEncodings = new QValueList(acceptEncoding);
-                    if (!acceptEncodings.Equals(default(QValueList)))
-                    {
-                        var preferredEncoding = acceptEncodings.FindPreferred("gzip", "deflate", "identity");
-                        if (!preferredEncoding.IsEmpty)
-                            requestEncoding = preferredEncoding;
-                    }
-                }
-                // retrieve the message sent even if it is a compressed stream.
-                switch (requestEncoding.Name)
-                {
-                    case "gzip":
-                        using (var inputStream = new MemoryStream())
-                        {
-                            using (var dataGZipStream = new GZipStream(httpRequest.InputStream,
-                                CompressionMode.Decompress, false))
-                            {
-                                dataGZipStream.CopyTo(inputStream);
-                                //dataGZipStream.Flush();
-                            }
-                            requestData = inputStream.ToArray();
-                        }
-                        break;
-                    case "deflate":
-                        using (var inputStream = new MemoryStream())
-                        {
-                            using (
-                                var dataDeflateStream = new DeflateStream(httpRequest.InputStream,
-                                    CompressionMode.Decompress, false))
-                            {
-                                dataDeflateStream.CopyTo(inputStream);
-                                //dataDeflateStream.Flush();
-                            }
-                            requestData = inputStream.ToArray();
-                        }
-                        break;
-                    default:
-                        using (var inputStream = new MemoryStream())
-                        {
-                            using (var reader = new BinaryReader(httpRequest.InputStream, httpRequest.ContentEncoding))
-                            {
-                                reader.BaseStream.CopyTo(inputStream);
-                            }
-                            requestData = inputStream.ToArray();
-                        }
-                        break;
-                }
-            }
-            catch (HTTPCommandException)
-            {
-                /* Close the connection and bail if the preconditions are not satisifed for running the command. */
-                httpContext?.Response.Close();
-                return;
-            }
-            catch (HttpListenerException)
-            {
-                /* This happens when the server goes down, so do not scare the user since it is completely harmelss. */
-                return;
-            }
-            catch (Exception ex)
-            {
-                Feedback(
-                    Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.HTTP_SERVER_PROCESSING_ABORTED),
-                    ex.Message);
-                return;
-            }
-
-            switch (httpRequest.HttpMethod)
-            {
-                case WebRequestMethods.Http.Put: // Receive data sync pushes.
-
-                    // Do not proceed if horde synchronization is not enabled.
-                    if (!corradeConfiguration.EnableHorde)
-                        break;
-
-                    // Get the URL path.
-                    var urlPath = httpRequest.Url.Segments.Select(o => o.Trim('/')).Skip(1).ToList();
-                    if (!urlPath.Any())
-                        break;
-
-                    // If authentication is not enabled or the client has not sent any authentication then stop.
-                    if (!corradeConfiguration.EnableHTTPServerAuthentication || !httpContext.Request.IsAuthenticated)
-                    {
-                        httpContext?.Response.Close();
-                        return;
-                    }
-
-                    // Authenticate.
-                    var identity = (HttpListenerBasicIdentity) httpContext.User.Identity;
-                    if (!identity.Name.Equals(corradeConfiguration.HTTPServerUsername, StringComparison.Ordinal) ||
-                        !identity.Password.Equals(corradeConfiguration.HTTPServerPassword,
-                            StringComparison.OrdinalIgnoreCase))
-                    {
-                        httpContext?.Response.Close();
-                        return;
-                    }
-
-                    // Find peer from shared secret.
-                    string sharedSecretKey;
-                    try
-                    {
-                        sharedSecretKey =
-                            httpRequest.Headers.AllKeys.AsParallel()
-                                .SingleOrDefault(
-                                    o =>
-                                        o.Equals(CORRADE_CONSTANTS.HORDE_SHARED_SECRET_HEADER, StringComparison.Ordinal));
-                        if (string.IsNullOrEmpty(sharedSecretKey))
-                            break;
-                    }
-                    catch (Exception)
-                    {
-                        break;
-                    }
-
-                    // Find the horde peer.
-                    Configuration.HordePeer hordePeer;
-                    try
-                    {
-                        hordePeer =
-                            corradeConfiguration.HordePeers.AsParallel()
-                                .SingleOrDefault(
-                                    o =>
-                                        o.SharedSecret.Equals(
-                                            Encoding.UTF8.GetString(
-                                                Convert.FromBase64String(httpRequest.Headers[sharedSecretKey])),
-                                            StringComparison.Ordinal));
-                        if (hordePeer == null || hordePeer.Equals(default(Configuration.HordePeer)))
-                            break;
-                    }
-                    catch (Exception)
-                    {
-                        break;
-                    }
-
-                    Configuration.HordeDataSynchronization dataSynchronizationType;
-                    Configuration.HordeDataSynchronizationOption dataSynchronizationOption;
-                    switch (
-                        Reflection.GetEnumValueFromName<Enumerations.WebResource>(urlPath[0])
-                        )
-                    {
-                        case Enumerations.WebResource.CACHE: /* /cache/{asset}/add | /cache/{asset}/remove */
-
-                            // Break if the cache request is incompatible with the cache web resource.
-                            if (urlPath.Count < 3)
-                                break;
-
-                            dataSynchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[1]);
-
-                            // Log the attempt to put cache objects.
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            // If this synchronization is not allowed with this peer, then break.
-                            if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                                break;
-
-                            // Storage
-                            UUID groupUUID;
-
-                            // Now attempt to add the asset to the cache.
-                            switch (dataSynchronizationType)
-                            {
-                                case Configuration.HordeDataSynchronization.Region:
-                                case Configuration.HordeDataSynchronization.Agent:
-                                case Configuration.HordeDataSynchronization.Group:
-
-                                    // Get the synchronization option.
-                                    dataSynchronizationOption =
-                                        Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                            urlPath[2]);
-
-                                    // If this synchronization option is not allowed with this peer, then break.
-                                    if (
-                                        !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
-                                            dataSynchronizationOption))
-                                        break;
-
-                                    try
-                                    {
-                                        using (
-                                            var stringReader =
-                                                new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
-                                        {
-                                            switch (dataSynchronizationType)
-                                            {
-                                                case Configuration.HordeDataSynchronization.Region:
-                                                    var region = (Cache.Region)
-                                                        new XmlSerializer(typeof(Cache.Region)).Deserialize(
-                                                            stringReader);
-                                                    switch (dataSynchronizationOption)
-                                                    {
-                                                        case Configuration.HordeDataSynchronizationOption.Add:
-                                                            Cache.UpdateRegion(region.Name, region.Handle);
-                                                            break;
-                                                        case Configuration.HordeDataSynchronizationOption.Remove:
-                                                            Cache.RemoveRegion(region.Name, region.Handle);
-                                                            break;
-                                                    }
-                                                    break;
-                                                case Configuration.HordeDataSynchronization.Agent:
-                                                    var agent = (Cache.Agent)
-                                                        new XmlSerializer(typeof(Cache.Agent)).Deserialize(stringReader);
-                                                    switch (dataSynchronizationOption)
-                                                    {
-                                                        case Configuration.HordeDataSynchronizationOption.Add:
-                                                            Cache.AddAgent(agent.FirstName, agent.LastName, agent.UUID);
-                                                            break;
-                                                        case Configuration.HordeDataSynchronizationOption.Remove:
-                                                            Cache.RemoveAgent(agent.FirstName, agent.LastName,
-                                                                agent.UUID);
-                                                            break;
-                                                    }
-                                                    break;
-                                                case Configuration.HordeDataSynchronization.Group:
-                                                    var group = (Cache.Group)
-                                                        new XmlSerializer(typeof(Cache.Group)).Deserialize(stringReader);
-                                                    switch (dataSynchronizationOption)
-                                                    {
-                                                        case Configuration.HordeDataSynchronizationOption.Add:
-                                                            Cache.AddGroup(group.Name, group.UUID);
-                                                            break;
-                                                        case Configuration.HordeDataSynchronizationOption.Remove:
-                                                            Cache.RemoveGroup(group.Name, group.UUID);
-                                                            break;
-                                                    }
-                                                    break;
-                                            }
-                                            Feedback(
-                                                CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                                Reflection.GetDescriptionFromEnumValue(
-                                                    Enumerations.ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
-                                            Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                                            ex.Message);
-                                    }
-                                    break;
-                                case Configuration.HordeDataSynchronization.Asset:
-                                    /* /cache/asset/add/UUID | /cache/asset/remove/UUID */
-
-                                    // Invalid request.
-                                    if (!urlPath.Count.Equals(4))
-                                        break;
-
-                                    // Get the synchronization option.
-                                    dataSynchronizationOption =
-                                        Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                            urlPath[2]);
-
-                                    // If this synchronization option is not allowed with this peer, then break.
-                                    if (
-                                        !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
-                                            dataSynchronizationOption))
-                                        break;
-
-                                    // Invalid asset UUID.
-                                    UUID assetUUID;
-                                    if (!UUID.TryParse(urlPath[3], out assetUUID))
-                                    {
-                                        break;
-                                    }
-
-                                    try
-                                    {
-                                        switch (dataSynchronizationOption)
-                                        {
-                                            case Configuration.HordeDataSynchronizationOption.Add:
-                                                lock (Locks.ClientInstanceAssetsLock)
-                                                {
-                                                    if (!Client.Assets.Cache.HasAsset(assetUUID))
-                                                    {
-                                                        Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
-                                                        HordeDistributeCacheAsset(assetUUID, requestData,
-                                                            Configuration.HordeDataSynchronizationOption.Add);
-                                                    }
-                                                }
-                                                break;
-                                            case Configuration.HordeDataSynchronizationOption.Remove:
-                                                bool hasAsset;
-                                                lock (Locks.ClientInstanceAssetsLock)
-                                                {
-                                                    hasAsset = Client.Assets.Cache.HasAsset(assetUUID);
-                                                }
-                                                if (hasAsset)
-                                                {
-                                                    var fileName = Client.Assets.Cache.AssetFileName(assetUUID);
-                                                    File.Delete(Path.Combine(Client.Settings.ASSET_CACHE_DIR, fileName));
-                                                    HordeDistributeCacheAsset(assetUUID, requestData,
-                                                        Configuration.HordeDataSynchronizationOption.Remove);
-                                                }
-                                                break;
-                                        }
-                                        Feedback(
-                                            CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint +
-                                            ")",
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                Enumerations.ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                            Reflection.GetNameFromEnumValue(dataSynchronizationType));
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                            Reflection.GetDescriptionFromEnumValue(
-                                                Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
-                                            Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                                            ex.Message);
-                                    }
-                                    break;
-                            }
-                            break;
-                        case Enumerations.WebResource.MUTE: /* /mute/add | /mute/remove */
-
-                            // Break if the mute request is incompatible with the mute web resource.
-                            if (urlPath.Count < 2)
-                                break;
-
-                            dataSynchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0]);
-
-                            // Log the attempt to put cache objects.
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            // If this synchronization is not allowed with this peer, then break.
-                            if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                                break;
-
-                            // Get the synchronization option.
-                            dataSynchronizationOption =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1]);
-
-                            // If this synchronization option is not allowed with this peer, then break.
-                            if (
-                                !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
-                                    dataSynchronizationOption))
-                                break;
-
-                            MuteEntry mute;
-                            try
-                            {
-                                using (
-                                    var stringReader =
-                                        new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
-                                {
-                                    mute = (MuteEntry)
-                                        new XmlSerializer(typeof(MuteEntry)).Deserialize(stringReader);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
-                                    Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                                    ex.Message);
-                                break;
-                            }
-
-                            // The currently active mutes.
-                            var mutes = Enumerable.Empty<MuteEntry>();
-                            bool mutesRetrieved;
-                            switch (Cache.MuteCache.IsVirgin)
-                            {
-                                case true:
-                                    mutesRetrieved = Services.GetMutes(Client, corradeConfiguration.ServicesTimeout,
-                                        ref mutes);
-                                    break;
-                                default:
-                                    mutes = Cache.MuteCache.OfType<OpenMetaverse.MuteEntry>();
-                                    mutesRetrieved = true;
-                                    break;
-                            }
-
-                            if (!mutesRetrieved)
-                                break;
-
-                            var muteExists =
-                                mutes.ToList().AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name));
-
-                            switch (dataSynchronizationOption)
-                            {
-                                case Configuration.HordeDataSynchronizationOption.Add:
-                                    // Check that the mute entry does not already exist
-                                    if (muteExists)
-                                        break;
-
-                                    // Add the mute.
-                                    var MuteListUpdatedEvent = new ManualResetEvent(false);
-                                    EventHandler<EventArgs> MuteListUpdatedEventHandler =
-                                        (sender, args) => MuteListUpdatedEvent.Set();
-
-                                    lock (Locks.ClientInstanceSelfLock)
-                                    {
-                                        Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                        Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
-                                        if (
-                                            !MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
-                                                false))
-                                        {
-                                            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                            throw new ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
-                                        }
-                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                    }
-
-                                    // Add the mute to the cache.
-                                    Cache.AddMute(mute.Flags, mute.ID, mute.Name, mute.Type);
-                                    break;
-                                case Configuration.HordeDataSynchronizationOption.Remove:
-                                    // If the mute does not exist then we have nothing to do.
-                                    if (!muteExists)
-                                        break;
-                                    Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
-                                    break;
-                            }
-
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            break;
-                        case Enumerations.WebResource.SOFTBAN:
-                            /* /softban/add/<Group UUID> /softban/remove/<Group UUID> */
-
-                            // Break if the mute request is incompatible with the mute web resource.
-                            if (urlPath.Count < 3)
-                                break;
-
-                            dataSynchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0]);
-
-                            // Log the attempt to put cache objects.
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            // If this synchronization is not allowed with this peer, then break.
-                            if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                                break;
-
-                            // Get the synchronization option.
-                            dataSynchronizationOption =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1]);
-
-                            // If this synchronization option is not allowed with this peer, then break.
-                            if (
-                                !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
-                                    dataSynchronizationOption))
-                                break;
-
-                            // Invalid group UUID or group is not a configured group.
-                            if (!UUID.TryParse(urlPath[2], out groupUUID) ||
-                                !corradeConfiguration.Groups.AsParallel().Any(o => o.UUID.Equals(groupUUID)))
-                                break;
-
-                            SoftBan softBan;
-                            try
-                            {
-                                using (
-                                    var stringReader =
-                                        new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
-                                {
-                                    softBan = (SoftBan)
-                                        new XmlSerializer(typeof(SoftBan)).Deserialize(stringReader);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
-                                    Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                                    ex.Message);
-                                break;
-                            }
-
-                            // Invalid soft ban.
-                            if (softBan.Equals(default(SoftBan)))
-                                break;
-
-                            var groupSoftBansModified = false;
-                            switch (dataSynchronizationOption)
-                            {
-                                case Configuration.HordeDataSynchronizationOption.Add:
-                                    lock (GroupSoftBansLock)
-                                    {
-                                        switch (!GroupSoftBans.ContainsKey(groupUUID))
-                                        {
-                                            case true:
-                                                GroupSoftBans.Add(groupUUID,
-                                                    new ObservableHashSet<SoftBan>());
-                                                GroupSoftBans[groupUUID].CollectionChanged += HandleGroupSoftBansChanged;
-                                                GroupSoftBans[groupUUID].Add(softBan);
-                                                groupSoftBansModified = true;
-                                                break;
-                                            default:
-                                                if (
-                                                    GroupSoftBans[groupUUID].AsParallel()
-                                                        .Any(o => o.Agent.Equals(softBan.Agent)))
-                                                    break;
-                                                GroupSoftBans[groupUUID].Add(softBan);
-                                                groupSoftBansModified = true;
-                                                break;
-                                        }
-                                    }
-                                    break;
-                                case Configuration.HordeDataSynchronizationOption.Remove:
-                                    lock (GroupSoftBansLock)
-                                    {
-                                        if (GroupSoftBans.ContainsKey(groupUUID) &&
-                                            GroupSoftBans[groupUUID].AsParallel()
-                                                .Any(o => o.Agent.Equals(softBan.Agent)))
-                                        {
-                                            GroupSoftBans[groupUUID].RemoveWhere(o => o.Agent.Equals(softBan.Agent));
-                                            groupSoftBansModified = true;
-                                        }
-                                    }
-                                    break;
-                            }
-
-                            if (groupSoftBansModified)
-                                SaveGroupSoftBansState.Invoke();
-
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            break;
-                        case Enumerations.WebResource.USER:
-                            /* /user/add/<Group UUID> /user/remove/<Group UUID> */
-                            // Break if the mute request is incompatible with the mute web resource.
-                            if (urlPath.Count < 3)
-                                break;
-
-                            dataSynchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0]);
-
-                            // Log the attempt to put cache objects.
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            // If this synchronization is not allowed with this peer, then break.
-                            if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                                break;
-
-                            // Get the synchronization option.
-                            dataSynchronizationOption =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1]);
-
-                            // If this synchronization option is not allowed with this peer, then break.
-                            if (
-                                !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
-                                    dataSynchronizationOption))
-                                break;
-
-                            // Invalid UUID or group.
-                            if (!UUID.TryParse(urlPath[2], out groupUUID))
-                                break;
-
-                            Configuration.Group configurationGroup;
-                            try
-                            {
-                                using (
-                                    var stringReader =
-                                        new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
-                                {
-                                    configurationGroup = (Configuration.Group)
-                                        new XmlSerializer(typeof(Configuration.Group)).Deserialize(stringReader);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
-                                    Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                                    ex.Message);
-                                break;
-                            }
-
-                            // Invalid configuration group.
-                            if (configurationGroup == null || configurationGroup.Equals(default(Configuration.Group)))
-                                break;
-
-                            // Check that this is the group that is being pushed.
-                            if (!groupUUID.Equals(configurationGroup.UUID))
-                                break;
-
-                            // Search the configuration for the pushed group.
-                            var configuredGroup = corradeConfiguration.Groups.AsParallel()
-                                .FirstOrDefault(o => o.UUID.Equals(configurationGroup.UUID));
-                            var corradeConfigurationGroupsModified = false;
-                            switch (dataSynchronizationOption)
-                            {
-                                case Configuration.HordeDataSynchronizationOption.Add:
-                                    // If the configuration does not contain the group, then add the group.
-                                    if (configuredGroup == null || configuredGroup.Equals(default(Configuration.Group)))
-                                    {
-                                        corradeConfiguration.Groups.Add(configurationGroup);
-                                        corradeConfigurationGroupsModified = true;
-                                    }
-                                    break;
-                                case Configuration.HordeDataSynchronizationOption.Remove:
-                                    // If the configuration contains the group, then remove the configured group.
-                                    if (configuredGroup != null && !configuredGroup.Equals(default(Configuration.Group)))
-                                    {
-                                        corradeConfiguration.Groups.Remove(configuredGroup);
-                                        corradeConfigurationGroupsModified = true;
-                                    }
-                                    break;
-                            }
-
-                            // Save the configuration to the configuration file.
-                            if (corradeConfigurationGroupsModified)
-                            {
-                                try
-                                {
-                                    lock (ConfigurationFileLock)
-                                    {
-                                        using (
-                                            var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                                                FileMode.Create))
-                                        {
-                                            corradeConfiguration.Save(fileStream, ref corradeConfiguration);
-                                        }
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    throw new ScriptException(Enumerations.ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
-                                }
-                            }
-
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            break;
-                        case Enumerations.WebResource.BAYES:
-                            /* /bayes/add/<Group UUID> /bayes/remove/<Group UUID> */
-                            // Break if the bayes request is incompatible with the bayes web resource.
-                            if (urlPath.Count < 3)
-                                break;
-
-                            dataSynchronizationType =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                                    urlPath[0]);
-
-                            // Log the attempt to put cache objects.
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_ATTEMPTING_SYNCHRONIZATION),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            // If this synchronization is not allowed with this peer, then break.
-                            if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                                break;
-
-                            // Get the synchronization option.
-                            dataSynchronizationOption =
-                                Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronizationOption>(
-                                    urlPath[1]);
-
-                            // If this synchronization option is not allowed with this peer, then break.
-                            if (
-                                !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
-                                    dataSynchronizationOption))
-                                break;
-
-                            // Invalid UUID or group.
-                            if (!UUID.TryParse(urlPath[2], out groupUUID))
-                                break;
-
-                            var bayes = new BayesSimpleTextClassifier();
-                            try
-                            {
-                                using (
-                                    var stringReader =
-                                        new StringReader(httpRequest.ContentEncoding.GetString(requestData)))
-                                {
-                                    bayes.ImportJsonData(stringReader.ReadToEnd());
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
-                                    Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                                    ex.Message);
-                                break;
-                            }
-
-                            var bayesDataModified = false;
-                            switch (dataSynchronizationOption)
-                            {
-                                case Configuration.HordeDataSynchronizationOption.Add:
-                                    lock (GroupBayesClassifiersLock)
-                                    {
-                                        switch (GroupBayesClassifiers.ContainsKey(groupUUID))
-                                        {
-                                            case true:
-                                                GroupBayesClassifiers[groupUUID] = bayes;
-                                                bayesDataModified = true;
-                                                break;
-                                            default:
-                                                GroupBayesClassifiers.Add(groupUUID, bayes);
-                                                bayesDataModified = true;
-                                                break;
-                                        }
-                                    }
-                                    break;
-                                case Configuration.HordeDataSynchronizationOption.Remove:
-                                    lock (GroupBayesClassifiersLock)
-                                    {
-                                        if (GroupBayesClassifiers.ContainsKey(groupUUID))
-                                        {
-                                            GroupBayesClassifiers.Remove(groupUUID);
-                                            bayesDataModified = true;
-                                        }
-                                    }
-                                    break;
-                            }
-
-                            if (bayesDataModified)
-                                SaveGroupBayesClassificiations.Invoke();
-
-                            Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + httpRequest.RemoteEndPoint + ")",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.PEER_SYNCHRONIZATION_SUCCESSFUL),
-                                Reflection.GetNameFromEnumValue(dataSynchronizationType));
-
-                            break;
-                    }
-                    httpContext?.Response.Close();
-                    break;
-                case WebRequestMethods.Http.Post: // Process commands.
-                    // Get the message.
-                    var message = httpRequest.ContentEncoding.GetString(requestData);
-
-                    // ignore empty messages right-away.
-                    if (string.IsNullOrEmpty(message))
-                    {
-                        httpContext?.Response.Close();
-                        return;
-                    }
-
-                    var commandGroup = GetCorradeGroupFromMessage(message);
-                    // do not process anything from unknown groups.
-                    if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
-                    {
-                        httpContext?.Response.Close();
-                        return;
-                    }
-
-                    // We have the group so schedule the Corrade command though the group scheduler.
-                    CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(() =>
-                    {
-                        try
-                        {
-                            var result = HandleCorradeCommand(message,
-                                CORRADE_CONSTANTS.WEB_REQUEST,
-                                httpRequest.RemoteEndPoint.ToString(), commandGroup);
-                            using (var response = httpContext.Response)
-                            {
-                                // set the content type based on chosen output filers
-                                switch (corradeConfiguration.OutputFilters.Last())
-                                {
-                                    case Configuration.Filter.RFC1738:
-                                        response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
-                                        break;
-                                    default:
-                                        response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
-                                        break;
-                                }
-                                response.StatusCode = (int) HttpStatusCode.OK;
-                                response.StatusDescription = "OK";
-                                // No keepalive for HTTP 1.0
-                                if (response.ProtocolVersion.Equals(HttpVersion.Version10))
-                                {
-                                    response.SendChunked = false;
-                                    response.KeepAlive = false;
-                                }
-                                else
-                                {
-                                    response.SendChunked = true;
-                                    if (corradeConfiguration.HTTPServerKeepAlive)
-                                        response.KeepAlive = true;
-                                }
-                                var data =
-                                    Encoding.UTF8.GetBytes(
-                                        KeyValue.Encode(KeyValue.Escape(result, wasOutput)));
-                                using (var outputStream = new MemoryStream())
-                                {
-                                    // perform compression based on the encoding advertised by the client. 
-                                    var requestEncoding = new QValue("identity");
-                                    var acceptEncoding = httpRequest.Headers.GetValues("Accept-Encoding");
-                                    if (acceptEncoding != null && acceptEncoding.Any())
-                                    {
-                                        var acceptEncodings = new QValueList(acceptEncoding);
-                                        if (!acceptEncodings.Equals(default(QValueList)))
-                                        {
-                                            var preferredEncoding = acceptEncodings.FindPreferred("gzip", "deflate",
-                                                "identity");
-                                            if (!preferredEncoding.IsEmpty)
-                                                requestEncoding = preferredEncoding;
-                                        }
-                                    }
-                                    switch (requestEncoding.Name.ToLowerInvariant())
-                                    {
-                                        case "gzip":
-                                            using (var dataGZipStream = new GZipStream(outputStream,
-                                                CompressionMode.Compress, false))
-                                            {
-                                                dataGZipStream.Write(data, 0, data.Length);
-                                                //dataGZipStream.Flush();
-                                            }
-                                            response.AddHeader("Content-Encoding", "gzip");
-                                            data = outputStream.ToArray();
-                                            break;
-                                        case "deflate":
-                                            using (
-                                                var dataDeflateStream = new DeflateStream(outputStream,
-                                                    CompressionMode.Compress, false))
-                                            {
-                                                dataDeflateStream.Write(data, 0, data.Length);
-                                                //dataDeflateStream.Flush();
-                                            }
-                                            response.AddHeader("Content-Encoding", "deflate");
-                                            data = outputStream.ToArray();
-                                            break;
-                                        default:
-                                            response.AddHeader("Content-Encoding", "UTF-8");
-                                            break;
-                                    }
-                                }
-                                using (var responseStream = response.OutputStream)
-                                {
-                                    using (var responseBinaryWriter = new BinaryWriter(responseStream, Encoding.UTF8))
-                                    {
-                                        responseBinaryWriter.Write(data);
-                                    }
-                                }
-                            }
-                        }
-                        catch (HttpListenerException)
-                        {
-                            /* This happens when the server goes down, so do not scare the user since it is completely harmless. */
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.HTTP_SERVER_PROCESSING_ABORTED),
-                                ex.Message);
-                        }
-                        finally
-                        {
-                            /* Close the connection. */
-                            httpContext?.Response.Close();
-                        }
-                    }, corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
-                        corradeConfiguration.SchedulerExpiration);
-                    break;
-                default: // no other methods recognized
-                    httpContext?.Response.Close();
-                    break;
-            }
-        }
-
-        /// <summary>
         ///     Sends a notification to each group with a configured and installed notification.
         /// </summary>
         /// <param name="notification">the notification to send</param>
@@ -4571,7 +3921,8 @@ namespace Corrade
                 }
 
                 // Do not send empty notifications.
-                if (!notificationData.Any()) return;
+                if (!notificationData.Any())
+                    return;
 
                 // Add the notification type.
                 notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
@@ -4599,7 +3950,7 @@ namespace Corrade
                                     {
                                         GroupUUID = z.GroupUUID,
                                         URL = p,
-                                        Message = KeyValue.Escape(notificationData, wasOutput)
+                                        Message = notificationData
                                     });
                                     break;
                                 default:
@@ -4749,10 +4100,10 @@ namespace Corrade
                         break;
                     }
                     // If this is a Corrade command, process it and terminate.
-                    if (Utilities.IsCorradeCommand(e.Message))
+                    if (Helpers.Utilities.IsCorradeCommand(e.Message))
                     {
                         // If the group was not set properly, then bail.
-                        commandGroup = GetCorradeGroupFromMessage(e.Message);
+                        commandGroup = GetCorradeGroupFromMessage(e.Message, corradeConfiguration);
                         if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
                             return;
                         // Spawn the command.
@@ -4795,13 +4146,13 @@ namespace Corrade
                             {
                                 lock (LocalLogFileLock)
                                 {
+                                    var path = string.Format("{0}.{1}",
+                                        Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
+                                            Client.Network.CurrentSim.Name), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
                                     using (
                                         var fileStream =
-                                            File.Open(Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
-                                                Client.Network.CurrentSim.Name) +
-                                                      "." +
-                                                      CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
-                                                FileAccess.Write, FileShare.None))
+                                            new FileStream(path, FileMode.Append,
+                                                FileAccess.Write, FileShare.None, 16384, true))
                                     {
                                         using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
                                         {
@@ -4828,7 +4179,7 @@ namespace Corrade
                     break;
                 case (ChatType) 9:
                     // Send llRegionSayTo notification in case we do not have a command.
-                    if (!Utilities.IsCorradeCommand(e.Message))
+                    if (!Helpers.Utilities.IsCorradeCommand(e.Message))
                     {
                         // Send chat notifications.
                         CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -4837,7 +4188,7 @@ namespace Corrade
                         break;
                     }
                     // If the group was not set properly, then bail.
-                    commandGroup = GetCorradeGroupFromMessage(e.Message);
+                    commandGroup = GetCorradeGroupFromMessage(e.Message, corradeConfiguration);
                     if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
                         return;
 
@@ -4887,17 +4238,15 @@ namespace Corrade
                 Args = e,
                 Event = new ManualResetEvent(false)
             };
-            // Add the inventory offer to the list of inventory offers.
-            lock (InventoryOffersLock)
-            {
-                InventoryOffers.Add(inventoryOffer.Args.Offer.IMSessionID, inventoryOffer);
-            }
 
             // Accept anything from master avatars.
             if (
                 corradeConfiguration.Masters.AsParallel().Select(
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
-                    .Any(p => Strings.StringEquals(inventoryOffer.Args.Offer.FromAgentName, p, StringComparison.OrdinalIgnoreCase)))
+                    .Any(
+                        p =>
+                            Strings.StringEquals(inventoryOffer.Args.Offer.FromAgentName, p,
+                                StringComparison.OrdinalIgnoreCase)))
             {
                 inventoryOffer.Args.Accept = true;
                 // It is accepted, so update the inventory.
@@ -4924,7 +4273,8 @@ namespace Corrade
                                 break;
                             default:
                                 Inventory.UpdateInventoryRecursive(Client,
-                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
+                                    Client.Inventory.Store.Items[
+                                        Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
                                         .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
                                 break;
                         }
@@ -4935,6 +4285,16 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                     }
+                    finally
+                    {
+                        // Set the name.
+                        inventoryOffer.Name = node.Data.Name;
+                    }
+                }
+                // Add the inventory offer to the list of inventory offers.
+                lock (InventoryOffersLock)
+                {
+                    InventoryOffers.Add(inventoryOffer.Args.Offer.IMSessionID, inventoryOffer);
                 }
                 // Send notification
                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -4967,16 +4327,31 @@ namespace Corrade
             }
 
             // Find the item in the inventory.
-            InventoryBase inventoryBaseItem;
+            InventoryBase inventoryBaseItem = null;
             lock (Locks.ClientInstanceInventoryLock)
             {
-                var groups = CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
-                var name = groups.Count > 0 ? groups[1].Value : e.Offer.Message;
-                inventoryBaseItem = Inventory.FolderContents(Client, inventoryOffer.Args.FolderID, Client.Self.AgentID,
-                    true, true,
-                    InventorySortOrder.ByDate, (int) corradeConfiguration.ServicesTimeout)
-                    .AsParallel()
-                    .FirstOrDefault(o => Strings.StringEquals(o.Name, name));
+                switch (e.Offer.Dialog)
+                {
+                    case InstantMessageDialog.TaskInventoryOffered: // from objects
+                        var groups = CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
+                        inventoryOffer.Name = groups.Count > 0 ? groups[1].Value : e.Offer.Message;
+                        break;
+                    case InstantMessageDialog.InventoryOffered: // from agents
+                        if (e.Offer.BinaryBucket.Length.Equals(17))
+                        {
+                            var itemUUID = new UUID(e.Offer.BinaryBucket, 1);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                if (Client.Inventory.Store.Contains(itemUUID))
+                                {
+                                    inventoryBaseItem = Client.Inventory.Store[itemUUID];
+                                    // Set the name.
+                                    inventoryOffer.Name = inventoryBaseItem.Name;
+                                }
+                            }
+                        }
+                        break;
+                }
             }
 
             if (inventoryBaseItem != null)
@@ -5012,6 +4387,12 @@ namespace Corrade
                 }
             }
 
+            // Add the inventory offer to the list of inventory offers.
+            lock (InventoryOffersLock)
+            {
+                InventoryOffers.Add(inventoryOffer.Args.Offer.IMSessionID, inventoryOffer);
+            }
+
             // Send notification
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.Inventory, inventoryOffer.Args),
@@ -5020,7 +4401,16 @@ namespace Corrade
             // Wait for a reply.
             inventoryOffer.Event.WaitOne(Timeout.Infinite);
 
-            if (inventoryBaseItem == null) return;
+            // Remove the inventory offer.
+            lock (InventoryOffersLock)
+            {
+                if (InventoryOffers.ContainsKey(inventoryOffer.Args.Offer.IMSessionID))
+                    InventoryOffers.Remove(inventoryOffer.Args.Offer.IMSessionID);
+            }
+
+            // If item has been declined no inventory cleanup is required.
+            if (inventoryBaseItem == null)
+                return;
 
             var sourceParentUUID = UUID.Zero;
             var destinationParentUUID = UUID.Zero;
@@ -5190,7 +4580,8 @@ namespace Corrade
                             {
                                 InventoryFolder destinationFolder = null;
                                 var node =
-                                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType));
+                                    Client.Inventory.Store.GetNodeFor(
+                                        Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType));
                                 if (node != null)
                                 {
                                     destinationFolder = node.Data as InventoryFolder;
@@ -5612,10 +5003,10 @@ namespace Corrade
                         args.IM.FromAgentName);
                     Client.Friends.AcceptFriendship(args.IM.FromAgentID, args.IM.IMSessionID);
                     break;
+                case InstantMessageDialog.TaskInventoryAccepted:
+                case InstantMessageDialog.TaskInventoryDeclined:
                 case InstantMessageDialog.InventoryAccepted:
                 case InstantMessageDialog.InventoryDeclined:
-                case InstantMessageDialog.TaskInventoryOffered:
-                case InstantMessageDialog.InventoryOffered:
                     CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Configuration.Notifications.Inventory, args),
                         corradeConfiguration.MaximumNotificationThreads);
@@ -5877,8 +5268,9 @@ namespace Corrade
                                                         lock (GroupLogFileLock)
                                                         {
                                                             using (
-                                                                var fileStream = File.Open(o.ChatLog, FileMode.Append,
-                                                                    FileAccess.Write, FileShare.None))
+                                                                var fileStream = new FileStream(o.ChatLog,
+                                                                    FileMode.Append,
+                                                                    FileAccess.Write, FileShare.None, 16384, true))
                                                             {
                                                                 using (
                                                                     var logWriter = new StreamWriter(fileStream,
@@ -5960,13 +5352,13 @@ namespace Corrade
                                     {
                                         lock (ConferenceMessageLogFileLock)
                                         {
+                                            var path = string.Format("{0}.{1}",
+                                                Path.Combine(corradeConfiguration.ConferenceMessageLogDirectory,
+                                                    conferenceName), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
                                             using (
                                                 var fileStream =
-                                                    File.Open(
-                                                        Path.Combine(corradeConfiguration.ConferenceMessageLogDirectory,
-                                                            conferenceName) +
-                                                        "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
-                                                        FileAccess.Write, FileShare.None))
+                                                    new FileStream(path, FileMode.Append,
+                                                        FileAccess.Write, FileShare.None, 16384, true))
                                             {
                                                 using (
                                                     var logWriter = new StreamWriter(fileStream,
@@ -6029,13 +5421,14 @@ namespace Corrade
                                     {
                                         lock (InstantMessageLogFileLock)
                                         {
+                                            var path = string.Format("{0}.{1}",
+                                                Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
+                                                    args.IM.FromAgentName), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
                                             using (
                                                 var fileStream =
-                                                    File.Open(
-                                                        Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
-                                                            args.IM.FromAgentName) +
-                                                        "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
-                                                        FileAccess.Write, FileShare.None))
+                                                    new FileStream(path
+                                                        , FileMode.Append,
+                                                        FileAccess.Write, FileShare.None, 16384, true))
                                             {
                                                 using (
                                                     var logWriter = new StreamWriter(fileStream,
@@ -6083,13 +5476,14 @@ namespace Corrade
                                     {
                                         lock (RegionLogFileLock)
                                         {
+                                            var path = string.Format("{0}.{1}",
+                                                Path.Combine(corradeConfiguration.RegionMessageLogDirectory,
+                                                    Client.Network.CurrentSim.Name),
+                                                CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
                                             using (
                                                 var fileStream =
-                                                    File.Open(
-                                                        Path.Combine(corradeConfiguration.RegionMessageLogDirectory,
-                                                            Client.Network.CurrentSim.Name) + "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, FileMode.Append,
-                                                        FileAccess.Write, FileShare.None))
+                                                    new FileStream(path, FileMode.Append,
+                                                        FileAccess.Write, FileShare.None, 16384, true))
                                             {
                                                 using (
                                                     var logWriter = new StreamWriter(fileStream, Encoding.UTF8)
@@ -6124,7 +5518,7 @@ namespace Corrade
 
             // We are now in a region of code where the message is an IM sent by an object.
             // Check if this is not a Corrade command and send an object IM notification.
-            if (!Utilities.IsCorradeCommand(args.IM.Message))
+            if (!Helpers.Utilities.IsCorradeCommand(args.IM.Message))
             {
                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                     () => SendNotification(Configuration.Notifications.ObjectInstantMessage, args),
@@ -6133,7 +5527,7 @@ namespace Corrade
             }
 
             // If the group was not set properly, then bail.
-            var commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
+            var commandGroup = GetCorradeGroupFromMessage(args.IM.Message, corradeConfiguration);
             if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
                 return;
 
@@ -6147,7 +5541,7 @@ namespace Corrade
         }
 
 
-        private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier,
+        public static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier,
             Configuration.Group commandGroup)
         {
             // Get password.
@@ -6156,7 +5550,8 @@ namespace Corrade
                     message));
 
             // No password, no game.
-            if (string.IsNullOrEmpty(password)) return null;
+            if (string.IsNullOrEmpty(password))
+                return null;
 
             // Authenticate the request against the group password.
             if (!Authenticate(commandGroup.UUID, password))
@@ -6264,7 +5659,7 @@ namespace Corrade
                 {
                     GroupUUID = commandGroup.UUID,
                     URL = url,
-                    message = KeyValue.Escape(result, wasOutput)
+                    message = result
                 });
             }
             return result;
@@ -6275,7 +5670,7 @@ namespace Corrade
         /// </summary>
         /// <param name="corradeCommandParameters">the command parameters</param>
         /// <returns>a dictionary of key-value pairs representing the results of the command</returns>
-        private static Dictionary<string, string> ProcessCommand(
+        public static Dictionary<string, string> ProcessCommand(
             CorradeCommandParameters corradeCommandParameters)
         {
             var result = new Dictionary<string, string>
@@ -6365,11 +5760,21 @@ namespace Corrade
                                                 .Cast<Match>()
                                                 .Select(m => m.Groups).SelectMany(
                                                     matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
-                                                    (matchGroups, i) => new {matchGroups, i})
+                                                    (matchGroups, i) => new
+                                                    {
+                                                        matchGroups,
+                                                        i
+                                                    })
                                                 .SelectMany(
                                                     t => Enumerable.Range(0, t.matchGroups[t.i].Captures.Count),
                                                     (t, j) => t.matchGroups[t.i].Captures[j].Value));
                                     }
+                                    break;
+                                case Sift.JS:
+                                    data = new Jint.Engine()
+                                        .SetValue("data", data)
+                                        .Execute(wasInput(kvp.Value))
+                                        .ToString();
                                     break;
                                 default:
                                     throw new ScriptException(Enumerations.ScriptError.UNKNOWN_SIFT);
@@ -6943,7 +6348,8 @@ namespace Corrade
             {
                 case true:
                     // Don't start if the TCP notifications server is already started.
-                    if (TCPNotificationsThread != null) break;
+                    if (TCPNotificationsThread != null)
+                        break;
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.STARTING_TCP_NOTIFICATIONS_SERVER));
@@ -6986,6 +6392,57 @@ namespace Corrade
                     break;
             }
 
+            // Enable the Nucleus server in case it is supported and it was enabled in the Configuration.
+            switch (HttpListener.IsSupported)
+            {
+                case true:
+                    switch (corradeConfiguration.EnableNucleusServer)
+                    {
+                        case true:
+                            // Don't start if the HTTP server is already started.
+                            if (NucleusHTTPServer.IsRunning)
+                                break;
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER), corradeConfiguration.NucleusServerPrefix);
+                            try
+                            {
+                                NucleusHTTPServer.Prefixes.Add(corradeConfiguration.NucleusServerPrefix);
+                                NucleusHTTPServer.Start();
+                            }
+                            catch (Exception ex)
+                            {
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.Message);
+                            }
+                            break;
+                        default:
+                            if (!NucleusHTTPServer.IsRunning)
+                                break;
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
+                            try
+                            {
+                                NucleusHTTPServer.Stop();
+                            }
+                            catch (Exception ex)
+                            {
+                                Feedback(Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.Message);
+                            }
+                            break;
+                    }
+                    break;
+                default:
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.HTTP_SERVER_NOT_SUPPORTED));
+                    break;
+            }
+
             // Enable the HTTP server in case it is supported and it was enabled in the Configuration.
             switch (HttpListener.IsSupported)
             {
@@ -6994,107 +6451,39 @@ namespace Corrade
                     {
                         case true:
                             // Don't start if the HTTP server is already started.
-                            if (HTTPListenerThread != null) break;
+                            if (CorradeHTTPServer.IsRunning)
+                                break;
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.STARTING_HTTP_SERVER));
-                            runHTTPServer = true;
-                            HTTPListenerThread = new Thread(() =>
+                                    Enumerations.ConsoleMessage.STARTING_HTTP_SERVER), corradeConfiguration.HTTPServerPrefix);
+                            try
                             {
-                                try
-                                {
-                                    using (HTTPListener = new HttpListener())
-                                    {
-                                        // Add prefixes.
-                                        HTTPListener.Prefixes.Add(configuration.HTTPServerPrefix);
-                                        // Add authentication.
-                                        HTTPListener.AuthenticationSchemes = AuthenticationSchemes.Basic |
-                                                                             AuthenticationSchemes.Anonymous;
-                                        // TimeoutManager is not supported on mono (what is mono good for anyway, practically speaking?).
-                                        switch (Environment.OSVersion.Platform)
-                                        {
-                                            case PlatformID.Win32NT:
-                                                // We have to set this through reflection to prevent mono from bombing.
-                                                var pi =
-                                                    HTTPListener.GetType()
-                                                        .GetProperty("TimeoutManager",
-                                                            BindingFlags.Public | BindingFlags.Instance);
-                                                var timeoutManager = pi?.GetValue(HTTPListener, null);
-                                                // Check if we have TimeoutManager.
-                                                if (timeoutManager == null) break;
-                                                // Now, set the properties through reflection.
-                                                pi = timeoutManager.GetType().GetProperty("DrainEntityBody");
-                                                pi?.SetValue(timeoutManager,
-                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerDrainTimeout),
-                                                    null);
-                                                pi = timeoutManager.GetType().GetProperty("EntityBody");
-                                                pi?.SetValue(timeoutManager,
-                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerBodyTimeout),
-                                                    null);
-                                                pi = timeoutManager.GetType().GetProperty("HeaderWait");
-                                                pi?.SetValue(timeoutManager,
-                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerHeaderTimeout),
-                                                    null);
-                                                pi = timeoutManager.GetType().GetProperty("IdleConnection");
-                                                pi?.SetValue(timeoutManager,
-                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerIdleTimeout),
-                                                    null);
-                                                pi = timeoutManager.GetType().GetProperty("RequestQueue");
-                                                pi?.SetValue(timeoutManager,
-                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerQueueTimeout),
-                                                    null);
-                                                break;
-                                        }
-                                        HTTPListener.Start();
-                                        while (runHTTPServer && HTTPListener.IsListening)
-                                        {
-                                            HTTPListenerThreadState.WaitOne();
-                                            var result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
-                                                HTTPListener);
-                                            WaitHandle.WaitAny(new[] {result.AsyncWaitHandle});
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Feedback(
-                                        Reflection.GetDescriptionFromEnumValue(
-                                            Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
-                                        ex.Message);
-                                }
-                            })
-                            {IsBackground = true};
-                            HTTPListenerThread.Start();
+                                CorradeHTTPServer.Prefixes.Add(corradeConfiguration.HTTPServerPrefix);
+                                CorradeHTTPServer.Start();
+                            }
+                            catch (Exception ex)
+                            {
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
+                                    ex.Message);
+                                Console.WriteLine(ex);
+                            }
                             break;
                         default:
+                            if (!CorradeHTTPServer.IsRunning)
+                                break;
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
-                            runHTTPServer = false;
                             try
                             {
-                                if (HTTPListenerThread != null)
-                                {
-                                    HTTPListener.Stop();
-                                    if (
-                                        HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
-                                        HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                                    {
-                                        if (!HTTPListenerThread.Join(1000))
-                                        {
-                                            HTTPListenerThread.Abort();
-                                            HTTPListenerThread.Join();
-                                        }
-                                    }
-                                }
+                                CorradeHTTPServer.Stop();
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
-                                /* We are going down and we do not care. */
-                            }
-                            finally
-                            {
-                                HTTPListenerThread = null;
+                                Feedback(Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex.Message);
                             }
                             break;
                     }
@@ -7182,7 +6571,7 @@ namespace Corrade
             //throw new NotImplementedException();
         }
 
-        private static void HordeDistributeCacheAsset(UUID assetUUID, byte[] data,
+        public static void HordeDistributeCacheAsset(UUID assetUUID, byte[] data,
             Configuration.HordeDataSynchronizationOption option)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.HORDE].Spawn(
@@ -7204,10 +6593,27 @@ namespace Corrade
                                     })
                                 .ForAll(async p =>
                                 {
-                                    await
-                                        p.Value.PUT(
-                                            $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Asset)}/{Reflection.GetNameFromEnumValue(option)}/{assetUUID.ToString()}",
-                                            data);
+                                    switch (option)
+                                    {
+                                        case Configuration.HordeDataSynchronizationOption.Add:
+                                            using (var memorySteam = new MemoryStream(data))
+                                            {
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Asset)}/{assetUUID.ToString()}",
+                                                        memorySteam);
+                                            }
+                                            break;
+                                        case Configuration.HordeDataSynchronizationOption.Remove:
+                                            using (var memorySteam = new MemoryStream(data))
+                                            {
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Asset)}/{assetUUID.ToString()}",
+                                                        memorySteam);
+                                            }
+                                            break;
+                                    }
                                 });
                         }
                     }
@@ -7245,10 +6651,21 @@ namespace Corrade
                                 .ForAll(
                                     async p =>
                                     {
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.BAYES)}/{Reflection.GetNameFromEnumValue(option)}/{groupUUID.ToString()}",
-                                                data);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.BAYES)}/{groupUUID.ToString()}",
+                                                        data);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.BAYES)}/{groupUUID.ToString()}",
+                                                        data);
+                                                break;
+                                        }
                                     });
                         }
                     }
@@ -7282,14 +6699,26 @@ namespace Corrade
                                 })
                                 .ForAll(async p =>
                                 {
-                                    using (var writer = new StringWriter())
+                                    using (var memoryStream = new MemoryStream())
                                     {
                                         var serializer = new XmlSerializer(typeof(Cache.Group));
-                                        serializer.Serialize(writer, o);
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group)}/{Reflection.GetNameFromEnumValue(option)}",
-                                                writer.ToString());
+                                        serializer.Serialize(memoryStream, o);
+                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group)}",
+                                                        memoryStream);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group)}",
+                                                        memoryStream);
+                                                break;
+                                        }
                                     }
                                 });
                         }
@@ -7325,14 +6754,26 @@ namespace Corrade
                                 })
                                 .ForAll(async p =>
                                 {
-                                    using (var writer = new StringWriter())
+                                    using (var memoryStream = new MemoryStream())
                                     {
                                         var serializer = new XmlSerializer(typeof(Cache.Region));
-                                        serializer.Serialize(writer, o);
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region)}/{Reflection.GetNameFromEnumValue(option)}",
-                                                writer.ToString());
+                                        serializer.Serialize(memoryStream, o);
+                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region)}",
+                                                        memoryStream);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region)}",
+                                                        memoryStream);
+                                                break;
+                                        }
                                     }
                                 });
                         }
@@ -7367,14 +6808,26 @@ namespace Corrade
                                 })
                                 .ForAll(async p =>
                                 {
-                                    using (var writer = new StringWriter())
+                                    using (var memoryStream = new MemoryStream())
                                     {
                                         var serializer = new XmlSerializer(typeof(Cache.Agent));
-                                        serializer.Serialize(writer, o);
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent)}/{Reflection.GetNameFromEnumValue(option)}",
-                                                writer.ToString());
+                                        serializer.Serialize(memoryStream, o);
+                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent)}",
+                                                        memoryStream);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent)}",
+                                                        memoryStream);
+                                                break;
+                                        }
                                     }
                                 });
                         }
@@ -7409,14 +6862,26 @@ namespace Corrade
                                 })
                                 .ForAll(async p =>
                                 {
-                                    using (var writer = new StringWriter())
+                                    using (var memoryStream = new MemoryStream())
                                     {
                                         var serializer = new XmlSerializer(typeof(MuteEntry));
-                                        serializer.Serialize(writer, o);
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute)}/{Reflection.GetNameFromEnumValue(option)}",
-                                                writer.ToString());
+                                        serializer.Serialize(memoryStream, o);
+                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute)}",
+                                                        memoryStream);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute)}",
+                                                        memoryStream);
+                                                break;
+                                        }
                                     }
                                 });
                         }
@@ -7453,14 +6918,26 @@ namespace Corrade
                                 })
                                 .ForAll(async p =>
                                 {
-                                    using (var writer = new StringWriter())
+                                    using (var memoryStream = new MemoryStream())
                                     {
                                         var serializer = new XmlSerializer(typeof(UUID));
-                                        serializer.Serialize(writer, agentUUID);
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan)}/{Reflection.GetNameFromEnumValue(option)}/{groupUUID.ToString()}",
-                                                writer.ToString());
+                                        serializer.Serialize(memoryStream, agentUUID);
+                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan)}/{groupUUID.ToString()}",
+                                                        memoryStream);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan)}/{groupUUID.ToString()}",
+                                                        memoryStream);
+                                                break;
+                                        }
                                     }
                                 });
                         }
@@ -7496,14 +6973,26 @@ namespace Corrade
                                 })
                                 .ForAll(async p =>
                                 {
-                                    using (var writer = new StringWriter())
+                                    using (var memoryStream = new MemoryStream())
                                     {
                                         var serializer = new XmlSerializer(typeof(Configuration.Group));
-                                        serializer.Serialize(writer, group);
-                                        await
-                                            p.Value.PUT(
-                                                $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.User)}/{Reflection.GetNameFromEnumValue(option)}/{group.UUID.ToString()}",
-                                                writer.ToString());
+                                        serializer.Serialize(memoryStream, group);
+                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        switch (option)
+                                        {
+                                            case Configuration.HordeDataSynchronizationOption.Add:
+                                                await
+                                                    p.Value.PUT(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.User)}/{group.UUID.ToString()}",
+                                                        memoryStream);
+                                                break;
+                                            case Configuration.HordeDataSynchronizationOption.Remove:
+                                                await
+                                                    p.Value.DELETE(
+                                                        $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.User)}/{group.UUID.ToString()}",
+                                                        memoryStream);
+                                                break;
+                                        }
                                     }
                                 });
                         }
@@ -7904,7 +7393,7 @@ namespace Corrade
             }
         }
 
-        private static void HandleGroupSoftBansChanged(object sender, NotifyCollectionChangedEventArgs e)
+        public static void HandleGroupSoftBansChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             var group =
                 GroupSoftBans.FirstOrDefault(

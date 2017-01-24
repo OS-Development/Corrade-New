@@ -11,7 +11,7 @@ using wasSharp;
 namespace Corrade.Structures
 {
     /// <summary>
-    ///     A structure for group notices.
+    ///     A structure for inventory offers.
     /// </summary>
     public class InventoryOffer
     {

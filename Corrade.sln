@@ -9,12 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corrade", "Corrade\Corrade.
 		{2CA04070-F3E8-4E39-9F43-4BB7090D7A77} = {2CA04070-F3E8-4E39-9F43-4BB7090D7A77}
 		{EF59AAC3-9861-4E63-A513-E39127376F24} = {EF59AAC3-9861-4E63-A513-E39127376F24}
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configurator", "Configurator\Configurator.csproj", "{695D4BED-5254-4092-B5DC-BFA13228A151}"
-	ProjectSection(ProjectDependencies) = postProject
-		{2CA04070-F3E8-4E39-9F43-4BB7090D7A77} = {2CA04070-F3E8-4E39-9F43-4BB7090D7A77}
-		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
+		{695D4BED-5254-4092-B5DC-BFA13228A151} = {695D4BED-5254-4092-B5DC-BFA13228A151}
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasSharp", "wasSharp\wasSharp.csproj", "{A971E1C9-776C-4CD2-88AC-71197C7B955E}"
@@ -32,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasSharpNET", "wasSharpNET\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CorradeConfigurationSharp", "corrade-configuration-sharp\CorradeConfigurationSharp\CorradeConfigurationSharp.csproj", "{2CA04070-F3E8-4E39-9F43-4BB7090D7A77}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configurator", "Configurator\Configurator.csproj", "{695D4BED-5254-4092-B5DC-BFA13228A151}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,10 +39,6 @@ Global
 		{DBF5CAB0-CCF6-4D8F-A257-100CE4CA4F32}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DBF5CAB0-CCF6-4D8F-A257-100CE4CA4F32}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DBF5CAB0-CCF6-4D8F-A257-100CE4CA4F32}.Release|Any CPU.Build.0 = Release|Any CPU
-		{695D4BED-5254-4092-B5DC-BFA13228A151}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{695D4BED-5254-4092-B5DC-BFA13228A151}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -62,6 +55,10 @@ Global
 		{2CA04070-F3E8-4E39-9F43-4BB7090D7A77}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2CA04070-F3E8-4E39-9F43-4BB7090D7A77}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2CA04070-F3E8-4E39-9F43-4BB7090D7A77}.Release|Any CPU.Build.0 = Release|Any CPU
+		{695D4BED-5254-4092-B5DC-BFA13228A151}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{695D4BED-5254-4092-B5DC-BFA13228A151}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

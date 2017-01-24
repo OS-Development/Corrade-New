@@ -264,7 +264,7 @@ namespace Corrade.Helpers
                                     var nameSplitCondition =
                                         arg.GetFP(process.NameSplit.Condition.Path);
                                     if (!nameSplitCondition.Equals(process.NameSplit.Condition.Value))
-                                        return;
+                                        continue;
                                 }
                                 var name = wasOpenMetaverse.Helpers.GetAvatarNames(value as string);
                                 if (name != null)

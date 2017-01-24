@@ -21,7 +21,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var viewerEffectType = corradeNotificationParameters.Event.GetType();
-                    if (viewerEffectType == typeof (ViewerEffectEventArgs))
+                    if (viewerEffectType == typeof(ViewerEffectEventArgs))
                     {
                         var notificationViewerEffectEventArgs =
                             (ViewerEffectEventArgs) corradeNotificationParameters.Event;
@@ -48,7 +48,7 @@ namespace Corrade
                             }));
                         return;
                     }
-                    if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
+                    if (viewerEffectType == typeof(ViewerEffectPointAtEventArgs))
                     {
                         var notificationViewerPointAtEventArgs =
                             (ViewerEffectPointAtEventArgs) corradeNotificationParameters.Event;
@@ -75,7 +75,7 @@ namespace Corrade
                             }));
                         return;
                     }
-                    if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
+                    if (viewerEffectType == typeof(ViewerEffectLookAtEventArgs))
                     {
                         var notificationViewerLookAtEventArgs =
                             (ViewerEffectLookAtEventArgs) corradeNotificationParameters.Event;

@@ -26,7 +26,7 @@ namespace Corrade
                     if (inventoryEventType == typeof(InventoryObjectAddedEventArgs))
                     {
                         var inventoryObjectAddedEventArgs =
-                            (InventoryObjectAddedEventArgs)corradeNotificationParameters.Event;
+                            (InventoryObjectAddedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
@@ -45,7 +45,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> { inventoryObjectAddedEventArgs },
+                                    new List<object> {inventoryObjectAddedEventArgs},
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
@@ -55,7 +55,7 @@ namespace Corrade
                     if (inventoryEventType == typeof(InventoryObjectRemovedEventArgs))
                     {
                         var inventoryObjectRemovedEventArgs =
-                            (InventoryObjectRemovedEventArgs)corradeNotificationParameters.Event;
+                            (InventoryObjectRemovedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
@@ -74,7 +74,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> { inventoryObjectRemovedEventArgs },
+                                    new List<object> {inventoryObjectRemovedEventArgs},
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
@@ -84,7 +84,7 @@ namespace Corrade
                     if (inventoryEventType == typeof(InventoryObjectUpdatedEventArgs))
                     {
                         var inventoryObjectUpdatedEventArgs =
-                            (InventoryObjectUpdatedEventArgs)corradeNotificationParameters.Event;
+                            (InventoryObjectUpdatedEventArgs) corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
                         if (corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
@@ -103,7 +103,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> { inventoryObjectUpdatedEventArgs },
+                                    new List<object> {inventoryObjectUpdatedEventArgs},
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));

@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Corrade.Helpers;
-using OpenMetaverse;
+using Corrade.Structures;
 using wasSharp;
 
 namespace Corrade
@@ -21,7 +21,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var scriptDialog =
-                        (Structures.ScriptDialog) corradeNotificationParameters.Event;
+                        (ScriptDialog) corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())

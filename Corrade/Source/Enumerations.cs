@@ -226,7 +226,14 @@ namespace Corrade
             [Reflection.DescriptionAttribute("start locations exhausted")] START_LOCATIONS_EXHAUSTED,
             [Reflection.DescriptionAttribute("cycling simulators")] CYCLING_SIMULATORS,
             [Reflection.DescriptionAttribute("no start locations found")] NO_START_LOCATIONS_FOUND,
-            [Reflection.DescriptionAttribute("simulator disconnected")] SIMULATOR_DISCONNECTED
+            [Reflection.DescriptionAttribute("simulator disconnected")] SIMULATOR_DISCONNECTED,
+            [Reflection.DescriptionAttribute("starting Nucleus server")] STARTING_NUCLEUS_SERVER,
+            [Reflection.DescriptionAttribute("stopping Nucleus server")] STOPPING_NUCLEUS_SERVER,
+            [Reflection.DescriptionAttribute("Nucleus server error")] NUCLEUS_SERVER_ERROR,
+            [Reflection.DescriptionAttribute("Nucleus processing aborted")] NUCLEUS_PROCESSING_ABORTED,
+            [Reflection.DescriptionAttribute("HTTP server command error")] HTTP_SERVER_COMMAND_ERROR,
+            [Reflection.DescriptionAttribute("HTTP server command error")] HTTP_SERVER_SYNCHRONIZATION_ERROR,
+            [Reflection.DescriptionAttribute("Nucleus compile failed")] NUCLEUS_COMPILE_FAILED
         }
 
         /// <summary>
@@ -306,7 +313,9 @@ namespace Corrade
             [Reflection.NameAttribute("global")] GLOBAL,
             [Reflection.NameAttribute("landmark")] LANDMARK,
             [Reflection.NameAttribute("file")] FILE,
-            [Reflection.NameAttribute("text")] TEXT
+            [Reflection.NameAttribute("text")] TEXT,
+            [Reflection.NameAttribute("URL")] URL,
+            [Reflection.NameAttribute("authentication")] AUTHENTICATION
         }
 
         /// <summary>
@@ -674,7 +683,8 @@ namespace Corrade
             [Command.StatusAttribute(55394)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
             [Command.StatusAttribute(64179)] [Reflection.DescriptionAttribute("unable to serialize primitive")] UNABLE_TO_SERIALIZE_PRIMITIVE,
             [Command.StatusAttribute(58212)] [Reflection.DescriptionAttribute("platform not supported")] PLATFORM_NOT_SUPPORTED,
-            [Command.StatusAttribute(16233)] [Reflection.DescriptionAttribute("invalid asset")] INVALID_ASSET
+            [Command.StatusAttribute(16233)] [Reflection.DescriptionAttribute("invalid asset")] INVALID_ASSET,
+            [Command.StatusAttribute(23123)] [Reflection.DescriptionAttribute("nucleus server error")] NUCLEUS_SERVER_ERROR
         }
 
 

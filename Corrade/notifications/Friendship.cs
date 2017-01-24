@@ -21,7 +21,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var friendshipNotificationType = corradeNotificationParameters.Event.GetType();
-                    if (friendshipNotificationType == typeof (FriendInfoEventArgs))
+                    if (friendshipNotificationType == typeof(FriendInfoEventArgs))
                     {
                         var friendInfoEventArgs =
                             (FriendInfoEventArgs) corradeNotificationParameters.Event;
@@ -47,7 +47,7 @@ namespace Corrade
                             }));
                         return;
                     }
-                    if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
+                    if (friendshipNotificationType == typeof(FriendshipResponseEventArgs))
                     {
                         var friendshipResponseEventArgs =
                             (FriendshipResponseEventArgs) corradeNotificationParameters.Event;
@@ -74,7 +74,7 @@ namespace Corrade
                             }));
                         return;
                     }
-                    if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
+                    if (friendshipNotificationType == typeof(FriendshipOfferedEventArgs))
                     {
                         var friendshipOfferedEventArgs =
                             (FriendshipOfferedEventArgs) corradeNotificationParameters.Event;

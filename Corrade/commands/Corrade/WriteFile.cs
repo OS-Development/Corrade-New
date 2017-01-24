@@ -60,7 +60,9 @@ namespace Corrade
                     // Write to the file.
                     try
                     {
-                        using (var fileStream = File.Open(path, fileMode, FileAccess.Write, FileShare.None))
+                        using (
+                            var fileStream = new FileStream(path, fileMode, FileAccess.Write, FileShare.None, 16384,
+                                true))
                         {
                             using (var streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
                             {

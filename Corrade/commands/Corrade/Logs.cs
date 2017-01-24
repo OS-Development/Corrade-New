@@ -48,8 +48,8 @@ namespace Corrade
                                 lock (GroupLogFileLock)
                                 {
                                     using (
-                                        var fileStream = File.Open(corradeCommandParameters.Group.ChatLog,
-                                            FileMode.Open, FileAccess.Read, FileShare.Read))
+                                        var fileStream = new FileStream(corradeCommandParameters.Group.ChatLog,
+                                            FileMode.Open, FileAccess.Read, FileShare.Read, 16384, true))
                                     {
                                         using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
@@ -247,8 +247,8 @@ namespace Corrade
                                 lock (InstantMessageLogFileLock)
                                 {
                                     using (
-                                        var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
-                                            FileShare.Read))
+                                        var fileStream = new FileStream(o, FileMode.Open, FileAccess.Read,
+                                            FileShare.Read, 16384, true))
                                     {
                                         using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
@@ -458,8 +458,8 @@ namespace Corrade
                                     lock (ConferenceMessageLogFileLock)
                                     {
                                         using (
-                                            var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
-                                                FileShare.Read))
+                                            var fileStream = new FileStream(o, FileMode.Open, FileAccess.Read,
+                                                FileShare.Read, 16384, true))
                                         {
                                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                             {
@@ -664,8 +664,8 @@ namespace Corrade
                                 lock (LocalLogFileLock)
                                 {
                                     using (
-                                        var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
-                                            FileShare.Read))
+                                        var fileStream = new FileStream(o, FileMode.Open, FileAccess.Read,
+                                            FileShare.Read, 16384, true))
                                     {
                                         using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {
@@ -923,8 +923,8 @@ namespace Corrade
                                 lock (RegionLogFileLock)
                                 {
                                     using (
-                                        var fileStream = File.Open(o, FileMode.Open, FileAccess.Read,
-                                            FileShare.Read))
+                                        var fileStream = new FileStream(o, FileMode.Open, FileAccess.Read,
+                                            FileShare.Read, 16384, true))
                                     {
                                         using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                         {

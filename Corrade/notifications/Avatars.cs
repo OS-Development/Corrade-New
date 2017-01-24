@@ -21,7 +21,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var radarAvatarsType = corradeNotificationParameters.Event.GetType();
-                    if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
+                    if (radarAvatarsType == typeof(AvatarUpdateEventArgs))
                     {
                         var avatarUpdateEventArgs =
                             (AvatarUpdateEventArgs) corradeNotificationParameters.Event;
@@ -52,7 +52,7 @@ namespace Corrade
                             }));
                         return;
                     }
-                    if (radarAvatarsType == typeof (KillObjectEventArgs))
+                    if (radarAvatarsType == typeof(KillObjectEventArgs))
                     {
                         var killObjectEventArgs =
                             (KillObjectEventArgs) corradeNotificationParameters.Event;

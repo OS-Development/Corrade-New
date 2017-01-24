@@ -6,7 +6,6 @@
 
 using System;
 using System.Xml.Serialization;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade.Structures
@@ -18,25 +17,19 @@ namespace Corrade.Structures
     public struct Agent : IEquatable<Agent>
     {
         [XmlElement(ElementName = "FirstName")]
-        public string FirstName
-        {
-            get; set;
-        }
+        public string FirstName { get; set; }
+
         [XmlElement(ElementName = "LastName")]
-        public string LastName
-        {
-            get; set;
-        }
+        public string LastName { get; set; }
+
         [XmlElement(ElementName = "UUID")]
-        public string UUID
-        {
-            get; set;
-        }
+        public string UUID { get; set; }
 
         public bool Equals(Agent other)
         {
             return (Strings.StringEquals(FirstName, other.FirstName, StringComparison.OrdinalIgnoreCase)
-                && Strings.StringEquals(LastName, other.LastName, StringComparison.OrdinalIgnoreCase)) || UUID.Equals(other.UUID);
+                    && Strings.StringEquals(LastName, other.LastName, StringComparison.OrdinalIgnoreCase)) ||
+                   UUID.Equals(other.UUID);
         }
 
         public override int GetHashCode()

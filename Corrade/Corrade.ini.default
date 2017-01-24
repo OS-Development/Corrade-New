@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.22.6178.33377</Version>
+  <Version>1.24.6233.24592</Version>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
   <CacheAutoPruneInterval>300000</CacheAutoPruneInterval>
   <HeartbeatLogInterval>3600000</HeartbeatLogInterval>
@@ -20,25 +20,26 @@
   <RegionMessageLogDirectory>logs/region</RegionMessageLogDirectory>
   <RegionMessageLogEnabled>true</RegionMessageLogEnabled>
   <EnableHTTPServer>false</EnableHTTPServer>
+  <EnableNucleusServer>true</EnableNucleusServer>
+  <EnableNucleusServerCache>true</EnableNucleusServerCache>
+  <NucleusServerCachePurgeInterval>60000</NucleusServerCachePurgeInterval>
   <EnableHTTPServerAuthentication>false</EnableHTTPServerAuthentication>
   <HTTPServerUsername />
+  <NucleusServerUsername>corrade</NucleusServerUsername>
   <HTTPServerPassword />
+  <NucleusServerPassword>1b6eb811867e4e820af31e1d0dcf5c7e7b493e68</NucleusServerPassword>
   <EnableTCPNotificationsServer>false</EnableTCPNotificationsServer>
   <EnableSIML>false</EnableSIML>
   <EnableRLV>false</EnableRLV>
   <HTTPServerPrefix>http://+:8080/</HTTPServerPrefix>
+  <NucleusServerPrefix />
   <TCPNotificationsServerPort>8095</TCPNotificationsServerPort>
   <TCPNotificationsServerAddress>0.0.0.0</TCPNotificationsServerAddress>
   <TCPNotificationsCertificatePath />
   <TCPNotificationsCertificatePassword />
   <TCPNotificationsSSLProtocol>Tls12</TCPNotificationsSSLProtocol>
   <HTTPServerTimeout>2500</HTTPServerTimeout>
-  <HTTPServerDrainTimeout>10000</HTTPServerDrainTimeout>
-  <HTTPServerBodyTimeout>5000</HTTPServerBodyTimeout>
-  <HTTPServerHeaderTimeout>2500</HTTPServerHeaderTimeout>
-  <HTTPServerIdleTimeout>2500</HTTPServerIdleTimeout>
   <HTTPServerQueueTimeout>10000</HTTPServerQueueTimeout>
-  <HTTPServerCompression>none</HTTPServerCompression>
   <ThrottleTotal>5000000</ThrottleTotal>
   <ThrottleLand>2500000</ThrottleLand>
   <ThrottleTask>2500000</ThrottleTask>
@@ -47,7 +48,6 @@
   <ThrottleResend>2500000</ThrottleResend>
   <ThrottleAsset>2500000</ThrottleAsset>
   <ThrottleCloud>2500000</ThrottleCloud>
-  <HTTPServerKeepAlive>true</HTTPServerKeepAlive>
   <CallbackTimeout>100000</CallbackTimeout>
   <CallbackThrottle>250</CallbackThrottle>
   <CallbackQueueLength>100</CallbackQueueLength>
@@ -111,27 +111,39 @@
       <Name>My Group</Name>
       <Notifications>
         <Notifications>group</Notifications>
+        <Notifications>region</Notifications>
+        <Notifications>message</Notifications>
+        <Notifications>notice</Notifications>
+        <Notifications>local</Notifications>
+        <Notifications>dialog</Notifications>
+        <Notifications>permission</Notifications>
+        <Notifications>lure</Notifications>
+        <Notifications>crossing</Notifications>
+        <Notifications>invite</Notifications>
+        <Notifications>url</Notifications>
+        <Notifications>ownersay</Notifications>
+        <Notifications>regionsayto</Notifications>
+        <Notifications>debug</Notifications>
+        <Notifications>control</Notifications>
+        <Notifications>sit</Notifications>
+        <Notifications>teleport</Notifications>
+        <Notifications>heartbeat</Notifications>
       </Notifications>
       <Password>91dfd9ddb4198affc5c194cd8ce6d338fde470e2</Password>
       <Permissions>
+        <Permissions>movement</Permissions>
+        <Permissions>land</Permissions>
+        <Permissions>grooming</Permissions>
+        <Permissions>interact</Permissions>
+        <Permissions>mute</Permissions>
         <Permissions>talk</Permissions>
+        <Permissions>friendship</Permissions>
         <Permissions>group</Permissions>
+        <Permissions>notifications</Permissions>
       </Permissions>
       <Schedules>0</Schedules>
       <UUID>aaa465f0-e18c-4aec-baa2-21b153092886</UUID>
       <Workers>5</Workers>
-    </Group>
-    <Group>
-      <ChatLog>logs/groupchat/luckystars.log</ChatLog>
-      <ChatLogEnabled>false</ChatLogEnabled>
-      <DatabaseFile>databases/luckystars.db</DatabaseFile>
-      <Name>Lucky Stars</Name>
-      <Notifications />
-      <Password>fc2eed3863d826b52f384b90d3ad4509a2dd734a</Password>
-      <Permissions />
-      <Schedules>0</Schedules>
-      <UUID>0bf9748c-724e-4d30-88c6-b9c3bb197eae</UUID>
-      <Workers>10</Workers>
     </Group>
   </Groups>
   <Masters>

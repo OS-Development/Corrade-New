@@ -21,7 +21,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var regionChangeType = corradeNotificationParameters.Event.GetType();
-                    if (regionChangeType == typeof (SimChangedEventArgs))
+                    if (regionChangeType == typeof(SimChangedEventArgs))
                     {
                         var simChangedEventArgs =
                             (SimChangedEventArgs) corradeNotificationParameters.Event;
@@ -48,7 +48,7 @@ namespace Corrade
 
                         return;
                     }
-                    if (regionChangeType == typeof (RegionCrossedEventArgs))
+                    if (regionChangeType == typeof(RegionCrossedEventArgs))
                     {
                         var regionCrossedEventArgs =
                             (RegionCrossedEventArgs) corradeNotificationParameters.Event;

@@ -346,7 +346,8 @@ namespace Corrade
                         }
                         // Otherwise, save it to the specified file.
                         using (
-                            var fileStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                            var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None,
+                                16384, true))
                         {
                             using (var streamWriter = new StreamWriter(fileStream, Encoding.UTF8))
                             {

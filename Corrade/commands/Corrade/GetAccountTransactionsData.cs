@@ -122,13 +122,14 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                         postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
-                            "https://secondlife.com/my/account/download_transactions.php",
+                            "https://accounts.secondlife.com/get_transaction_history_csv",
                             new Dictionary<string, string>
                             {
-                                {"date_start", from.ToString("yyyy-MM-dd ")},
-                                {"date_end", to.ToString("yyyy-MM-dd ")},
+                                {"startDate", from.ToString("yyyy-MM-dd ")},
+                                {"endDate", to.ToString("yyyy-MM-dd ")},
                                 {"type", "xml"},
-                                {"include_zero", "yes"}
+                                {"xml", "1"},
+                                {"omit_zero_amounts", "false"}
                             });
 
                         if (postData.Result == null)

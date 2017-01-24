@@ -14,7 +14,7 @@ namespace Corrade.Structures
     /// </summary>
     public struct CallbackQueueElement
     {
-        public Dictionary<string, string> message;
+        public IEnumerable<KeyValuePair<string, string>> message;
         public string URL;
         public UUID GroupUUID;
     }

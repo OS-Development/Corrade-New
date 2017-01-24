@@ -34,16 +34,24 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [Reflection.NameAttribute("authentication")] AUTHENTICATION,
+
+            [CommandInputSyntax(
+                "<command=nucleus>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop|purge|get|set>>&action=get:<entity=<URL|AUTHENTICATION>>&action=set:<entity=<AUTHENTICATION>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
+            [CorradeCommand("nucleus")]
+            [Reflection.NameAttribute("nucleus")]
+            NUCLEUS,
+
+            [Reflection.NameAttribute("shell")] SHELL,
+            [Reflection.NameAttribute("window")] WINDOW,
+
             [CommandInputSyntax(
                 "<command=copynotecardasset>&<group=<UUID|STRING>>&<password=<STRING>>&[name=<STRING>]&<asset=<UUID>>&<item=<STRING|UUID>&<folder=<STRING|UUID>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
-            [CorradeCommand("copynotecardasset")]
-            [Reflection.NameAttribute("copynotecardasset")]
-            COPYNOTECARDASSET,
-            
-            [Reflection.NameAttribute("exclude")]
-            EXCLUDE,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.Inventory)] [CorradeCommand("copynotecardasset")] [Reflection.NameAttribute("copynotecardasset")] COPYNOTECARDASSET,
+
+            [Reflection.NameAttribute("exclude")] EXCLUDE,
 
             [CommandInputSyntax(
                 "<command=exportoar>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<STRING>>&entity=object:<item=<STRING|UUID>>&entity=object:[range=<FLOAT>]&[path=<STRING>]&[callback=<STRING>]"
@@ -670,7 +678,7 @@ namespace Corrade
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("getmemberroles")] [Reflection.NameAttribute("getmemberroles")] GETMEMBERROLES,
 
             [CommandInputSyntax(
-                "<command=execute>&<group=<UUID|STRING>>&<password=<STRING>>&<file=<STRING>>&[parameter=<STRING>]&[callback=<STRING>]"
+                "<command=execute>&<group=<UUID|STRING>>&<password=<STRING>>&<file=<STRING>>&<shell=<BOOL>>&<window=<BOOL>>&&[parameter=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Execute)] [CorradeCommand("execute")] [Reflection.NameAttribute("execute")] EXECUTE,
             [Reflection.NameAttribute("parameter")] PARAMETER,
             [Reflection.NameAttribute("file")] FILE,
@@ -1233,7 +1241,8 @@ namespace Corrade
             [Reflection.NameAttribute("take")] TAKE,
             [Reflection.NameAttribute("each")] EACH,
             [Reflection.NameAttribute("match")] MATCH,
-            [Reflection.NameAttribute("skip")] SKIP
+            [Reflection.NameAttribute("skip")] SKIP,
+            [Reflection.NameAttribute("js")] JS
         }
 
 
@@ -1331,27 +1340,6 @@ namespace Corrade
             [Reflection.NameAttribute("identifier")] public string Identifier;
             [Reflection.NameAttribute("message")] public string Message;
             [Reflection.NameAttribute("sender")] public string Sender;
-        }
-
-        /// <summary>
-        ///     An exception thrown on processing commands via the HTTP server.
-        /// </summary>
-        [Serializable]
-        public class HTTPCommandException : Exception
-        {
-            public HTTPCommandException()
-            {
-            }
-
-            public HTTPCommandException(string message)
-                : base(message)
-            {
-            }
-
-            protected HTTPCommandException(SerializationInfo info, StreamingContext context)
-                : base(info, context)
-            {
-            }
         }
     }
 }

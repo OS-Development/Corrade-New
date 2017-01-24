@@ -57,7 +57,9 @@ namespace Corrade
                             // Read from file.
                             try
                             {
-                                using (var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                using (
+                                    var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                                        16384, true))
                                 {
                                     using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                     {

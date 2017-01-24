@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Corrade.Helpers;
+using Corrade.Structures;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
@@ -23,7 +24,7 @@ namespace Corrade
                 (corradeNotificationParameters, notificationData) =>
                 {
                     var inventoryEventType = corradeNotificationParameters.Event.GetType();
-                    if (inventoryEventType == typeof (InstantMessageEventArgs))
+                    if (inventoryEventType == typeof(InstantMessageEventArgs))
                     {
                         var instantMessageEventArgs =
                             (InstantMessageEventArgs) corradeNotificationParameters.Event;
@@ -43,19 +44,33 @@ namespace Corrade
                             instantMessageEventArgs
                         };
 
-                        var itemUUID = new UUID(instantMessageEventArgs.IM.BinaryBucket, 1);
-                        lock (Locks.ClientInstanceInventoryLock)
+                        // Get inventory offer.
+                        InventoryOffer inventoryOffer;
+                        lock (InventoryOffersLock)
                         {
-                            if (Client.Inventory.Store.Contains(itemUUID))
+                            if (InventoryOffers.TryGetValue(instantMessageEventArgs.IM.IMSessionID, out inventoryOffer))
                             {
-                                objects.Add(Client.Inventory.Store[itemUUID]);
+                                objects.Add(inventoryOffer);
+                            }
+                        }
+
+                        // Get inventory item.
+                        if (instantMessageEventArgs.IM.BinaryBucket.Length.Equals(17))
+                        {
+                            var itemUUID = new UUID(instantMessageEventArgs.IM.BinaryBucket, 1);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                if (Client.Inventory.Store.Contains(itemUUID))
+                                {
+                                    objects.Add(Client.Inventory.Store[itemUUID]);
+                                }
                             }
                         }
 
                         var LockObject = new object();
                         Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
-                            .Where(o => o.Key.Equals(typeof (InstantMessageEventArgs).FullName))
+                            .Where(o => o.Key.Equals(typeof(InstantMessageEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
@@ -63,21 +78,9 @@ namespace Corrade
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
-
-                        switch (instantMessageEventArgs.IM.Dialog)
-                        {
-                            case InstantMessageDialog.TaskInventoryOffered:
-                            case InstantMessageDialog.InventoryOffered:
-                                lock (InventoryOffersLock)
-                                {
-                                    InventoryOffers.Remove(instantMessageEventArgs.IM.IMSessionID);
-                                }
-                                break;
-                        }
-                        return;
                     }
 
-                    if (inventoryEventType == typeof (InventoryObjectOfferedEventArgs))
+                    if (inventoryEventType == typeof(InventoryObjectOfferedEventArgs))
                     {
                         var inventoryObjectOfferedEventArgs =
                             (InventoryObjectOfferedEventArgs) corradeNotificationParameters.Event;
@@ -97,19 +100,33 @@ namespace Corrade
                             inventoryObjectOfferedEventArgs
                         };
 
-                        var itemUUID = new UUID(inventoryObjectOfferedEventArgs.Offer.BinaryBucket, 1);
-                        lock (Locks.ClientInstanceInventoryLock)
+                        // Get inventory offer.
+                        InventoryOffer inventoryOffer;
+                        lock (InventoryOffersLock)
                         {
-                            if (Client.Inventory.Store.Contains(itemUUID))
+                            if (InventoryOffers.TryGetValue(inventoryObjectOfferedEventArgs.Offer.IMSessionID,
+                                out inventoryOffer))
                             {
-                                objects.Add(Client.Inventory.Store[itemUUID]);
+                                objects.Add(inventoryOffer);
+                            }
+                        }
+
+                        if (inventoryObjectOfferedEventArgs.Offer.BinaryBucket.Length.Equals(17))
+                        {
+                            var itemUUID = new UUID(inventoryObjectOfferedEventArgs.Offer.BinaryBucket, 1);
+                            lock (Locks.ClientInstanceInventoryLock)
+                            {
+                                if (Client.Inventory.Store.Contains(itemUUID))
+                                {
+                                    objects.Add(Client.Inventory.Store[itemUUID]);
+                                }
                             }
                         }
 
                         var LockObject = new object();
                         Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
-                            .Where(o => o.Key.Equals(typeof (InventoryObjectOfferedEventArgs).FullName))
+                            .Where(o => o.Key.Equals(typeof(InventoryObjectOfferedEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
@@ -117,7 +134,6 @@ namespace Corrade
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
-                        return;
                     }
                 };
         }

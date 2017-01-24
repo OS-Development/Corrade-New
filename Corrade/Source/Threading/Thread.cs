@@ -199,7 +199,88 @@ namespace Corrade.Threading
                     lock (GroupExecutionSetLock)
                     {
                         // add or change the mean execution time for a group
-                        var groupExecution = GroupExecutionSet.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
+                        var groupExecution =
+                            GroupExecutionSet.AsParallel().FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
+                        switch (!groupExecution.Equals(default(GroupExecution)))
+                        {
+                            case true:
+                                //GroupExecutionSet.Remove(groupExecution);
+                                groupExecution.ExecutionTime = (groupExecution.ExecutionTime +
+                                                                ThreadExecutuionStopwatch.ElapsedMilliseconds)/2;
+                                groupExecution.TimeStamp = DateTime.UtcNow;
+                                //GroupExecutionSet.Add(groupExecution);
+                                break;
+                            default:
+                                GroupExecutionSet.Add(new GroupExecution
+                                {
+                                    GroupUUID = groupUUID,
+                                    ExecutionTime = ThreadExecutuionStopwatch.ElapsedMilliseconds,
+                                    TimeStamp = DateTime.UtcNow
+                                });
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Corrade.Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
+                        ex.StackTrace);
+                }
+            }, workItemPriority);
+        }
+
+        /// <summary>
+        ///     This is a fairness-oriented group/time-based scheduler that monitors
+        ///     the execution time of threads for each configured group and favors
+        ///     threads for the configured groups that have the smallest accumulated
+        ///     execution time.
+        /// </summary>
+        /// <param name="s">the code to execute as a ThreadStart delegate</param>
+        /// <param name="m">the maximum amount of threads</param>
+        /// <param name="groupUUID">the UUID of the group</param>
+        /// <param name="expiration">the time in milliseconds after which measurements are expunged</param>
+        public IWorkItemResult<T> Spawn<T>(Amib.Threading.Func<T> s, uint m, UUID groupUUID, uint expiration)
+        {
+            // Don't accept to schedule bogus groups.
+            if (groupUUID.Equals(UUID.Zero))
+                return default(IWorkItemResult<T>);
+
+            if (smartThreadPool.InUseThreads > m)
+                return default(IWorkItemResult<T>);
+
+            var workItemPriority = WorkItemPriority.Normal;
+            lock (GroupExecutionSetLock)
+            {
+                // Clear threads that are not restricted anymore due to expiration.
+                GroupExecutionSet.RemoveWhere(o => (DateTime.UtcNow - o.TimeStamp).Milliseconds > expiration);
+
+                var groupExecution = GroupExecutionSet.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
+                // Adjust the priority depending on the time spent executing a command.
+                if (GroupExecutionSet.Count > 1 && !groupExecution.Equals(default(GroupExecution)))
+                    workItemPriority =
+                        threadRangePriority[
+                            (int) (100L*groupExecution.ExecutionTime/GroupExecutionSet.Sum(o => o.ExecutionTime))];
+            }
+
+            // Spawn.
+            var threadType = this.threadType;
+            return smartThreadPool.QueueWorkItem<T>(() =>
+            {
+                // protect inner thread
+                var result = default(T);
+                try
+                {
+                    ThreadExecutuionStopwatch.Restart();
+                    result = s();
+                    ThreadExecutuionStopwatch.Stop();
+                    lock (GroupExecutionSetLock)
+                    {
+                        // add or change the mean execution time for a group
+                        var groupExecution =
+                            GroupExecutionSet.AsParallel().FirstOrDefault(o => o.GroupUUID.Equals(groupUUID));
                         switch (!groupExecution.Equals(default(GroupExecution)))
                         {
                             case true:
@@ -228,6 +309,7 @@ namespace Corrade.Threading
                         Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
                         ex.StackTrace);
                 }
+                return result;
             }, workItemPriority);
         }
 

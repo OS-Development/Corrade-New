@@ -5,8 +5,11 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Corrade.Constants;
+using wasSharp.Collections.Generic;
 using wasSharp.Timers;
 
 namespace Corrade.Structures
@@ -16,7 +19,7 @@ namespace Corrade.Structures
     /// </summary>
     public class Heartbeat : IDisposable
     {
-        private readonly DateTime LastUpdateTime;
+        private DateTime LastUpdateTime;
 
         /// <summary>
         ///     The number of currently executing Corrade commands.
@@ -45,6 +48,11 @@ namespace Corrade.Structures
         /// </summary>
         public int ProcessedRLVBehaviours;
 
+        public Heartbeat(uint historyLength)
+        {
+            HistoryLength = historyLength;
+        }
+
         public Heartbeat()
         {
             // Set the Corrade version.
@@ -63,20 +71,49 @@ namespace Corrade.Structures
             // Start the heartbeat timer.
             HeartbeatTimer = new Timer(() =>
             {
+                var UTCNow = DateTime.UtcNow;
                 ++Heartbeats;
                 ++Uptime;
                 using (var currentProcess = Process.GetCurrentProcess())
                 {
+                    var currentProcessTime = currentProcess.TotalProcessorTime;
                     AverageCPUUsage =
                         (uint)
                             (100d*
-                             ((currentProcess.TotalProcessorTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds)/
-                              DateTime.UtcNow.Subtract(LastUpdateTime).TotalMilliseconds/
+                             ((currentProcessTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds)/
+                              UTCNow.Subtract(LastUpdateTime).TotalMilliseconds/
                               Convert.ToDouble(Environment.ProcessorCount)));
+                    LastTotalCPUTime = currentProcessTime;
+                    LastUpdateTime = UTCNow;
+
                     AverageRAMUsage = (AverageRAMUsage + currentProcess.PrivateMemorySize64)/2;
+
+                    // Add to histories.
+                    if (CPUAverageUsageHistory.Count >= HistoryLength)
+                    {
+                        var first = CPUAverageUsageHistory.FirstOrDefault();
+                        if (!first.Equals(default(KeyValuePair<DateTime, uint>)))
+                        {
+                            CPUAverageUsageHistory.Remove(first.Key);
+                        }
+                    }
+                    CPUAverageUsageHistory.Add(UTCNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP),
+                        AverageCPUUsage);
+                    if (RAMAverageUsageHistory.Count >= HistoryLength)
+                    {
+                        var first = RAMAverageUsageHistory.FirstOrDefault();
+                        if (!first.Equals(default(KeyValuePair<DateTime, long>)))
+                        {
+                            RAMAverageUsageHistory.Remove(first.Key);
+                        }
+                    }
+                    RAMAverageUsageHistory.Add(UTCNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP),
+                        AverageRAMUsage);
                 }
-            }, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+            }, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         }
+
+        public uint HistoryLength { get; } = 60;
 
         /// <summary>
         ///     The process start time.
@@ -89,9 +126,31 @@ namespace Corrade.Structures
         public uint AverageCPUUsage { get; private set; }
 
         /// <summary>
+        ///     A history of the last CPU usage average.
+        /// </summary>
+        public SerializableDictionary<string, uint> CPUAverageUsageHistory { get; } =
+            new SerializableDictionary<string, uint>
+            {
+                DictionaryNodeName = @"Snapshot",
+                KeyNodeName = @"Timestamp",
+                ValueNodeName = @"Utilization"
+            };
+
+        /// <summary>
         ///     The arithmetic average of all RAM usages across all heartbeats.
         /// </summary>
         public long AverageRAMUsage { get; private set; }
+
+        /// <summary>
+        ///     A history of the last RAM usage average.
+        /// </summary>
+        public SerializableDictionary<string, long> RAMAverageUsageHistory { get; } =
+            new SerializableDictionary<string, long>
+            {
+                DictionaryNodeName = @"Snapshot",
+                KeyNodeName = @"Timestamp",
+                ValueNodeName = @"Utilization"
+            };
 
         /// <summary>
         ///     The total number of heartbeats.
