@@ -19,8 +19,6 @@ namespace Corrade.Structures
     /// </summary>
     public class Heartbeat : IDisposable
     {
-        private DateTime LastUpdateTime;
-
         /// <summary>
         ///     The number of currently executing Corrade commands.
         /// </summary>
@@ -37,6 +35,7 @@ namespace Corrade.Structures
         private Timer HeartbeatTimer;
 
         private TimeSpan LastTotalCPUTime;
+        private DateTime LastUpdateTime;
 
         /// <summary>
         ///     The total number of processed Corrade commands.

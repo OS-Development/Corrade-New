@@ -38,11 +38,7 @@ namespace Corrade
 
             [CommandInputSyntax(
                 "<command=nucleus>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop|purge|get|set>>&action=get:<entity=<URL|AUTHENTICATION>>&action=set:<entity=<AUTHENTICATION>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
-            [CorradeCommand("nucleus")]
-            [Reflection.NameAttribute("nucleus")]
-            NUCLEUS,
+                )] [CommandPermissionMask((ulong) Configuration.Permissions.System)] [CorradeCommand("nucleus")] [Reflection.NameAttribute("nucleus")] NUCLEUS,
 
             [Reflection.NameAttribute("shell")] SHELL,
             [Reflection.NameAttribute("window")] WINDOW,

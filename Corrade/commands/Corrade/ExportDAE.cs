@@ -360,7 +360,7 @@ namespace Corrade
                         }
 
                         // Base64-encode the zip stream and send it.
-                        zipMemoryStream.Seek(0, SeekOrigin.Begin);
+                        zipMemoryStream.Position = 0;
 
                         // If no path was specificed, then send the data.
                         var path =

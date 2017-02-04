@@ -152,14 +152,14 @@
             this.pictureBox23 = new System.Windows.Forms.PictureBox();
             this.groupBox25 = new System.Windows.Forms.GroupBox();
             this.flowLayoutPanel4 = new System.Windows.Forms.FlowLayoutPanel();
-            this.groupBox42 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
-            this.HTTPServerUsername = new System.Windows.Forms.TextBox();
-            this.pictureBox100 = new System.Windows.Forms.PictureBox();
             this.groupBox28 = new System.Windows.Forms.GroupBox();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
             this.HTTPServerPassword = new System.Windows.Forms.TextBox();
             this.pictureBox99 = new System.Windows.Forms.PictureBox();
+            this.groupBox42 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
+            this.HTTPServerUsername = new System.Windows.Forms.TextBox();
+            this.pictureBox100 = new System.Windows.Forms.PictureBox();
             this.groupBox81 = new System.Windows.Forms.GroupBox();
             this.flowLayoutPanel5 = new System.Windows.Forms.FlowLayoutPanel();
             this.HTTPServerAuthenticationEnabled = new System.Windows.Forms.CheckBox();
@@ -185,6 +185,27 @@
             this.flowLayoutPanel13 = new System.Windows.Forms.FlowLayoutPanel();
             this.NucleusServerPassword = new System.Windows.Forms.TextBox();
             this.pictureBox62 = new System.Windows.Forms.PictureBox();
+            this.groupBox92 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
+            this.groupBox93 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel15 = new System.Windows.Forms.FlowLayoutPanel();
+            this.NucleusServerCacheEnabled = new System.Windows.Forms.CheckBox();
+            this.pictureBox63 = new System.Windows.Forms.PictureBox();
+            this.groupBox94 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel16 = new System.Windows.Forms.FlowLayoutPanel();
+            this.NucleusServerCachePurgeInterval = new System.Windows.Forms.TextBox();
+            this.pictureBox64 = new System.Windows.Forms.PictureBox();
+            this.groupBox97 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel19 = new System.Windows.Forms.FlowLayoutPanel();
+            this.NucleusServerGroup = new System.Windows.Forms.ComboBox();
+            this.pictureBox107 = new System.Windows.Forms.PictureBox();
+            this.groupBox98 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel20 = new System.Windows.Forms.FlowLayoutPanel();
+            this.NucleusServerBlessings = new System.Windows.Forms.ListBox();
+            this.NucleusServerBlessingsBox = new System.Windows.Forms.TextBox();
+            this.button18 = new System.Windows.Forms.Button();
+            this.button19 = new System.Windows.Forms.Button();
+            this.pictureBox108 = new System.Windows.Forms.PictureBox();
             this.HordeTabPage = new System.Windows.Forms.TabPage();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.DataSynchronizationTabPage = new System.Windows.Forms.TabPage();
@@ -393,10 +414,6 @@
             this.LimitsCallbackQueue = new System.Windows.Forms.TextBox();
             this.LimitsCallbacksThrottle = new System.Windows.Forms.TextBox();
             this.LimitsCallbacksTimeout = new System.Windows.Forms.TextBox();
-            this.groupBox63 = new System.Windows.Forms.GroupBox();
-            this.pictureBox50 = new System.Windows.Forms.PictureBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.LimitsInstantMessageThreads = new System.Windows.Forms.TextBox();
             this.groupBox62 = new System.Windows.Forms.GroupBox();
             this.pictureBox49 = new System.Windows.Forms.PictureBox();
             this.label5 = new System.Windows.Forms.Label();
@@ -459,16 +476,6 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.groupBox92 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
-            this.groupBox93 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel15 = new System.Windows.Forms.FlowLayoutPanel();
-            this.pictureBox63 = new System.Windows.Forms.PictureBox();
-            this.groupBox94 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel16 = new System.Windows.Forms.FlowLayoutPanel();
-            this.pictureBox64 = new System.Windows.Forms.PictureBox();
-            this.NucleusServerCacheEnabled = new System.Windows.Forms.CheckBox();
-            this.NucleusServerCachePurgeInterval = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -552,12 +559,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox23)).BeginInit();
             this.groupBox25.SuspendLayout();
             this.flowLayoutPanel4.SuspendLayout();
-            this.groupBox42.SuspendLayout();
-            this.flowLayoutPanel3.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).BeginInit();
             this.groupBox28.SuspendLayout();
             this.flowLayoutPanel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox99)).BeginInit();
+            this.groupBox42.SuspendLayout();
+            this.flowLayoutPanel3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).BeginInit();
             this.groupBox81.SuspendLayout();
             this.flowLayoutPanel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox101)).BeginInit();
@@ -578,6 +585,20 @@
             this.groupBox91.SuspendLayout();
             this.flowLayoutPanel13.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).BeginInit();
+            this.groupBox92.SuspendLayout();
+            this.flowLayoutPanel14.SuspendLayout();
+            this.groupBox93.SuspendLayout();
+            this.flowLayoutPanel15.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).BeginInit();
+            this.groupBox94.SuspendLayout();
+            this.flowLayoutPanel16.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).BeginInit();
+            this.groupBox97.SuspendLayout();
+            this.flowLayoutPanel19.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox107)).BeginInit();
+            this.groupBox98.SuspendLayout();
+            this.flowLayoutPanel20.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox108)).BeginInit();
             this.HordeTabPage.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.DataSynchronizationTabPage.SuspendLayout();
@@ -682,8 +703,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox54)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox53)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox52)).BeginInit();
-            this.groupBox63.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
             this.groupBox62.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox49)).BeginInit();
             this.groupBox61.SuspendLayout();
@@ -714,14 +733,6 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.groupBox92.SuspendLayout();
-            this.flowLayoutPanel14.SuspendLayout();
-            this.groupBox93.SuspendLayout();
-            this.flowLayoutPanel15.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).BeginInit();
-            this.groupBox94.SuspendLayout();
-            this.flowLayoutPanel16.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -1151,7 +1162,7 @@
             this.button16.Size = new System.Drawing.Size(90, 23);
             this.button16.TabIndex = 13;
             this.button16.Text = "Delete";
-            this.toolTip1.SetToolTip(this.button16, "Delete the currently selected master.");
+            this.toolTip1.SetToolTip(this.button16, "Delete the currently selected location.");
             this.button16.UseVisualStyleBackColor = true;
             this.button16.Click += new System.EventHandler(this.DeleteStartLocationRequested);
             // 
@@ -1174,7 +1185,7 @@
             this.button17.Size = new System.Drawing.Size(91, 23);
             this.button17.TabIndex = 12;
             this.button17.Text = "Add";
-            this.toolTip1.SetToolTip(this.button17, "Add a new master.");
+            this.toolTip1.SetToolTip(this.button17, "Add a start location.");
             this.button17.UseVisualStyleBackColor = true;
             this.button17.Click += new System.EventHandler(this.AddStartLocationRequested);
             // 
@@ -2112,7 +2123,7 @@
             this.groupBox41.Controls.Add(this.flowLayoutPanel6);
             this.groupBox41.Location = new System.Drawing.Point(3, 3);
             this.groupBox41.Name = "groupBox41";
-            this.groupBox41.Size = new System.Drawing.Size(542, 47);
+            this.groupBox41.Size = new System.Drawing.Size(544, 47);
             this.groupBox41.TabIndex = 1;
             this.groupBox41.TabStop = false;
             this.groupBox41.Text = "Prefix";
@@ -2126,7 +2137,7 @@
             this.flowLayoutPanel6.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel6.Location = new System.Drawing.Point(3, 18);
             this.flowLayoutPanel6.Name = "flowLayoutPanel6";
-            this.flowLayoutPanel6.Size = new System.Drawing.Size(536, 26);
+            this.flowLayoutPanel6.Size = new System.Drawing.Size(538, 26);
             this.flowLayoutPanel6.TabIndex = 0;
             // 
             // HTTPServerPrefix
@@ -2134,14 +2145,14 @@
             this.HTTPServerPrefix.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HTTPServerPrefix.Location = new System.Drawing.Point(3, 3);
             this.HTTPServerPrefix.Name = "HTTPServerPrefix";
-            this.HTTPServerPrefix.Size = new System.Drawing.Size(503, 20);
+            this.HTTPServerPrefix.Size = new System.Drawing.Size(505, 20);
             this.HTTPServerPrefix.TabIndex = 0;
             // 
             // pictureBox26
             // 
             this.pictureBox26.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox26.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox26.Image")));
-            this.pictureBox26.Location = new System.Drawing.Point(512, 3);
+            this.pictureBox26.Location = new System.Drawing.Point(514, 3);
             this.pictureBox26.Name = "pictureBox26";
             this.pictureBox26.Size = new System.Drawing.Size(20, 20);
             this.pictureBox26.TabIndex = 5;
@@ -2153,7 +2164,7 @@
             // groupBox40
             // 
             this.groupBox40.Controls.Add(this.flowLayoutPanel7);
-            this.groupBox40.Location = new System.Drawing.Point(551, 3);
+            this.groupBox40.Location = new System.Drawing.Point(553, 3);
             this.groupBox40.Name = "groupBox40";
             this.groupBox40.Size = new System.Drawing.Size(104, 47);
             this.groupBox40.TabIndex = 0;
@@ -2200,7 +2211,7 @@
             this.groupBox25.Controls.Add(this.flowLayoutPanel4);
             this.groupBox25.Location = new System.Drawing.Point(3, 56);
             this.groupBox25.Name = "groupBox25";
-            this.groupBox25.Size = new System.Drawing.Size(500, 84);
+            this.groupBox25.Size = new System.Drawing.Size(652, 88);
             this.groupBox25.TabIndex = 13;
             this.groupBox25.TabStop = false;
             this.groupBox25.Text = "Authentication";
@@ -2209,63 +2220,21 @@
             // 
             this.flowLayoutPanel4.AutoSize = true;
             this.flowLayoutPanel4.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel4.Controls.Add(this.groupBox42);
             this.flowLayoutPanel4.Controls.Add(this.groupBox28);
+            this.flowLayoutPanel4.Controls.Add(this.groupBox42);
             this.flowLayoutPanel4.Controls.Add(this.groupBox81);
             this.flowLayoutPanel4.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel4.Location = new System.Drawing.Point(3, 18);
             this.flowLayoutPanel4.Name = "flowLayoutPanel4";
-            this.flowLayoutPanel4.Size = new System.Drawing.Size(494, 63);
+            this.flowLayoutPanel4.Size = new System.Drawing.Size(646, 67);
             this.flowLayoutPanel4.TabIndex = 0;
-            // 
-            // groupBox42
-            // 
-            this.groupBox42.Controls.Add(this.flowLayoutPanel3);
-            this.groupBox42.Location = new System.Drawing.Point(3, 3);
-            this.groupBox42.Name = "groupBox42";
-            this.groupBox42.Size = new System.Drawing.Size(178, 56);
-            this.groupBox42.TabIndex = 7;
-            this.groupBox42.TabStop = false;
-            this.groupBox42.Text = "Username";
-            // 
-            // flowLayoutPanel3
-            // 
-            this.flowLayoutPanel3.AutoSize = true;
-            this.flowLayoutPanel3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel3.Controls.Add(this.HTTPServerUsername);
-            this.flowLayoutPanel3.Controls.Add(this.pictureBox100);
-            this.flowLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel3.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel3.Name = "flowLayoutPanel3";
-            this.flowLayoutPanel3.Size = new System.Drawing.Size(172, 35);
-            this.flowLayoutPanel3.TabIndex = 0;
-            // 
-            // HTTPServerUsername
-            // 
-            this.HTTPServerUsername.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.HTTPServerUsername.Location = new System.Drawing.Point(3, 3);
-            this.HTTPServerUsername.Name = "HTTPServerUsername";
-            this.HTTPServerUsername.Size = new System.Drawing.Size(139, 20);
-            this.HTTPServerUsername.TabIndex = 0;
-            // 
-            // pictureBox100
-            // 
-            this.pictureBox100.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox100.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox100.Image")));
-            this.pictureBox100.Location = new System.Drawing.Point(148, 3);
-            this.pictureBox100.Name = "pictureBox100";
-            this.pictureBox100.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox100.TabIndex = 10;
-            this.pictureBox100.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox100, "The username for the HTTP server.");
-            this.pictureBox100.Click += new System.EventHandler(this.ShowToolTip);
             // 
             // groupBox28
             // 
             this.groupBox28.Controls.Add(this.flowLayoutPanel2);
-            this.groupBox28.Location = new System.Drawing.Point(187, 3);
+            this.groupBox28.Location = new System.Drawing.Point(3, 3);
             this.groupBox28.Name = "groupBox28";
-            this.groupBox28.Size = new System.Drawing.Size(178, 56);
+            this.groupBox28.Size = new System.Drawing.Size(262, 56);
             this.groupBox28.TabIndex = 8;
             this.groupBox28.TabStop = false;
             this.groupBox28.Text = "Password";
@@ -2279,7 +2248,7 @@
             this.flowLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel2.Location = new System.Drawing.Point(3, 18);
             this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-            this.flowLayoutPanel2.Size = new System.Drawing.Size(172, 35);
+            this.flowLayoutPanel2.Size = new System.Drawing.Size(256, 35);
             this.flowLayoutPanel2.TabIndex = 0;
             // 
             // HTTPServerPassword
@@ -2303,10 +2272,52 @@
             this.toolTip1.SetToolTip(this.pictureBox99, "The password for the HTTP server.");
             this.pictureBox99.Click += new System.EventHandler(this.ShowToolTip);
             // 
+            // groupBox42
+            // 
+            this.groupBox42.Controls.Add(this.flowLayoutPanel3);
+            this.groupBox42.Location = new System.Drawing.Point(271, 3);
+            this.groupBox42.Name = "groupBox42";
+            this.groupBox42.Size = new System.Drawing.Size(253, 56);
+            this.groupBox42.TabIndex = 7;
+            this.groupBox42.TabStop = false;
+            this.groupBox42.Text = "Username";
+            // 
+            // flowLayoutPanel3
+            // 
+            this.flowLayoutPanel3.AutoSize = true;
+            this.flowLayoutPanel3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel3.Controls.Add(this.HTTPServerUsername);
+            this.flowLayoutPanel3.Controls.Add(this.pictureBox100);
+            this.flowLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel3.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel3.Name = "flowLayoutPanel3";
+            this.flowLayoutPanel3.Size = new System.Drawing.Size(247, 35);
+            this.flowLayoutPanel3.TabIndex = 0;
+            // 
+            // HTTPServerUsername
+            // 
+            this.HTTPServerUsername.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HTTPServerUsername.Location = new System.Drawing.Point(3, 3);
+            this.HTTPServerUsername.Name = "HTTPServerUsername";
+            this.HTTPServerUsername.Size = new System.Drawing.Size(139, 20);
+            this.HTTPServerUsername.TabIndex = 0;
+            // 
+            // pictureBox100
+            // 
+            this.pictureBox100.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox100.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox100.Image")));
+            this.pictureBox100.Location = new System.Drawing.Point(148, 3);
+            this.pictureBox100.Name = "pictureBox100";
+            this.pictureBox100.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox100.TabIndex = 10;
+            this.pictureBox100.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox100, "The username for the HTTP server.");
+            this.pictureBox100.Click += new System.EventHandler(this.ShowToolTip);
+            // 
             // groupBox81
             // 
             this.groupBox81.Controls.Add(this.flowLayoutPanel5);
-            this.groupBox81.Location = new System.Drawing.Point(371, 3);
+            this.groupBox81.Location = new System.Drawing.Point(530, 3);
             this.groupBox81.Name = "groupBox81";
             this.groupBox81.Size = new System.Drawing.Size(107, 56);
             this.groupBox81.TabIndex = 15;
@@ -2377,6 +2388,8 @@
             this.flowLayoutPanel8.Controls.Add(this.groupBox88);
             this.flowLayoutPanel8.Controls.Add(this.groupBox89);
             this.flowLayoutPanel8.Controls.Add(this.groupBox92);
+            this.flowLayoutPanel8.Controls.Add(this.groupBox97);
+            this.flowLayoutPanel8.Controls.Add(this.groupBox98);
             this.flowLayoutPanel8.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel8.Location = new System.Drawing.Point(3, 18);
             this.flowLayoutPanel8.Name = "flowLayoutPanel8";
@@ -2388,7 +2401,7 @@
             this.groupBox87.Controls.Add(this.flowLayoutPanel9);
             this.groupBox87.Location = new System.Drawing.Point(3, 3);
             this.groupBox87.Name = "groupBox87";
-            this.groupBox87.Size = new System.Drawing.Size(541, 47);
+            this.groupBox87.Size = new System.Drawing.Size(542, 47);
             this.groupBox87.TabIndex = 15;
             this.groupBox87.TabStop = false;
             this.groupBox87.Text = "Prefix";
@@ -2402,7 +2415,7 @@
             this.flowLayoutPanel9.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel9.Location = new System.Drawing.Point(3, 18);
             this.flowLayoutPanel9.Name = "flowLayoutPanel9";
-            this.flowLayoutPanel9.Size = new System.Drawing.Size(535, 26);
+            this.flowLayoutPanel9.Size = new System.Drawing.Size(536, 26);
             this.flowLayoutPanel9.TabIndex = 0;
             // 
             // NucleusServerPrefix
@@ -2410,14 +2423,14 @@
             this.NucleusServerPrefix.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.NucleusServerPrefix.Location = new System.Drawing.Point(3, 3);
             this.NucleusServerPrefix.Name = "NucleusServerPrefix";
-            this.NucleusServerPrefix.Size = new System.Drawing.Size(501, 20);
+            this.NucleusServerPrefix.Size = new System.Drawing.Size(503, 20);
             this.NucleusServerPrefix.TabIndex = 0;
             // 
             // pictureBox24
             // 
             this.pictureBox24.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox24.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox24.Image")));
-            this.pictureBox24.Location = new System.Drawing.Point(510, 3);
+            this.pictureBox24.Location = new System.Drawing.Point(512, 3);
             this.pictureBox24.Name = "pictureBox24";
             this.pictureBox24.Size = new System.Drawing.Size(20, 20);
             this.pictureBox24.TabIndex = 5;
@@ -2429,7 +2442,7 @@
             // groupBox88
             // 
             this.groupBox88.Controls.Add(this.flowLayoutPanel10);
-            this.groupBox88.Location = new System.Drawing.Point(550, 3);
+            this.groupBox88.Location = new System.Drawing.Point(551, 3);
             this.groupBox88.Name = "groupBox88";
             this.groupBox88.Size = new System.Drawing.Size(105, 47);
             this.groupBox88.TabIndex = 14;
@@ -2523,7 +2536,6 @@
             this.NucleusServerUsername.Name = "NucleusServerUsername";
             this.NucleusServerUsername.Size = new System.Drawing.Size(139, 20);
             this.NucleusServerUsername.TabIndex = 0;
-            this.NucleusServerUsername.Text = "corrade";
             // 
             // pictureBox61
             // 
@@ -2565,7 +2577,6 @@
             this.NucleusServerPassword.Name = "NucleusServerPassword";
             this.NucleusServerPassword.Size = new System.Drawing.Size(139, 20);
             this.NucleusServerPassword.TabIndex = 0;
-            this.NucleusServerPassword.Text = "nucleus";
             this.NucleusServerPassword.UseSystemPasswordChar = true;
             this.NucleusServerPassword.Click += new System.EventHandler(this.ClearNucleusServerPasswordRequested);
             // 
@@ -2580,6 +2591,237 @@
             this.pictureBox62.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox62, "The password for the Nucleus server.\r\nThe default password, unless changed\r\nis se" +
         "t to: \"nucleus\".");
+            // 
+            // groupBox92
+            // 
+            this.groupBox92.Controls.Add(this.flowLayoutPanel14);
+            this.groupBox92.Location = new System.Drawing.Point(385, 56);
+            this.groupBox92.Name = "groupBox92";
+            this.groupBox92.Size = new System.Drawing.Size(272, 84);
+            this.groupBox92.TabIndex = 17;
+            this.groupBox92.TabStop = false;
+            this.groupBox92.Text = "Cache";
+            // 
+            // flowLayoutPanel14
+            // 
+            this.flowLayoutPanel14.AutoSize = true;
+            this.flowLayoutPanel14.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel14.Controls.Add(this.groupBox93);
+            this.flowLayoutPanel14.Controls.Add(this.groupBox94);
+            this.flowLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel14.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel14.Name = "flowLayoutPanel14";
+            this.flowLayoutPanel14.Size = new System.Drawing.Size(266, 63);
+            this.flowLayoutPanel14.TabIndex = 0;
+            // 
+            // groupBox93
+            // 
+            this.groupBox93.Controls.Add(this.flowLayoutPanel15);
+            this.groupBox93.Location = new System.Drawing.Point(3, 3);
+            this.groupBox93.Name = "groupBox93";
+            this.groupBox93.Size = new System.Drawing.Size(110, 53);
+            this.groupBox93.TabIndex = 7;
+            this.groupBox93.TabStop = false;
+            this.groupBox93.Text = "Caching";
+            // 
+            // flowLayoutPanel15
+            // 
+            this.flowLayoutPanel15.AutoSize = true;
+            this.flowLayoutPanel15.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel15.Controls.Add(this.NucleusServerCacheEnabled);
+            this.flowLayoutPanel15.Controls.Add(this.pictureBox63);
+            this.flowLayoutPanel15.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel15.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel15.Name = "flowLayoutPanel15";
+            this.flowLayoutPanel15.Size = new System.Drawing.Size(104, 32);
+            this.flowLayoutPanel15.TabIndex = 0;
+            // 
+            // NucleusServerCacheEnabled
+            // 
+            this.NucleusServerCacheEnabled.AutoSize = true;
+            this.NucleusServerCacheEnabled.Checked = true;
+            this.NucleusServerCacheEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.NucleusServerCacheEnabled.Location = new System.Drawing.Point(3, 3);
+            this.NucleusServerCacheEnabled.Name = "NucleusServerCacheEnabled";
+            this.NucleusServerCacheEnabled.Size = new System.Drawing.Size(66, 20);
+            this.NucleusServerCacheEnabled.TabIndex = 11;
+            this.NucleusServerCacheEnabled.Text = "Enabled";
+            this.NucleusServerCacheEnabled.UseVisualStyleBackColor = true;
+            // 
+            // pictureBox63
+            // 
+            this.pictureBox63.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox63.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox63.Image")));
+            this.pictureBox63.Location = new System.Drawing.Point(75, 3);
+            this.pictureBox63.Name = "pictureBox63";
+            this.pictureBox63.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox63.TabIndex = 10;
+            this.pictureBox63.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox63, "Whether Nucleus will cache pages in memory for a\r\nwhile in order to serve repeate" +
+        "d requests - such as\r\nrequests sent from a browser. For production, this\r\nfeatur" +
+        "e should always be enabled.");
+            // 
+            // groupBox94
+            // 
+            this.groupBox94.Controls.Add(this.flowLayoutPanel16);
+            this.groupBox94.Location = new System.Drawing.Point(119, 3);
+            this.groupBox94.Name = "groupBox94";
+            this.groupBox94.Size = new System.Drawing.Size(118, 56);
+            this.groupBox94.TabIndex = 8;
+            this.groupBox94.TabStop = false;
+            this.groupBox94.Text = "Purge Interval";
+            // 
+            // flowLayoutPanel16
+            // 
+            this.flowLayoutPanel16.AutoSize = true;
+            this.flowLayoutPanel16.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel16.Controls.Add(this.NucleusServerCachePurgeInterval);
+            this.flowLayoutPanel16.Controls.Add(this.pictureBox64);
+            this.flowLayoutPanel16.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel16.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel16.Name = "flowLayoutPanel16";
+            this.flowLayoutPanel16.Size = new System.Drawing.Size(112, 35);
+            this.flowLayoutPanel16.TabIndex = 0;
+            // 
+            // NucleusServerCachePurgeInterval
+            // 
+            this.NucleusServerCachePurgeInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.NucleusServerCachePurgeInterval.Location = new System.Drawing.Point(3, 3);
+            this.NucleusServerCachePurgeInterval.Name = "NucleusServerCachePurgeInterval";
+            this.NucleusServerCachePurgeInterval.Size = new System.Drawing.Size(76, 20);
+            this.NucleusServerCachePurgeInterval.TabIndex = 11;
+            // 
+            // pictureBox64
+            // 
+            this.pictureBox64.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox64.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox64.Image")));
+            this.pictureBox64.Location = new System.Drawing.Point(85, 3);
+            this.pictureBox64.Name = "pictureBox64";
+            this.pictureBox64.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox64.TabIndex = 10;
+            this.pictureBox64.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox64, "The interval at which to flush the cache.\r\n");
+            // 
+            // groupBox97
+            // 
+            this.groupBox97.Controls.Add(this.flowLayoutPanel19);
+            this.groupBox97.Location = new System.Drawing.Point(3, 146);
+            this.groupBox97.Name = "groupBox97";
+            this.groupBox97.Size = new System.Drawing.Size(266, 53);
+            this.groupBox97.TabIndex = 19;
+            this.groupBox97.TabStop = false;
+            this.groupBox97.Text = "Surrogate Group";
+            // 
+            // flowLayoutPanel19
+            // 
+            this.flowLayoutPanel19.AutoSize = true;
+            this.flowLayoutPanel19.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel19.Controls.Add(this.NucleusServerGroup);
+            this.flowLayoutPanel19.Controls.Add(this.pictureBox107);
+            this.flowLayoutPanel19.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel19.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel19.Name = "flowLayoutPanel19";
+            this.flowLayoutPanel19.Size = new System.Drawing.Size(260, 32);
+            this.flowLayoutPanel19.TabIndex = 0;
+            // 
+            // NucleusServerGroup
+            // 
+            this.NucleusServerGroup.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.NucleusServerGroup.FormattingEnabled = true;
+            this.NucleusServerGroup.Location = new System.Drawing.Point(3, 3);
+            this.NucleusServerGroup.Name = "NucleusServerGroup";
+            this.NucleusServerGroup.Size = new System.Drawing.Size(226, 24);
+            this.NucleusServerGroup.TabIndex = 0;
+            // 
+            // pictureBox107
+            // 
+            this.pictureBox107.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox107.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox107.Image")));
+            this.pictureBox107.Location = new System.Drawing.Point(235, 3);
+            this.pictureBox107.Name = "pictureBox107";
+            this.pictureBox107.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox107.TabIndex = 11;
+            this.pictureBox107.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox107, "The group to use with Nucleus POST\r\ncommands. If this item is not set, then\r\nCorr" +
+        "ade generates a surrogate group.");
+            // 
+            // groupBox98
+            // 
+            this.groupBox98.Controls.Add(this.flowLayoutPanel20);
+            this.groupBox98.Location = new System.Drawing.Point(275, 146);
+            this.groupBox98.Name = "groupBox98";
+            this.groupBox98.Size = new System.Drawing.Size(382, 187);
+            this.groupBox98.TabIndex = 20;
+            this.groupBox98.TabStop = false;
+            this.groupBox98.Text = "Blessed Files and Paths";
+            // 
+            // flowLayoutPanel20
+            // 
+            this.flowLayoutPanel20.AutoSize = true;
+            this.flowLayoutPanel20.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel20.Controls.Add(this.NucleusServerBlessings);
+            this.flowLayoutPanel20.Controls.Add(this.NucleusServerBlessingsBox);
+            this.flowLayoutPanel20.Controls.Add(this.button18);
+            this.flowLayoutPanel20.Controls.Add(this.button19);
+            this.flowLayoutPanel20.Controls.Add(this.pictureBox108);
+            this.flowLayoutPanel20.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel20.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel20.Name = "flowLayoutPanel20";
+            this.flowLayoutPanel20.Size = new System.Drawing.Size(376, 166);
+            this.flowLayoutPanel20.TabIndex = 0;
+            // 
+            // NucleusServerBlessings
+            // 
+            this.NucleusServerBlessings.Font = new System.Drawing.Font("Consolas", 8.25F);
+            this.NucleusServerBlessings.FormattingEnabled = true;
+            this.NucleusServerBlessings.Location = new System.Drawing.Point(3, 3);
+            this.NucleusServerBlessings.Name = "NucleusServerBlessings";
+            this.NucleusServerBlessings.Size = new System.Drawing.Size(370, 134);
+            this.NucleusServerBlessings.TabIndex = 0;
+            this.NucleusServerBlessings.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NucleusBlessingsClicked);
+            this.NucleusServerBlessings.SelectedIndexChanged += new System.EventHandler(this.NucleusBlessingsChanged);
+            // 
+            // NucleusServerBlessingsBox
+            // 
+            this.NucleusServerBlessingsBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.NucleusServerBlessingsBox.Location = new System.Drawing.Point(3, 143);
+            this.NucleusServerBlessingsBox.Name = "NucleusServerBlessingsBox";
+            this.NucleusServerBlessingsBox.Size = new System.Drawing.Size(190, 20);
+            this.NucleusServerBlessingsBox.TabIndex = 15;
+            // 
+            // button18
+            // 
+            this.button18.Location = new System.Drawing.Point(199, 143);
+            this.button18.Name = "button18";
+            this.button18.Size = new System.Drawing.Size(70, 23);
+            this.button18.TabIndex = 14;
+            this.button18.Text = "Add";
+            this.toolTip1.SetToolTip(this.button18, "Add a new blessed file.");
+            this.button18.UseVisualStyleBackColor = true;
+            this.button18.Click += new System.EventHandler(this.AddNucleusBlessingsRequested);
+            // 
+            // button19
+            // 
+            this.button19.Location = new System.Drawing.Point(275, 143);
+            this.button19.Name = "button19";
+            this.button19.Size = new System.Drawing.Size(70, 23);
+            this.button19.TabIndex = 13;
+            this.button19.Text = "Delete";
+            this.toolTip1.SetToolTip(this.button19, "Delete the currently selected blessed file.");
+            this.button19.UseVisualStyleBackColor = true;
+            this.button19.Click += new System.EventHandler(this.DeleteNucleusBlessingsRequested);
+            // 
+            // pictureBox108
+            // 
+            this.pictureBox108.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox108.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox108.Image")));
+            this.pictureBox108.Location = new System.Drawing.Point(351, 143);
+            this.pictureBox108.Name = "pictureBox108";
+            this.pictureBox108.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox108.TabIndex = 16;
+            this.pictureBox108.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox108, "Regular expressions added here will function as\r\na whitelist for accessing files " +
+        "and paths using the\r\nNucleus server when requesting filesystem files.");
             // 
             // HordeTabPage
             // 
@@ -4157,7 +4399,6 @@
             this.LimitsTabPage.Controls.Add(this.groupBox67);
             this.LimitsTabPage.Controls.Add(this.groupBox65);
             this.LimitsTabPage.Controls.Add(this.groupBox64);
-            this.LimitsTabPage.Controls.Add(this.groupBox63);
             this.LimitsTabPage.Controls.Add(this.groupBox62);
             this.LimitsTabPage.Controls.Add(this.groupBox61);
             this.LimitsTabPage.Controls.Add(this.groupBox60);
@@ -4341,7 +4582,7 @@
             this.groupBox76.Controls.Add(this.pictureBox51);
             this.groupBox76.Controls.Add(this.label29);
             this.groupBox76.Controls.Add(this.LimitsSchedulesResolution);
-            this.groupBox76.Location = new System.Drawing.Point(165, 309);
+            this.groupBox76.Location = new System.Drawing.Point(165, 248);
             this.groupBox76.Name = "groupBox76";
             this.groupBox76.Size = new System.Drawing.Size(156, 51);
             this.groupBox76.TabIndex = 15;
@@ -4932,48 +5173,6 @@
             this.LimitsCallbacksTimeout.Name = "LimitsCallbacksTimeout";
             this.LimitsCallbacksTimeout.Size = new System.Drawing.Size(66, 20);
             this.LimitsCallbacksTimeout.TabIndex = 0;
-            // 
-            // groupBox63
-            // 
-            this.groupBox63.Controls.Add(this.pictureBox50);
-            this.groupBox63.Controls.Add(this.label6);
-            this.groupBox63.Controls.Add(this.LimitsInstantMessageThreads);
-            this.groupBox63.Location = new System.Drawing.Point(165, 248);
-            this.groupBox63.Name = "groupBox63";
-            this.groupBox63.Size = new System.Drawing.Size(155, 55);
-            this.groupBox63.TabIndex = 6;
-            this.groupBox63.TabStop = false;
-            this.groupBox63.Text = "Instant Messages (IM)";
-            // 
-            // pictureBox50
-            // 
-            this.pictureBox50.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox50.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox50.Image")));
-            this.pictureBox50.Location = new System.Drawing.Point(129, 22);
-            this.pictureBox50.Name = "pictureBox50";
-            this.pictureBox50.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox50.TabIndex = 9;
-            this.pictureBox50.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox50, "The total number of concurrent instant messages that \r\nCorrade will be allowed to" +
-        " process.");
-            this.pictureBox50.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(6, 25);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(47, 16);
-            this.label6.TabIndex = 1;
-            this.label6.Text = "Threads";
-            // 
-            // LimitsInstantMessageThreads
-            // 
-            this.LimitsInstantMessageThreads.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsInstantMessageThreads.Location = new System.Drawing.Point(62, 22);
-            this.LimitsInstantMessageThreads.Name = "LimitsInstantMessageThreads";
-            this.LimitsInstantMessageThreads.Size = new System.Drawing.Size(61, 20);
-            this.LimitsInstantMessageThreads.TabIndex = 0;
             // 
             // groupBox62
             // 
@@ -5593,116 +5792,6 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // groupBox92
-            // 
-            this.groupBox92.Controls.Add(this.flowLayoutPanel14);
-            this.groupBox92.Location = new System.Drawing.Point(385, 56);
-            this.groupBox92.Name = "groupBox92";
-            this.groupBox92.Size = new System.Drawing.Size(272, 84);
-            this.groupBox92.TabIndex = 17;
-            this.groupBox92.TabStop = false;
-            this.groupBox92.Text = "Cache";
-            // 
-            // flowLayoutPanel14
-            // 
-            this.flowLayoutPanel14.AutoSize = true;
-            this.flowLayoutPanel14.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel14.Controls.Add(this.groupBox93);
-            this.flowLayoutPanel14.Controls.Add(this.groupBox94);
-            this.flowLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel14.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel14.Name = "flowLayoutPanel14";
-            this.flowLayoutPanel14.Size = new System.Drawing.Size(266, 63);
-            this.flowLayoutPanel14.TabIndex = 0;
-            // 
-            // groupBox93
-            // 
-            this.groupBox93.Controls.Add(this.flowLayoutPanel15);
-            this.groupBox93.Location = new System.Drawing.Point(3, 3);
-            this.groupBox93.Name = "groupBox93";
-            this.groupBox93.Size = new System.Drawing.Size(110, 53);
-            this.groupBox93.TabIndex = 7;
-            this.groupBox93.TabStop = false;
-            this.groupBox93.Text = "Caching";
-            // 
-            // flowLayoutPanel15
-            // 
-            this.flowLayoutPanel15.AutoSize = true;
-            this.flowLayoutPanel15.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel15.Controls.Add(this.NucleusServerCacheEnabled);
-            this.flowLayoutPanel15.Controls.Add(this.pictureBox63);
-            this.flowLayoutPanel15.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel15.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel15.Name = "flowLayoutPanel15";
-            this.flowLayoutPanel15.Size = new System.Drawing.Size(104, 32);
-            this.flowLayoutPanel15.TabIndex = 0;
-            // 
-            // pictureBox63
-            // 
-            this.pictureBox63.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox63.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox63.Image")));
-            this.pictureBox63.Location = new System.Drawing.Point(75, 3);
-            this.pictureBox63.Name = "pictureBox63";
-            this.pictureBox63.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox63.TabIndex = 10;
-            this.pictureBox63.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox63, "Whether Nucleus will cache pages in memory for a\r\nwhile in order to serve repeate" +
-        "d requests - such as\r\nrequests sent from a browser. For production, this\r\nfeatur" +
-        "e should always be enabled.");
-            // 
-            // groupBox94
-            // 
-            this.groupBox94.Controls.Add(this.flowLayoutPanel16);
-            this.groupBox94.Location = new System.Drawing.Point(119, 3);
-            this.groupBox94.Name = "groupBox94";
-            this.groupBox94.Size = new System.Drawing.Size(118, 56);
-            this.groupBox94.TabIndex = 8;
-            this.groupBox94.TabStop = false;
-            this.groupBox94.Text = "Purge Interval";
-            // 
-            // flowLayoutPanel16
-            // 
-            this.flowLayoutPanel16.AutoSize = true;
-            this.flowLayoutPanel16.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel16.Controls.Add(this.NucleusServerCachePurgeInterval);
-            this.flowLayoutPanel16.Controls.Add(this.pictureBox64);
-            this.flowLayoutPanel16.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel16.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel16.Name = "flowLayoutPanel16";
-            this.flowLayoutPanel16.Size = new System.Drawing.Size(112, 35);
-            this.flowLayoutPanel16.TabIndex = 0;
-            // 
-            // pictureBox64
-            // 
-            this.pictureBox64.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox64.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox64.Image")));
-            this.pictureBox64.Location = new System.Drawing.Point(85, 3);
-            this.pictureBox64.Name = "pictureBox64";
-            this.pictureBox64.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox64.TabIndex = 10;
-            this.pictureBox64.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox64, "The interval at which to flush the cache.\r\n");
-            // 
-            // NucleusServerCacheEnabled
-            // 
-            this.NucleusServerCacheEnabled.AutoSize = true;
-            this.NucleusServerCacheEnabled.Checked = true;
-            this.NucleusServerCacheEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.NucleusServerCacheEnabled.Location = new System.Drawing.Point(3, 3);
-            this.NucleusServerCacheEnabled.Name = "NucleusServerCacheEnabled";
-            this.NucleusServerCacheEnabled.Size = new System.Drawing.Size(66, 20);
-            this.NucleusServerCacheEnabled.TabIndex = 11;
-            this.NucleusServerCacheEnabled.Text = "Enabled";
-            this.NucleusServerCacheEnabled.UseVisualStyleBackColor = true;
-            // 
-            // NucleusServerCachePurgeInterval
-            // 
-            this.NucleusServerCachePurgeInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.NucleusServerCachePurgeInterval.Location = new System.Drawing.Point(3, 3);
-            this.NucleusServerCachePurgeInterval.Name = "NucleusServerCachePurgeInterval";
-            this.NucleusServerCachePurgeInterval.Size = new System.Drawing.Size(76, 20);
-            this.NucleusServerCachePurgeInterval.TabIndex = 11;
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -5837,16 +5926,16 @@
             this.groupBox25.ResumeLayout(false);
             this.groupBox25.PerformLayout();
             this.flowLayoutPanel4.ResumeLayout(false);
-            this.groupBox42.ResumeLayout(false);
-            this.groupBox42.PerformLayout();
-            this.flowLayoutPanel3.ResumeLayout(false);
-            this.flowLayoutPanel3.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).EndInit();
             this.groupBox28.ResumeLayout(false);
             this.groupBox28.PerformLayout();
             this.flowLayoutPanel2.ResumeLayout(false);
             this.flowLayoutPanel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox99)).EndInit();
+            this.groupBox42.ResumeLayout(false);
+            this.groupBox42.PerformLayout();
+            this.flowLayoutPanel3.ResumeLayout(false);
+            this.flowLayoutPanel3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox100)).EndInit();
             this.groupBox81.ResumeLayout(false);
             this.groupBox81.PerformLayout();
             this.flowLayoutPanel5.ResumeLayout(false);
@@ -5879,6 +5968,28 @@
             this.flowLayoutPanel13.ResumeLayout(false);
             this.flowLayoutPanel13.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).EndInit();
+            this.groupBox92.ResumeLayout(false);
+            this.groupBox92.PerformLayout();
+            this.flowLayoutPanel14.ResumeLayout(false);
+            this.groupBox93.ResumeLayout(false);
+            this.groupBox93.PerformLayout();
+            this.flowLayoutPanel15.ResumeLayout(false);
+            this.flowLayoutPanel15.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).EndInit();
+            this.groupBox94.ResumeLayout(false);
+            this.groupBox94.PerformLayout();
+            this.flowLayoutPanel16.ResumeLayout(false);
+            this.flowLayoutPanel16.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).EndInit();
+            this.groupBox97.ResumeLayout(false);
+            this.groupBox97.PerformLayout();
+            this.flowLayoutPanel19.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox107)).EndInit();
+            this.groupBox98.ResumeLayout(false);
+            this.groupBox98.PerformLayout();
+            this.flowLayoutPanel20.ResumeLayout(false);
+            this.flowLayoutPanel20.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox108)).EndInit();
             this.HordeTabPage.ResumeLayout(false);
             this.tabControl1.ResumeLayout(false);
             this.DataSynchronizationTabPage.ResumeLayout(false);
@@ -6014,9 +6125,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox54)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox53)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox52)).EndInit();
-            this.groupBox63.ResumeLayout(false);
-            this.groupBox63.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
             this.groupBox62.ResumeLayout(false);
             this.groupBox62.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox49)).EndInit();
@@ -6062,19 +6170,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox92.ResumeLayout(false);
-            this.groupBox92.PerformLayout();
-            this.flowLayoutPanel14.ResumeLayout(false);
-            this.groupBox93.ResumeLayout(false);
-            this.groupBox93.PerformLayout();
-            this.flowLayoutPanel15.ResumeLayout(false);
-            this.flowLayoutPanel15.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).EndInit();
-            this.groupBox94.ResumeLayout(false);
-            this.groupBox94.PerformLayout();
-            this.flowLayoutPanel16.ResumeLayout(false);
-            this.flowLayoutPanel16.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6230,9 +6325,6 @@
         private System.Windows.Forms.TextBox LimitsCallbackQueue;
         private System.Windows.Forms.TextBox LimitsCallbacksThrottle;
         private System.Windows.Forms.TextBox LimitsCallbacksTimeout;
-        private System.Windows.Forms.GroupBox groupBox63;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox LimitsInstantMessageThreads;
         private System.Windows.Forms.GroupBox groupBox62;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox LimitsRLVThreads;
@@ -6432,7 +6524,6 @@
         private System.Windows.Forms.PictureBox pictureBox54;
         private System.Windows.Forms.PictureBox pictureBox53;
         private System.Windows.Forms.PictureBox pictureBox52;
-        private System.Windows.Forms.PictureBox pictureBox50;
         private System.Windows.Forms.PictureBox pictureBox49;
         private System.Windows.Forms.PictureBox pictureBox48;
         private System.Windows.Forms.PictureBox pictureBox47;
@@ -6521,6 +6612,17 @@
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel16;
         private System.Windows.Forms.TextBox NucleusServerCachePurgeInterval;
         private System.Windows.Forms.PictureBox pictureBox64;
+        private System.Windows.Forms.GroupBox groupBox97;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel19;
+        private System.Windows.Forms.ComboBox NucleusServerGroup;
+        private System.Windows.Forms.PictureBox pictureBox107;
+        private System.Windows.Forms.GroupBox groupBox98;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel20;
+        private System.Windows.Forms.ListBox NucleusServerBlessings;
+        private System.Windows.Forms.Button button18;
+        private System.Windows.Forms.Button button19;
+        private System.Windows.Forms.TextBox NucleusServerBlessingsBox;
+        private System.Windows.Forms.PictureBox pictureBox108;
     }
 }
 

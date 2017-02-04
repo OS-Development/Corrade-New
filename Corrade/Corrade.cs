@@ -44,6 +44,7 @@ using Corrade.Source;
 using Corrade.Structures;
 using Corrade.Structures.Effects;
 using CorradeConfigurationSharp;
+using Jint;
 using log4net;
 using log4net.Appender;
 using log4net.Config;
@@ -205,10 +206,7 @@ namespace Corrade
             AuthenticationSchemes = AuthenticationSchemes.Anonymous | AuthenticationSchemes.Basic
         };
 
-        private static readonly NucleusHTTPServer NucleusHTTPServer = new NucleusHTTPServer
-        {
-            AuthenticationSchemes = AuthenticationSchemes.Basic
-        };
+        private static readonly NucleusHTTPServer NucleusHTTPServer = new NucleusHTTPServer();
 
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static LoginParams Login;
@@ -393,7 +391,7 @@ namespace Corrade
         {
             // Log heartbeat data.
             Feedback("Heartbeat",
-                $"CPU: {CorradeHeartbeat.AverageCPUUsage}% RAM: {CorradeHeartbeat.AverageRAMUsage/1024/1024:0.}MiB Uptime: {TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Days}d:{TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Hours}h:{TimeSpan.FromMinutes(CorradeHeartbeat.Uptime).Minutes}m Commands: {CorradeHeartbeat.ProcessedCommands} Behaviours: {CorradeHeartbeat.ProcessedRLVBehaviours}");
+                $"CPU: {CorradeHeartbeat.AverageCPUUsage}% RAM: {CorradeHeartbeat.AverageRAMUsage/1024/1024:0.}MiB Uptime: {TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Days}d:{TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Hours}h:{TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Minutes}m Commands: {CorradeHeartbeat.ProcessedCommands} Behaviours: {CorradeHeartbeat.ProcessedRLVBehaviours}");
         }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
@@ -637,6 +635,12 @@ namespace Corrade
                 });
             }
         }, TimeSpan.Zero, TimeSpan.Zero);
+
+        /// <summary>
+        ///     Timer for SynBot.
+        /// </summary>
+        private static readonly Timer SynBotTimer = new Timer(() => { SynBot.Timer.PerformTick(); }, TimeSpan.Zero,
+            TimeSpan.Zero);
 
         /// <summary>
         ///     Group schedules timer.
@@ -2072,7 +2076,7 @@ namespace Corrade
                     SIML_BOT_CONSTANTS.MEMORIZED_FILE);
                 if (File.Exists(SIMLMemorized))
                 {
-                    SynBot.AddSiml(XDocument.Load(SIMLMemorized));
+                    SynBot.AddSiml(XDocument.Load(SIMLMemorized), SynBotUser);
                 }
             }
             catch (Exception ex)
@@ -2134,11 +2138,22 @@ namespace Corrade
         /// </summary>
         private static void ProcessTCPNotifications()
         {
-            TCPListener =
-                new TcpListener(
-                    new IPEndPoint(IPAddress.Parse(corradeConfiguration.TCPNotificationsServerAddress),
-                        (int) corradeConfiguration.TCPNotificationsServerPort));
-            TCPListener.Start();
+            // Attempt to create a new TCP listener by binding to the address.
+            try
+            {
+                TCPListener =
+                    new TcpListener(
+                        new IPEndPoint(IPAddress.Parse(corradeConfiguration.TCPNotificationsServerAddress),
+                            (int) corradeConfiguration.TCPNotificationsServerPort));
+                TCPListener.Start();
+            }
+            catch (Exception ex)
+            {
+                Feedback(
+                    Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
+                    ex.Message);
+                return;
+            }
 
             do
             {
@@ -2509,18 +2524,19 @@ namespace Corrade
              * master override password then consider the request to be authenticated.
              * Otherwise, check that the password matches the password for the group.
              */
-            return (corradeConfiguration.EnableMasterPasswordOverride &&
-                    !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
-                        Strings.StringEquals(corradeConfiguration.MasterPasswordOverride, password,
-                            StringComparison.Ordinal) ||
-                        Utils.SHA1String(password)
-                            .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase))) ||
-                   corradeConfiguration.Groups.AsParallel().Any(
-                       o =>
-                           group.Equals(o.UUID) &&
-                           (Strings.StringEquals(o.Password, password, StringComparison.Ordinal) ||
-                            Utils.SHA1String(password)
-                                .Equals(o.Password, StringComparison.OrdinalIgnoreCase)));
+            return !group.Equals(UUID.Zero) && !string.IsNullOrEmpty(password) &&
+                   ((corradeConfiguration.EnableMasterPasswordOverride &&
+                     !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
+                         Strings.StringEquals(corradeConfiguration.MasterPasswordOverride, password,
+                             StringComparison.Ordinal) ||
+                         Utils.SHA1String(password)
+                             .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase))) ||
+                    corradeConfiguration.Groups.AsParallel().Any(
+                        o =>
+                            group.Equals(o.UUID) &&
+                            (Strings.StringEquals(o.Password, password, StringComparison.Ordinal) ||
+                             Utils.SHA1String(password)
+                                 .Equals(o.Password, StringComparison.OrdinalIgnoreCase))));
         }
 
         /// <summary>
@@ -2762,6 +2778,7 @@ namespace Corrade
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
 
             var initialNucleusPort = 0;
+            var firstRun = false;
             // Enter configuration stage in case no configuration file is found.
             switch (!File.Exists(CORRADE_CONSTANTS.CONFIGURATION_FILE))
             {
@@ -2769,29 +2786,29 @@ namespace Corrade
                     // Check that the HTTP listener is supported.
                     if (!HttpListener.IsSupported)
                     {
-                        ConsoleExtensions.WriteLine(string.Format("{0} {1}",
+                        string.Format("{0} {1}",
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.HTTP_SERVER_NOT_SUPPORTED),
-                            "Could not enter configuration stage - please configure Corrade with a different tool or manually."),
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                            "Could not enter configuration stage - please configure Corrade with a different tool or manually.")
+                            .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         return;
                     }
                     // Attempt to retrieve a new unbound port.
                     if (!Utilities.TryGetUnusedPort(IPAddress.Any, out initialNucleusPort))
                     {
-                        ConsoleExtensions.WriteLine(
-                            "Could not find a port to bind to! You will need to configure Corrade manually using a different tool.",
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        "Could not find a port to bind to! You will need to configure Corrade manually using a different tool."
+                            .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         return;
                     }
                     // Compose prefix.
                     var prefix = string.Format("http://+:{0}/", initialNucleusPort);
-                    // Add prefix.
-                    NucleusHTTPServer.Prefixes.Add(prefix);
                     // Start Nucleus without authentication.
                     NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Anonymous;
-                    NucleusHTTPServer.Start();
-                    ConsoleCancelEventHandler ConsoleCancelKeyPress = (sender, args) => {
+                    // Disable caching.
+                    NucleusHTTPServer.SuggestNoCaching = true;
+                    NucleusHTTPServer.Start(new[] {prefix});
+                    ConsoleCancelEventHandler ConsoleCancelKeyPress = (sender, args) =>
+                    {
                         try
                         {
                             NucleusHTTPServer.Stop();
@@ -2825,25 +2842,21 @@ namespace Corrade
                         Console.CancelKeyPress += ConsoleCancelKeyPress;
                         Console.WriteLine();
                         // Write Logo.
-                        ConsoleExtensions.WriteLine(CORRADE_CONSTANTS.LOGO,
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        CORRADE_CONSTANTS.LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         // Write Sub-Logo.
-                        ConsoleExtensions.WriteLine(CORRADE_CONSTANTS.SUB_LOGO,
+                        CORRADE_CONSTANTS.SUB_LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        Console.WriteLine();
+                        "No Corrade configuration file has been found - you will need to bootstrap Corrade or shut down and use a different configuration tool to configure Corrade."
+                            .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        "The configuration panel is available at: ".WriteLine(
                             ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         Console.WriteLine();
-                        ConsoleExtensions.WriteLine(
-                            "No Corrade configuration file has been found - you will need to bootstrap Corrade or shut down and use a different configuration tool to configure Corrade.",
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
-                        ConsoleExtensions.WriteLine("The configuration panel is available at: ", 
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        string.Format("http://{0}:{1}/bootstrap",
+                            Dns.GetHostEntry(Environment.MachineName).HostName, initialNucleusPort)
+                            .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER,
+                                ConsoleColor.Yellow);
                         Console.WriteLine();
-                        ConsoleExtensions.WriteLine(string.Format("http://{0}:{1}/bootstrap", 
-                            Dns.GetHostEntry(Environment.MachineName).HostName, initialNucleusPort), 
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER,
-                            ConsoleColor.Yellow);
-                        Console.WriteLine();
-                        ConsoleExtensions.WriteLine("Waiting for bootstrap...",
-                            ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        "Waiting for bootstrap...".WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         Console.WriteLine();
                         consoleSpinner.Start();
                     }
@@ -2861,6 +2874,8 @@ namespace Corrade
                         CORRADE_CONSTANTS.CONFIGURATION_FILE) {EnableRaisingEvents = true};
                     // Wait for the Corrade configuration to be created.
                     watchConfiguration.WaitForChanged(WatcherChangeTypes.Created);
+                    // Wait for all transfers to complete.
+                    //NucleusHTTPServer.TransfersCompletedEvent.WaitOne();
                     // Attempt to acquire an exclusive lock on the configuration file.
                     lock (ConfigurationFileLock)
                     {
@@ -2883,9 +2898,8 @@ namespace Corrade
                         {
                             consoleSpinner.Stop();
                             Console.WriteLine();
-                            ConsoleExtensions.WriteLine(
-                                "Unable to create configuration file! Please use a different tool to configure Corrade.",
-                                ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                            "Unable to create configuration file! Please use a different tool to configure Corrade."
+                                .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                             return;
                         }
                     }
@@ -2902,6 +2916,8 @@ namespace Corrade
                         }
                         Console.CancelKeyPress -= ConsoleCancelKeyPress;
                     }
+                    // This was a first run.
+                    firstRun = true;
                     break;
                 default:
                     // Load the configuration file.
@@ -2956,7 +2972,10 @@ namespace Corrade
                 corradeConfiguration.NucleusServerPrefix = string.Format("http://+:{0}/", initialNucleusPort);
                 lock (ConfigurationFileLock)
                 {
-                    using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                    using (
+                        var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create,
+                            FileAccess.Write,
+                            FileShare.None, 16384, true))
                     {
                         corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                     }
@@ -3284,40 +3303,6 @@ namespace Corrade
             };
             NotificationThread.Start();
 
-            if (HttpListener.IsSupported && !CorradeHTTPServer.IsRunning && corradeConfiguration.EnableHTTPServer)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_HTTP_SERVER), corradeConfiguration.HTTPServerPrefix);
-                try
-                {
-                    CorradeHTTPServer.Prefixes.Add(corradeConfiguration.HTTPServerPrefix);
-                    CorradeHTTPServer.Start();
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
-                        ex.Message);
-                    Console.WriteLine(ex);
-                }
-            }
-            if (HttpListener.IsSupported && !NucleusHTTPServer.IsRunning && corradeConfiguration.EnableNucleusServer)
-            {
-                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER), corradeConfiguration.NucleusServerPrefix);
-                try
-                {
-                    NucleusHTTPServer.Prefixes.Add(corradeConfiguration.NucleusServerPrefix);
-                    NucleusHTTPServer.Start();
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
-                        ex.Message);
-                }
-            }
-
             var initializeClient = false;
             do
             {
@@ -3367,7 +3352,7 @@ namespace Corrade
                 }
 
                 // Update the configuration.
-                UpdateDynamicConfiguration(corradeConfiguration);
+                UpdateDynamicConfiguration(corradeConfiguration, firstRun);
 
                 // Install non-dynamic global event handlers.
                 Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
@@ -5549,10 +5534,6 @@ namespace Corrade
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD)),
                     message));
 
-            // No password, no game.
-            if (string.IsNullOrEmpty(password))
-                return null;
-
             // Authenticate the request against the group password.
             if (!Authenticate(commandGroup.UUID, password))
             {
@@ -5771,7 +5752,7 @@ namespace Corrade
                                     }
                                     break;
                                 case Sift.JS:
-                                    data = new Jint.Engine()
+                                    data = new Engine()
                                         .SetValue("data", data)
                                         .Execute(wasInput(kvp.Value))
                                         .ToString();
@@ -5877,7 +5858,7 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
-        private static void UpdateDynamicConfiguration(Configuration configuration)
+        private static void UpdateDynamicConfiguration(Configuration configuration, bool firstRun = false)
         {
             // Send message that we are updating the configuration.
             Feedback(
@@ -6060,7 +6041,8 @@ namespace Corrade
                             SynBot.Learning += HandleSynBotLearning;
                             SynBot.Memorizing += HandleSynBotMemorizing;
                             SynBotUser.EmotionChanged += HandleSynBotUserEmotionChanged;
-                            LoadChatBotFiles.Invoke();
+                            LoadChatBotFiles.BeginInvoke(
+                                o => { SynBotTimer.Change(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)); }, null);
                         }
                         break;
                     default:
@@ -6071,6 +6053,7 @@ namespace Corrade
                             SynBotUser.EmotionChanged -= HandleSynBotUserEmotionChanged;
                             if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                            SynBotTimer.Change(TimeSpan.Zero, TimeSpan.Zero);
                         }
                         break;
                 }
@@ -6399,16 +6382,41 @@ namespace Corrade
                     switch (corradeConfiguration.EnableNucleusServer)
                     {
                         case true:
+                            // If this is a first run request, then just break out.
+                            if (firstRun)
+                            {
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER),
+                                    corradeConfiguration.NucleusServerPrefix);
+                                break;
+                            }
+
                             // Don't start if the HTTP server is already started.
                             if (NucleusHTTPServer.IsRunning)
-                                break;
+                            {
+                                try
+                                {
+                                    NucleusHTTPServer.Stop();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Feedback(Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.Message);
+                                }
+                            }
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER), corradeConfiguration.NucleusServerPrefix);
+                                    Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER),
+                                corradeConfiguration.NucleusServerPrefix);
                             try
                             {
-                                NucleusHTTPServer.Prefixes.Add(corradeConfiguration.NucleusServerPrefix);
-                                NucleusHTTPServer.Start();
+                                // Enable basic authentication.
+                                NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Basic;
+                                // Perform caching.
+                                NucleusHTTPServer.SuggestNoCaching = false;
+                                // Start the server.
+                                NucleusHTTPServer.Start(new[] {corradeConfiguration.NucleusServerPrefix});
                             }
                             catch (Exception ex)
                             {
@@ -6452,14 +6460,24 @@ namespace Corrade
                         case true:
                             // Don't start if the HTTP server is already started.
                             if (CorradeHTTPServer.IsRunning)
-                                break;
+                            {
+                                try
+                                {
+                                    CorradeHTTPServer.Stop();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Feedback(Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex.Message);
+                                }
+                            }
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.STARTING_HTTP_SERVER), corradeConfiguration.HTTPServerPrefix);
+                                    Enumerations.ConsoleMessage.STARTING_HTTP_SERVER),
+                                corradeConfiguration.HTTPServerPrefix);
                             try
                             {
-                                CorradeHTTPServer.Prefixes.Add(corradeConfiguration.HTTPServerPrefix);
-                                CorradeHTTPServer.Start();
+                                CorradeHTTPServer.Start(new[] {corradeConfiguration.HTTPServerPrefix});
                             }
                             catch (Exception ex)
                             {
@@ -6467,7 +6485,6 @@ namespace Corrade
                                     Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
                                     ex.Message);
-                                Console.WriteLine(ex);
                             }
                             break;
                         default:
@@ -6703,7 +6720,7 @@ namespace Corrade
                                     {
                                         var serializer = new XmlSerializer(typeof(Cache.Group));
                                         serializer.Serialize(memoryStream, o);
-                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        memoryStream.Position = 0;
                                         switch (option)
                                         {
                                             case Configuration.HordeDataSynchronizationOption.Add:
@@ -6758,7 +6775,7 @@ namespace Corrade
                                     {
                                         var serializer = new XmlSerializer(typeof(Cache.Region));
                                         serializer.Serialize(memoryStream, o);
-                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        memoryStream.Position = 0;
                                         switch (option)
                                         {
                                             case Configuration.HordeDataSynchronizationOption.Add:
@@ -6812,7 +6829,7 @@ namespace Corrade
                                     {
                                         var serializer = new XmlSerializer(typeof(Cache.Agent));
                                         serializer.Serialize(memoryStream, o);
-                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        memoryStream.Position = 0;
                                         switch (option)
                                         {
                                             case Configuration.HordeDataSynchronizationOption.Add:
@@ -6866,7 +6883,7 @@ namespace Corrade
                                     {
                                         var serializer = new XmlSerializer(typeof(MuteEntry));
                                         serializer.Serialize(memoryStream, o);
-                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        memoryStream.Position = 0;
                                         switch (option)
                                         {
                                             case Configuration.HordeDataSynchronizationOption.Add:
@@ -6922,7 +6939,7 @@ namespace Corrade
                                     {
                                         var serializer = new XmlSerializer(typeof(UUID));
                                         serializer.Serialize(memoryStream, agentUUID);
-                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        memoryStream.Position = 0;
                                         switch (option)
                                         {
                                             case Configuration.HordeDataSynchronizationOption.Add:
@@ -6977,7 +6994,7 @@ namespace Corrade
                                     {
                                         var serializer = new XmlSerializer(typeof(Configuration.Group));
                                         serializer.Serialize(memoryStream, group);
-                                        memoryStream.Seek(0, SeekOrigin.Begin);
+                                        memoryStream.Position = 0;
                                         switch (option)
                                         {
                                             case Configuration.HordeDataSynchronizationOption.Add:

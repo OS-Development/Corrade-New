@@ -170,6 +170,36 @@ namespace Configurator
             mainForm.NucleusServerPassword.Text = corradeConfiguration.NucleusServerPassword;
             mainForm.NucleusServerCacheEnabled.Checked = corradeConfiguration.EnableNucleusServerCache;
             mainForm.NucleusServerCachePurgeInterval.Text = corradeConfiguration.NucleusServerCachePurgeInterval.ToString();
+            // Nucleus Server Group.
+            mainForm.NucleusServerGroup.Items.Clear();
+            foreach (var configuredGroup in corradeConfiguration.Groups)
+            {
+                var nucleusGroupItem = new ListViewItem
+                {
+                    Text = XML.UnescapeXML(configuredGroup.Name),
+                    Tag = configuredGroup
+                };
+                mainForm.NucleusServerGroup.Items.Add(nucleusGroupItem);
+                
+                // Set the group as selected if it can be found in the configuration.
+                if (Strings.StringEquals(configuredGroup.Name, corradeConfiguration.NucleusServerGroup))
+                {
+                    mainForm.NucleusServerGroup.SelectedIndex = mainForm.NucleusServerGroup.Items.IndexOf(nucleusGroupItem);
+                    mainForm.NucleusServerGroup.SelectedItem = nucleusGroupItem;
+                }
+            }
+            mainForm.NucleusServerGroup.DisplayMember = "Text";
+            // Nucleus Blessed Files.
+            mainForm.NucleusServerBlessings.Items.Clear();
+            foreach (var location in corradeConfiguration.NucleusServerBlessings)
+            {
+                mainForm.NucleusServerBlessings.Items.Add(new ListViewItem
+                {
+                    Text = location,
+                    Tag = location
+                });
+            }
+            mainForm.NucleusServerBlessings.DisplayMember = "Text";
 
             // TCP
             mainForm.TCPNotificationsServerEnabled.Checked = corradeConfiguration.EnableTCPNotificationsServer;
@@ -196,7 +226,6 @@ namespace Configurator
             mainForm.LimitsLoggingThreads.Text = corradeConfiguration.MaximumLogThreads.ToString();
             mainForm.LimitsCommandsThreads.Text = corradeConfiguration.MaximumCommandThreads.ToString();
             mainForm.LimitsRLVThreads.Text = corradeConfiguration.MaximumRLVThreads.ToString();
-            mainForm.LimitsInstantMessageThreads.Text = corradeConfiguration.MaximumInstantMessageThreads.ToString();
             mainForm.LimitsSchedulesResolution.Text = corradeConfiguration.SchedulesResolution.ToString();
             mainForm.LimitsClientConnections.Text = corradeConfiguration.ConnectionLimit.ToString();
             mainForm.LimitsClientIdle.Text = corradeConfiguration.ConnectionIdleTime.ToString();
@@ -505,6 +534,20 @@ namespace Configurator
             corradeConfiguration.EnableNucleusServer = mainForm.NucleusServerEnabled.Checked;
             corradeConfiguration.NucleusServerPrefix = mainForm.NucleusServerPrefix.Text;
             corradeConfiguration.NucleusServerUsername = mainForm.NucleusServerUsername.Text;
+            // Nucleus Server Group
+            var selectedNucleusGroupItem = (ListViewItem)mainForm.NucleusServerGroup.SelectedItem;
+            if (selectedNucleusGroupItem != null)
+            {
+                var configurationGroup = (Configuration.Group)selectedNucleusGroupItem.Tag;
+                if (configurationGroup != null && !configurationGroup.Equals(default(Configuration.Group)))
+                {
+                    corradeConfiguration.NucleusServerGroup = configurationGroup.Name;
+                }
+            }
+            // Nucleus Blessed Files
+            corradeConfiguration.NucleusServerBlessings =
+                new HashSet<string>(mainForm.NucleusServerBlessings.Items.Cast<ListViewItem>().Select(o => o.Tag.ToString()));
+
             // Hash HTTP password.
             switch (Regex.IsMatch(mainForm.NucleusServerPassword.Text, "[a-fA-F0-9]{40}"))
             {
@@ -568,11 +611,6 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsRLVThreads.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.MaximumRLVThreads = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsInstantMessageThreads.Text, NumberStyles.Integer, Utils.EnUsCulture,
-                out outUint))
-            {
-                corradeConfiguration.MaximumInstantMessageThreads = outUint;
             }
             if (uint.TryParse(mainForm.LimitsSchedulesResolution.Text, NumberStyles.Integer, Utils.EnUsCulture,
                 out outUint))
@@ -1070,6 +1108,18 @@ namespace Configurator
                 corradeConfiguration.Groups.Remove(group);
                 Groups.Items.RemoveAt(Groups.SelectedIndex);
 
+                // Add Nucleus server groups.
+                mainForm.NucleusServerGroup.Items.Clear();
+                foreach (var configuredGroup in corradeConfiguration.Groups)
+                {
+                    mainForm.NucleusServerGroup.Items.Add(new ListViewItem
+                    {
+                        Text = XML.UnescapeXML(configuredGroup.Name),
+                        Tag = configuredGroup
+                    });
+                }
+                mainForm.NucleusServerGroup.DisplayMember = "Text";
+
                 // Void all the selected items
                 GroupName.Text = string.Empty;
                 GroupPassword.Text = string.Empty;
@@ -1237,6 +1287,18 @@ namespace Configurator
 
                 corradeConfiguration.Groups.Add(group);
                 Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = GroupName.Text, Tag = group};
+
+                // Add Nucleus server groups.
+                mainForm.NucleusServerGroup.Items.Clear();
+                foreach (var configuredGroup in corradeConfiguration.Groups)
+                {
+                    mainForm.NucleusServerGroup.Items.Add(new ListViewItem
+                    {
+                        Text = XML.UnescapeXML(configuredGroup.Name),
+                        Tag = configuredGroup
+                    });
+                }
+                mainForm.NucleusServerGroup.DisplayMember = "Text";
             }));
         }
 
@@ -1342,6 +1404,18 @@ namespace Configurator
 
                 corradeConfiguration.Groups.Add(group);
                 Groups.Items.Add(new ListViewItem {Text = GroupName.Text, Tag = group});
+
+                // Add Nucleus server groups.
+                mainForm.NucleusServerGroup.Items.Clear();
+                foreach (var configuredGroup in corradeConfiguration.Groups)
+                {
+                    mainForm.NucleusServerGroup.Items.Add(new ListViewItem
+                    {
+                        Text = XML.UnescapeXML(configuredGroup.Name),
+                        Tag = configuredGroup
+                    });
+                }
+                mainForm.NucleusServerGroup.DisplayMember = "Text";
             }));
         }
 
@@ -2362,30 +2436,6 @@ namespace Configurator
                                             throw new Exception("error in commands limits section");
                                         }
                                         corradeConfiguration.MaximumCommandThreads = maximumCommandThreads;
-                                        break;
-                                }
-                            }
-                            break;
-                        case ConfigurationKeys.IM:
-                            var instantMessageLimitNodeList = limitsNode.SelectNodes("*");
-                            if (instantMessageLimitNodeList == null)
-                            {
-                                throw new Exception("error in instant message limits section");
-                            }
-                            foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
-                            {
-                                switch (instantMessageLimitNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.THREADS:
-                                        uint maximumInstantMessageThreads;
-                                        if (
-                                            !uint.TryParse(instantMessageLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out maximumInstantMessageThreads))
-                                        {
-                                            throw new Exception("error in instant message limits section");
-                                        }
-                                        corradeConfiguration.MaximumInstantMessageThreads = maximumInstantMessageThreads;
                                         break;
                                 }
                             }
@@ -4123,6 +4173,84 @@ namespace Configurator
             public const string BODY = @"body";
             public const string HEADER = @"header";
             public const string QUEUE = @"queue";
+        }
+
+        private void AddNucleusBlessingsRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                // If no file is entered or the file is already added then refuse to continue.
+                if (string.IsNullOrEmpty(NucleusServerBlessingsBox.Text) || mainForm.NucleusServerBlessings.Items.Cast<ListViewItem>().Any(o => Strings.StringEquals(o.Tag.ToString(), NucleusServerBlessingsBox.Text)))
+                {
+                    NucleusServerBlessingsBox.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                // Attempt regex compilation.
+                try
+                {
+                    new Regex(NucleusServerBlessingsBox.Text, RegexOptions.Compiled);
+                }
+                catch(Exception)
+                {
+                    NucleusServerBlessingsBox.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                // Add the blessed file to the list.
+                NucleusServerBlessingsBox.BackColor = Color.Empty;
+                NucleusServerBlessings.Items.Add(new ListViewItem
+                {
+                    Text = NucleusServerBlessingsBox.Text,
+                    Tag = NucleusServerBlessingsBox.Text
+                });
+                if (!corradeConfiguration.NucleusServerBlessings.Contains(NucleusServerBlessingsBox.Text))
+                {
+                    corradeConfiguration.NucleusServerBlessings.Add(NucleusServerBlessingsBox.Text);
+                }
+                NucleusServerBlessingsBox.Clear();
+            }));
+        }
+
+        private void DeleteNucleusBlessingsRequested(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                var listViewItem = NucleusServerBlessings.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                {
+                    NucleusServerBlessings.BackColor = Color.MistyRose;
+                    return;
+                }
+                NucleusServerBlessings.BackColor = Color.Empty;
+                corradeConfiguration.NucleusServerBlessings.Remove(
+                    ((ListViewItem)NucleusServerBlessings.Items[NucleusServerBlessings.SelectedIndex]).Tag.ToString());
+                NucleusServerBlessings.Items.RemoveAt(NucleusServerBlessings.SelectedIndex);
+            }));
+        }
+
+        private void NucleusBlessingsClicked(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                if (e.Y < NucleusServerBlessings.ItemHeight * NucleusServerBlessings.Items.Count)
+                    return;
+                NucleusServerBlessings.ClearSelected();
+                NucleusServerBlessingsBox.Text = string.Empty;
+            }));
+        }
+
+        private void NucleusBlessingsChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    var listViewItem = NucleusServerBlessings.SelectedItem as ListViewItem;
+                    if (listViewItem == null)
+                        return;
+                    var file = listViewItem.Tag.ToString();
+                    mainForm.NucleusServerBlessingsBox.Text = file;
+                }));
         }
     }
 }

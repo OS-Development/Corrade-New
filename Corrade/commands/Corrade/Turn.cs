@@ -28,14 +28,16 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    float degrees;
+                    float angle;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEGREES)),
-                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out degrees))
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out angle))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ANGLE_PROVIDED);
                     }
+                    // Convert angle in radians to degrees.
+                    angle *= Utils.DEG_TO_RAD;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Direction>(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIRECTION)),
@@ -46,9 +48,9 @@ namespace Corrade
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    degrees);
+                                    angle);
                                 Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    degrees);
+                                    angle);
                                 Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
@@ -65,9 +67,9 @@ namespace Corrade
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    -degrees);
+                                    -angle);
                                 Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    -degrees);
+                                    -angle);
                                 Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.

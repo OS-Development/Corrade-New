@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -30,8 +31,12 @@ namespace Corrade.HTTP
 {
     internal class CorradeHTTPServer : HTTPServer
     {
-        public new bool Start()
+        public IEnumerable<string> Prefixes { get; private set; }
+
+        public new bool Start(IEnumerable<string> Prefixes)
         {
+            this.Prefixes = Prefixes;
+
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
@@ -44,7 +49,8 @@ namespace Corrade.HTTP
                 }
             }
 
-            return base.Start();
+            // Start the HTTP server.
+            return base.Start(Prefixes);
         }
 
         public new bool Stop()
@@ -63,6 +69,9 @@ namespace Corrade.HTTP
                 }
             }
 
+            // Clear prefixes.
+            Prefixes = Enumerable.Empty<string>();
+            // Stop the HTTP server.
             return success;
         }
 
@@ -194,8 +203,7 @@ namespace Corrade.HTTP
                                         .Where(o =>
                                             o.GetParameters()
                                                 .AsParallel()
-                                                .Where(p => p.ParameterType.Equals(typeof(string)))
-                                                .Count()
+                                                .Count(p => p.ParameterType == typeof(string))
                                                 .Equals(path.Count()))
                                         // Find method name.
                                         .FirstOrDefault(o =>
@@ -216,7 +224,7 @@ namespace Corrade.HTTP
                                             // Convert method parameters to function parameter type and add local parameters.
                                             var @params = method.GetParameters()
                                                 .AsParallel()
-                                                .Where(o => o.ParameterType.Equals(typeof(string)))
+                                                .Where(o => o.ParameterType == typeof(string))
                                                 .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                 .Concat(new dynamic[]
                                                 {httpRequest.RemoteEndPoint, hordePeer, dataMemoryStream})
@@ -278,7 +286,7 @@ namespace Corrade.HTTP
                                     }
 
                                     // Get the message.
-                                    dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                    dataMemoryStream.Position = 0;
                                     var message = Encoding.UTF8.GetString(dataMemoryStream.ToArray());
 
                                     // ignore empty messages right-away.
@@ -307,12 +315,11 @@ namespace Corrade.HTTP
 
                                     // We have the group so schedule the Corrade command though the group scheduler.
                                     var workItem =
-                                        Corrade.CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(() =>
-                                        {
-                                            return Corrade.HandleCorradeCommand(message,
+                                        Corrade.CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
+                                            () => Corrade.HandleCorradeCommand(message,
                                                 CORRADE_CONSTANTS.WEB_REQUEST,
-                                                httpRequest.RemoteEndPoint.ToString(), commandGroup);
-                                        }, Corrade.corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
+                                                httpRequest.RemoteEndPoint.ToString(), commandGroup),
+                                            Corrade.corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
                                             Corrade.corradeConfiguration.SchedulerExpiration);
 
                                     using (var outputStream = new MemoryStream())
@@ -378,7 +385,7 @@ namespace Corrade.HTTP
                                                 break;
                                         }
 
-                                        outputStream.Seek(0, SeekOrigin.Begin);
+                                        outputStream.Position = 0;
                                         await outputStream.CopyToAsync(HTTPServerResponse.OutputStream);
                                     }
                                 }
@@ -415,7 +422,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("cache", "DELETE")]
         private void RemoveCacheSynchronization(string entity, string type, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref Stream dataMemoryStream)
+            Configuration.HordePeer hordePeer, Stream dataMemoryStream)
         {
             /* /cache/{asset}/add | /cache/{asset}/remove */
             // Break if the cache request is incompatible with the cache web resource.
@@ -453,7 +460,7 @@ namespace Corrade.HTTP
                         switch (dataSynchronizationType)
                         {
                             case Configuration.HordeDataSynchronization.Region:
-                                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                dataMemoryStream.Position = 0;
                                 var region = (Cache.Region)
                                     new XmlSerializer(typeof(Cache.Region)).Deserialize(
                                         dataMemoryStream);
@@ -461,7 +468,7 @@ namespace Corrade.HTTP
                                 Cache.RemoveRegion(region.Name, region.Handle);
                                 break;
                             case Configuration.HordeDataSynchronization.Agent:
-                                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                dataMemoryStream.Position = 0;
                                 var agent = (Cache.Agent)
                                     new XmlSerializer(typeof(Cache.Agent)).Deserialize(dataMemoryStream);
 
@@ -469,7 +476,7 @@ namespace Corrade.HTTP
                                     agent.UUID);
                                 break;
                             case Configuration.HordeDataSynchronization.Group:
-                                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                dataMemoryStream.Position = 0;
                                 var group = (Cache.Group)
                                     new XmlSerializer(typeof(Cache.Group)).Deserialize(dataMemoryStream);
 
@@ -498,7 +505,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("cache", "PUT")]
         private void AddCacheSynchronization(string entity, string type, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref Stream dataMemoryStream)
+            Configuration.HordePeer hordePeer, Stream dataMemoryStream)
         {
             /* /cache/{asset}/add | /cache/{asset}/remove */
             // Break if the cache request is incompatible with the cache web resource.
@@ -536,20 +543,20 @@ namespace Corrade.HTTP
                         switch (dataSynchronizationType)
                         {
                             case Configuration.HordeDataSynchronization.Region:
-                                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                dataMemoryStream.Position = 0;
                                 var region = (Cache.Region)
                                     new XmlSerializer(typeof(Cache.Region)).Deserialize(
                                         dataMemoryStream);
                                 Cache.UpdateRegion(region.Name, region.Handle);
                                 break;
                             case Configuration.HordeDataSynchronization.Agent:
-                                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                dataMemoryStream.Position = 0;
                                 var agent = (Cache.Agent)
                                     new XmlSerializer(typeof(Cache.Agent)).Deserialize(dataMemoryStream);
                                 Cache.AddAgent(agent.FirstName, agent.LastName, agent.UUID);
                                 break;
                             case Configuration.HordeDataSynchronization.Group:
-                                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                                dataMemoryStream.Position = 0;
                                 var group = (Cache.Group)
                                     new XmlSerializer(typeof(Cache.Group)).Deserialize(dataMemoryStream);
                                 Cache.AddGroup(group.Name, group.UUID);
@@ -577,7 +584,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("cache", "DELETE")]
         private void RemoveCacheSynchronization(string entity, string type, string asset, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /cache/asset/add/UUID | /cache/asset/remove/UUID */
             // Break if the cache request is incompatible with the cache web resource.
@@ -619,7 +626,7 @@ namespace Corrade.HTTP
                 {
                     var fileName = Corrade.Client.Assets.Cache.AssetFileName(assetUUID);
                     File.Delete(Path.Combine(Corrade.Client.Settings.ASSET_CACHE_DIR, fileName));
-                    dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                    dataMemoryStream.Position = 0;
                     Corrade.HordeDistributeCacheAsset(assetUUID, dataMemoryStream.ToArray(),
                         Configuration.HordeDataSynchronizationOption.Remove);
                 }
@@ -642,7 +649,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("cache", "PUT")]
         private void AddCacheSynchronization(string entity, string type, string asset, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /cache/asset/add/UUID | /cache/asset/remove/UUID */
             // Break if the cache request is incompatible with the cache web resource.
@@ -679,7 +686,7 @@ namespace Corrade.HTTP
                 {
                     if (!Corrade.Client.Assets.Cache.HasAsset(assetUUID))
                     {
-                        dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                        dataMemoryStream.Position = 0;
                         var requestData = dataMemoryStream.ToArray();
                         Corrade.Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
                         Corrade.HordeDistributeCacheAsset(assetUUID, requestData,
@@ -705,7 +712,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("mute", "DELETE")]
         private void RemoveMuteSynchronization(string type, IPEndPoint endPoint, Configuration.HordePeer hordePeer,
-            ref MemoryStream dataMemoryStream)
+            MemoryStream dataMemoryStream)
         {
             // Break if the mute request is incompatible with the mute web resource.
             if (string.IsNullOrEmpty(type))
@@ -733,7 +740,7 @@ namespace Corrade.HTTP
             MuteEntry mute;
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 mute = (MuteEntry)
                     new XmlSerializer(typeof(MuteEntry)).Deserialize(dataMemoryStream);
             }
@@ -782,7 +789,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("mute", "PUT")]
         private void AddMuteSynchronization(string type, IPEndPoint endPoint, Configuration.HordePeer hordePeer,
-            ref MemoryStream dataMemoryStream)
+            MemoryStream dataMemoryStream)
         {
             /* /mute/add | /mute/remove */
             // Break if the mute request is incompatible with the mute web resource.
@@ -811,7 +818,7 @@ namespace Corrade.HTTP
             MuteEntry mute;
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 mute = (MuteEntry)
                     new XmlSerializer(typeof(MuteEntry)).Deserialize(dataMemoryStream);
             }
@@ -881,7 +888,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("softban", "DELETE")]
         private void RemoveSoftBanSynchronization(string type, UUID groupUUID, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /softban/add/<Group UUID> /softban/remove/<Group UUID> */
 
@@ -917,7 +924,7 @@ namespace Corrade.HTTP
             SoftBan softBan;
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 softBan = (SoftBan)
                     new XmlSerializer(typeof(SoftBan)).Deserialize(dataMemoryStream);
             }
@@ -959,7 +966,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("softban", "PUT")]
         private void AddSoftBanSynchronization(string type, UUID groupUUID, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /softban/add/<Group UUID> /softban/remove/<Group UUID> */
 
@@ -995,7 +1002,7 @@ namespace Corrade.HTTP
             SoftBan softBan;
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 softBan = (SoftBan)
                     new XmlSerializer(typeof(SoftBan)).Deserialize(dataMemoryStream);
             }
@@ -1048,7 +1055,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("user", "DELETE")]
         private void RemoveUserSynchronization(string type, UUID groupUUID, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /user/add/<Group UUID> /user/remove/<Group UUID> */
             // Break if the user request is incompatible with the user web resource.
@@ -1077,7 +1084,7 @@ namespace Corrade.HTTP
             Configuration.Group configurationGroup;
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 configurationGroup = (Configuration.Group)
                     new XmlSerializer(typeof(Configuration.Group)).Deserialize(dataMemoryStream);
             }
@@ -1142,7 +1149,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("user", "PUT")]
         private void AddUserSynchronization(string type, UUID groupUUID, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /user/add/<Group UUID> /user/remove/<Group UUID> */
             // Break if the user request is incompatible with the user web resource.
@@ -1171,7 +1178,7 @@ namespace Corrade.HTTP
             Configuration.Group configurationGroup;
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 configurationGroup = (Configuration.Group)
                     new XmlSerializer(typeof(Configuration.Group)).Deserialize(dataMemoryStream);
             }
@@ -1236,7 +1243,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("bayes", "DELETE")]
         private void RemoveBayesSynchronization(string type, UUID groupUUID, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /bayes/add/<Group UUID> /bayes/remove/<Group UUID> */
             // Break if the bayes request is incompatible with the bayes web resource.
@@ -1265,7 +1272,7 @@ namespace Corrade.HTTP
             var bayes = new BayesSimpleTextClassifier();
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 bayes.ImportJsonData(Encoding.UTF8.GetString(dataMemoryStream.ToArray()));
             }
             catch (Exception ex)
@@ -1299,7 +1306,7 @@ namespace Corrade.HTTP
 
         [HTTPRequestMapping("bayes", "PUT")]
         private void AddBayesSynchronization(string type, UUID groupUUID, IPEndPoint endPoint,
-            Configuration.HordePeer hordePeer, ref MemoryStream dataMemoryStream)
+            Configuration.HordePeer hordePeer, MemoryStream dataMemoryStream)
         {
             /* /bayes/add/<Group UUID> /bayes/remove/<Group UUID> */
             // Break if the bayes request is incompatible with the bayes web resource.
@@ -1328,7 +1335,7 @@ namespace Corrade.HTTP
             var bayes = new BayesSimpleTextClassifier();
             try
             {
-                dataMemoryStream.Seek(0, SeekOrigin.Begin);
+                dataMemoryStream.Position = 0;
                 bayes.ImportJsonData(Encoding.UTF8.GetString(dataMemoryStream.ToArray()));
             }
             catch (Exception ex)

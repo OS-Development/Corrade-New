@@ -267,7 +267,7 @@ namespace Corrade.Threading
 
             // Spawn.
             var threadType = this.threadType;
-            return smartThreadPool.QueueWorkItem<T>(() =>
+            return smartThreadPool.QueueWorkItem(() =>
             {
                 // protect inner thread
                 var result = default(T);

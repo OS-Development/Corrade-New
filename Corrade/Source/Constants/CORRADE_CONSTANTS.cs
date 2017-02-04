@@ -104,6 +104,11 @@ namespace Corrade.Constants
         public static readonly Regex LocalMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) \((.+?)\) : (.+?)$",
             RegexOptions.Compiled);
 
+        public static readonly Regex HttpPrefixRegex =
+            new Regex(
+                @"^(?<protocol>https?):\/\/([$\-_\.\+!\*'\(\),a-zA-Z0-9]+):(?<port>[0-9]{1,5}.*)/(?<path>[$\-_\.\+!\*'\(\),a-zA-Z0-9])*$",
+                RegexOptions.Compiled);
+
         /// <summary>
         ///     Corrade version.
         /// </summary>

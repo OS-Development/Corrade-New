@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.24.6233.24592</Version>
+  <Version>1.25.6245.1190</Version>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
   <CacheAutoPruneInterval>300000</CacheAutoPruneInterval>
   <HeartbeatLogInterval>3600000</HeartbeatLogInterval>
@@ -26,6 +26,7 @@
   <EnableHTTPServerAuthentication>false</EnableHTTPServerAuthentication>
   <HTTPServerUsername />
   <NucleusServerUsername>corrade</NucleusServerUsername>
+  <NucleusServerGroup />
   <HTTPServerPassword />
   <NucleusServerPassword>1b6eb811867e4e820af31e1d0dcf5c7e7b493e68</NucleusServerPassword>
   <EnableTCPNotificationsServer>false</EnableTCPNotificationsServer>
@@ -63,7 +64,6 @@
   <MaximumNotificationThreads>10</MaximumNotificationThreads>
   <MaximumCommandThreads>10</MaximumCommandThreads>
   <MaximumRLVThreads>10</MaximumRLVThreads>
-  <MaximumInstantMessageThreads>10</MaximumInstantMessageThreads>
   <MaximumLogThreads>40</MaximumLogThreads>
   <MaximumPOSTThreads>25</MaximumPOSTThreads>
   <UseNaggle>false</UseNaggle>
@@ -93,6 +93,7 @@
     <string>Fuchsia/162/194/9</string>
     <string>Wellfleet Harbor/196/142/12</string>
   </StartLocations>
+  <NucleusServerBlessings />
   <BindIPAddress />
   <NetworkCardMAC />
   <DriveIdentifierHash />
