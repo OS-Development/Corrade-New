@@ -204,6 +204,15 @@
     <Compile Include="commands\Corrade\AddConfigurationGroup.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\AgentAccess.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\AgentLanguage.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\BatchSetInventoryData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Bayes.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -244,6 +253,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\RenameItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\Sensor.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetInventoryData.cs">

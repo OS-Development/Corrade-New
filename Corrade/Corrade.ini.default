@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.25.6245.1190</Version>
+  <Version>1.25.6253.25200</Version>
+  <ClientLanguage>en</ClientLanguage>
+  <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
   <CacheAutoPruneInterval>300000</CacheAutoPruneInterval>
   <HeartbeatLogInterval>3600000</HeartbeatLogInterval>

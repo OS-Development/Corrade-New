@@ -684,7 +684,12 @@ namespace Corrade
             [Command.StatusAttribute(64179)] [Reflection.DescriptionAttribute("unable to serialize primitive")] UNABLE_TO_SERIALIZE_PRIMITIVE,
             [Command.StatusAttribute(58212)] [Reflection.DescriptionAttribute("platform not supported")] PLATFORM_NOT_SUPPORTED,
             [Command.StatusAttribute(16233)] [Reflection.DescriptionAttribute("invalid asset")] INVALID_ASSET,
-            [Command.StatusAttribute(23123)] [Reflection.DescriptionAttribute("nucleus server error")] NUCLEUS_SERVER_ERROR
+            [Command.StatusAttribute(23123)] [Reflection.DescriptionAttribute("nucleus server error")] NUCLEUS_SERVER_ERROR,
+            [Command.StatusAttribute(23114)] [Reflection.DescriptionAttribute("timeout waiting for sensor")] TIMEOUT_WAITING_FOR_SENSOR,
+            [Command.StatusAttribute(39921)] [Reflection.DescriptionAttribute("could not set agent access")] COULD_NOT_SET_AGENT_ACCESS,
+            [Command.StatusAttribute(29947)] [Reflection.DescriptionAttribute("unknown agent access")] UNKNOWN_AGENT_ACCESSS,
+            [Command.StatusAttribute(61492)] [Reflection.DescriptionAttribute("unknown language")] UNKNOWN_LANGUAGE,
+            [Command.StatusAttribute(38624)] [Reflection.DescriptionAttribute("invalid secret provided")] INVALID_SECRET_PROVIDED
         }
 
 

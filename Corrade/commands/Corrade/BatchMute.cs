@@ -71,7 +71,8 @@ namespace Corrade
                                         {
                                             lock (LockObject)
                                             {
-                                                data.Add(o.Key);
+                                                if (!data.Contains(o.Key))
+                                                    data.Add(o.Key);
                                             }
                                             return;
                                         }
@@ -84,7 +85,8 @@ namespace Corrade
                                         {
                                             lock (LockObject)
                                             {
-                                                data.Add(o.Key);
+                                                if (!data.Contains(o.Key))
+                                                    data.Add(o.Key);
                                             }
                                             return;
                                         }
@@ -155,7 +157,8 @@ namespace Corrade
                                                 lock (LockObject)
                                                 {
                                                     // they could not be muted so add the name to the output
-                                                    data.Add(o.Key);
+                                                    if (!data.Contains(o.Key))
+                                                        data.Add(o.Key);
                                                 }
                                                 break;
                                         }
@@ -168,7 +171,8 @@ namespace Corrade
                                         {
                                             lock (LockObject)
                                             {
-                                                data.Add(o.Key);
+                                                if (!data.Contains(o.Key))
+                                                    data.Add(o.Key);
                                             }
                                             return;
                                         }
@@ -185,7 +189,8 @@ namespace Corrade
                                         {
                                             lock (LockObject)
                                             {
-                                                data.Add(o.Key);
+                                                if (!data.Contains(o.Key))
+                                                    data.Add(o.Key);
                                             }
                                             return;
                                         }
@@ -215,7 +220,8 @@ namespace Corrade
                                             case false:
                                                 lock (LockObject)
                                                 {
-                                                    data.Add(o.Key);
+                                                    if (!data.Contains(o.Key))
+                                                        data.Add(o.Key);
                                                 }
                                                 break;
                                         }

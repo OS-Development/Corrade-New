@@ -144,17 +144,19 @@ namespace Corrade
                             }
                         }
                     }
+                    var random = new Random().Next();
                     var ParcelAccessListEvent = new ManualResetEvent(false);
                     List<ParcelManager.ParcelAccessEntry> accessList = null;
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
+                        if (!args.SequenceID.Equals(random)) return;
                         accessList = args.AccessList;
                         ParcelAccessListEvent.Set();
                     };
                     lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
-                        Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
+                        Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
                         if (!ParcelAccessListEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;

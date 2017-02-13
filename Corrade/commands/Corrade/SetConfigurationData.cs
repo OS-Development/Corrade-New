@@ -29,29 +29,28 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        lock (ConfigurationFileLock)
+                        lock(Locks.ClientInstanceConfigurationLock)
                         {
                             corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)));
-                            UpdateDynamicConfiguration(corradeConfiguration);
-                            ConfigurationWatcher.EnableRaisingEvents = false;
+                        }
+                        lock (ConfigurationFileLock)
+                        {
                             try
                             {
-                                using (
-                                    var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                                        FileMode.Create))
+                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
                                 {
                                     corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                                 }
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
                             }
-                            ConfigurationWatcher.EnableRaisingEvents = true;
                         }
                     };
         }

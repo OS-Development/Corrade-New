@@ -184,7 +184,8 @@ namespace Corrade
                                     // Add all the unrecognized agents to the returned list.
                                     lock (LockObject)
                                     {
-                                        data.Add(o);
+                                        if (!data.Contains(o))
+                                            data.Add(o);
                                     }
                                     return;
                                 }
@@ -195,7 +196,8 @@ namespace Corrade
                                 case true: // if they are add to the returned list
                                     lock (LockObject)
                                     {
-                                        data.Add(o);
+                                        if (!data.Contains(o))
+                                            data.Add(o);
                                     }
                                     break;
                                 default:
@@ -208,7 +210,8 @@ namespace Corrade
                                     {
                                         lock (LockObject)
                                         {
-                                            data.Add(o);
+                                            if (!data.Contains(o))
+                                                data.Add(o);
                                         }
                                         return;
                                     }
@@ -230,7 +233,8 @@ namespace Corrade
                                                 {
                                                     lock (LockObject)
                                                     {
-                                                        data.Add(o);
+                                                        if (!data.Contains(o))
+                                                            data.Add(o);
                                                     }
                                                     return;
                                                 }

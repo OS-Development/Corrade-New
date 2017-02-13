@@ -878,9 +878,8 @@ namespace Corrade
                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, Client.Self.SimPosition,
                         corradeConfiguration.ServicesTimeout, ref parcel))
                     return;
-                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                if (!groups.Contains(parcel.GroupID))
-                    return;
+                var group = corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
+                if (group == null) return;
                 Client.Groups.ActivateGroup(parcel.GroupID);
             });
 
@@ -1147,7 +1146,7 @@ namespace Corrade
                 {
                     lock (GroupBayesClassifiersLock)
                     {
-                        if (!GroupBayesClassifiers.ContainsKey(group.UUID))
+                        if (!GroupBayesClassifiers.ContainsKey(group.UUID) || GroupBayesClassifiers[group.UUID] == null)
                             return;
                     }
 
@@ -4193,7 +4192,6 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
-
         private static void HandleInventoryObjectAdded(object sender, InventoryObjectAddedEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -4854,17 +4852,23 @@ namespace Corrade
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     }
 
-                    // Set the camera on the avatar.
-                    Client.Self.Movement.Camera.LookAt(
-                        Client.Self.SimPosition,
-                        Client.Self.SimPosition
-                        );
+                    // Set language.
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.UpdateAgentLanguage(corradeConfiguration.ClientLanguage, corradeConfiguration.AdvertiseClientLanguage);
+                    }
 
                     // Retrieve instant messages.
                     lock (Locks.ClientInstanceSelfLock)
                     {
                         Client.Self.RetrieveInstantMessages();
                     }
+
+                    // Set the camera on the avatar.
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
                     break;
                 case LoginStatus.Failed:
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGIN_FAILED),
@@ -6514,6 +6518,7 @@ namespace Corrade
             }
 
             // Apply settings to the instance.
+            Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
             Client.Self.Movement.Camera.Far = configuration.Range;
             Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
             Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;

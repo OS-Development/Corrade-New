@@ -59,7 +59,7 @@ namespace Corrade
 
                         if (
                             corradeConfiguration.Groups.AsParallel()
-                                .Any(o => Strings.StringEquals(o.Name, groupName) || o.UUID.Equals(groupUUID)))
+                                .Any(o => Strings.StringEquals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) || o.UUID.Equals(groupUUID)))
                             throw new Command.ScriptException(Enumerations.ScriptError.GROUP_ALREADY_CONFIGURED);
 
                         // Fetch group password.
@@ -69,13 +69,9 @@ namespace Corrade
                         if (string.IsNullOrEmpty(groupSecret))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
-                        // Hash group password.
-                        switch (Regex.IsMatch(groupSecret, "[a-fA-F0-9]{40}"))
-                        {
-                            case false:
-                                groupSecret = Utils.SHA1String(groupSecret);
-                                break;
-                        }
+                        // Check for SHA1
+                        if (!CORRADE_CONSTANTS.SHA1Regex.IsMatch(groupSecret))
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVALID_SECRET_PROVIDED);
 
                         uint groupWorkers;
                         if (!uint.TryParse(wasInput(
@@ -127,26 +123,37 @@ namespace Corrade
                                     Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
                                 .Where(o => !o.Equals(default(Configuration.Notifications))));
 
-                        corradeConfiguration.Groups.Add(new Configuration.Group
+                        lock (Locks.ClientInstanceConfigurationLock)
                         {
-                            Name = groupName,
-                            UUID = groupUUID,
-                            Password = groupSecret,
-                            Workers = groupWorkers,
-                            Schedules = groupSchedules,
-                            DatabaseFile = groupDatabase,
-                            ChatLogEnabled = groupChatLogEnabled,
-                            ChatLog = groupChatLog,
-                            Permissions = groupPermissions,
-                            Notifications = groupNotifications
-                        });
+                            corradeConfiguration.Groups.Add(new Configuration.Group
+                            {
+                                Name = groupName,
+                                UUID = groupUUID,
+                                Password = groupSecret,
+                                Workers = groupWorkers,
+                                Schedules = groupSchedules,
+                                DatabaseFile = groupDatabase,
+                                ChatLogEnabled = groupChatLogEnabled,
+                                ChatLog = groupChatLog,
+                                Permissions = groupPermissions,
+                                Notifications = groupNotifications
+                            });
+                        }
 
                         lock (ConfigurationFileLock)
                         {
-                            using (
-                                var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create))
+                            try
                             {
-                                corradeConfiguration.Save(fileStream, ref corradeConfiguration);
+                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
+                                {
+                                    corradeConfiguration.Save(fileStream, ref corradeConfiguration);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
                             }
                         }
                     };

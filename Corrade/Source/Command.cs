@@ -34,6 +34,29 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=agentlanguage>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<language=<STRING>>&action=set:[public=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong)Configuration.Permissions.Grooming)] [CorradeCommand("agentlanguage")] [Reflection.NameAttribute("agentlanguage")] AGENTLANGUAGE,
+
+            [Reflection.NameAttribute("public")]
+            PUBLIC,
+
+            [CommandInputSyntax(
+                "<command=agentaccess>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<access=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong)Configuration.Permissions.Grooming)] [CorradeCommand("agentaccess")] [Reflection.NameAttribute("agentaccess")] AGENTACCESS,
+
+            [CommandInputSyntax(
+                "<command=batchsetinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING[,UUID|STRING,...]>>&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)] [CorradeCommand("batchsetinventorydata")] [Reflection.NameAttribute("batchsetinventorydata")] BATCHSETINVENTORYDATA,
+
+            [CommandInputSyntax(
+                "<command=sensor>&<group=<UUID|STRING>>&<password=<STRING>>&[name=<STRING>]&[item=<UUID>]&[type=<ScriptSensorTypeFlags[,ScriptSensorTypeFlags...]>]&[range=<FLOAT>]&[arc=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((ulong)Configuration.Permissions.Interact)] [CorradeCommand("sensor")] [Reflection.NameAttribute("sensor")] SENSOR,
+
+            [Reflection.NameAttribute("velocity")]
+            VELOCITY,
+            [Reflection.NameAttribute("arc")]
+            ARC,
             [Reflection.NameAttribute("authentication")] AUTHENTICATION,
 
             [CommandInputSyntax(

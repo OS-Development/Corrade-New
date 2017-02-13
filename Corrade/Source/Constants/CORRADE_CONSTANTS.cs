@@ -109,6 +109,8 @@ namespace Corrade.Constants
                 @"^(?<protocol>https?):\/\/([$\-_\.\+!\*'\(\),a-zA-Z0-9]+):(?<port>[0-9]{1,5}.*)/(?<path>[$\-_\.\+!\*'\(\),a-zA-Z0-9])*$",
                 RegexOptions.Compiled);
 
+        public static readonly Regex SHA1Regex = new Regex(@"[a-fA-F0-9]{40}", RegexOptions.Compiled);
+
         /// <summary>
         ///     Corrade version.
         /// </summary>
