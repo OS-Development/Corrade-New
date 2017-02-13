@@ -287,6 +287,20 @@ namespace wasOpenMetaverse
                 yield break;
             }
 
+            // Handle script sensor type.
+            if (data is ScriptSensorTypeFlags)
+            {
+                var scriptSensorType = (ScriptSensorTypeFlags)data;
+                foreach (var flag in typeof(ScriptSensorTypeFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                    .AsParallel()
+                    .Where(o => scriptSensorType.IsMaskFlagSet((ScriptSensorTypeFlags)o.GetValue(null)))
+                    .Select(o => o.Name))
+                {
+                    yield return flag;
+                }
+                yield break;
+            }
+
             // Handle script controls.
             if (data is ScriptControlChange)
             {

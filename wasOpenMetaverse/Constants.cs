@@ -212,15 +212,22 @@ namespace wasOpenMetaverse
 
         public struct OAR
         {
-            public static readonly string ARCHIVE_FILE_NAME = @"archive.xml";
+            public const string ARCHIVE_FILE_NAME = @"archive.xml";
 
-            public static readonly string ARCHIVE_FILE_CONTENT =
+            public const string ARCHIVE_FILE_CONTENT =
                 "<?xml version=\"1.0\" encoding=\"utf-16\"?>\n<archive major_version=\"0\" minor_version=\"1\" />";
 
-            public static readonly string OBJECT_FILE_PREFIX = @"Primitive_";
-            public static readonly Formatting OBJECT_FILE_XML_FORMATTING = Formatting.Indented;
-            public static readonly int OBJECT_FILE_XML_INDENTATION = 4;
-            public static readonly char OBJECT_FILE_XML_INDENT_CHAR = ' ';
+            public const string OBJECT_FILE_PREFIX = @"Primitive_";
+            public const Formatting OBJECT_FILE_XML_FORMATTING = Formatting.Indented;
+            public const int OBJECT_FILE_XML_INDENTATION = 4;
+            public const char OBJECT_FILE_XML_INDENT_CHAR = ' ';
+        }
+
+        public struct MATURITY
+        {
+            public const string PARENTAL_GUIDANCE = @"PG";
+            public const string MATURE = @"M";
+            public const string ADULT = @"A";
         }
     }
 }
