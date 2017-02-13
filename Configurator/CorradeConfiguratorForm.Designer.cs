@@ -476,6 +476,11 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.groupBox63 = new System.Windows.Forms.GroupBox();
+            this.pictureBox50 = new System.Windows.Forms.PictureBox();
+            this.pictureBox65 = new System.Windows.Forms.PictureBox();
+            this.ClientLanguageAdvertise = new System.Windows.Forms.CheckBox();
+            this.ClientLanguage = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -733,6 +738,9 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
+            this.groupBox63.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -771,6 +779,7 @@
             // 
             // ClientTabPage
             // 
+            this.ClientTabPage.Controls.Add(this.groupBox63);
             this.ClientTabPage.Controls.Add(this.AutoPruneCacheBox);
             this.ClientTabPage.Controls.Add(this.ClientIdentificationTagBox);
             this.ClientTabPage.Controls.Add(this.AbnormalExitCodeBox);
@@ -796,7 +805,7 @@
             this.AutoPruneCacheBox.Controls.Add(this.AutoPruneCacheInterval);
             this.AutoPruneCacheBox.Controls.Add(this.pictureBox106);
             this.AutoPruneCacheBox.Controls.Add(this.AutoPruneCache);
-            this.AutoPruneCacheBox.Location = new System.Drawing.Point(303, 146);
+            this.AutoPruneCacheBox.Location = new System.Drawing.Point(303, 170);
             this.AutoPruneCacheBox.Name = "AutoPruneCacheBox";
             this.AutoPruneCacheBox.Size = new System.Drawing.Size(126, 80);
             this.AutoPruneCacheBox.TabIndex = 11;
@@ -817,9 +826,9 @@
             // AutoPruneCacheInterval
             // 
             this.AutoPruneCacheInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.AutoPruneCacheInterval.Location = new System.Drawing.Point(16, 48);
+            this.AutoPruneCacheInterval.Location = new System.Drawing.Point(7, 48);
             this.AutoPruneCacheInterval.Name = "AutoPruneCacheInterval";
-            this.AutoPruneCacheInterval.Size = new System.Drawing.Size(68, 20);
+            this.AutoPruneCacheInterval.Size = new System.Drawing.Size(77, 20);
             this.AutoPruneCacheInterval.TabIndex = 11;
             // 
             // pictureBox106
@@ -958,7 +967,7 @@
             // 
             this.GroupCreateFeeBox.Controls.Add(this.pictureBox9);
             this.GroupCreateFeeBox.Controls.Add(this.GroupCreateFee);
-            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 295);
+            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 256);
             this.GroupCreateFeeBox.Name = "GroupCreateFeeBox";
             this.GroupCreateFeeBox.Size = new System.Drawing.Size(126, 57);
             this.GroupCreateFeeBox.TabIndex = 7;
@@ -1013,9 +1022,9 @@
             // AutoActivateGroupDelay
             // 
             this.AutoActivateGroupDelay.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.AutoActivateGroupDelay.Location = new System.Drawing.Point(16, 48);
+            this.AutoActivateGroupDelay.Location = new System.Drawing.Point(6, 48);
             this.AutoActivateGroupDelay.Name = "AutoActivateGroupDelay";
-            this.AutoActivateGroupDelay.Size = new System.Drawing.Size(68, 20);
+            this.AutoActivateGroupDelay.Size = new System.Drawing.Size(78, 20);
             this.AutoActivateGroupDelay.TabIndex = 11;
             // 
             // pictureBox7
@@ -1195,7 +1204,7 @@
             this.groupBox4.Controls.Add(this.LoginURL);
             this.groupBox4.Location = new System.Drawing.Point(12, 82);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(417, 58);
+            this.groupBox4.Size = new System.Drawing.Size(272, 58);
             this.groupBox4.TabIndex = 3;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Login URL";
@@ -1204,7 +1213,7 @@
             // 
             this.pictureBox5.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox5.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox5.Image")));
-            this.pictureBox5.Location = new System.Drawing.Point(391, 18);
+            this.pictureBox5.Location = new System.Drawing.Point(235, 18);
             this.pictureBox5.Name = "pictureBox5";
             this.pictureBox5.Size = new System.Drawing.Size(20, 20);
             this.pictureBox5.TabIndex = 11;
@@ -1218,14 +1227,14 @@
             this.LoginURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.LoginURL.Location = new System.Drawing.Point(7, 18);
             this.LoginURL.Name = "LoginURL";
-            this.LoginURL.Size = new System.Drawing.Size(378, 20);
+            this.LoginURL.Size = new System.Drawing.Size(222, 20);
             this.LoginURL.TabIndex = 0;
             // 
             // groupBox3
             // 
             this.groupBox3.Controls.Add(this.pictureBox4);
             this.groupBox3.Controls.Add(this.Password);
-            this.groupBox3.Location = new System.Drawing.Point(463, 18);
+            this.groupBox3.Location = new System.Drawing.Point(414, 18);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(195, 58);
             this.groupBox3.TabIndex = 2;
@@ -1261,7 +1270,7 @@
             // 
             this.groupBox2.Controls.Add(this.pictureBox3);
             this.groupBox2.Controls.Add(this.Lastname);
-            this.groupBox2.Location = new System.Drawing.Point(240, 18);
+            this.groupBox2.Location = new System.Drawing.Point(213, 18);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(195, 58);
             this.groupBox2.TabIndex = 1;
@@ -5792,6 +5801,63 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
+            // groupBox63
+            // 
+            this.groupBox63.Controls.Add(this.ClientLanguage);
+            this.groupBox63.Controls.Add(this.pictureBox50);
+            this.groupBox63.Controls.Add(this.pictureBox65);
+            this.groupBox63.Controls.Add(this.ClientLanguageAdvertise);
+            this.groupBox63.Location = new System.Drawing.Point(303, 84);
+            this.groupBox63.Name = "groupBox63";
+            this.groupBox63.Size = new System.Drawing.Size(126, 80);
+            this.groupBox63.TabIndex = 12;
+            this.groupBox63.TabStop = false;
+            this.groupBox63.Text = "Language";
+            // 
+            // pictureBox50
+            // 
+            this.pictureBox50.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox50.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox50.Image")));
+            this.pictureBox50.Location = new System.Drawing.Point(90, 46);
+            this.pictureBox50.Name = "pictureBox50";
+            this.pictureBox50.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox50.TabIndex = 12;
+            this.pictureBox50.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox50, "The language that Corrade will use to identify\r\nitself to in-world entities.");
+            // 
+            // pictureBox65
+            // 
+            this.pictureBox65.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox65.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox65.Image")));
+            this.pictureBox65.Location = new System.Drawing.Point(90, 20);
+            this.pictureBox65.Name = "pictureBox65";
+            this.pictureBox65.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox65.TabIndex = 11;
+            this.pictureBox65.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox65, "Whether the language should be advertised to\r\nin-world entities.\r\n\r\n");
+            // 
+            // ClientLanguageAdvertise
+            // 
+            this.ClientLanguageAdvertise.AutoSize = true;
+            this.ClientLanguageAdvertise.Checked = true;
+            this.ClientLanguageAdvertise.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ClientLanguageAdvertise.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ClientLanguageAdvertise.Location = new System.Drawing.Point(13, 23);
+            this.ClientLanguageAdvertise.Name = "ClientLanguageAdvertise";
+            this.ClientLanguageAdvertise.Size = new System.Drawing.Size(62, 17);
+            this.ClientLanguageAdvertise.TabIndex = 0;
+            this.ClientLanguageAdvertise.Text = "Public";
+            this.ClientLanguageAdvertise.UseVisualStyleBackColor = true;
+            // 
+            // ClientLanguage
+            // 
+            this.ClientLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.ClientLanguage.FormattingEnabled = true;
+            this.ClientLanguage.Location = new System.Drawing.Point(7, 46);
+            this.ClientLanguage.Name = "ClientLanguage";
+            this.ClientLanguage.Size = new System.Drawing.Size(77, 24);
+            this.ClientLanguage.TabIndex = 13;
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -6170,6 +6236,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.groupBox63.ResumeLayout(false);
+            this.groupBox63.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6623,6 +6693,11 @@
         private System.Windows.Forms.Button button19;
         private System.Windows.Forms.TextBox NucleusServerBlessingsBox;
         private System.Windows.Forms.PictureBox pictureBox108;
+        private System.Windows.Forms.GroupBox groupBox63;
+        private System.Windows.Forms.ComboBox ClientLanguage;
+        private System.Windows.Forms.PictureBox pictureBox50;
+        private System.Windows.Forms.PictureBox pictureBox65;
+        private System.Windows.Forms.CheckBox ClientLanguageAdvertise;
     }
 }
 

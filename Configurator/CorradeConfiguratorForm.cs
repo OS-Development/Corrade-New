@@ -61,6 +61,23 @@ namespace Configurator
             mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.AutoPruneCache.Checked = corradeConfiguration.CacheEnableAutoPrune;
             mainForm.AutoPruneCacheInterval.Text = corradeConfiguration.CacheAutoPruneInterval.ToString();
+
+            // language
+            mainForm.ClientLanguageAdvertise.Checked = corradeConfiguration.AdvertiseClientLanguage;
+            var configuredLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => Strings.StringEquals(o.Text, corradeConfiguration.ClientLanguage));
+            switch (mainForm.ClientLanguage.Items.IndexOf(configuredLanguage))
+            {
+                case -1:
+                    var englishLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => Strings.StringEquals(o.Text, @"en"));
+                    mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(englishLanguage);
+                    mainForm.ClientLanguage.SelectedItem = englishLanguage;
+                    break;
+                default:
+                    mainForm.ClientLanguage.SelectedItem = configuredLanguage;
+                    mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(configuredLanguage);
+                    break;
+            }
+
             mainForm.GroupCreateFee.Text = corradeConfiguration.GroupCreateFee.ToString();
             mainForm.ExpectedExitCode.Value = corradeConfiguration.ExitCodeExpected < -100 ||
                                               corradeConfiguration.ExitCodeExpected > 100
@@ -422,6 +439,18 @@ namespace Configurator
             }
             corradeConfiguration.ExitCodeExpected = (int) mainForm.ExpectedExitCode.Value;
             corradeConfiguration.ExitCodeAbnormal = (int) mainForm.AbnomalExitCode.Value;
+
+            // language
+            corradeConfiguration.AdvertiseClientLanguage = mainForm.ClientLanguageAdvertise.Checked;
+            switch(mainForm.ClientLanguage.SelectedIndex)
+            {
+                case -1:
+                    corradeConfiguration.ClientLanguage = @"en";
+                    break;
+                default:
+                    corradeConfiguration.ClientLanguage = ((CultureInfo)((ListViewItem)mainForm.ClientLanguage.SelectedItem).Tag).TwoLetterISOLanguageName;
+                    break;
+            }
 
             // logs
             corradeConfiguration.ClientLogFile = mainForm.ClientLogFile.Text;
@@ -1673,6 +1702,12 @@ namespace Configurator
                 {
                     TCPNotificationsServerSSLProtocol.Items.Add(protocol);
                 }
+
+                foreach (var language in CultureInfo.GetCultures(CultureTypes.AllCultures).Where(o => !(o.CultureTypes & CultureTypes.UserCustomCulture).Equals(CultureTypes.UserCustomCulture)))
+                {
+                    mainForm.ClientLanguage.Items.Add(new ListViewItem { Text = language.TwoLetterISOLanguageName, Tag = language });
+                }
+                mainForm.ClientLanguage.DisplayMember = "Text";
             }));
 
             switch (File.Exists("Corrade.ini"))
