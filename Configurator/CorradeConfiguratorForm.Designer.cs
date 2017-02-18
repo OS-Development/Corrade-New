@@ -33,6 +33,11 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Tabs = new System.Windows.Forms.TabControl();
             this.ClientTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox63 = new System.Windows.Forms.GroupBox();
+            this.ClientLanguage = new System.Windows.Forms.ComboBox();
+            this.pictureBox50 = new System.Windows.Forms.PictureBox();
+            this.pictureBox65 = new System.Windows.Forms.PictureBox();
+            this.ClientLanguageAdvertise = new System.Windows.Forms.CheckBox();
             this.AutoPruneCacheBox = new System.Windows.Forms.GroupBox();
             this.pictureBox105 = new System.Windows.Forms.PictureBox();
             this.AutoPruneCacheInterval = new System.Windows.Forms.TextBox();
@@ -476,14 +481,19 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.groupBox63 = new System.Windows.Forms.GroupBox();
-            this.pictureBox50 = new System.Windows.Forms.PictureBox();
-            this.pictureBox65 = new System.Windows.Forms.PictureBox();
-            this.ClientLanguageAdvertise = new System.Windows.Forms.CheckBox();
-            this.ClientLanguage = new System.Windows.Forms.ComboBox();
+            this.groupBox95 = new System.Windows.Forms.GroupBox();
+            this.pictureBox66 = new System.Windows.Forms.PictureBox();
+            this.OpenMetaverseLogFile = new System.Windows.Forms.TextBox();
+            this.OpenMetaverseLogFileEnabled = new System.Windows.Forms.CheckBox();
+            this.groupBox96 = new System.Windows.Forms.GroupBox();
+            this.pictureBox109 = new System.Windows.Forms.PictureBox();
+            this.EnableMultipleSimulators = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
+            this.groupBox63.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).BeginInit();
             this.AutoPruneCacheBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox105)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox106)).BeginInit();
@@ -738,9 +748,10 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.groupBox63.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).BeginInit();
+            this.groupBox95.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
+            this.groupBox96.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -779,6 +790,7 @@
             // 
             // ClientTabPage
             // 
+            this.ClientTabPage.Controls.Add(this.groupBox96);
             this.ClientTabPage.Controls.Add(this.groupBox63);
             this.ClientTabPage.Controls.Add(this.AutoPruneCacheBox);
             this.ClientTabPage.Controls.Add(this.ClientIdentificationTagBox);
@@ -799,13 +811,70 @@
             this.ClientTabPage.Text = "Client";
             this.ClientTabPage.UseVisualStyleBackColor = true;
             // 
+            // groupBox63
+            // 
+            this.groupBox63.Controls.Add(this.ClientLanguage);
+            this.groupBox63.Controls.Add(this.pictureBox50);
+            this.groupBox63.Controls.Add(this.pictureBox65);
+            this.groupBox63.Controls.Add(this.ClientLanguageAdvertise);
+            this.groupBox63.Location = new System.Drawing.Point(303, 62);
+            this.groupBox63.Name = "groupBox63";
+            this.groupBox63.Size = new System.Drawing.Size(126, 80);
+            this.groupBox63.TabIndex = 12;
+            this.groupBox63.TabStop = false;
+            this.groupBox63.Text = "Language";
+            // 
+            // ClientLanguage
+            // 
+            this.ClientLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.ClientLanguage.FormattingEnabled = true;
+            this.ClientLanguage.Location = new System.Drawing.Point(7, 46);
+            this.ClientLanguage.Name = "ClientLanguage";
+            this.ClientLanguage.Size = new System.Drawing.Size(77, 24);
+            this.ClientLanguage.TabIndex = 13;
+            // 
+            // pictureBox50
+            // 
+            this.pictureBox50.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox50.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox50.Image")));
+            this.pictureBox50.Location = new System.Drawing.Point(90, 46);
+            this.pictureBox50.Name = "pictureBox50";
+            this.pictureBox50.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox50.TabIndex = 12;
+            this.pictureBox50.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox50, "The language that Corrade will use to identify\r\nitself to in-world entities.");
+            // 
+            // pictureBox65
+            // 
+            this.pictureBox65.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox65.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox65.Image")));
+            this.pictureBox65.Location = new System.Drawing.Point(90, 20);
+            this.pictureBox65.Name = "pictureBox65";
+            this.pictureBox65.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox65.TabIndex = 11;
+            this.pictureBox65.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox65, "Whether the language should be advertised to\r\nin-world entities.\r\n\r\n");
+            // 
+            // ClientLanguageAdvertise
+            // 
+            this.ClientLanguageAdvertise.AutoSize = true;
+            this.ClientLanguageAdvertise.Checked = true;
+            this.ClientLanguageAdvertise.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ClientLanguageAdvertise.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ClientLanguageAdvertise.Location = new System.Drawing.Point(13, 23);
+            this.ClientLanguageAdvertise.Name = "ClientLanguageAdvertise";
+            this.ClientLanguageAdvertise.Size = new System.Drawing.Size(62, 17);
+            this.ClientLanguageAdvertise.TabIndex = 0;
+            this.ClientLanguageAdvertise.Text = "Public";
+            this.ClientLanguageAdvertise.UseVisualStyleBackColor = true;
+            // 
             // AutoPruneCacheBox
             // 
             this.AutoPruneCacheBox.Controls.Add(this.pictureBox105);
             this.AutoPruneCacheBox.Controls.Add(this.AutoPruneCacheInterval);
             this.AutoPruneCacheBox.Controls.Add(this.pictureBox106);
             this.AutoPruneCacheBox.Controls.Add(this.AutoPruneCache);
-            this.AutoPruneCacheBox.Location = new System.Drawing.Point(303, 170);
+            this.AutoPruneCacheBox.Location = new System.Drawing.Point(303, 148);
             this.AutoPruneCacheBox.Name = "AutoPruneCacheBox";
             this.AutoPruneCacheBox.Size = new System.Drawing.Size(126, 80);
             this.AutoPruneCacheBox.TabIndex = 11;
@@ -859,7 +928,7 @@
             // 
             this.ClientIdentificationTagBox.Controls.Add(this.pictureBox12);
             this.ClientIdentificationTagBox.Controls.Add(this.ClientIdentificationTag);
-            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(12, 297);
+            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(12, 306);
             this.ClientIdentificationTagBox.Name = "ClientIdentificationTagBox";
             this.ClientIdentificationTagBox.Size = new System.Drawing.Size(267, 55);
             this.ClientIdentificationTagBox.TabIndex = 10;
@@ -894,7 +963,7 @@
             // 
             this.AbnormalExitCodeBox.Controls.Add(this.pictureBox10);
             this.AbnormalExitCodeBox.Controls.Add(this.AbnomalExitCode);
-            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(158, 232);
+            this.AbnormalExitCodeBox.Location = new System.Drawing.Point(153, 254);
             this.AbnormalExitCodeBox.Name = "AbnormalExitCodeBox";
             this.AbnormalExitCodeBox.Size = new System.Drawing.Size(126, 50);
             this.AbnormalExitCodeBox.TabIndex = 9;
@@ -931,7 +1000,7 @@
             // 
             this.ExpectedExitCodeBox.Controls.Add(this.pictureBox11);
             this.ExpectedExitCodeBox.Controls.Add(this.ExpectedExitCode);
-            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(12, 210);
+            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(12, 254);
             this.ExpectedExitCodeBox.Name = "ExpectedExitCodeBox";
             this.ExpectedExitCodeBox.Size = new System.Drawing.Size(126, 50);
             this.ExpectedExitCodeBox.TabIndex = 8;
@@ -967,7 +1036,7 @@
             // 
             this.GroupCreateFeeBox.Controls.Add(this.pictureBox9);
             this.GroupCreateFeeBox.Controls.Add(this.GroupCreateFee);
-            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 256);
+            this.GroupCreateFeeBox.Location = new System.Drawing.Point(303, 234);
             this.GroupCreateFeeBox.Name = "GroupCreateFeeBox";
             this.GroupCreateFeeBox.Size = new System.Drawing.Size(126, 57);
             this.GroupCreateFeeBox.TabIndex = 7;
@@ -1000,7 +1069,7 @@
             this.AutoActivateGroupBox.Controls.Add(this.AutoActivateGroupDelay);
             this.AutoActivateGroupBox.Controls.Add(this.pictureBox7);
             this.AutoActivateGroupBox.Controls.Add(this.AutoActivateGroup);
-            this.AutoActivateGroupBox.Location = new System.Drawing.Point(158, 146);
+            this.AutoActivateGroupBox.Location = new System.Drawing.Point(158, 124);
             this.AutoActivateGroupBox.Name = "AutoActivateGroupBox";
             this.AutoActivateGroupBox.Size = new System.Drawing.Size(126, 80);
             this.AutoActivateGroupBox.TabIndex = 6;
@@ -1054,7 +1123,7 @@
             // 
             this.TOSBox.Controls.Add(this.pictureBox8);
             this.TOSBox.Controls.Add(this.TOS);
-            this.TOSBox.Location = new System.Drawing.Point(12, 146);
+            this.TOSBox.Location = new System.Drawing.Point(12, 124);
             this.TOSBox.Name = "TOSBox";
             this.TOSBox.Size = new System.Drawing.Size(126, 58);
             this.TOSBox.TabIndex = 5;
@@ -1093,7 +1162,7 @@
             this.groupBox5.Controls.Add(this.button16);
             this.groupBox5.Controls.Add(this.pictureBox6);
             this.groupBox5.Controls.Add(this.button17);
-            this.groupBox5.Location = new System.Drawing.Point(435, 84);
+            this.groupBox5.Location = new System.Drawing.Point(443, 63);
             this.groupBox5.Name = "groupBox5";
             this.groupBox5.Size = new System.Drawing.Size(223, 268);
             this.groupBox5.TabIndex = 4;
@@ -1202,7 +1271,7 @@
             // 
             this.groupBox4.Controls.Add(this.pictureBox5);
             this.groupBox4.Controls.Add(this.LoginURL);
-            this.groupBox4.Location = new System.Drawing.Point(12, 82);
+            this.groupBox4.Location = new System.Drawing.Point(12, 60);
             this.groupBox4.Name = "groupBox4";
             this.groupBox4.Size = new System.Drawing.Size(272, 58);
             this.groupBox4.TabIndex = 3;
@@ -1234,7 +1303,7 @@
             // 
             this.groupBox3.Controls.Add(this.pictureBox4);
             this.groupBox3.Controls.Add(this.Password);
-            this.groupBox3.Location = new System.Drawing.Point(414, 18);
+            this.groupBox3.Location = new System.Drawing.Point(414, 2);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(195, 58);
             this.groupBox3.TabIndex = 2;
@@ -1270,7 +1339,7 @@
             // 
             this.groupBox2.Controls.Add(this.pictureBox3);
             this.groupBox2.Controls.Add(this.Lastname);
-            this.groupBox2.Location = new System.Drawing.Point(213, 18);
+            this.groupBox2.Location = new System.Drawing.Point(213, 2);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(195, 58);
             this.groupBox2.TabIndex = 1;
@@ -1302,7 +1371,7 @@
             // 
             this.groupBox1.Controls.Add(this.pictureBox2);
             this.groupBox1.Controls.Add(this.Firstname);
-            this.groupBox1.Location = new System.Drawing.Point(12, 18);
+            this.groupBox1.Location = new System.Drawing.Point(12, 2);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(195, 58);
             this.groupBox1.TabIndex = 0;
@@ -3171,6 +3240,7 @@
             // 
             // LogsTabPage
             // 
+            this.LogsTabPage.Controls.Add(this.groupBox95);
             this.LogsTabPage.Controls.Add(this.groupBox6);
             this.LogsTabPage.Controls.Add(this.groupBox14);
             this.LogsTabPage.Controls.Add(this.groupBox13);
@@ -3188,7 +3258,7 @@
             this.groupBox6.Controls.Add(this.pictureBox94);
             this.groupBox6.Controls.Add(this.ConferenceMessageLogFileEnabled);
             this.groupBox6.Controls.Add(this.ConferenceMessageLogFile);
-            this.groupBox6.Location = new System.Drawing.Point(6, 250);
+            this.groupBox6.Location = new System.Drawing.Point(6, 302);
             this.groupBox6.Name = "groupBox6";
             this.groupBox6.Size = new System.Drawing.Size(659, 56);
             this.groupBox6.TabIndex = 4;
@@ -3233,7 +3303,7 @@
             this.groupBox14.Controls.Add(this.pictureBox16);
             this.groupBox14.Controls.Add(this.RegionLogFileEnabled);
             this.groupBox14.Controls.Add(this.RegionLogFile);
-            this.groupBox14.Location = new System.Drawing.Point(6, 189);
+            this.groupBox14.Location = new System.Drawing.Point(6, 243);
             this.groupBox14.Name = "groupBox14";
             this.groupBox14.Size = new System.Drawing.Size(659, 55);
             this.groupBox14.TabIndex = 3;
@@ -3278,7 +3348,7 @@
             this.groupBox13.Controls.Add(this.pictureBox15);
             this.groupBox13.Controls.Add(this.LocalLogFileEnabled);
             this.groupBox13.Controls.Add(this.LocalLogFile);
-            this.groupBox13.Location = new System.Drawing.Point(7, 126);
+            this.groupBox13.Location = new System.Drawing.Point(7, 180);
             this.groupBox13.Name = "groupBox13";
             this.groupBox13.Size = new System.Drawing.Size(659, 57);
             this.groupBox13.TabIndex = 2;
@@ -3323,7 +3393,7 @@
             this.groupBox12.Controls.Add(this.pictureBox14);
             this.groupBox12.Controls.Add(this.InstantMessageLogFileEnabled);
             this.groupBox12.Controls.Add(this.InstantMessageLogFile);
-            this.groupBox12.Location = new System.Drawing.Point(7, 64);
+            this.groupBox12.Location = new System.Drawing.Point(7, 118);
             this.groupBox12.Name = "groupBox12";
             this.groupBox12.Size = new System.Drawing.Size(659, 56);
             this.groupBox12.TabIndex = 1;
@@ -3400,6 +3470,8 @@
             // ClientLogFileEnabled
             // 
             this.ClientLogFileEnabled.AutoSize = true;
+            this.ClientLogFileEnabled.Checked = true;
+            this.ClientLogFileEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
             this.ClientLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ClientLogFileEnabled.Location = new System.Drawing.Point(565, 22);
             this.ClientLogFileEnabled.Name = "ClientLogFileEnabled";
@@ -5801,62 +5873,86 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // groupBox63
+            // groupBox95
             // 
-            this.groupBox63.Controls.Add(this.ClientLanguage);
-            this.groupBox63.Controls.Add(this.pictureBox50);
-            this.groupBox63.Controls.Add(this.pictureBox65);
-            this.groupBox63.Controls.Add(this.ClientLanguageAdvertise);
-            this.groupBox63.Location = new System.Drawing.Point(303, 84);
-            this.groupBox63.Name = "groupBox63";
-            this.groupBox63.Size = new System.Drawing.Size(126, 80);
-            this.groupBox63.TabIndex = 12;
-            this.groupBox63.TabStop = false;
-            this.groupBox63.Text = "Language";
+            this.groupBox95.Controls.Add(this.pictureBox66);
+            this.groupBox95.Controls.Add(this.OpenMetaverseLogFile);
+            this.groupBox95.Controls.Add(this.OpenMetaverseLogFileEnabled);
+            this.groupBox95.Location = new System.Drawing.Point(7, 64);
+            this.groupBox95.Name = "groupBox95";
+            this.groupBox95.Size = new System.Drawing.Size(659, 52);
+            this.groupBox95.TabIndex = 5;
+            this.groupBox95.TabStop = false;
+            this.groupBox95.Text = "OpenMetaverse Log File";
             // 
-            // pictureBox50
+            // pictureBox66
             // 
-            this.pictureBox50.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox50.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox50.Image")));
-            this.pictureBox50.Location = new System.Drawing.Point(90, 46);
-            this.pictureBox50.Name = "pictureBox50";
-            this.pictureBox50.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox50.TabIndex = 12;
-            this.pictureBox50.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox50, "The language that Corrade will use to identify\r\nitself to in-world entities.");
+            this.pictureBox66.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox66.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox66.Image")));
+            this.pictureBox66.Location = new System.Drawing.Point(633, 21);
+            this.pictureBox66.Name = "pictureBox66";
+            this.pictureBox66.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox66.TabIndex = 4;
+            this.pictureBox66.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox66, "The path to the log file written by the OpenMetaverse\r\nlibrary that Corrade uses " +
+        "for the interraction with the\r\ngrid that Corrade connects to.\r\n");
             // 
-            // pictureBox65
+            // OpenMetaverseLogFile
             // 
-            this.pictureBox65.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox65.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox65.Image")));
-            this.pictureBox65.Location = new System.Drawing.Point(90, 20);
-            this.pictureBox65.Name = "pictureBox65";
-            this.pictureBox65.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox65.TabIndex = 11;
-            this.pictureBox65.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox65, "Whether the language should be advertised to\r\nin-world entities.\r\n\r\n");
+            this.OpenMetaverseLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OpenMetaverseLogFile.Location = new System.Drawing.Point(6, 19);
+            this.OpenMetaverseLogFile.Name = "OpenMetaverseLogFile";
+            this.OpenMetaverseLogFile.Size = new System.Drawing.Size(553, 20);
+            this.OpenMetaverseLogFile.TabIndex = 1;
             // 
-            // ClientLanguageAdvertise
+            // OpenMetaverseLogFileEnabled
             // 
-            this.ClientLanguageAdvertise.AutoSize = true;
-            this.ClientLanguageAdvertise.Checked = true;
-            this.ClientLanguageAdvertise.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.ClientLanguageAdvertise.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ClientLanguageAdvertise.Location = new System.Drawing.Point(13, 23);
-            this.ClientLanguageAdvertise.Name = "ClientLanguageAdvertise";
-            this.ClientLanguageAdvertise.Size = new System.Drawing.Size(62, 17);
-            this.ClientLanguageAdvertise.TabIndex = 0;
-            this.ClientLanguageAdvertise.Text = "Public";
-            this.ClientLanguageAdvertise.UseVisualStyleBackColor = true;
+            this.OpenMetaverseLogFileEnabled.AutoSize = true;
+            this.OpenMetaverseLogFileEnabled.Checked = true;
+            this.OpenMetaverseLogFileEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.OpenMetaverseLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OpenMetaverseLogFileEnabled.Location = new System.Drawing.Point(565, 22);
+            this.OpenMetaverseLogFileEnabled.Name = "OpenMetaverseLogFileEnabled";
+            this.OpenMetaverseLogFileEnabled.Size = new System.Drawing.Size(62, 17);
+            this.OpenMetaverseLogFileEnabled.TabIndex = 0;
+            this.OpenMetaverseLogFileEnabled.Text = "Enable";
+            this.toolTip1.SetToolTip(this.OpenMetaverseLogFileEnabled, "Whether to enable the Corrade log file.");
+            this.OpenMetaverseLogFileEnabled.UseVisualStyleBackColor = true;
             // 
-            // ClientLanguage
+            // groupBox96
             // 
-            this.ClientLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.ClientLanguage.FormattingEnabled = true;
-            this.ClientLanguage.Location = new System.Drawing.Point(7, 46);
-            this.ClientLanguage.Name = "ClientLanguage";
-            this.ClientLanguage.Size = new System.Drawing.Size(77, 24);
-            this.ClientLanguage.TabIndex = 13;
+            this.groupBox96.Controls.Add(this.pictureBox109);
+            this.groupBox96.Controls.Add(this.EnableMultipleSimulators);
+            this.groupBox96.Location = new System.Drawing.Point(12, 188);
+            this.groupBox96.Name = "groupBox96";
+            this.groupBox96.Size = new System.Drawing.Size(126, 58);
+            this.groupBox96.TabIndex = 13;
+            this.groupBox96.TabStop = false;
+            this.groupBox96.Text = "Multiple Simulators";
+            // 
+            // pictureBox109
+            // 
+            this.pictureBox109.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox109.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox109.Image")));
+            this.pictureBox109.Location = new System.Drawing.Point(95, 22);
+            this.pictureBox109.Name = "pictureBox109";
+            this.pictureBox109.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox109.TabIndex = 11;
+            this.pictureBox109.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox109, resources.GetString("pictureBox109.ToolTip"));
+            // 
+            // EnableMultipleSimulators
+            // 
+            this.EnableMultipleSimulators.AutoSize = true;
+            this.EnableMultipleSimulators.Checked = true;
+            this.EnableMultipleSimulators.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.EnableMultipleSimulators.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.EnableMultipleSimulators.Location = new System.Drawing.Point(15, 24);
+            this.EnableMultipleSimulators.Name = "EnableMultipleSimulators";
+            this.EnableMultipleSimulators.Size = new System.Drawing.Size(68, 17);
+            this.EnableMultipleSimulators.TabIndex = 0;
+            this.EnableMultipleSimulators.Text = "Enabled";
+            this.EnableMultipleSimulators.UseVisualStyleBackColor = true;
             // 
             // CorradeConfiguratorForm
             // 
@@ -5884,6 +5980,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.Tabs.ResumeLayout(false);
             this.ClientTabPage.ResumeLayout(false);
+            this.groupBox63.ResumeLayout(false);
+            this.groupBox63.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).EndInit();
             this.AutoPruneCacheBox.ResumeLayout(false);
             this.AutoPruneCacheBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox105)).EndInit();
@@ -6236,10 +6336,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox63.ResumeLayout(false);
-            this.groupBox63.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).EndInit();
+            this.groupBox95.ResumeLayout(false);
+            this.groupBox95.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
+            this.groupBox96.ResumeLayout(false);
+            this.groupBox96.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6698,6 +6800,13 @@
         private System.Windows.Forms.PictureBox pictureBox50;
         private System.Windows.Forms.PictureBox pictureBox65;
         private System.Windows.Forms.CheckBox ClientLanguageAdvertise;
+        private System.Windows.Forms.GroupBox groupBox95;
+        private System.Windows.Forms.PictureBox pictureBox66;
+        private System.Windows.Forms.TextBox OpenMetaverseLogFile;
+        private System.Windows.Forms.CheckBox OpenMetaverseLogFileEnabled;
+        private System.Windows.Forms.GroupBox groupBox96;
+        private System.Windows.Forms.PictureBox pictureBox109;
+        private System.Windows.Forms.CheckBox EnableMultipleSimulators;
     }
 }
 

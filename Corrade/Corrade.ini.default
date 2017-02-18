@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.25.6253.25200</Version>
+  <Version>1.25.6257.19681</Version>
   <ClientLanguage>en</ClientLanguage>
   <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
@@ -77,6 +77,7 @@
   <MembershipSweepInterval>60000</MembershipSweepInterval>
   <FeedsUpdateInterval>60000</FeedsUpdateInterval>
   <TOSAccepted>false</TOSAccepted>
+  <EnableMultipleSimulators>true</EnableMultipleSimulators>
   <ClientIdentificationTag>0705230f-cbd0-99bd-040b-28eb348b5255</ClientIdentificationTag>
   <StartLocations>
     <string>last</string>
@@ -100,7 +101,9 @@
   <NetworkCardMAC />
   <DriveIdentifierHash />
   <ClientLogFile>logs/Corrade.log</ClientLogFile>
+  <OpenMetaverseLogFile>logs/OpenMetaverse.log</OpenMetaverseLogFile>
   <ClientLogEnabled>true</ClientLogEnabled>
+  <OpenMetaverseLogEnabled>true</OpenMetaverseLogEnabled>
   <AutoActivateGroup>false</AutoActivateGroup>
   <AutoActivateGroupDelay>5000</AutoActivateGroupDelay>
   <GroupCreateFee>100</GroupCreateFee>

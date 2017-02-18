@@ -57,6 +57,7 @@ namespace Configurator
             mainForm.StartLocations.DisplayMember = "Text";
 
             mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
+            mainForm.EnableMultipleSimulators.Checked = corradeConfiguration.EnableMultipleSimulators;
             mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
             mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.AutoPruneCache.Checked = corradeConfiguration.CacheEnableAutoPrune;
@@ -92,6 +93,8 @@ namespace Configurator
             // logs
             mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
             mainForm.ClientLogFileEnabled.Checked = corradeConfiguration.ClientLogEnabled;
+            mainForm.OpenMetaverseLogFile.Text = corradeConfiguration.OpenMetaverseLogFile;
+            mainForm.OpenMetaverseLogFileEnabled.Checked = corradeConfiguration.OpenMetaverseLogEnabled;
             mainForm.InstantMessageLogFile.Text = corradeConfiguration.InstantMessageLogDirectory;
             mainForm.InstantMessageLogFileEnabled.Checked = corradeConfiguration.InstantMessageLogEnabled;
             mainForm.LocalLogFile.Text = corradeConfiguration.LocalMessageLogDirectory;
@@ -415,6 +418,7 @@ namespace Configurator
             corradeConfiguration.StartLocations =
                 new List<string>(mainForm.StartLocations.Items.Cast<ListViewItem>().Select(o => o.Tag.ToString()));
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
+            corradeConfiguration.EnableMultipleSimulators = mainForm.EnableMultipleSimulators.Checked;
             UUID outUUID;
             if (UUID.TryParse(mainForm.ClientIdentificationTag.Text, out outUUID))
             {
@@ -455,6 +459,8 @@ namespace Configurator
             // logs
             corradeConfiguration.ClientLogFile = mainForm.ClientLogFile.Text;
             corradeConfiguration.ClientLogEnabled = mainForm.ClientLogFileEnabled.Checked;
+            corradeConfiguration.OpenMetaverseLogFile = mainForm.OpenMetaverseLogFile.Text;
+            corradeConfiguration.OpenMetaverseLogEnabled = mainForm.OpenMetaverseLogFileEnabled.Checked;
             corradeConfiguration.InstantMessageLogDirectory = mainForm.InstantMessageLogFile.Text;
             corradeConfiguration.InstantMessageLogEnabled = mainForm.InstantMessageLogFileEnabled.Checked;
             corradeConfiguration.LocalMessageLogDirectory = mainForm.LocalLogFile.Text;

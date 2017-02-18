@@ -233,7 +233,8 @@ namespace Corrade
             [Reflection.DescriptionAttribute("Nucleus processing aborted")] NUCLEUS_PROCESSING_ABORTED,
             [Reflection.DescriptionAttribute("HTTP server command error")] HTTP_SERVER_COMMAND_ERROR,
             [Reflection.DescriptionAttribute("HTTP server command error")] HTTP_SERVER_SYNCHRONIZATION_ERROR,
-            [Reflection.DescriptionAttribute("Nucleus compile failed")] NUCLEUS_COMPILE_FAILED
+            [Reflection.DescriptionAttribute("Nucleus compile failed")] NUCLEUS_COMPILE_FAILED,
+            [Reflection.DescriptionAttribute("Unable to write Openmetaverse log")] UNABLE_TO_WRITE_TO_OPENMETAVERSE_LOG
         }
 
         /// <summary>

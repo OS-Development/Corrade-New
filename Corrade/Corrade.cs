@@ -3042,8 +3042,36 @@ namespace Corrade
                     break;
             }
 
-            // Suppress standard OpenMetaverse logs for now.
-            Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
+            // Log OpenMetaverse Errors.
+            switch(corradeConfiguration.OpenMetaverseLogEnabled)
+            {
+                case true:
+                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.Error;
+                    Logger.OnLogMessage += (message, level) =>
+                    {
+                        try
+                        {
+                            using (var fileStream = new FileStream(corradeConfiguration.OpenMetaverseLogFile, FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
+                            {
+                                using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                {
+                                    logWriter.WriteLine(message);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Feedback(Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.UNABLE_TO_WRITE_TO_OPENMETAVERSE_LOG),
+                            ex.Message);
+                        }
+                    };
+                    break;
+                default:
+                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
+                    break;
+            }
+            
 
             // Write the logo.
             Feedback(CORRADE_CONSTANTS.LOGO);
@@ -3345,7 +3373,7 @@ namespace Corrade
                             // Throttling.
                             SEND_AGENT_THROTTLE = true,
                             // Enable multiple simulators.
-                            MULTIPLE_SIMS = true
+                            MULTIPLE_SIMS = corradeConfiguration.EnableMultipleSimulators
                         }
                     };
                 }
