@@ -144,7 +144,8 @@ namespace Corrade
                     List<ParcelManager.ParcelAccessEntry> accessList = null;
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        if (!args.SequenceID.Equals(random)) return;
+                        // It's fucked, Jim.
+                        //if (!args.SequenceID.Equals(random)) return;
                         accessList = args.AccessList;
                         ParcelAccessListEvent.Set();
                     };

@@ -240,6 +240,12 @@
     <Compile Include="commands\Corrade\GetHeartbeatData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetParcelObjectResourceDetailData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetParcelObjectsResourceDetailData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetRemoteParcelInfoData.cs">
       <SubType>Component</SubType>
     </Compile>

@@ -34,6 +34,23 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+
+            [CommandInputSyntax(
+                "<command=getparcelobjectsresourcedetaildata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ObjectResourcesDetail[,ObjectResourcesDetail...]>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("getparcelobjectsresourcedetaildata")]
+            [Reflection.NameAttribute("getparcelobjectsresourcedetaildata")]
+            GETPARCELOBJECTSRESOURCEDETAILDATA,
+
+            [CommandInputSyntax(
+                "<command=getparcelobjectresourcedetaildata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID>>&<data=<ObjectResourcesDetail[,ObjectResourcesDetail...]>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("getparcelobjectresourcedetaildata")]
+            [Reflection.NameAttribute("getparcelobjectresourcedetaildata")]
+            GETPARCELOBJECTRESOURCEDETAILDATA,
+
             [CommandInputSyntax(
                 "<command=agentlanguage>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<language=<STRING>>&action=set:[public=<BOOL>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong)Configuration.Permissions.Grooming)] [CorradeCommand("agentlanguage")] [Reflection.NameAttribute("agentlanguage")] AGENTLANGUAGE,

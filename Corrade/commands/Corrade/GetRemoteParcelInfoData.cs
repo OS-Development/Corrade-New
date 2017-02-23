@@ -38,7 +38,7 @@ namespace Corrade
                                         corradeCommandParameters.Message)),
                                 out global))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_POSITION_PROVIDED);
+                            global = new Vector3((float)Client.Self.GlobalPosition.X, (float)Client.Self.GlobalPosition.Y, (float)Client.Self.GlobalPosition.Z);
                         }
                         var local = Vector3.Zero;
                         var simHandle = OpenMetaverse.Helpers.GlobalPosToRegionHandle(global.X, global.Y, out local.X,

@@ -690,7 +690,9 @@ namespace Corrade
             [Command.StatusAttribute(39921)] [Reflection.DescriptionAttribute("could not set agent access")] COULD_NOT_SET_AGENT_ACCESS,
             [Command.StatusAttribute(29947)] [Reflection.DescriptionAttribute("unknown agent access")] UNKNOWN_AGENT_ACCESSS,
             [Command.StatusAttribute(61492)] [Reflection.DescriptionAttribute("unknown language")] UNKNOWN_LANGUAGE,
-            [Command.StatusAttribute(38624)] [Reflection.DescriptionAttribute("invalid secret provided")] INVALID_SECRET_PROVIDED
+            [Command.StatusAttribute(38624)] [Reflection.DescriptionAttribute("invalid secret provided")] INVALID_SECRET_PROVIDED,
+            [Command.StatusAttribute(58478)] [Reflection.DescriptionAttribute("could not get parcel resources")] COULD_NOT_GET_PARCEL_RESOURCES,
+            [Command.StatusAttribute(62531)] [Reflection.DescriptionAttribute("could not get land resources")] COULD_NOT_GET_LAND_RESOURCES
         }
 
 
