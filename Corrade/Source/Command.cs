@@ -1278,7 +1278,8 @@ namespace Corrade
             [Reflection.NameAttribute("each")] EACH,
             [Reflection.NameAttribute("match")] MATCH,
             [Reflection.NameAttribute("skip")] SKIP,
-            [Reflection.NameAttribute("js")] JS
+            [Reflection.NameAttribute("js")] JS,
+            [Reflection.NameAttribute("count")] COUNT
         }
 
 

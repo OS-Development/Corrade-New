@@ -5783,11 +5783,20 @@ namespace Corrade
                                                     (t, j) => t.matchGroups[t.i].Captures[j].Value));
                                     }
                                     break;
+                                case Sift.COUNT:
+                                    if (!string.IsNullOrEmpty(data))
+                                    {
+                                        data = CSV.ToEnumerable(data).Count().ToString(Utils.EnUsCulture);
+                                    }
+                                    break;
                                 case Sift.JS:
-                                    data = new Engine()
-                                        .SetValue("data", data)
-                                        .Execute(wasInput(kvp.Value))
-                                        .ToString();
+                                    if (!string.IsNullOrEmpty(data))
+                                    {
+                                        data = new Engine()
+                                            .SetValue("data", data)
+                                            .Execute(wasInput(kvp.Value))
+                                            .ToString();
+                                    }
                                     break;
                                 default:
                                     throw new ScriptException(Enumerations.ScriptError.UNKNOWN_SIFT);

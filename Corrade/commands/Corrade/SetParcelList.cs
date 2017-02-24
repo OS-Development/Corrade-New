@@ -15,6 +15,8 @@ using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
+using OpenMetaverse.Packets;
+using static OpenMetaverse.Packets.ParcelAccessListReplyPacket;
 
 namespace Corrade
 {
@@ -186,7 +188,7 @@ namespace Corrade
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
-                    switch (accessType)
+                    /*switch (accessType)
                     {
                         case AccessList.Ban:
                             parcel.AccessBlackList = accessList;
@@ -196,8 +198,68 @@ namespace Corrade
                             break;
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
-                    }
-                    parcel.Update(simulator, true);
+                    }*/
+                    /*accessList.AsParallel().ForAll(o =>
+                    {
+                        var e = new ParcelManager.ParcelAccessEntry()
+                        {
+                            AgentID = o.AgentID,
+                            Flags = accessType,
+                            Time = (int)Utils.DateTimeToUnixTime(DateTime.UtcNow)
+                        };
+
+                    });*/
+                    var transactionUUID = UUID.Random();
+                    var parcelAccessListBlock = accessList.AsParallel().Select(o => new ParcelAccessListUpdatePacket.ListBlock
+                    {
+                        ID = o.AgentID,
+                        Flags = (uint)accessType,
+                        Time = (int)Utils.DateTimeToUnixTime(DateTime.UtcNow)
+                    });
+                    ParcelAccessListUpdatePacket p = new ParcelAccessListUpdatePacket
+                    {
+                        List = parcelAccessListBlock.ToArray(),
+                        AgentData = new ParcelAccessListUpdatePacket.AgentDataBlock
+                        {
+                            AgentID = Client.Self.AgentID,
+                            SessionID = Client.Self.SessionID
+                        },
+                        Data = new ParcelAccessListUpdatePacket.DataBlock
+                        {
+                            Flags = (uint)accessType,
+                            LocalID = parcel.LocalID,
+                            TransactionID = transactionUUID,
+                            SequenceID = 1,
+                            Sections = (int)Math.Ceiling(accessList.Count / 48f)
+
+                        },
+                        Type = PacketType.ParcelAccessListUpdate,
+
+                    };
+
+                    Client.Network.SendPacket(p, simulator);
+                    
+
+
+                    /*ParcelAccessListUpdatePacket p = new ParcelAccessListUpdatePacket();
+                    p.Type = PacketType.ParcelAccessListUpdate;
+                    ParcelManager.ParcelAccessEntry entry = new ParcelManager.ParcelAccessEntry();
+                    entry.AgentID = Client.Self.AgentID;
+                    entry.Flags = AccessList.Access;
+                    entry.Time = DateTime.UtcNow;
+                    var accessListEntries = new List<ParcelManager.ParcelAccessEntry>();
+                    accessListEntries.Add(entry);
+                    p.List = new ListBlock[]
+                    {
+                        new ParcelAccessListUpdatePacket.ListBlock
+                        {
+                            Flags = (uint)entry.Flags,
+                            Time = (int)Utils.DateTimeToUnixTime(entry.Time),
+                            ID = entry.AgentID
+                        }
+                    };*/
+
+                    //parcel.Update(simulator, true);
                 };
         }
     }
