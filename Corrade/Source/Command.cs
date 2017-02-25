@@ -58,10 +58,6 @@ namespace Corrade
             [Reflection.NameAttribute("getparcelobjectresourcedetaildata")]
             GETPARCELOBJECTRESOURCEDETAILDATA,
 
-            [CommandInputSyntax(
-                "<command=agentlanguage>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<language=<STRING>>&action=set:[public=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong)Configuration.Permissions.Grooming)] [CorradeCommand("agentlanguage")] [Reflection.NameAttribute("agentlanguage")] AGENTLANGUAGE,
-
             [Reflection.NameAttribute("public")]
             PUBLIC,
 
