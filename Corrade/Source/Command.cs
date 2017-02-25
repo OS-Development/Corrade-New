@@ -34,6 +34,13 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=batchsetparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("batchsetparcellist")]
+            [Reflection.NameAttribute("batchsetparcellist")]
+            BATCHSETPARCELLIST,
 
             [CommandInputSyntax(
                 "<command=getparcelobjectsresourcedetaildata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<ObjectResourcesDetail[,ObjectResourcesDetail...]>>&[position=<VECTOR2>]&[callback=<STRING>]"
@@ -66,9 +73,10 @@ namespace Corrade
                 "<command=batchsetinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING[,UUID|STRING,...]>>&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)] [CorradeCommand("batchsetinventorydata")] [Reflection.NameAttribute("batchsetinventorydata")] BATCHSETINVENTORYDATA,
 
-            [CommandInputSyntax(
+            // Cannot build packet - needs libomv fix.
+            /* [CommandInputSyntax(
                 "<command=sensor>&<group=<UUID|STRING>>&<password=<STRING>>&[name=<STRING>]&[item=<UUID>]&[type=<ScriptSensorTypeFlags[,ScriptSensorTypeFlags...]>]&[range=<FLOAT>]&[arc=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((ulong)Configuration.Permissions.Interact)] [CorradeCommand("sensor")] [Reflection.NameAttribute("sensor")] SENSOR,
+                )] [CommandPermissionMask((ulong)Configuration.Permissions.Interact)] [CorradeCommand("sensor")] [Reflection.NameAttribute("sensor")] SENSOR, */
 
             [Reflection.NameAttribute("velocity")]
             VELOCITY,
@@ -295,17 +303,14 @@ namespace Corrade
                 "<command=setrolepowers>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<role=<UUID|STRING>>&<powers=<GroupPowers[,GroupPowers...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((ulong) Configuration.Permissions.Group)] [CorradeCommand("setrolepowers")] [Reflection.NameAttribute("setrolepowers")] SETROLEPOWERS,
 
-            /// <remarks>
-            ///     This command is disabled because libopenmetaverse does not support managing the parcel lists.
-            /// </remarks>
-            /* [IsCorradeCommand(true)]
             [CommandInputSyntax(
                 "<command=setparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )]
-            [CommandPermissionMask((UInt64)Configuration.Permissions.Land)]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
             [CorradeCommand("setparcellist")]
-            [wasSharp.Reflection.NameAttribute("setparcellist")]
-            SETPARCELLIST, */
+            [Reflection.NameAttribute("setparcellist")]
+            SETPARCELLIST,
+
             [Reflection.NameAttribute("creator")] CREATOR,
             [Reflection.NameAttribute("slot")] SLOT,
 

@@ -13,7 +13,6 @@ using CorradeConfigurationSharp;
 using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
-using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -79,66 +78,9 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
                     }
+
                     var accessType = (AccessList) accessField.GetValue(null);
-                    if (!simulator.IsEstateManager)
-                    {
-                        if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                        {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                            }
-                            switch (accessType)
-                            {
-                                case AccessList.Access:
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    break;
-                                case AccessList.Ban:
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageBanned,
-                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    break;
-                                case AccessList.Both:
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageBanned,
-                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    break;
-                            }
-                        }
-                    }
+
                     var random = new Random().Next();
                     var ParcelAccessListEvent = new ManualResetEvent(false);
                     List<ParcelManager.ParcelAccessEntry> accessList = null;
@@ -156,10 +98,11 @@ namespace Corrade
                         if (!ParcelAccessListEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);
                         }
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                     }
+
                     var csv = new List<string>();
                     var LockObject = new object();
                     accessList.AsParallel().ForAll(o =>
@@ -177,6 +120,7 @@ namespace Corrade
                             csv.Add(o.Time.ToString(Utils.EnUsCulture));
                         }
                     });
+
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

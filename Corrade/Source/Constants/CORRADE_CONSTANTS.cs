@@ -60,6 +60,7 @@ namespace Corrade.Constants
         public const string TEMPLATES_DIRECTORY = @"templates";
         public const string NOTIFICATIONS_TEMPLATE_DIRECTORY = @"notifications";
         public const string STATE_DIRECTORY = @"state";
+        public const string LAST_EXEC_STATE_FILE = @"LastExecution.state";
         public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
         public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
         public const string GROUP_SCHEDULES_STATE_FILE = @"GroupSchedules.state";

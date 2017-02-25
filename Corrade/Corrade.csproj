@@ -207,10 +207,10 @@
     <Compile Include="commands\Corrade\AgentAccess.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="commands\Corrade\AgentLanguage.cs">
+    <Compile Include="commands\Corrade\BatchSetInventoryData.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="commands\Corrade\BatchSetInventoryData.cs">
+    <Compile Include="commands\Corrade\BatchSetParcelList.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Bayes.cs">

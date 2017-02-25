@@ -234,7 +234,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("HTTP server command error")] HTTP_SERVER_COMMAND_ERROR,
             [Reflection.DescriptionAttribute("HTTP server command error")] HTTP_SERVER_SYNCHRONIZATION_ERROR,
             [Reflection.DescriptionAttribute("Nucleus compile failed")] NUCLEUS_COMPILE_FAILED,
-            [Reflection.DescriptionAttribute("Unable to write Openmetaverse log")] UNABLE_TO_WRITE_TO_OPENMETAVERSE_LOG
+            [Reflection.DescriptionAttribute("unable to write Openmetaverse log")] UNABLE_TO_WRITE_TO_OPENMETAVERSE_LOG,
+            [Reflection.DescriptionAttribute("unable to store last execution state")] UNABLE_TO_STORE_LAST_EXECUTION_STATE,
+            [Reflection.DescriptionAttribute("unable to retrieve last execution state")] UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE
         }
 
         /// <summary>
@@ -692,7 +694,9 @@ namespace Corrade
             [Command.StatusAttribute(61492)] [Reflection.DescriptionAttribute("unknown language")] UNKNOWN_LANGUAGE,
             [Command.StatusAttribute(38624)] [Reflection.DescriptionAttribute("invalid secret provided")] INVALID_SECRET_PROVIDED,
             [Command.StatusAttribute(58478)] [Reflection.DescriptionAttribute("could not get parcel resources")] COULD_NOT_GET_PARCEL_RESOURCES,
-            [Command.StatusAttribute(62531)] [Reflection.DescriptionAttribute("could not get land resources")] COULD_NOT_GET_LAND_RESOURCES
+            [Command.StatusAttribute(62531)] [Reflection.DescriptionAttribute("could not get land resources")] COULD_NOT_GET_LAND_RESOURCES,
+            [Command.StatusAttribute(27910)] [Reflection.DescriptionAttribute("timeout getting parcel list")] TIMEOUT_GETTING_PARCEL_LIST,
+            [Command.StatusAttribute(53059)] [Reflection.DescriptionAttribute("could not update parcel list")] COULD_NOT_UPDATE_PARCEL_LIST
         }
 
 

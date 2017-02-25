@@ -72,6 +72,7 @@ using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 using ThreadState = System.Threading.ThreadState;
 using Timer = wasSharp.Timers.Timer;
+using log4net.Repository.Hierarchy;
 
 #endregion
 
@@ -210,6 +211,75 @@ namespace Corrade
 
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static LoginParams Login;
+        private static object CorradeLastExecStatusFileLock = new object();
+        private static LastExecStatus _CorradeLastExecStatus = LastExecStatus.Normal;
+        private static LastExecStatus CorradeLastExecStatus
+        {
+            get
+            {
+                // Get the last execution status
+                var lastExecStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY, CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
+                if (File.Exists(lastExecStateFile))
+                {
+                    lock (CorradeLastExecStatusFileLock)
+                    {
+                        try
+                        {
+                            using (var fileStream = new FileStream(lastExecStateFile, FileMode.Open, FileAccess.Read,
+                                        FileShare.Read, 16384, true))
+                            {
+                                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                {
+                                    _CorradeLastExecStatus = (LastExecStatus)(
+                                        new XmlSerializer(typeof(LastExecStatus))).Deserialize(streamReader);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE),
+                                ex.Message);
+                        }
+                    }
+                }
+
+                return _CorradeLastExecStatus;
+            }
+            set
+            {
+                try
+                {
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
+                    lock (CorradeLastExecStatusFileLock)
+                    {
+                        using (
+                            var fileStream = new FileStream(path, FileMode.Create,
+                                FileAccess.Write, FileShare.None, 16384, true))
+                        {
+                            using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                            {
+                                (new XmlSerializer(
+                                    typeof(LastExecStatus))).Serialize(writer, value);
+                                writer.Flush();
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                            Reflection.GetDescriptionFromEnumValue(
+                                Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_EXECUTION_STATE),
+                            ex.Message);
+                }
+
+                _CorradeLastExecStatus = value;
+            }
+        }
+
         private static int LoginLocationIndex;
         private static InventoryFolder CurrentOutfitFolder;
         private static readonly SimlBot SynBot = new SimlBot();
@@ -3042,37 +3112,6 @@ namespace Corrade
                     break;
             }
 
-            // Log OpenMetaverse Errors.
-            switch(corradeConfiguration.OpenMetaverseLogEnabled)
-            {
-                case true:
-                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.Error;
-                    Logger.OnLogMessage += (message, level) =>
-                    {
-                        try
-                        {
-                            using (var fileStream = new FileStream(corradeConfiguration.OpenMetaverseLogFile, FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
-                            {
-                                using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
-                                {
-                                    logWriter.WriteLine(message);
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.UNABLE_TO_WRITE_TO_OPENMETAVERSE_LOG),
-                            ex.Message);
-                        }
-                    };
-                    break;
-                default:
-                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
-                    break;
-            }
-            
-
             // Write the logo.
             Feedback(CORRADE_CONSTANTS.LOGO);
             // Write the sub-logo.
@@ -3441,7 +3480,8 @@ namespace Corrade
                             ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
                                 startLocation.Z)
                             : location,
-                    UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString()
+                    UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString(),
+                    LastExecEvent = CorradeLastExecStatus
                 };
 
                 // Reset all semaphores.
@@ -3454,8 +3494,12 @@ namespace Corrade
                     Client.Network.BeginLogin(Login);
                 }
 
+                // Assume Corrade crashed.
+                CorradeLastExecStatus = LastExecStatus.OtherCrash;
                 // Wait for any semaphore.
                 WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
+                // User disconnect.
+                CorradeLastExecStatus = LastExecStatus.Normal;
 
                 // Stop all event watchers.
                 SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
@@ -3596,11 +3640,17 @@ namespace Corrade
                 {
                     // Full speed ahead; do not even attempt to grab a lock.
                     var LoggedOutEvent = new ManualResetEvent(false);
-                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
+                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) =>
+                    {
+                        CorradeLastExecStatus = LastExecStatus.Normal;
+                        LoggedOutEvent.Set();
+                    };
                     Client.Network.LoggedOut += LoggedOutEventHandler;
+                    CorradeLastExecStatus = LastExecStatus.LogoutCrash;
                     Client.Network.BeginLogout();
                     if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
                     {
+                        CorradeLastExecStatus = LastExecStatus.LogoutFroze;
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
@@ -3718,6 +3768,9 @@ namespace Corrade
                         Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.Message);
                 }
             }
+
+            // Write the last execution status.
+            CorradeLastExecStatus = LastExecStatus.Normal;
 
             // Terminate.
             Environment.Exit(corradeConfiguration.ExitCodeExpected);
@@ -4731,6 +4784,12 @@ namespace Corrade
         {
             Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.EVENT_QUEUE_STARTED),
                 e.Simulator.Name);
+
+            // Set language.
+            lock (Locks.ClientInstanceSelfLock)
+            {
+                Client.Self.UpdateAgentLanguage(corradeConfiguration.ClientLanguage, corradeConfiguration.AdvertiseClientLanguage);
+            }
         }
 
         private static void HandleSimulatorConnected(object sender, SimConnectedEventArgs e)
@@ -4778,6 +4837,10 @@ namespace Corrade
                 case LoginStatus.Success:
                     // Login succeeded so start all the updates.
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGIN_SUCCEEDED));
+
+                    // Apply settings.
+                    Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
+                    Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
 
                     // Reset the start location cursor.
                     LoginLocationIndex = 0;
@@ -4878,12 +4941,6 @@ namespace Corrade
                     if (corradeConfiguration.AutoActivateGroup)
                     {
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
-                    }
-
-                    // Set language.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.UpdateAgentLanguage(corradeConfiguration.ClientLanguage, corradeConfiguration.AdvertiseClientLanguage);
                     }
 
                     // Retrieve instant messages.
@@ -5913,6 +5970,20 @@ namespace Corrade
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
+            // Log OpenMetaverse Errors.
+            switch (corradeConfiguration.OpenMetaverseLogEnabled)
+            {
+                case true:
+                    OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
+                    OpenMetaverse.Logger.OnLogMessage += OnLogOpenmetaverseMessage;
+                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.Error;
+                    break;
+                default:
+                    OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
+                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
+                    break;
+            }
+
             // Setup heartbeat log timer.
             CorradeHeartBeatLogTimer.Change(TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval),
                 TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval));
@@ -6555,8 +6626,6 @@ namespace Corrade
             }
 
             // Apply settings to the instance.
-            Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
-            Client.Self.Movement.Camera.Far = configuration.Range;
             Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
             Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;
             Client.Settings.SIMULATOR_TIMEOUT = (int) configuration.ServicesTimeout;
@@ -6623,6 +6692,26 @@ namespace Corrade
             // Send message that the configuration has been updated.
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CORRADE_CONFIGURATION_UPDATED));
+        }
+
+        private static async void OnLogOpenmetaverseMessage(object message, OpenMetaverse.Helpers.LogLevel level)
+        {
+            try
+            {
+                using (var fileStream = new FileStream(corradeConfiguration.OpenMetaverseLogFile, FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
+                {
+                    using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                    {
+                        await logWriter.WriteLineAsync($"[{level}] {message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(
+                    Enumerations.ConsoleMessage.UNABLE_TO_WRITE_TO_OPENMETAVERSE_LOG),
+                ex.Message);
+            }
         }
 
         private static void HandleSynBotUserEmotionChanged(object sender, EmotionChangedEventArgs e)

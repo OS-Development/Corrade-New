@@ -10,6 +10,7 @@ using CorradeConfigurationSharp;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
+using System.Threading;
 
 namespace Corrade
 {
@@ -47,6 +48,7 @@ namespace Corrade
                                 case wasOpenMetaverse.Constants.MATURITY.MATURE:
                                 case wasOpenMetaverse.Constants.MATURITY.ADULT:
                                     var succeeded = true;
+                                    var AgentAccessSetEvent = new ManualResetEvent(false);
                                     lock(Locks.ClientInstanceSelfLock)
                                     {
                                         Client.Self.SetAgentAccess(access, (o) =>
@@ -54,10 +56,10 @@ namespace Corrade
                                             succeeded = o.Success;
                                             if (Strings.StringEquals(o.NewLevel, access))
                                                 succeeded = false;
-
+                                            AgentAccessSetEvent.Set();
                                         });
                                     }
-                                    if (!succeeded)
+                                    if (!AgentAccessSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_AGENT_ACCESS);
                                     }

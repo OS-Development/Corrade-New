@@ -22,12 +22,23 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setparcellist =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> batchsetparcellist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
+                        wasInput(KeyValue.Get(wasOutput(
+                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)), corradeCommandParameters.Message)));
+                    switch (action)
+                    {
+                        case Enumerations.Action.ADD:
+                        case Enumerations.Action.REMOVE:
+                            break;
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
                     Vector3 position;
                     if (
@@ -65,30 +76,6 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    UUID targetUUID;
-                    if (
-                        !UUID.TryParse(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
-                                    corradeCommandParameters.Message)), out targetUUID) &&
-                        !Resolvers.AgentNameToUUID(Client,
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(
-                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                    corradeCommandParameters.Message)),
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                    corradeCommandParameters.Message)),
-                            corradeConfiguration.ServicesTimeout,
-                            corradeConfiguration.DataTimeout,
-                            new DecayingAlarm(corradeConfiguration.DataDecayType),
-                            ref targetUUID))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
                     var accessField = typeof(AccessList).GetFields(
                         BindingFlags.Public | BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
@@ -103,7 +90,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
                     }
-                    var accessType = (AccessList) accessField.GetValue(null);
+                    var accessType = (AccessList)accessField.GetValue(null);
                     if (!simulator.IsEstateManager)
                     {
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
@@ -178,7 +165,7 @@ namespace Corrade
                     {
                         Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                         Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
-                        if (!ParcelAccessListEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!ParcelAccessListEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -186,36 +173,83 @@ namespace Corrade
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                     }
 
-                    switch (
-                        Reflection.GetEnumValueFromName<Enumerations.Action>(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                    corradeCommandParameters.Message))
-                            ))
-                    {
-                        case Enumerations.Action.ADD:
-                            if (!accessList.AsParallel().Any(o => o.AgentID.Equals(targetUUID)))
+                    var data = new HashSet<string>();
+                    var LockObject = new object();
+                    CSV.ToEnumerable(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
+                                corradeCommandParameters.Message)))
+                        .ToArray()
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+                        {
+                            UUID agentUUID;
+                            if (!UUID.TryParse(o, out agentUUID))
                             {
-                                accessList.Add(new ParcelManager.ParcelAccessEntry
+                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
+                                if (fullName == null ||
+                                    !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
+                                        corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType), ref agentUUID))
                                 {
-                                    AgentID = targetUUID,
-                                    Flags = accessType,
-                                    Time = DateTime.UtcNow
-                                });
+                                    // Add all the unrecognized agents to the returned list.
+                                    lock (LockObject)
+                                    {
+                                        if (!data.Contains(o))
+                                            data.Add(o);
+                                    }
+                                    return;
+                                }
                             }
-                            break;
-                        case Enumerations.Action.REMOVE:
-                            accessList.RemoveAll(o => o.AgentID.Equals(targetUUID));
-                            break;
-                        default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
-                    }
+
+                            switch (action)
+                            {
+                                case Enumerations.Action.ADD:
+                                    if (accessList.AsParallel().Any(p => p.AgentID.Equals(agentUUID)))
+                                    {
+                                        lock(LockObject)
+                                        {
+                                            if (!data.Contains(o))
+                                                data.Add(o);
+                                        }
+                                        return;
+                                    }
+                                    accessList.Add(new ParcelManager.ParcelAccessEntry
+                                    {
+                                        AgentID = agentUUID,
+                                        Flags = accessType,
+                                        Time = DateTime.UtcNow
+                                    });
+                                    break;
+                                case Enumerations.Action.REMOVE:
+                                    if (!accessList.AsParallel().Any(p => p.AgentID.Equals(agentUUID)))
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            if (!data.Contains(o))
+                                                data.Add(o);
+                                        }
+                                        return;
+                                    }
+                                    accessList.RemoveAll(p => p.AgentID.Equals(agentUUID));
+                                    break;
+                            }
+
+                        });
 
                     // Update the parcel list.
                     if (!Services.UpdateParcelAccessList(Client, simulator, parcel.LocalID, accessType, accessList))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_UPDATE_PARCEL_LIST);
+                    }
+
+                    // Return any avatars that could not have been processed.
+                    if (data.Any())
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

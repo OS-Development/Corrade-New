@@ -181,34 +181,29 @@ namespace Corrade
                             break;
                     }
                     var succeeded = false;
-                    switch (entity)
+                    lock (Locks.ClientInstanceSelfLock)
                     {
-                        case Enumerations.Entity.GLOBAL:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
+                        switch (entity)
+                        {
+                            case Enumerations.Entity.GLOBAL:
                                 succeeded = Client.Self.Teleport(regionHandle, position);
-                            }
-                            break;
-                        case Enumerations.Entity.REGION:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
+                                break;
+                            case Enumerations.Entity.REGION:
                                 succeeded = Client.Self.Teleport(regionHandle, position, lookAt);
-                            }
-                            break;
-                        case Enumerations.Entity.LANDMARK:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
+                                break;
+                            case Enumerations.Entity.LANDMARK:
                                 succeeded = Client.Self.Teleport(landmarkAssetUUID);
-                            }
-                            break;
-                        default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
-                    }
-                    if (!succeeded)
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            Client.Self.TeleportMessage);
-                        throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
+                                break;
+                            default:
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                        }
+                        if (!succeeded)
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                Client.Self.TeleportMessage);
+                            result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)), Client.Self.TeleportMessage);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
+                        }
                     }
                     bool fly;
                     // perform the post-action
