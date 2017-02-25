@@ -12,6 +12,7 @@ using OpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 using Parallel = System.Threading.Tasks.Parallel;
+using OpenMetaverse.Packets;
 
 namespace wasOpenMetaverse
 {
@@ -282,6 +283,38 @@ namespace wasOpenMetaverse
                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
             }
             return succeeded;
+        }
+
+        public static bool UpdateParcelAccessList(GridClient Client, Simulator simulator, int parcelLocalID, AccessList accessListType, List<ParcelManager.ParcelAccessEntry> accessList)
+        {
+            lock(Locks.ClientInstanceNetworkLock)
+            {
+                Client.Network.SendPacket(new ParcelAccessListUpdatePacket
+                {
+                    List = accessList.AsParallel().Select(o => new ParcelAccessListUpdatePacket.ListBlock
+                    {
+                        ID = o.AgentID,
+                        Flags = (uint)o.Flags
+                    }).ToArray(),
+                    AgentData = new ParcelAccessListUpdatePacket.AgentDataBlock
+                    {
+                        AgentID = Client.Self.AgentID,
+                        SessionID = Client.Self.SessionID
+                    },
+                    Data = new ParcelAccessListUpdatePacket.DataBlock
+                    {
+                        Flags = (uint)accessListType,
+                        LocalID = parcelLocalID,
+                        TransactionID = UUID.Random(),
+                        SequenceID = 1,
+                        Sections = (int)Math.Ceiling(accessList.Count / 48f)
+                    },
+                    Type = PacketType.ParcelAccessListUpdate
+
+                }, simulator);
+            }
+
+            return true;
         }
 
         ///////////////////////////////////////////////////////////////////////////
