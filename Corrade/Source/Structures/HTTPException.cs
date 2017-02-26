@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Runtime.Serialization;
 
 namespace Corrade.Structures

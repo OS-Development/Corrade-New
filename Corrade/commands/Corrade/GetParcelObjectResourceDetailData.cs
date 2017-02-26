@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfigurationSharp;
@@ -110,10 +111,10 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => Strings.StringEquals(o.ID, itemUUID));
+                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => String.Equals(o.ID, itemUUID));
                             break;
                         default:
-                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => Strings.StringEquals(o.Name, item));
+                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => String.Equals(o.Name, item));
                             break;
                     }
 

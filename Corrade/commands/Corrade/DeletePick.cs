@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -41,7 +42,7 @@ namespace Corrade
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
                         var pick = args.Picks.AsParallel().FirstOrDefault(
-                            o => Strings.StringEquals(input, o.Value, StringComparison.Ordinal));
+                            o => String.Equals(input, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();

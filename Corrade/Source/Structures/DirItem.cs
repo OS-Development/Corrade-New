@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Linq;
 using System.Reflection;
 using Corrade.Constants;
@@ -54,7 +55,7 @@ namespace Corrade.Structures
                                                                                           BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
-                                Strings.StringEquals(o.Name,
+                                String.Equals(o.Name,
                                     Enum.GetName(typeof(WearableType),
                                         (inventoryItem as InventoryWearable).WearableType),
                                     StringComparison.OrdinalIgnoreCase)).GetValue(null);

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -48,7 +49,7 @@ namespace Corrade
                         case true:
                             var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
                                 o =>
-                                    Strings.StringEquals(rule.Option, o.Name,
+                                    String.Equals(rule.Option, o.Name,
                                         StringComparison.InvariantCultureIgnoreCase));
                             switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                             {

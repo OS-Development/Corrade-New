@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -130,7 +131,7 @@ namespace Corrade
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
-                                    o => Strings.StringEquals(o.Name, type, StringComparison.OrdinalIgnoreCase));
+                                    o => String.Equals(o.Name, type, StringComparison.OrdinalIgnoreCase));
                             var returnType = objectReturnTypeField != null
                                 ? (ObjectReturnType)
                                     objectReturnTypeField

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.IO;
@@ -290,7 +291,7 @@ namespace Corrade
                                             BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 o =>
-                                                    Strings.StringEquals(o.Name, format, StringComparison.Ordinal));
+                                                    String.Equals(o.Name, format, StringComparison.Ordinal));
                                         if (formatProperty == null)
                                         {
                                             throw new Command.ScriptException(

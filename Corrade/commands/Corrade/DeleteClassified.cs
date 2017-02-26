@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -43,7 +44,7 @@ namespace Corrade
                     {
                         var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
-                                Strings.StringEquals(name, o.Value, StringComparison.Ordinal));
+                                String.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!classified.Equals(default(KeyValuePair<UUID, string>)))
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();

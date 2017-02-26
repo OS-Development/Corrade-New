@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -80,19 +81,19 @@ namespace Corrade.Helpers
                         ? args.AsParallel()
                             .FirstOrDefault(
                                 a =>
-                                    Strings.StringEquals(a.GetType().FullName, o.Type) ||
+                                    String.Equals(a.GetType().FullName, o.Type) ||
                                     a.GetType()
                                         .GetBaseTypes()
                                         .AsParallel()
-                                        .Any(t => Strings.StringEquals(t.FullName, o.Type)))
+                                        .Any(t => String.Equals(t.FullName, o.Type)))
                         : args.AsParallel()
                             .FirstOrDefault(
                                 a =>
-                                    Strings.StringEquals(a.GetType().FullName, type) ||
+                                    String.Equals(a.GetType().FullName, type) ||
                                     a.GetType()
                                         .GetBaseTypes()
                                         .AsParallel()
-                                        .Any(t => Strings.StringEquals(t.FullName, o.Type)));
+                                        .Any(t => String.Equals(t.FullName, o.Type)));
 
                     if (arg == null)
                         return;
@@ -168,7 +169,7 @@ namespace Corrade.Helpers
                                         args.AsParallel()
                                             .FirstOrDefault(
                                                 a =>
-                                                    Strings.StringEquals(a.GetType().FullName,
+                                                    String.Equals(a.GetType().FullName,
                                                         process.ConditionalSubstitution.Type));
                                     if (arg != null)
                                     {
@@ -199,7 +200,7 @@ namespace Corrade.Helpers
                                         args.AsParallel()
                                             .FirstOrDefault(
                                                 a =>
-                                                    Strings.StringEquals(a.GetType().FullName,
+                                                    String.Equals(a.GetType().FullName,
                                                         process.TernarySubstitution.Type));
                                     if (arg != null)
                                     {
@@ -354,7 +355,7 @@ namespace Corrade.Helpers
                     }
                     break;
                 default:
-                    if (!args.AsParallel().Any(a => Strings.StringEquals(a.GetType().FullName, type)))
+                    if (!args.AsParallel().Any(a => String.Equals(a.GetType().FullName, type)))
                         return;
                     value = o.Value;
                     break;

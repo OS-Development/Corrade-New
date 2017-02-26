@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -77,7 +78,7 @@ namespace Corrade
                         pickCount = args.Picks.Count;
                         var pick =
                             args.Picks.AsParallel()
-                                .FirstOrDefault(o => Strings.StringEquals(name, o.Value, StringComparison.Ordinal));
+                                .FirstOrDefault(o => String.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();

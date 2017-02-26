@@ -7,6 +7,7 @@
 #region
 
 using System;
+using String = wasSharp.String;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -2596,14 +2597,14 @@ namespace Corrade
             return !group.Equals(UUID.Zero) && !string.IsNullOrEmpty(password) &&
                    ((corradeConfiguration.EnableMasterPasswordOverride &&
                      !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
-                         Strings.StringEquals(corradeConfiguration.MasterPasswordOverride, password,
+                         String.Equals(corradeConfiguration.MasterPasswordOverride, password,
                              StringComparison.Ordinal) ||
                          Utils.SHA1String(password)
                              .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase))) ||
                     corradeConfiguration.Groups.AsParallel().Any(
                         o =>
                             group.Equals(o.UUID) &&
-                            (Strings.StringEquals(o.Password, password, StringComparison.Ordinal) ||
+                            (String.Equals(o.Password, password, StringComparison.Ordinal) ||
                              Utils.SHA1String(password)
                                  .Equals(o.Password, StringComparison.OrdinalIgnoreCase))));
         }
@@ -2635,7 +2636,7 @@ namespace Corrade
             return UUID.TryParse(group, out groupUUID)
                 ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
                 : corradeConfiguration.Groups.AsParallel()
-                    .FirstOrDefault(o => Strings.StringEquals(group, o.Name, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(o => String.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -4309,7 +4310,7 @@ namespace Corrade
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(
                         p =>
-                            Strings.StringEquals(inventoryOffer.Args.Offer.FromAgentName, p,
+                            String.Equals(inventoryOffer.Args.Offer.FromAgentName, p,
                                 StringComparison.OrdinalIgnoreCase)))
             {
                 inventoryOffer.Args.Accept = true;
@@ -5069,8 +5070,8 @@ namespace Corrade
                     if (
                         !corradeConfiguration.Masters.AsParallel().Any(
                             o =>
-                                Strings.StringEquals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
-                                Strings.StringEquals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
+                                String.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                String.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
                         return;
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ACCEPTED_FRIENDSHIP),
@@ -5137,9 +5138,9 @@ namespace Corrade
                             !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
-                                        Strings.StringEquals(fullName.First(), o.FirstName,
+                                        String.Equals(fullName.First(), o.FirstName,
                                             StringComparison.OrdinalIgnoreCase) &&
-                                        Strings.StringEquals(fullName.Last(), o.LastName,
+                                        String.Equals(fullName.Last(), o.LastName,
                                             StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
@@ -5210,9 +5211,9 @@ namespace Corrade
                             !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
-                                        Strings.StringEquals(fullName.First(), o.FirstName,
+                                        String.Equals(fullName.First(), o.FirstName,
                                             StringComparison.OrdinalIgnoreCase) &&
-                                        Strings.StringEquals(fullName.Last(), o.LastName,
+                                        String.Equals(fullName.Last(), o.LastName,
                                             StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
@@ -6734,7 +6735,7 @@ namespace Corrade
                                     p =>
                                     {
                                         var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                            q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                            q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                         return peer != null && peer
                                             .SynchronizationMask.IsMaskFlagSet(
                                                 Configuration.HordeDataSynchronization.Asset);
@@ -6791,7 +6792,7 @@ namespace Corrade
                                     p =>
                                     {
                                         var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                            q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                            q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                         return peer != null && peer
                                             .SynchronizationMask.IsMaskFlagSet(
                                                 Configuration.HordeDataSynchronization.Bayes);
@@ -6841,7 +6842,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Group);
                                 })
@@ -6896,7 +6897,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Region);
                                 })
@@ -6950,7 +6951,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Agent);
                                 })
@@ -7004,7 +7005,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Mute);
                                 })
@@ -7059,7 +7060,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(
                                             Configuration.HordeDataSynchronization.SoftBan);
@@ -7115,7 +7116,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => Strings.StringEquals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.User);
                                 })

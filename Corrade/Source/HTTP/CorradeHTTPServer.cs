@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -211,9 +212,9 @@ namespace Corrade.HTTP
                                                 .AsParallel()
                                                 .Any(p =>
                                                     p is HTTPRequestMapping &&
-                                                    Strings.StringEquals(((HTTPRequestMapping) p).Method,
+                                                    String.Equals(((HTTPRequestMapping) p).Method,
                                                         httpRequest.HttpMethod.ToUpperInvariant()) &&
-                                                    Strings.StringEquals(((HTTPRequestMapping) p).Map, methodName)));
+                                                    String.Equals(((HTTPRequestMapping) p).Map, methodName)));
 
                                     switch (method != null)
                                     {

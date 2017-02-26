@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfigurationSharp;
@@ -56,7 +57,7 @@ namespace Corrade
                             o =>
                                 typeof(ScriptSensorTypeFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
+                                    .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
                                         q =>
                                         {

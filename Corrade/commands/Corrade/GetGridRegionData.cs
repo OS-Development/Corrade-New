@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -70,7 +71,7 @@ namespace Corrade
                         var gridRegion = new GridRegion();
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
-                            if (!Strings.StringEquals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                            if (!String.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
                                 return;
                             gridRegion = args.Region;
                             GridRegionEvent.Set();

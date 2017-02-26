@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Xml.Serialization;
 using wasSharp;
 
@@ -27,8 +28,8 @@ namespace Corrade.Structures
 
         public bool Equals(Agent other)
         {
-            return (Strings.StringEquals(FirstName, other.FirstName, StringComparison.OrdinalIgnoreCase)
-                    && Strings.StringEquals(LastName, other.LastName, StringComparison.OrdinalIgnoreCase)) ||
+            return (String.Equals(FirstName, other.FirstName, StringComparison.OrdinalIgnoreCase)
+                    && String.Equals(LastName, other.LastName, StringComparison.OrdinalIgnoreCase)) ||
                    UUID.Equals(other.UUID);
         }
 

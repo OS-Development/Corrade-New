@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -109,7 +110,7 @@ namespace Corrade
                         typeof(AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
-                                    Strings.StringEquals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
+                                    String.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
                                             InventoryItem inventoryItem = null;

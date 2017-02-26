@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -87,7 +88,7 @@ namespace Corrade
                                         o =>
                                             typeof(ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
                                                 .AsParallel()
-                                                .Where(p => Strings.StringEquals(o, p.Name, StringComparison.Ordinal))
+                                                .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
                                                 .ForAll(
                                                     q =>
                                                     {
@@ -170,7 +171,7 @@ namespace Corrade
                                 lock (Locks.ClientInstanceNetworkLock)
                                 {
                                     simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o => Strings.StringEquals(region, o.Name, StringComparison.OrdinalIgnoreCase));
+                                        o => String.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
                                 }
                                 if (simulator == null)
                                 {

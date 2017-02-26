@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using Corrade.Constants;
@@ -55,7 +56,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (corradeConfiguration.Groups.RemoveWhere(
-                            o => Strings.StringEquals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID)).Equals(0))
+                            o => String.Equals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID)).Equals(0))
                             throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_CONFIGURED);
                     }
                     lock (ConfigurationFileLock)

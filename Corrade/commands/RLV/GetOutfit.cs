@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -38,7 +39,7 @@ namespace Corrade
                             var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        Strings.StringEquals(rule.Option, o.Name,
+                                        String.Equals(rule.Option, o.Name,
                                             StringComparison.InvariantCultureIgnoreCase));
                             switch (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                             {

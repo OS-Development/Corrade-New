@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -59,7 +60,7 @@ namespace Corrade
 
                         if (
                             corradeConfiguration.Groups.AsParallel()
-                                .Any(o => Strings.StringEquals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) || o.UUID.Equals(groupUUID)))
+                                .Any(o => String.Equals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) || o.UUID.Equals(groupUUID)))
                             throw new Command.ScriptException(Enumerations.ScriptError.GROUP_ALREADY_CONFIGURED);
 
                         // Fetch group password.

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Linq;
 using System.Reflection;
 using Corrade.Events;
@@ -33,7 +34,7 @@ namespace Corrade
                                                                               BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     p =>
-                                        Strings.StringEquals(rule.Option, p.Name,
+                                        String.Equals(rule.Option, p.Name,
                                             StringComparison.InvariantCultureIgnoreCase));
                             if (wearTypeInfo == null)
                             {

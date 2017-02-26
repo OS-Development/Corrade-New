@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -276,7 +277,7 @@ namespace Corrade
                                                         p.Value.AsParallel()
                                                             .Where(
                                                                 q =>
-                                                                    !Strings.StringEquals(url, q,
+                                                                    !String.Equals(url, q,
                                                                         StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -291,9 +292,9 @@ namespace Corrade.HTTP
                                                 .AsParallel()
                                                 .Any(p =>
                                                     p is HTTPRequestMapping &&
-                                                    Strings.StringEquals(((HTTPRequestMapping) p).Method,
+                                                    String.Equals(((HTTPRequestMapping) p).Method,
                                                         httpRequest.HttpMethod.ToUpperInvariant()) &&
-                                                    Strings.StringEquals(((HTTPRequestMapping) p).Map, methodName)));
+                                                    String.Equals(((HTTPRequestMapping) p).Map, methodName)));
 
                                     switch (method != null)
                                     {
@@ -359,9 +360,9 @@ namespace Corrade.HTTP
                                                     .AsParallel()
                                                     .Any(p =>
                                                         p is HTTPRequestMapping &&
-                                                        Strings.StringEquals(((HTTPRequestMapping) p).Method,
+                                                        String.Equals(((HTTPRequestMapping) p).Method,
                                                             httpRequest.HttpMethod.ToUpperInvariant()) &&
-                                                        Strings.StringEquals(((HTTPRequestMapping) p).Map, methodName)));
+                                                        String.Equals(((HTTPRequestMapping) p).Map, methodName)));
 
                                         switch (method != null)
                                         {
@@ -476,7 +477,7 @@ namespace Corrade.HTTP
                                             {
                                                 etagStream.Position = 0;
                                                 if (
-                                                    Strings.StringEquals(
+                                                    String.Equals(
                                                         httpRequest.Headers["If-None-Match"] ?? string.Empty,
                                                         Encoding.UTF8.GetString(etagStream.ToArray())))
                                                 {
@@ -666,7 +667,7 @@ namespace Corrade.HTTP
                                                     commandGroup =
                                                         Corrade.corradeConfiguration.Groups.FirstOrDefault(
                                                             o =>
-                                                                Strings.StringEquals(o.Name,
+                                                                String.Equals(o.Name,
                                                                     Corrade.corradeConfiguration.NucleusServerGroup));
                                                     data =
                                                         Encoding.UTF8.GetBytes(

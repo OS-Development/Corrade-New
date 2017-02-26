@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using CorradeConfigurationSharp;
 using wasOpenMetaverse;
@@ -54,7 +55,7 @@ namespace Corrade
                                         Client.Self.SetAgentAccess(access, (o) =>
                                         {
                                             succeeded = o.Success;
-                                            if (Strings.StringEquals(o.NewLevel, access))
+                                            if (String.Equals(o.NewLevel, access))
                                                 succeeded = false;
                                             AgentAccessSetEvent.Set();
                                         });

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using Corrade.Constants;
@@ -112,7 +113,7 @@ namespace Corrade
                             }
                             // Check if the teleport destination is not too close.
                             if (
-                                Strings.StringEquals(region, Client.Network.CurrentSim.Name,
+                                String.Equals(region, Client.Network.CurrentSim.Name,
                                     StringComparison.OrdinalIgnoreCase) &&
                                 Vector3.Distance(Client.Self.SimPosition, position) <
                                 wasOpenMetaverse.Constants.REGION.TELEPORT_MINIMUM_DISTANCE)

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -124,7 +125,7 @@ namespace Corrade
                                                                             BindingFlags.Static)
                                                     .AsParallel()
                                                     .Where(
-                                                        q => Strings.StringEquals(p, q.Name, StringComparison.Ordinal))
+                                                        q => String.Equals(p, q.Name, StringComparison.Ordinal))
                                                     .ForAll(
                                                         r =>
                                                         {

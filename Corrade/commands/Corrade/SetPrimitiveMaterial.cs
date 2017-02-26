@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -87,7 +88,7 @@ namespace Corrade
                                                                            BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
-                                    Strings.StringEquals(o.Name, wasInput(KeyValue.Get(
+                                    String.Equals(o.Name, wasInput(KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MATERIAL)),
                                         corradeCommandParameters.Message)),
                                         StringComparison.OrdinalIgnoreCase));

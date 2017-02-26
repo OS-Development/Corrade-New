@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using String = wasSharp.String;
 using System.Linq;
 using System.Threading;
 using Corrade.Constants;
@@ -117,7 +118,7 @@ namespace Corrade
                                     RLVrule.Behaviour,
                                     StringComparison.OrdinalIgnoreCase) &&
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
-                                Strings.StringEquals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
+                                String.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
                     }
                     goto CONTINUE;
                 case wasOpenMetaverse.RLV.RLV_CONSTANTS.N:
@@ -129,7 +130,7 @@ namespace Corrade
                                 o.Behaviour.Equals(
                                     RLVrule.Behaviour,
                                     StringComparison.OrdinalIgnoreCase) &&
-                                Strings.StringEquals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase) &&
+                                String.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase) &&
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID));
                         Corrade.RLVRules.Add(RLVrule);
                     }
