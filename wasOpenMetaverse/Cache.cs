@@ -13,6 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse.Caches;
 using wasSharp;
 using wasSharp.Collections.Specialized;
+using String = wasSharp.String;
 
 namespace wasOpenMetaverse
 {
@@ -37,7 +38,6 @@ namespace wasOpenMetaverse
         private static readonly object GroupCacheLock = new object();
         private static readonly object CurrentGroupsCacheLock = new object();
         private static readonly object MuteCacheLock = new object();
-
         public static ObservableHashSet<Region> RegionCache
         {
             get
@@ -467,7 +467,7 @@ namespace wasOpenMetaverse
 
             public bool Equals(Region other)
             {
-                return Strings.StringEquals(Name, other.Name) && Handle.Equals(other.Handle) && UUID.Equals(other.UUID);
+                return String.Equals(Name, other.Name) && Handle.Equals(other.Handle) && UUID.Equals(other.UUID);
             }
 
             public override int GetHashCode()
@@ -490,8 +490,8 @@ namespace wasOpenMetaverse
 
             public bool Equals(Agent other)
             {
-                return Strings.StringEquals(FirstName, other.FirstName) &&
-                       Strings.StringEquals(LastName, other.LastName) && UUID.Equals(other.UUID);
+                return String.Equals(FirstName, other.FirstName) &&
+                       String.Equals(LastName, other.LastName) && UUID.Equals(other.UUID);
             }
 
             public override int GetHashCode()
@@ -511,7 +511,7 @@ namespace wasOpenMetaverse
 
             public bool Equals(Group other)
             {
-                return Strings.StringEquals(Name, other.Name) && UUID.Equals(other.UUID);
+                return String.Equals(Name, other.Name) && UUID.Equals(other.UUID);
             }
 
             public override int GetHashCode()
@@ -553,7 +553,7 @@ namespace wasOpenMetaverse
 
             public bool Equals(MuteEntry other)
             {
-                return ID.Equals(other.ID) && Strings.StringEquals(Name, other.Name) && Type.Equals(other.Type);
+                return ID.Equals(other.ID) && String.Equals(Name, other.Name) && Type.Equals(other.Type);
             }
 
             public override int GetHashCode()

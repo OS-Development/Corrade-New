@@ -11,6 +11,7 @@ using System.Threading;
 using OpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
+using String = wasSharp.String;
 
 namespace wasOpenMetaverse
 {
@@ -447,7 +448,7 @@ namespace wasOpenMetaverse
             EventHandler<GridRegionEventArgs> GridRegionEventHandler =
                 (sender, args) =>
                 {
-                    if (!Strings.StringEquals(name, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                    if (!String.Equals(name, args.Region.Name, StringComparison.OrdinalIgnoreCase))
                         return;
                     localRegionHandle = args.Region.RegionHandle;
                     GridRegionEvent.Set();
