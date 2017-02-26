@@ -33,13 +33,18 @@ namespace Corrade
                     var position = Vector3.Zero;
                     ulong regionHandle = 0;
                     var lookAt = Vector3.Zero;
+                    if (!Vector3.TryParse(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TURNTO)),
+                            corradeCommandParameters.Message)), out lookAt))
+                    {
+                        lookAt = Client.Self.LookAt;
+                    }
                     var landmarkAssetUUID = UUID.Zero;
                     var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                corradeCommandParameters.Message))
-                        );
+                                corradeCommandParameters.Message)));
                     switch (entity)
                     {
                         case Enumerations.Entity.GLOBAL:
@@ -67,16 +72,6 @@ namespace Corrade
                                     corradeCommandParameters.Message)), out position))
                             {
                                 position = Client.Self.SimPosition;
-                            }
-                            if (
-                                !Vector3.TryParse(
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TURNTO)),
-                                            corradeCommandParameters.Message)),
-                                    out lookAt))
-                            {
-                                lookAt = Client.Self.LookAt;
                             }
                             // We override the default teleport since region names are unique and case insensitive.
                             var region =
@@ -205,6 +200,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
                         }
                     }
+
                     bool fly;
                     // perform the post-action
                     switch (bool.TryParse(wasInput(
@@ -218,6 +214,13 @@ namespace Corrade
                             }
                             break;
                     }
+
+                    // Turn to look at the given position.
+                    lock (Locks.ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.TurnToward(position, true);
+                    }
+
                     // Set the camera on the avatar.
                     lock (Locks.ClientInstanceSelfLock)
                     {
