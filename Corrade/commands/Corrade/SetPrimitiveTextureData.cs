@@ -92,21 +92,20 @@ namespace Corrade
                                 switch (face.ToLowerInvariant())
                                 {
                                     case "all":
-                                        i = (uint) primitive.Textures.FaceTextures.Count() - 1;
-                                        do
+                                        Enumerable.Range(0, primitive.Textures.FaceTextures.Count()).AsParallel().Select(o => (uint)o).ForAll(o =>
                                         {
-                                            if (primitive.Textures.FaceTextures[i] == null)
+                                            if (primitive.Textures.FaceTextures[o] == null)
                                             {
-                                                primitive.Textures.FaceTextures[i] =
-                                                    primitive.Textures.CreateFace(i);
+                                                primitive.Textures.FaceTextures[o] =
+                                                    primitive.Textures.CreateFace(o);
                                             }
-                                            primitive.Textures.FaceTextures[i] =
-                                                primitive.Textures.FaceTextures[i].wasCSVToStructure(wasInput(
+                                            primitive.Textures.FaceTextures[o] =
+                                                primitive.Textures.FaceTextures[o].wasCSVToStructure(wasInput(
                                                     KeyValue.Get(
                                                         wasOutput(
                                                             Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                         corradeCommandParameters.Message)));
-                                        } while (--i >= 0);
+                                        });
                                         break;
                                     case "default":
                                         primitive.Textures.DefaultTexture =
