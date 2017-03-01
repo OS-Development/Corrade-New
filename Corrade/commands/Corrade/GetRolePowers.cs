@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -27,7 +26,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -45,6 +44,7 @@ namespace Corrade
                                     new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
+
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
@@ -79,7 +79,7 @@ namespace Corrade
                             args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
                         data.UnionWith(typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
-                                o => queryRole.Powers.IsMaskFlagSet((GroupPowers) o.GetValue(null)))
+                                o => queryRole.Powers.IsMaskFlagSet((GroupPowers)o.GetValue(null)))
                             .Select(o => o.Name));
                         GroupRoleDataReplyEvent.Set();
                     };
@@ -87,7 +87,7 @@ namespace Corrade
                     {
                         Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
                         Client.Groups.RequestGroupRoles(groupUUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_ROLE_POWERS);

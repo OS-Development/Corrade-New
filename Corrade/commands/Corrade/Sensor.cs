@@ -4,19 +4,17 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
-using wasOpenMetaverse;
-using wasSharp;
-using wasSharp.Timers;
-using Reflection = wasSharp.Reflection;
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
+using wasOpenMetaverse;
+using wasSharp;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -57,7 +55,7 @@ namespace Corrade
                             o =>
                                 typeof(ScriptSensorTypeFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
                                         q =>
                                         {
@@ -104,7 +102,7 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     var request = UUID.Random();
-                    var ScriptSensorReplyEvent = new ManualResetEvent(false); 
+                    var ScriptSensorReplyEvent = new ManualResetEvent(false);
                     EventHandler<ScriptSensorReplyEventArgs> ScriptSensorReplyDelegate = (sender, args) =>
                     {
                         if (!args.RequestorID.Equals(request)) return;

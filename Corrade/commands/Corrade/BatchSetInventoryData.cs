@@ -4,17 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 using Reflection = wasSharp.Reflection;
-using System.Linq;
 
 namespace Corrade
 {
@@ -51,6 +50,7 @@ namespace Corrade
                                             }
                                         }
                                         break;
+
                                     default:
                                         inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
                                             CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
@@ -60,7 +60,7 @@ namespace Corrade
                                 // Could not find inventory data so add it to the reject list.
                                 if (inventoryBase == null)
                                 {
-                                    lock(LockObject)
+                                    lock (LockObject)
                                     {
                                         if (!data.Contains(item))
                                             data.Add(item);

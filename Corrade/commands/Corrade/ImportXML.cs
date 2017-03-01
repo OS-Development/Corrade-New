@@ -4,8 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using ImageMagick;
+using OpenMetaverse;
+using OpenMetaverse.Imaging;
+using OpenMetaverse.StructuredData;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -13,11 +17,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using CorradeConfigurationSharp;
-using ImageMagick;
-using OpenMetaverse;
-using OpenMetaverse.Imaging;
-using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -36,7 +35,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -55,8 +54,8 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message));
-                    var permissions = new Permissions((uint) PermissionMask.All, (uint) PermissionMask.All,
-                        (uint) PermissionMask.All, (uint) PermissionMask.All, (uint) PermissionMask.All);
+                    var permissions = new Permissions((uint)PermissionMask.All, (uint)PermissionMask.All,
+                        (uint)PermissionMask.All, (uint)PermissionMask.All, (uint)PermissionMask.All);
                     if (!string.IsNullOrEmpty(itemPermissions))
                     {
                         permissions = Inventory.wasStringToPermissions(itemPermissions);
@@ -190,6 +189,7 @@ namespace Corrade
                                                     s.Break();
                                                 }
                                                 break;
+
                                             default:
                                                 UUID replaceTextureUUID;
                                                 if (!UUID.TryParse(fileBasename, out replaceTextureUUID))
@@ -243,12 +243,13 @@ namespace Corrade
                                                             s.Break();
                                                         }
                                                         break;
+
                                                     default:
                                                         try
                                                         {
                                                             using (
                                                                 var image =
-                                                                    (Image) new ImageConverter().ConvertFrom(fileBytes))
+                                                                    (Image)new ImageConverter().ConvertFrom(fileBytes))
                                                             {
                                                                 using (var bitmap = new Bitmap(image))
                                                                 {
@@ -269,7 +270,7 @@ namespace Corrade
                                                 // Check for economy Corrade permission.
                                                 if (
                                                     !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                                        (int) Configuration.Permissions.Economy))
+                                                        (int)Configuration.Permissions.Economy))
                                                 {
                                                     scriptError = Enumerations.ScriptError.NO_CORRADE_PERMISSIONS;
                                                     s.Break();
@@ -298,7 +299,7 @@ namespace Corrade
                                                     Client.Inventory.RequestCreateItemFromAsset(j2cBytes, fileBasename,
                                                         string.Empty, AssetType.Texture, InventoryType.Texture,
                                                         Client.Inventory.FindFolderForType(AssetType.Texture),
-                                                        delegate(bool completed, string status, UUID itemID,
+                                                        delegate (bool completed, string status, UUID itemID,
                                                             UUID assetID)
                                                         {
                                                             succeeded = completed;
@@ -307,7 +308,7 @@ namespace Corrade
                                                         });
                                                     if (
                                                         !CreateItemFromAssetEvent.WaitOne(
-                                                            (int) corradeConfiguration.ServicesTimeout, false))
+                                                            (int)corradeConfiguration.ServicesTimeout, false))
                                                     {
                                                         scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
                                                         s.Break();
@@ -342,6 +343,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Type.XML:
                             // get the primitives from the XML data.
                             try
@@ -355,6 +357,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_READ_XML_FILE);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
@@ -449,6 +452,7 @@ namespace Corrade
                                             currentPrim.Textures.DefaultTexture.TextureID =
                                                 wasOpenMetaverse.Constants.TEXTURES.TEXTURE_BLANK;
                                             break;
+
                                         default:
                                             UUID defaultTextureUUID;
                                             if (textures.TryGetValue(currentPrim.Textures.DefaultTexture.TextureID,
@@ -483,6 +487,7 @@ namespace Corrade
                                                 faceTexture.TextureID =
                                                     wasOpenMetaverse.Constants.TEXTURES.TEXTURE_BLANK;
                                                 break;
+
                                             default:
                                                 UUID faceTextureUUID;
                                                 if (textures.TryGetValue(faceTexture.TextureID, out faceTextureUUID))
@@ -499,6 +504,7 @@ namespace Corrade
                                 createdPrimitives.Add(primitive);
                                 primDone.Set();
                                 break;
+
                             case ImporterState.Linking:
                                 lock (LinkQueueLock)
                                 {
@@ -537,7 +543,7 @@ namespace Corrade
                                 linkSet.RootPrimitive.Position, linkSet.RootPrimitive.Scale,
                                 linkSet.RootPrimitive.Rotation);
 
-                            if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
@@ -558,7 +564,7 @@ namespace Corrade
                                     corradeCommandParameters.Group.UUID, position,
                                     primitive.Scale, primitive.Rotation);
 
-                                if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                     throw new Command.ScriptException(
@@ -570,7 +576,7 @@ namespace Corrade
 
                             // Create a list of the local IDs of the newly created prims
                             // Root prim is first in list.
-                            var primitiveIDs = new List<uint>(createdPrimitives.Count) {rootLocalID};
+                            var primitiveIDs = new List<uint>(createdPrimitives.Count) { rootLocalID };
 
                             switch (linkSet.ChildPrimitives.Any())
                             {
@@ -588,12 +594,13 @@ namespace Corrade
 
                                     if (
                                         primDone.WaitOne(
-                                            (int) corradeConfiguration.DataTimeout*linkSet.ChildPrimitives.Count,
+                                            (int)corradeConfiguration.DataTimeout * linkSet.ChildPrimitives.Count,
                                             false))
                                         Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
                                     //else
                                     //    Console.WriteLine("Warning: Failed to link {0} prims", linkQueue.Count);
                                     break;
+
                                 default:
                                     Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
                                     break;

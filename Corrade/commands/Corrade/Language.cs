@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade
@@ -23,7 +22,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Talk))
+                            (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -60,6 +59,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

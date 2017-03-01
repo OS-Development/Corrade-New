@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -29,7 +28,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Land))
+                                (int)Configuration.Permissions.Land))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -64,6 +63,7 @@ namespace Corrade
                                             case true:
                                                 setTextures[o] = textureUUID;
                                                 break;
+
                                             default:
                                                 var inventoryBaseItem =
                                                     Inventory.FindInventory<InventoryBase>(Client,
@@ -77,6 +77,7 @@ namespace Corrade
                                                         setTextures[o] =
                                                             (inventoryBaseItem as InventoryTexture).AssetUUID;
                                                         break;
+
                                                     default:
                                                         setTextures[o] = simTextures[o];
                                                         break;
@@ -84,6 +85,7 @@ namespace Corrade
                                                 break;
                                         }
                                         break;
+
                                     default:
                                         setTextures[o] = simTextures[o];
                                         break;

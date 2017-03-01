@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -24,7 +23,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> terrain =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -80,8 +79,8 @@ namespace Corrade
                                     "download filename",
                                     simulator.Name
                                 });
-                                if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
-                                    (int) corradeConfiguration.ServicesTimeout, false))
+                                if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle)o).ToArray(),
+                                    (int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                     Client.Assets.XferReceived -= XferReceivedEventHandler;
@@ -97,6 +96,7 @@ namespace Corrade
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 Convert.ToBase64String(data));
                             break;
+
                         case Enumerations.Action.SET:
                             try
                             {
@@ -126,7 +126,7 @@ namespace Corrade
                             {
                                 Client.Assets.UploadProgress += AssetUploadEventHandler;
                                 Client.Estate.UploadTerrain(data, simulator.Name);
-                                if (!AssetUploadEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!AssetUploadEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -134,6 +134,7 @@ namespace Corrade
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

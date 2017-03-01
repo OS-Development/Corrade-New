@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -30,7 +29,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -66,6 +65,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindPrimitive(Client,
@@ -117,6 +117,7 @@ namespace Corrade
                                                 CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                                 corradeConfiguration.ServicesTimeout);
                                         break;
+
                                     default:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
@@ -137,12 +138,13 @@ namespace Corrade
                                         inventoryBaseItem as InventoryItem);
                                 }
                                 break;
+
                             case Enumerations.Action.REMOVE:
                                 if (entityUUID.Equals(UUID.Zero))
                                 {
                                     inventoryBaseItem = Client.Inventory.GetTaskInventory(primitive.ID,
                                         primitive.LocalID,
-                                        (int) corradeConfiguration.ServicesTimeout)
+                                        (int)corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
                                     if (inventoryBaseItem == null)
@@ -157,14 +159,15 @@ namespace Corrade
                                     Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID, simulator);
                                 }
                                 break;
+
                             case Enumerations.Action.TAKE:
                                 inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
                                     ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        (int) corradeConfiguration.ServicesTimeout)
+                                        (int)corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.UUID.Equals(entityUUID))
                                     : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        (int) corradeConfiguration.ServicesTimeout)
+                                        (int)corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
                                 var inventoryItem = inventoryBaseItem as InventoryItem;
@@ -191,6 +194,7 @@ namespace Corrade
                                         simulator);
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }

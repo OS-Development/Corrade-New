@@ -14,11 +14,22 @@ namespace Corrade.Structures
     /// </summary>
     public class ScriptPermissionRequest
     {
-        [Reflection.NameAttribute("agent")] public Agent Agent;
-        [Reflection.NameAttribute("item")] public UUID Item;
-        [Reflection.NameAttribute("name")] public string Name;
-        [Reflection.NameAttribute("permissions")] public ScriptPermission Permissions;
-        [Reflection.NameAttribute("region")] public string Region;
-        [Reflection.NameAttribute("task")] public UUID Task;
+        [Reflection.NameAttribute("agent")]
+        public Agent Agent;
+
+        [Reflection.NameAttribute("item")]
+        public UUID Item;
+
+        [Reflection.NameAttribute("name")]
+        public string Name;
+
+        [Reflection.NameAttribute("permissions")]
+        public ScriptPermission Permissions;
+
+        [Reflection.NameAttribute("region")]
+        public string Region;
+
+        [Reflection.NameAttribute("task")]
+        public UUID Task;
     }
 }

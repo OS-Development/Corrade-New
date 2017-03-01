@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
 using CorradeConfigurationSharp;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
-using System.Threading;
 
 namespace Corrade
 {
@@ -38,6 +37,7 @@ namespace Corrade
                         case Enumerations.Action.GET:
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), Client.Self.AgentAccess);
                             break;
+
                         case Enumerations.Action.SET:
                             var access = wasInput(
                                     KeyValue.Get(
@@ -50,12 +50,12 @@ namespace Corrade
                                 case wasOpenMetaverse.Constants.MATURITY.ADULT:
                                     var succeeded = true;
                                     var AgentAccessSetEvent = new ManualResetEvent(false);
-                                    lock(Locks.ClientInstanceSelfLock)
+                                    lock (Locks.ClientInstanceSelfLock)
                                     {
                                         Client.Self.SetAgentAccess(access, (o) =>
                                         {
                                             succeeded = o.Success;
-                                            if (String.Equals(o.NewLevel, access))
+                                            if (string.Equals(o.NewLevel, access))
                                                 succeeded = false;
                                             AgentAccessSetEvent.Set();
                                         });
@@ -65,10 +65,12 @@ namespace Corrade
                                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_AGENT_ACCESS);
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_AGENT_ACCESSS);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -52,6 +51,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         default:
                             inventoryItem =
                                 Inventory.FindInventory<InventoryItem>(Client, item,

@@ -4,8 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
+using OpenMetaverse.Imaging;
+using OpenMetaverse.StructuredData;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.Globalization;
@@ -15,11 +19,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
-using OpenMetaverse.Imaging;
-using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
@@ -37,7 +36,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -73,6 +72,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
                             }
                             break;
+
                         default:
                             if (
                                 !Services.FindObject(Client,
@@ -87,7 +87,7 @@ namespace Corrade
                     }
 
                     var exportPrimitivesSet = new HashSet<Primitive>();
-                    var root = new Primitive(primitive) {Position = Vector3.Zero};
+                    var root = new Primitive(primitive) { Position = Vector3.Zero };
                     exportPrimitivesSet.Add(root);
 
                     var LockObject = new object();
@@ -101,13 +101,14 @@ namespace Corrade
                             switch (Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
                             {
                                 case true:
-                                    o.Position = root.Position + o.Position*root.Rotation;
-                                    o.Rotation = root.Rotation*o.Rotation;
+                                    o.Position = root.Position + o.Position * root.Rotation;
+                                    o.Rotation = root.Rotation * o.Rotation;
                                     lock (LockObject)
                                     {
                                         exportPrimitivesSet.Add(o);
                                     }
                                     break;
+
                                 default:
                                     scriptError = Enumerations.ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES;
                                     s.Break();
@@ -163,7 +164,7 @@ namespace Corrade
                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
-                                    String.Equals(o.Name, format, StringComparison.Ordinal));
+                                    string.Equals(o.Name, format, StringComparison.Ordinal));
                         if (formatProperty == null)
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
@@ -187,7 +188,7 @@ namespace Corrade
                                 {
                                     var RequestAssetEvent = new ManualResetEvent(false);
                                     Client.Assets.RequestImage(o, ImageType.Normal,
-                                        delegate(TextureRequestState state, AssetTexture asset)
+                                        delegate (TextureRequestState state, AssetTexture asset)
                                         {
                                             if (!asset.AssetID.Equals(o)) return;
                                             if (!state.Equals(TextureRequestState.Finished)) return;
@@ -195,7 +196,7 @@ namespace Corrade
                                             RequestAssetEvent.Set();
                                         });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
@@ -209,6 +210,7 @@ namespace Corrade
                                     HordeDistributeCacheAsset(o, assetData,
                                         Configuration.HordeDataSynchronizationOption.Add);
                                 break;
+
                             default:
                                 lock (Locks.ClientInstanceAssetsLock)
                                 {
@@ -234,7 +236,7 @@ namespace Corrade
                                             var encoderParameters =
                                                 new EncoderParameters(1)
                                                 {
-                                                    Param = {[0] = new EncoderParameter(Encoder.Quality, 100L)}
+                                                    Param = { [0] = new EncoderParameter(Encoder.Quality, 100L) }
                                                 };
                                             bitmapImage.Save(imageStream,
                                                 ImageCodecInfo.GetImageDecoders()
@@ -262,6 +264,7 @@ namespace Corrade
                                     }
                                 }
                                 break;
+
                             default:
                                 format = "j2c";
                                 lock (LockObject)
@@ -341,7 +344,7 @@ namespace Corrade
                         }
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.System))
+                                (int)Configuration.Permissions.System))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }

@@ -4,15 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using ImageMagick;
@@ -21,6 +12,14 @@ using NAudio.Wave;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
+using System;
+using System.Collections.Generic;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
@@ -38,7 +37,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -62,7 +61,7 @@ namespace Corrade
                         case false:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
-                    var assetType = (AssetType) assetTypeInfo.GetValue(null);
+                    var assetType = (AssetType)assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
@@ -96,7 +95,7 @@ namespace Corrade
                                     lock (Locks.ClientInstanceAssetsLock)
                                     {
                                         Client.Assets.RequestMesh(itemUUID,
-                                            delegate(bool completed, AssetMesh asset)
+                                            delegate (bool completed, AssetMesh asset)
                                             {
                                                 if (!asset.AssetID.Equals(itemUUID)) return;
                                                 succeeded = completed;
@@ -107,7 +106,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                         if (
-                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
@@ -119,7 +118,7 @@ namespace Corrade
                                 case AssetType.Notecard:
                                     if (
                                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                            (int) Configuration.Permissions.Inventory))
+                                            (int)Configuration.Permissions.Inventory))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
@@ -142,7 +141,7 @@ namespace Corrade
                                     lock (Locks.ClientInstanceAssetsLock)
                                     {
                                         Client.Assets.RequestInventoryAsset(inventoryItem, true,
-                                            delegate(AssetDownload transfer, Asset asset)
+                                            delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 succeeded = transfer.Success;
                                                 if (transfer.Success)
@@ -152,7 +151,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                         if (
-                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
@@ -164,7 +163,7 @@ namespace Corrade
                                     lock (Locks.ClientInstanceAssetsLock)
                                     {
                                         Client.Assets.RequestImage(itemUUID, ImageType.Normal,
-                                            delegate(TextureRequestState state, AssetTexture asset)
+                                            delegate (TextureRequestState state, AssetTexture asset)
                                             {
                                                 if (!asset.AssetID.Equals(itemUUID)) return;
                                                 if (!state.Equals(TextureRequestState.Finished)) return;
@@ -173,7 +172,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                         if (
-                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
@@ -190,7 +189,7 @@ namespace Corrade
                                     lock (Locks.ClientInstanceAssetsLock)
                                     {
                                         Client.Assets.RequestAsset(itemUUID, assetType, true,
-                                            delegate(AssetDownload transfer, Asset asset)
+                                            delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 if (!transfer.AssetID.Equals(itemUUID)) return;
                                                 succeeded = transfer.Success;
@@ -201,13 +200,14 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                         if (
-                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                             }
@@ -223,6 +223,7 @@ namespace Corrade
                                 HordeDistributeCacheAsset(itemUUID, assetData,
                                     Configuration.HordeDataSynchronizationOption.Add);
                             break;
+
                         default:
                             lock (Locks.ClientInstanceAssetsLock)
                             {
@@ -249,7 +250,7 @@ namespace Corrade
                                     case PlatformID.Win32NT:
                                         var magickFormat = Enum.GetValues(typeof(MagickFormat))
                                             .Cast<MagickFormat>()
-                                            .Select(i => new {i, name = Enum.GetName(typeof(MagickFormat), i)})
+                                            .Select(i => new { i, name = Enum.GetName(typeof(MagickFormat), i) })
                                             .Where(
                                                 t =>
                                                     t.name != null && t.name.Equals(format, StringComparison.Ordinal))
@@ -285,13 +286,14 @@ namespace Corrade
                                                 Enumerations.ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT);
                                         }
                                         break;
+
                                     default:
                                         var formatProperty = typeof(ImageFormat).GetProperties(
                                             BindingFlags.Public |
                                             BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 o =>
-                                                    String.Equals(o.Name, format, StringComparison.Ordinal));
+                                                    string.Equals(o.Name, format, StringComparison.Ordinal));
                                         if (formatProperty == null)
                                         {
                                             throw new Command.ScriptException(
@@ -365,6 +367,7 @@ namespace Corrade
                                                             wavWriter.Write(vorbisData, 0, vorbisData.Length);
                                                         }
                                                         break;
+
                                                     default:
                                                         throw new Command.ScriptException(
                                                             Enumerations.ScriptError.UNKOWN_SOUND_FORMAT_REQUESTED);
@@ -390,7 +393,7 @@ namespace Corrade
                     }
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.System))
+                            (int)Configuration.Permissions.System))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }

@@ -4,14 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -38,6 +36,7 @@ namespace Corrade
                         case Enumerations.Action.ADD:
                         case Enumerations.Action.REMOVE:
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
@@ -114,6 +113,7 @@ namespace Corrade
                                             Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     break;
+
                                 case AccessList.Ban:
                                     if (
                                         !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -126,6 +126,7 @@ namespace Corrade
                                             Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     break;
+
                                 case AccessList.Both:
                                     if (
                                         !Services.HasGroupPowers(Client, Client.Self.AgentID,
@@ -153,23 +154,23 @@ namespace Corrade
                     }
 
                     var random = new Random().Next();
-                    var ParcelAccessListEvent = new ManualResetEvent(false);
-                    List<ParcelManager.ParcelAccessEntry> accessList = null;
+                    List<ParcelManager.ParcelAccessEntry> accessList = new List<ParcelManager.ParcelAccessEntry>();
+                    wasSharp.Timers.DecayingAlarm ParcelAccessListAlarm = new wasSharp.Timers.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        // It's fucked, Jim.
-                        //if (!args.SequenceID.Equals(random)) return;
-                        accessList = args.AccessList;
-                        ParcelAccessListEvent.Set();
+                        if (!args.LocalID.Equals(parcel.LocalID)) return;
+
+                        ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
+                        accessList.AddRange(args.AccessList);
                     };
                     lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                         Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
-                        if (!ParcelAccessListEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);
                         }
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                     }
@@ -210,7 +211,7 @@ namespace Corrade
                                 case Enumerations.Action.ADD:
                                     if (accessList.AsParallel().Any(p => p.AgentID.Equals(agentUUID)))
                                     {
-                                        lock(LockObject)
+                                        lock (LockObject)
                                         {
                                             if (!data.Contains(o))
                                                 data.Add(o);
@@ -224,6 +225,7 @@ namespace Corrade
                                         Time = DateTime.UtcNow
                                     });
                                     break;
+
                                 case Enumerations.Action.REMOVE:
                                     if (!accessList.AsParallel().Any(p => p.AgentID.Equals(agentUUID)))
                                     {
@@ -237,7 +239,6 @@ namespace Corrade
                                     accessList.RemoveAll(p => p.AgentID.Equals(agentUUID));
                                     break;
                             }
-
                         });
 
                     // Update the parcel list.

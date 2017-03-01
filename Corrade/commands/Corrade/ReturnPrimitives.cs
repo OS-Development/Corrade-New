@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                 =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -106,7 +105,7 @@ namespace Corrade
                                         }
                                         if (
                                             !SimParcelsDownloadedEvent.WaitOne(
-                                                (int) corradeConfiguration.ServicesTimeout, false))
+                                                (int)corradeConfiguration.ServicesTimeout, false))
                                         {
                                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                             throw new Command.ScriptException(
@@ -116,6 +115,7 @@ namespace Corrade
                                     }
                                     simulator.Parcels.ForEach(o => parcels.Add(o));
                                     break;
+
                                 case true:
                                     Parcel parcel = null;
                                     if (
@@ -131,7 +131,7 @@ namespace Corrade
                                 BindingFlags.Public |
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
-                                    o => String.Equals(o.Name, type, StringComparison.OrdinalIgnoreCase));
+                                    o => string.Equals(o.Name, type, StringComparison.OrdinalIgnoreCase));
                             var returnType = objectReturnTypeField != null
                                 ? (ObjectReturnType)
                                     objectReturnTypeField
@@ -156,9 +156,11 @@ namespace Corrade
                                             case ObjectReturnType.Other:
                                                 power = GroupPowers.ReturnNonGroup;
                                                 break;
+
                                             case ObjectReturnType.Group:
                                                 power = GroupPowers.ReturnGroupSet;
                                                 break;
+
                                             case ObjectReturnType.Owner:
                                                 power = GroupPowers.ReturnGroupOwned;
                                                 break;
@@ -185,9 +187,10 @@ namespace Corrade
                                     o =>
                                         Client.Parcels.ReturnObjects(simulator, o.LocalID,
                                             returnType
-                                            , new List<UUID> {agentUUID}));
+                                            , new List<UUID> { agentUUID }));
                             }
                             break;
+
                         case Enumerations.Entity.ESTATE:
                             if (!simulator.IsEstateManager)
                             {
@@ -219,6 +222,7 @@ namespace Corrade
                                     : EstateTools.EstateReturnFlags.ReturnScriptedAndOnOthers, allEstates);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

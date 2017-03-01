@@ -3,7 +3,7 @@ using System.Resources;
 using System.Runtime.InteropServices;
 using CommandLine;
 
-// General Information about an assembly is controlled through the following 
+// General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 
@@ -22,8 +22,8 @@ using CommandLine;
     "This is free software. You may redistribute copies of it under the terms of",
     "the GNU GPLv3 License <http://www.gnu.org/copyleft/gpl.html>.")]
 
-// Setting ComVisible to false makes the types in this assembly not visible 
-// to COM components.  If you need to access a type in this assembly from 
+// Setting ComVisible to false makes the types in this assembly not visible
+// to COM components.  If you need to access a type in this assembly from
 // COM, set the ComVisible attribute to true on that type.
 
 [assembly: ComVisible(false)]
@@ -35,10 +35,10 @@ using CommandLine;
 // Version information for an assembly consists of the following four values:
 //
 //      Major Version
-//      Minor Version 
+//      Minor Version
 //      Build Number
 //      Revision
 //
 
-[assembly: AssemblyVersion("9.157.*")]
+[assembly: AssemblyVersion("9.158.*")]
 [assembly: AssemblyMetadata("configuration", "1.26")]

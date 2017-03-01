@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Land))
+                            (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -76,7 +75,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_TERRAFORM_ACTION);
                     }
-                    var terraformAction = (TerraformAction) terraformActionFieldInfo.GetValue(null);
+                    var terraformAction = (TerraformAction)terraformActionFieldInfo.GetValue(null);
                     var brush = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BRUSH)),
@@ -96,7 +95,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_TERRAFORM_BRUSH);
                     }
-                    var terraformBrush = (TerraformBrushSize) terraformBrushFieldInfo.GetValue(null);
+                    var terraformBrush = (TerraformBrushSize)terraformBrushFieldInfo.GetValue(null);
                     Vector3 position;
                     if (
                         !Vector3.TryParse(

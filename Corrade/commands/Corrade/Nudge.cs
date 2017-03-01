@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -24,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Movement))
+                            (int)Configuration.Permissions.Movement))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -38,7 +37,7 @@ namespace Corrade
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG,
                                     Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -49,11 +48,12 @@ namespace Corrade
                                     false);
                             }
                             break;
+
                         case Enumerations.Direction.FORWARD:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_AT_POS,
                                     Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -63,11 +63,12 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
+
                         case Enumerations.Direction.LEFT:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
                                         AGENT_CONTROL_LEFT_POS, Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -77,11 +78,12 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
+
                         case Enumerations.Direction.RIGHT:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
                                         AGENT_CONTROL_LEFT_NEG, Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -91,11 +93,12 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
+
                         case Enumerations.Direction.UP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_UP_POS,
                                     Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -105,11 +108,12 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
+
                         case Enumerations.Direction.DOWN:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG,
                                     Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -119,6 +123,7 @@ namespace Corrade
                                     AgentState.None, false);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DIRECTION);
                     }

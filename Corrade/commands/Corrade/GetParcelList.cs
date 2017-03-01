@@ -4,14 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -25,7 +23,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getparcellist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -80,23 +78,23 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
                     }
 
-                    var accessType = (AccessList) accessField.GetValue(null);
+                    var accessType = (AccessList)accessField.GetValue(null);
 
                     var random = new Random().Next();
-                    var ParcelAccessListEvent = new ManualResetEvent(false);
-                    List<ParcelManager.ParcelAccessEntry> accessList = null;
+                    List<ParcelManager.ParcelAccessEntry> accessList = new List<ParcelManager.ParcelAccessEntry>();
+                    wasSharp.Timers.DecayingAlarm ParcelAccessListAlarm = new wasSharp.Timers.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        // It's fucked, Jim.
-                        //if (!args.SequenceID.Equals(random)) return;
-                        accessList = args.AccessList;
-                        ParcelAccessListEvent.Set();
+                        if (!args.LocalID.Equals(parcel.LocalID)) return;
+
+                        ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
+                        accessList.AddRange(args.AccessList);
                     };
                     lock (Locks.ClientInstanceParcelsLock)
                     {
                         Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                         Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
-                        if (!ParcelAccessListEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);

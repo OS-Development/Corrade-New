@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -64,6 +63,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindObject(Client,
@@ -97,19 +97,19 @@ namespace Corrade
                         lock (Locks.ClientInstanceObjectsLock)
                         {
                             Client.Objects.SetPermissions(simulator,
-                                new List<uint> {primitive.LocalID},
+                                new List<uint> { primitive.LocalID },
                                 PermissionWho.Base, permissions.BaseMask, true);
                             Client.Objects.SetPermissions(simulator,
-                                new List<uint> {primitive.LocalID},
+                                new List<uint> { primitive.LocalID },
                                 PermissionWho.Owner, permissions.OwnerMask, true);
                             Client.Objects.SetPermissions(simulator,
-                                new List<uint> {primitive.LocalID},
+                                new List<uint> { primitive.LocalID },
                                 PermissionWho.Group, permissions.GroupMask, true);
                             Client.Objects.SetPermissions(simulator,
-                                new List<uint> {primitive.LocalID},
+                                new List<uint> { primitive.LocalID },
                                 PermissionWho.Everyone, permissions.EveryoneMask, true);
                             Client.Objects.SetPermissions(simulator,
-                                new List<uint> {primitive.LocalID},
+                                new List<uint> { primitive.LocalID },
                                 PermissionWho.NextOwner, permissions.NextOwnerMask, true);
                         }
                     };

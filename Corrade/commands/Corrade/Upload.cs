@@ -4,8 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using ImageMagick;
+using OpenMetaverse;
+using OpenMetaverse.Imaging;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -14,10 +17,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using CorradeConfigurationSharp;
-using ImageMagick;
-using OpenMetaverse;
-using OpenMetaverse.Imaging;
 using wasOpenMetaverse;
 using wasSharp;
 using Graphics = wasOpenMetaverse.Graphics;
@@ -34,7 +33,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -57,11 +56,11 @@ namespace Corrade
                         .ForAll(
                             o => typeof(PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
-                                .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
+                                .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                 .ForAll(
                                     q =>
                                     {
-                                        BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask) q.GetValue(null));
+                                        BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask)q.GetValue(null));
                                     }));
                     var assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
                                                                     BindingFlags.Static)
@@ -77,7 +76,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
-                    var assetType = (AssetType) assetTypeInfo.GetValue(null);
+                    var assetType = (AssetType)assetTypeInfo.GetValue(null);
                     byte[] data;
                     try
                     {
@@ -100,7 +99,7 @@ namespace Corrade
                             // the holy asset trinity is charged money
                             if (
                                 !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                    (int) Configuration.Permissions.Economy))
+                                    (int)Configuration.Permissions.Economy))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                             }
@@ -167,6 +166,7 @@ namespace Corrade
                                                 }
 
                                                 break;
+
                                             default:
                                                 try
                                                 {
@@ -223,19 +223,20 @@ namespace Corrade
                                                 o => o.Name.Equals(Enum.GetName(typeof(AssetType), assetType),
                                                     StringComparison.Ordinal)).GetValue(null),
                                     Client.Inventory.FindFolderForType(assetType),
-                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
                                         itemUUID = itemID;
                                         assetUUID = assetID;
                                         succeeded = completed;
                                         CreateItemFromAssetEvent.Set();
                                     });
-                                if (!CreateItemFromAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateItemFromAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
+
                         case AssetType.SoundWAV:
                         case AssetType.Sound:
                             UUID soundUUID;
@@ -262,19 +263,20 @@ namespace Corrade
                                                 o => o.Name.Equals(Enum.GetName(typeof(AssetType), assetType),
                                                     StringComparison.Ordinal)).GetValue(null),
                                     Client.Inventory.FindFolderForType(assetType),
-                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
                                         itemUUID = itemID;
                                         assetUUID = assetID;
                                         succeeded = completed;
                                         CreateSoundEvent.Set();
                                     });
-                                if (!CreateSoundEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateSoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             break;
+
                         case AssetType.Bodypart:
                         case AssetType.Clothing:
                             var wearTypeInfo = typeof(MuteType).GetFields(BindingFlags.Public |
@@ -310,21 +312,22 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)),
                                     assetType,
-                                    wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
+                                    wearableUUID, InventoryType.Wearable, (WearableType)wearTypeInfo.GetValue(null),
                                     permissions == 0 ? PermissionMask.Transfer : permissions,
-                                    delegate(bool completed, InventoryItem createdItem)
+                                    delegate (bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
                                         itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         CreateWearableEvent.Set();
                                     });
-                                if (!CreateWearableEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateWearableEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             break;
+
                         case AssetType.Landmark:
                             var landmarkUUID = Client.Assets.RequestUpload(assetType, data, false);
                             if (landmarkUUID.Equals(UUID.Zero))
@@ -342,19 +345,20 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     landmarkUUID, InventoryType.Landmark, PermissionMask.All,
-                                    delegate(bool completed, InventoryItem createdItem)
+                                    delegate (bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
                                         itemUUID = createdItem.UUID;
                                         succeeded = completed;
                                         CreateLandmarkEvent.Set();
                                     });
-                                if (!CreateLandmarkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateLandmarkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
                             }
                             break;
+
                         case AssetType.Gesture:
                             var CreateGestureEvent = new ManualResetEvent(false);
                             InventoryItem newGesture = null;
@@ -369,7 +373,7 @@ namespace Corrade
                                     assetType,
                                     UUID.Random(), InventoryType.Gesture,
                                     permissions == 0 ? PermissionMask.Transfer : permissions,
-                                    delegate(bool completed, InventoryItem createdItem)
+                                    delegate (bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
                                         itemUUID = createdItem.UUID;
@@ -377,7 +381,7 @@ namespace Corrade
                                         newGesture = createdItem;
                                         CreateGestureEvent.Set();
                                     });
-                                if (!CreateGestureEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateGestureEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -390,19 +394,20 @@ namespace Corrade
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
-                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
                                         assetUUID = assetID;
                                         itemUUID = itemID;
                                         succeeded = completed;
                                         UploadGestureAssetEvent.Set();
                                     });
-                                if (!UploadGestureAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!UploadGestureAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
+
                         case AssetType.Notecard:
                             var CreateNotecardEvent = new ManualResetEvent(false);
                             InventoryItem newNotecard = null;
@@ -417,7 +422,7 @@ namespace Corrade
                                     assetType,
                                     UUID.Random(), InventoryType.Notecard,
                                     permissions == 0 ? PermissionMask.Transfer : permissions,
-                                    delegate(bool completed, InventoryItem createdItem)
+                                    delegate (bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
                                         itemUUID = createdItem.UUID;
@@ -425,7 +430,7 @@ namespace Corrade
                                         newNotecard = createdItem;
                                         CreateNotecardEvent.Set();
                                     });
-                                if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -438,19 +443,20 @@ namespace Corrade
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
-                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
                                         assetUUID = assetID;
                                         itemUUID = itemID;
                                         succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
-                                if (!UploadNotecardAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
+
                         case AssetType.LSLText:
                             var CreateScriptEvent = new ManualResetEvent(false);
                             InventoryItem newScript = null;
@@ -465,7 +471,7 @@ namespace Corrade
                                     assetType,
                                     UUID.Random(), InventoryType.LSL,
                                     permissions == 0 ? PermissionMask.Transfer : permissions,
-                                    delegate(bool completed, InventoryItem createdItem)
+                                    delegate (bool completed, InventoryItem createdItem)
                                     {
                                         assetUUID = createdItem.AssetUUID;
                                         itemUUID = createdItem.UUID;
@@ -473,7 +479,7 @@ namespace Corrade
                                         newScript = createdItem;
                                         CreateScriptEvent.Set();
                                     });
-                                if (!CreateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -482,7 +488,7 @@ namespace Corrade
                             lock (Locks.ClientInstanceInventoryLock)
                             {
                                 Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,
-                                    delegate(bool completed, string status, bool compiled, List<string> messages,
+                                    delegate (bool completed, string status, bool compiled, List<string> messages,
                                         UUID itemID, UUID assetID)
                                     {
                                         assetUUID = assetID;
@@ -490,12 +496,13 @@ namespace Corrade
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
-                                if (!UpdateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_INVENTORY_TYPE);
                     }

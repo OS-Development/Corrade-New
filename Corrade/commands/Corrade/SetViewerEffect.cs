@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Structures.Effects;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using Corrade.Structures.Effects;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -30,7 +29,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -105,6 +104,7 @@ namespace Corrade
                                                             Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                                     }
                                                     break;
+
                                                 default:
                                                     if (
                                                         !Services.FindPrimitive(Client,
@@ -120,6 +120,7 @@ namespace Corrade
                                             }
                                             targetUUID = primitive.ID;
                                             break;
+
                                         default:
                                             if (
                                                 !UUID.TryParse(
@@ -166,7 +167,7 @@ namespace Corrade
                                                                 Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    var lookAtType = (LookAtType?) lookAtTypeInfo?.GetValue(null) ??
+                                    var lookAtType = (LookAtType?)lookAtTypeInfo?.GetValue(null) ??
                                                      LookAtType.None;
                                     // Check whether the specified UUID belongs to a different effect type.
                                     lock (PointAtEffectsLock)
@@ -213,6 +214,7 @@ namespace Corrade
                                         }
                                     }
                                     break;
+
                                 case Enumerations.ViewerEffectType.POINT:
                                     var pointAtTypeInfo = typeof(PointAtType).GetFields(BindingFlags.Public |
                                                                                         BindingFlags.Static)
@@ -225,7 +227,7 @@ namespace Corrade
                                                                 Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    var pointAtType = (PointAtType?) pointAtTypeInfo?.GetValue(null) ??
+                                    var pointAtType = (PointAtType?)pointAtTypeInfo?.GetValue(null) ??
                                                       PointAtType.None;
                                     // Check whether the specified UUID belongs to a different effect type.
                                     lock (LookAtEffectsLock)
@@ -270,6 +272,7 @@ namespace Corrade
                                         }
                                     }
                                     break;
+
                                 case Enumerations.ViewerEffectType.BEAM:
                                 case Enumerations.ViewerEffectType.SPHERE:
                                     Vector3 RGB;
@@ -355,6 +358,7 @@ namespace Corrade
                                                 });
                                             }
                                             break;
+
                                         case Enumerations.ViewerEffectType.SPHERE:
                                             // Check whether the specified UUID belongs to a different effect type.
                                             lock (LookAtEffectsLock)
@@ -401,6 +405,7 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_EFFECT);
                     }

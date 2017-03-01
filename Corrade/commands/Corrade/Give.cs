@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -30,7 +29,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -54,6 +53,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         default:
                             inventoryBase = Inventory.FindInventory<InventoryBase>(Client, item,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
@@ -86,6 +86,7 @@ namespace Corrade
                                 parentUUID = libraryFolderUUID;
                             }
                             break;
+
                         default:
                             parentUUID = inventoryBase.ParentUUID;
                             break;
@@ -151,7 +152,7 @@ namespace Corrade
                                 Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
                                     true,
                                     InventorySortOrder.ByDate);
-                                if (!FolderUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!FolderUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                                     throw new Command.ScriptException(
@@ -225,6 +226,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Entity.OBJECT:
                             // Cannot transfer folders to objects.
                             if (inventoryBase is InventoryFolder)
@@ -278,6 +280,7 @@ namespace Corrade
                                 Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryBase as InventoryItem);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

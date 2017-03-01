@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -26,7 +25,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Mute))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Mute))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -40,6 +39,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
                             }
                             break;
+
                         default:
                             mutes = Cache.MuteCache.OfType<MuteEntry>();
                             break;
@@ -125,12 +125,12 @@ namespace Corrade
                                                                             BindingFlags.Static)
                                                     .AsParallel()
                                                     .Where(
-                                                        q => String.Equals(p, q.Name, StringComparison.Ordinal))
+                                                        q => string.Equals(p, q.Name, StringComparison.Ordinal))
                                                     .ForAll(
                                                         r =>
                                                         {
                                                             BitTwiddling.SetMaskFlag(ref muteFlags,
-                                                                (MuteFlags) r.GetValue(null));
+                                                                (MuteFlags)r.GetValue(null));
                                                         }));
                                         succeeded = true;
                                         lock (Locks.ClientInstanceSelfLock)
@@ -141,7 +141,7 @@ namespace Corrade
                                                 muteFlags);
                                             if (
                                                 !MuteListUpdatedEvent.WaitOne(
-                                                    (int) corradeConfiguration.ServicesTimeout,
+                                                    (int)corradeConfiguration.ServicesTimeout,
                                                     false))
                                             {
                                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
@@ -154,6 +154,7 @@ namespace Corrade
                                             case true:
                                                 Cache.AddMute(muteFlags, targetUUID, o.Key, muteType);
                                                 break;
+
                                             case false:
                                                 lock (LockObject)
                                                 {
@@ -164,6 +165,7 @@ namespace Corrade
                                                 break;
                                         }
                                         break;
+
                                     case Enumerations.Action.UNMUTE:
                                         UUID.TryParse(o.Value, out targetUUID);
 
@@ -204,7 +206,7 @@ namespace Corrade
                                             Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
                                             if (
                                                 !MuteListUpdatedEvent.WaitOne(
-                                                    (int) corradeConfiguration.ServicesTimeout,
+                                                    (int)corradeConfiguration.ServicesTimeout,
                                                     false))
                                             {
                                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
@@ -218,6 +220,7 @@ namespace Corrade
                                                 // remove the mute from the cache
                                                 Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
                                                 break;
+
                                             case false:
                                                 lock (LockObject)
                                                 {

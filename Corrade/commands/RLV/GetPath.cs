@@ -4,15 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using OpenMetaverse;
 using wasOpenMetaverse;
-using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -50,7 +48,7 @@ namespace Corrade
                             // Try attachments
                             var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
                                 o =>
-                                    String.Equals(rule.Option, o.Name,
+                                    string.Equals(rule.Option, o.Name,
                                         StringComparison.InvariantCultureIgnoreCase));
                             if (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                             {
@@ -69,6 +67,7 @@ namespace Corrade
                                             }
                                         }
                                         break;
+
                                     default:
                                         return;
                                 }
@@ -76,7 +75,7 @@ namespace Corrade
                             }
                             var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel().FirstOrDefault(
                                 o =>
-                                    String.Equals(rule.Option, o.Name,
+                                    string.Equals(rule.Option, o.Name,
                                         StringComparison.InvariantCultureIgnoreCase));
                             if (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                             {
@@ -96,13 +95,14 @@ namespace Corrade
                                         .FirstOrDefault(
                                             o =>
                                                 o.Equals(
-                                                    (WearableType) wearTypeInfo.GetValue(null)));
+                                                    (WearableType)wearTypeInfo.GetValue(null)));
                                 if (wearable != null)
                                 {
                                     inventoryBase = wearable;
                                 }
                             }
                             break;
+
                         default:
                             attachment =
                                 Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
@@ -139,6 +139,7 @@ namespace Corrade
                                 Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             }
                             break;
+
                         default:
                             lock (Locks.ClientInstanceSelfLock)
                             {

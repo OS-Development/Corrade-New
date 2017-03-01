@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Group))
+                                (int)Configuration.Permissions.Group))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -82,7 +81,7 @@ namespace Corrade
                                 {
                                     if (
                                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                            (int) Configuration.Permissions.Economy))
+                                            (int)Configuration.Permissions.Economy))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
@@ -107,6 +106,7 @@ namespace Corrade
                                         true);
                                 }
                                 break;
+
                             case Enumerations.Action.DECLINE:
                                 lock (GroupInvitesLock)
                                 {
@@ -118,18 +118,21 @@ namespace Corrade
                                         false);
                                 }
                                 break;
+
                             case Enumerations.Action.PURGE:
                                 lock (GroupInvitesLock)
                                 {
                                     GroupInvites.Clear();
                                 }
                                 break;
+
                             case Enumerations.Action.IGNORE:
                                 lock (GroupInvitesLock)
                                 {
                                     GroupInvites.Remove(sessionUUID);
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }

@@ -4,15 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using OpenMetaverse;
 using wasOpenMetaverse;
-using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -39,7 +37,7 @@ namespace Corrade
                             var RLVwearable = wasOpenMetaverse.RLV.RLVWearables.AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        String.Equals(rule.Option, o.Name,
+                                        string.Equals(rule.Option, o.Name,
                                             StringComparison.InvariantCultureIgnoreCase));
                             switch (!RLVwearable.Equals(default(wasOpenMetaverse.RLV.RLVWearable)))
                             {
@@ -60,6 +58,7 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         default:
                             var data = new string[wasOpenMetaverse.RLV.RLVWearables.Count];
                             Enumerable.Range(0, wasOpenMetaverse.RLV.RLVWearables.Count).AsParallel().ForAll(o =>

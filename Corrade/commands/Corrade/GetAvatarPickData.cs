@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -74,7 +73,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
                             Client.Avatars.RequestAvatarPicks(agentUUID);
-                            if (!AvatarPicksReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
@@ -96,7 +95,7 @@ namespace Corrade
                         {
                             Client.Avatars.PickInfoReply += AvatarPickInfoReplyEventHandler;
                             Client.Avatars.RequestPickInfo(agentUUID, pickUUID);
-                            if (!AvatarPickInfoReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!AvatarPickInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.PickInfoReply -= AvatarPickInfoReplyEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_PICK);

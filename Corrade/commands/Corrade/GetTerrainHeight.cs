@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -25,7 +24,7 @@ namespace Corrade
                 =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -59,7 +58,7 @@ namespace Corrade
                         {
                             SimParcelsDownloadedEvent.Set();
                         }
-                        if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -106,14 +105,14 @@ namespace Corrade
                     var sx = x2 - x1 + 1;
                     var sy = y2 - y1 + 1;
 
-                    var csv = new float[sx*sy];
+                    var csv = new float[sx * sy];
                     Enumerable.Range(x1, sx)
                         .ToArray()
                         .AsParallel()
                         .ForAll(x => Enumerable.Range(y1, sy).AsParallel().ForAll(y =>
                         {
                             float height;
-                            csv[sx*x + y] = simulator.TerrainHeightAtPoint(x, y, out height)
+                            csv[sx * x + y] = simulator.TerrainHeightAtPoint(x, y, out height)
                                 ? height
                                 : -1;
                         }));

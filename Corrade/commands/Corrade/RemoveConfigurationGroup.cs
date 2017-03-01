@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.IO;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.System))
+                            (int)Configuration.Permissions.System))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -45,6 +44,7 @@ namespace Corrade
                                 ref groupName))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
+
                         default:
                             if (!Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
@@ -56,7 +56,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceConfigurationLock)
                     {
                         if (corradeConfiguration.Groups.RemoveWhere(
-                            o => String.Equals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID)).Equals(0))
+                            o => string.Equals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID)).Equals(0))
                             throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_CONFIGURED);
                     }
                     lock (ConfigurationFileLock)

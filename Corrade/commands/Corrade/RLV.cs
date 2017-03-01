@@ -4,10 +4,9 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
 using CorradeConfigurationSharp;
+using System;
+using System.Collections.Generic;
 using wasSharp;
 
 namespace Corrade
@@ -21,7 +20,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.System))
+                            (int)Configuration.Permissions.System))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -33,6 +32,7 @@ namespace Corrade
                         case Enumerations.Action.ENABLE:
                             corradeConfiguration.EnableRLV = true;
                             break;
+
                         case Enumerations.Action.DISABLE:
                             corradeConfiguration.EnableRLV = false;
                             lock (RLV.RLVRulesLock)

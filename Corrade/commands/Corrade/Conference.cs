@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Talk))
+                            (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -90,7 +89,7 @@ namespace Corrade
                             {
                                 Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                                 Client.Self.StartIMConference(conferenceParticipants.ToList(), tmpSessionUUID);
-                                if (!conferenceStartedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!conferenceStartedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                                     throw new Command.ScriptException(
@@ -122,6 +121,7 @@ namespace Corrade
                                     sessionUUID.ToString()
                                 }));
                             break;
+
                         case Enumerations.Action.DETAIL: // lists the avatar names and UUIDs of participants
                             // Get the session UUID
                             if (!UUID.TryParse(wasInput(
@@ -162,6 +162,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         case Enumerations.Action.LIST: // lists the known conferences that we are part of
                             lock (ConferencesLock)
                             {
@@ -181,6 +182,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

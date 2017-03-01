@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Movement))
+                            (int)Configuration.Permissions.Movement))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -67,7 +66,7 @@ namespace Corrade
 
                     // Generate the powers.
                     var segments =
-                        new HashSet<int>(Enumerable.Range(0, (int) affinity).Select(x => (int) Math.Pow(2, x)).Reverse());
+                        new HashSet<int>(Enumerable.Range(0, (int)affinity).Select(x => (int)Math.Pow(2, x)).Reverse());
 
                     var PositionReachedEvent = new ManualResetEvent(false);
                     EventHandler<TerseObjectUpdateEventArgs> TerseObjectUpdateEvent = (sender, args) =>
@@ -93,7 +92,7 @@ namespace Corrade
                                 new
                                 {
                                     f = new Func<int, bool>(
-                                        p => diff > vicinity*p && Client.Self.Velocity.Z < p*2),
+                                        p => diff > vicinity * p && Client.Self.Velocity.Z < p * 2),
                                     i = o
                                 })
                             .Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
@@ -102,7 +101,7 @@ namespace Corrade
                                 new
                                 {
                                     f = new Func<int, bool>(
-                                        p => diff < -vicinity*p && Client.Self.Velocity.Z > -p*2),
+                                        p => diff < -vicinity * p && Client.Self.Velocity.Z > -p * 2),
                                     i = o
                                 })
                             .Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
@@ -114,7 +113,7 @@ namespace Corrade
                         Client.Self.Movement.AtPos = diff >= 16 || segments.Select(o => new
                         {
                             f = new Func<int, bool>(
-                                p => diff >= vicinity*p && velocity < p*2),
+                                p => diff >= vicinity * p && velocity < p * 2),
                             i = o
                         }).Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
                         Client.Self.Movement.AtNeg = false;
@@ -133,7 +132,7 @@ namespace Corrade
                         Client.Self.Fly(true);
                         // Initial thrust.
                         Client.Self.Movement.UpPos = true;
-                        if (!PositionReachedEvent.WaitOne((int) duration, false))
+                        if (!PositionReachedEvent.WaitOne((int)duration, false))
                             succeeded = false;
                         Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
                         Client.Self.Movement.AtPos = false;

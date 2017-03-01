@@ -4,16 +4,15 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -30,9 +29,9 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming) ||
+                            (int)Configuration.Permissions.Grooming) ||
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Economy))
+                            (int)Configuration.Permissions.Economy))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -86,7 +85,7 @@ namespace Corrade
                         classifiedCount = args.Classifieds.Count;
                         var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
-                                String.Equals(name, o.Value, StringComparison.Ordinal));
+                                string.Equals(name, o.Value, StringComparison.Ordinal));
                         if (!classified.Equals(default(KeyValuePair<UUID, string>)))
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();
@@ -95,7 +94,7 @@ namespace Corrade
                     {
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                         Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                        if (!AvatarClassifiedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!AvatarClassifiedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
@@ -147,7 +146,7 @@ namespace Corrade
                         Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                             ? (DirectoryManager.ClassifiedCategories)
                                 classifiedCategoriesField.GetValue(null)
-                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, (int) price, position,
+                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, (int)price, position,
                             name, classifiedDescription, renew);
                     }
                 };

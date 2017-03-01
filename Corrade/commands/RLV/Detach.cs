@@ -4,15 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
-using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -45,7 +43,7 @@ namespace Corrade
                             case true:
                                 var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
                                     o =>
-                                        String.Equals(rule.Option, o.Name,
+                                        string.Equals(rule.Option, o.Name,
                                             StringComparison.InvariantCultureIgnoreCase));
                                 switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                                 {
@@ -90,6 +88,7 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout);
                                             });
                                         break;
+
                                     default: // detach by folder(s) name
                                         var inventoryFolder = Inventory.FindInventory<InventoryFolder>(Client,
                                             rule.Option,
@@ -104,7 +103,7 @@ namespace Corrade
                                             Client.Self.AgentID,
                                             false,
                                             true,
-                                            InventorySortOrder.ByDate, (int) corradeConfiguration.ServicesTimeout)
+                                            InventorySortOrder.ByDate, (int)corradeConfiguration.ServicesTimeout)
                                             .AsParallel()
                                             .Where(Inventory.CanBeWorn).ForAll(
                                                 o =>
@@ -181,6 +180,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
+
                             default:
                                 Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                     .ToArray()

@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -27,7 +26,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -45,6 +44,7 @@ namespace Corrade
                                     new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
+
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
@@ -79,7 +79,7 @@ namespace Corrade
                     {
                         Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                         Client.Groups.RequestGroupRoles(groupUUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
@@ -110,9 +110,9 @@ namespace Corrade
                             o =>
                                 typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
-                                        q => { BitTwiddling.SetMaskFlag(ref powers, (GroupPowers) q.GetValue(null)); }));
+                                        q => { BitTwiddling.SetMaskFlag(ref powers, (GroupPowers)q.GetValue(null)); }));
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.ChangeActions,

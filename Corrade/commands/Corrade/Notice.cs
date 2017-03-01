@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -46,6 +45,7 @@ namespace Corrade
                                     new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
+
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
@@ -117,6 +117,7 @@ namespace Corrade
                                             }
                                         }
                                         break;
+
                                     default:
                                         inventoryItem =
                                             Inventory.FindInventory<InventoryItem>(Client, item,
@@ -152,6 +153,7 @@ namespace Corrade
                                 Client.Groups.SendGroupNotice(groupUUID, notice);
                             }
                             break;
+
                         case Enumerations.Action.LIST:
                             var GroupNoticesReplyEvent = new ManualResetEvent(false);
                             var groupNotices = new List<GroupNoticesListEntry>();
@@ -165,7 +167,7 @@ namespace Corrade
                             {
                                 Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
                                 Client.Groups.RequestGroupNoticesList(groupUUID);
-                                if (!GroupNoticesReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!GroupNoticesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
                                     throw new Command.ScriptException(
@@ -211,6 +213,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         case Enumerations.Action.ACCEPT:
                         case Enumerations.Action.DECLINE:
                             UUID agentUUID;
@@ -245,7 +248,7 @@ namespace Corrade
                                         Client.Self.IM += InstantMessageEventHandler;
                                         Client.Groups.RequestGroupNotice(groupNotice);
                                         if (
-                                            !InstantMessageEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                            !InstantMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                                 false))
                                         {
                                             Client.Self.IM -= InstantMessageEventHandler;
@@ -268,13 +271,15 @@ namespace Corrade
                                         case true:
                                             folderUUID =
                                                 Client.Inventory.FindFolderForType(
-                                                    (AssetType) instantMessage.BinaryBucket[1]);
+                                                    (AssetType)instantMessage.BinaryBucket[1]);
                                             break;
+
                                         default:
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.NOTICE_DOES_NOT_CONTAIN_ATTACHMENT);
                                     }
                                     break;
+
                                 default:
                                     if (
                                         !UUID.TryParse(
@@ -329,6 +334,7 @@ namespace Corrade
                                     Client.Self.SimPosition, Client.Network.CurrentSim.RegionID, folderUUID.GetBytes());
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

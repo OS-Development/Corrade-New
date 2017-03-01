@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Corrade.Constants;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -29,7 +28,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming))
+                            (int)Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -73,6 +72,7 @@ namespace Corrade
                                         Enumerations.ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
                                 }
                                 break;
+
                             default:
                                 if (items.Count +
                                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
@@ -110,7 +110,7 @@ namespace Corrade
                         typeof(AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 p =>
-                                    String.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
+                                    string.Equals(o.Key, p.Name, StringComparison.Ordinal)).ForAll(
                                         q =>
                                         {
                                             InventoryItem inventoryItem = null;
@@ -127,6 +127,7 @@ namespace Corrade
                                                         }
                                                     }
                                                     break;
+
                                                 default:
                                                     inventoryItem = Inventory.FindInventory<InventoryItem>(
                                                         Client, o.Value, CORRADE_CONSTANTS.PATH_SEPARATOR,
@@ -141,7 +142,7 @@ namespace Corrade
                                             {
                                                 Inventory.Attach(Client, CurrentOutfitFolder,
                                                     inventoryItem,
-                                                    (AttachmentPoint) q.GetValue(null),
+                                                    (AttachmentPoint)q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
                                                 var slot = currentAttachments
                                                     .ToArray()

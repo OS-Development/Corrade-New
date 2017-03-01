@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
@@ -29,7 +28,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -92,6 +91,7 @@ namespace Corrade
                                 case true:
                                     primitive = updatePrimitives.AsParallel().FirstOrDefault(p => p.ID.Equals(itemUUID));
                                     break;
+
                                 default:
                                     primitive =
                                         updatePrimitives.AsParallel()
@@ -104,6 +104,7 @@ namespace Corrade
                                 case true:
                                     searchPrimitives[o] = primitive;
                                     break;
+
                                 default:
                                     succeeded = false;
                                     state.Break();
@@ -162,7 +163,7 @@ namespace Corrade
                                             Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                             Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
                                             if (
-                                                !PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                                !PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                                     false))
                                             {
                                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
@@ -172,6 +173,7 @@ namespace Corrade
                                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                         }
                                         break;
+
                                     default:
                                         // If all primitives are linked to the root and no restructuring is requested then abandon.
                                         if (
@@ -205,7 +207,7 @@ namespace Corrade
                                     Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                     // Link the primitives.
                                     Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
-                                    if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                         throw new Command.ScriptException(
@@ -214,6 +216,7 @@ namespace Corrade
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 }
                                 break;
+
                             case Enumerations.Action.DELINK:
                                 // If all primitives to delink are not linked to any other primitive then abandon.
                                 if (primitives.AsParallel().All(o => o.ParentID.Equals(0)))
@@ -225,7 +228,7 @@ namespace Corrade
                                 {
                                     Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                     Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                    if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                         throw new Command.ScriptException(
@@ -234,6 +237,7 @@ namespace Corrade
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }

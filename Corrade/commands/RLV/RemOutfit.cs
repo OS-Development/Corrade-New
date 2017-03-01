@@ -4,14 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Linq;
-using System.Reflection;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
-using wasSharp;
+using System;
+using System.Linq;
+using System.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -34,7 +32,7 @@ namespace Corrade
                                                                               BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     p =>
-                                        String.Equals(rule.Option, p.Name,
+                                        string.Equals(rule.Option, p.Name,
                                             StringComparison.InvariantCultureIgnoreCase));
                             if (wearTypeInfo == null)
                             {
@@ -48,7 +46,7 @@ namespace Corrade
                                         o =>
                                             !Inventory.IsBodyPart(Client, o) &&
                                             (o as InventoryWearable).WearableType.Equals(
-                                                (WearableType) wearTypeInfo.GetValue(null)));
+                                                (WearableType)wearTypeInfo.GetValue(null)));
                             if (wearable != null)
                             {
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -74,6 +72,7 @@ namespace Corrade
                                     corradeConfiguration.ServicesTimeout);
                             }
                             break;
+
                         default:
                             Inventory.GetWearables(Client, CurrentOutfitFolder, corradeConfiguration.ServicesTimeout)
                                 .AsParallel()

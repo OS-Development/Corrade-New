@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -25,7 +24,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getregiontop =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -54,7 +53,7 @@ namespace Corrade
                             {
                                 Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
                                 Client.Estate.RequestTopScripts();
-                                if (!TopScriptsReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!TopScriptsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                                     throw new Command.ScriptException(
@@ -63,6 +62,7 @@ namespace Corrade
                                 Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                             }
                             break;
+
                         case Enumerations.Type.COLLIDERS:
                             var TopCollidersReplyEvent = new ManualResetEvent(false);
                             EventHandler<TopCollidersReplyEventArgs> TopCollidersReplyEventHandler =
@@ -78,7 +78,7 @@ namespace Corrade
                                 Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
                                 Client.Estate.RequestTopColliders();
                                 if (
-                                    !TopCollidersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    !TopCollidersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
@@ -88,6 +88,7 @@ namespace Corrade
                                 Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_TOP_TYPE);
                     }
@@ -100,10 +101,10 @@ namespace Corrade
                                     corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                             out amount))
                     {
-                        amount = (uint) topTasks.Count;
+                        amount = (uint)topTasks.Count;
                     }
-                    var data = new List<string>(topTasks.Take((int) amount).Select(o => new[]
-                    {
+                    var data = new List<string>(topTasks.Take((int)amount).Select(o => new[]
+                   {
                         o.Value.Score.ToString(Utils.EnUsCulture),
                         o.Value.TaskName,
                         o.Key.ToString(),

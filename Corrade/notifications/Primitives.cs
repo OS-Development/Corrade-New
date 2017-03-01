@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Helpers;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade
@@ -25,14 +24,14 @@ namespace Corrade
                     if (radarPrimitivesType == typeof(PrimEventArgs))
                     {
                         var primEventArgs =
-                            (PrimEventArgs) corradeNotificationParameters.Event;
+                            (PrimEventArgs)corradeNotificationParameters.Event;
                         lock (RadarObjectsLock)
                         {
                             if (RadarObjects.ContainsKey(primEventArgs.Prim.LocalID)) return;
                             RadarObjects.Add(primEventArgs.Prim.LocalID, primEventArgs.Prim);
                         }
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -47,7 +46,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> {primEventArgs},
+                                    new List<object> { primEventArgs },
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
@@ -56,7 +55,7 @@ namespace Corrade
                     if (radarPrimitivesType == typeof(KillObjectEventArgs))
                     {
                         var killObjectEventArgs =
-                            (KillObjectEventArgs) corradeNotificationParameters.Event;
+                            (KillObjectEventArgs)corradeNotificationParameters.Event;
                         Primitive primitive;
                         lock (RadarObjectsLock)
                         {
@@ -65,12 +64,13 @@ namespace Corrade
                                 case true:
                                     RadarObjects.Remove(killObjectEventArgs.ObjectLocalID);
                                     break;
+
                                 default:
                                     return;
                             }
                         }
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -85,7 +85,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> {primitive},
+                                    new List<object> { primitive },
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));

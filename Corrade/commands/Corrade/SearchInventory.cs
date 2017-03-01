@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -42,13 +41,13 @@ namespace Corrade
                         .ForAll(
                             o => typeof(AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel()
-                                .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
+                                .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                 .ForAll(
                                     q =>
                                     {
                                         lock (LockObject)
                                         {
-                                            assetTypes.Add((AssetType) q.GetValue(null));
+                                            assetTypes.Add((AssetType)q.GetValue(null));
                                         }
                                     }));
                     var pattern =

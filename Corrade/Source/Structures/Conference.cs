@@ -14,8 +14,13 @@ namespace Corrade.Structures
     /// </summary>
     public struct Conference
     {
-        [Reflection.NameAttribute("name")] public string Name;
-        [Reflection.NameAttribute("session")] public UUID Session;
-        [Reflection.NameAttribute("restored")] public bool Restored;
+        [Reflection.NameAttribute("name")]
+        public string Name;
+
+        [Reflection.NameAttribute("session")]
+        public UUID Session;
+
+        [Reflection.NameAttribute("restored")]
+        public bool Restored;
     }
 }

@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -89,7 +88,6 @@ namespace Corrade
                                     }
                                 });
 
-
                         Func<int, int, string> WornIndicator =
                             (all, one) => all > 0 ? (all.Equals(one) ? "3" : (one > 0 ? "2" : "1")) : "0";
 
@@ -109,6 +107,7 @@ namespace Corrade
                                     optionNode = Client.Inventory.Store.GetNodeFor(RLVFolder.UUID);
                                 }
                                 break;
+
                             default:
                                 optionNode = Inventory.FindInventory<InventoryNode>(Client, rule.Option,
                                     wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null,
@@ -131,7 +130,7 @@ namespace Corrade
                                 response = new string[optionNode.Nodes.Values.Count + 1];
                                 response[0] =
                                     $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(optionNode)}";
-                                optionNode.Nodes.Values.Select((node, index) => new {node, index = index + 1})
+                                optionNode.Nodes.Values.Select((node, index) => new { node, index = index + 1 })
                                     .AsParallel()
                                     .Where(
                                         o =>

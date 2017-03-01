@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
-using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade
@@ -33,7 +32,7 @@ namespace Corrade
                         if (corradeCommandParameters.Group == null ||
                             corradeCommandParameters.Group.Equals(default(Configuration.Group)) ||
                             !corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
-                                (Configuration.Permissions) commandPermissionMaskAttribute.PermissionMask)) return;
+                                (Configuration.Permissions)commandPermissionMaskAttribute.PermissionMask)) return;
                         lock (LockObject)
                         {
                             data.Add(o);

@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -65,7 +64,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
                             Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!AvatarClassifiedsReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);

@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Net;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
+using System;
+using System.Collections.Generic;
+using System.Net;
 using TweetSharp;
 using wasSharp;
 
@@ -24,15 +23,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Talk))
+                            (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     /*
-                    * The first step to accessing the Twitter API is to create an application at 
-                    * (http://dev.twitter.com). When that process is complete, your application 
-                    * is issued a Consumer Key and Consumer Secret. These tokens are responsible 
+                    * The first step to accessing the Twitter API is to create an application at
+                    * (http://dev.twitter.com). When that process is complete, your application
+                    * is issued a Consumer Key and Consumer Secret. These tokens are responsible
                     * for identifying your application when it is in use by your customers.
                     * Additionally the access tokens will have to be generated in order to be
                     * used with this command.
@@ -96,7 +95,7 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.MESSAGE_TOO_LONG);
                             }
-                            service.SendTweet(new SendTweetOptions {Status = message},
+                            service.SendTweet(new SendTweetOptions { Status = message },
                                 (tweet, response) =>
                                 {
                                     if (!response.StatusCode.Equals(HttpStatusCode.OK))
@@ -105,6 +104,7 @@ namespace Corrade
                                     }
                                 });
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

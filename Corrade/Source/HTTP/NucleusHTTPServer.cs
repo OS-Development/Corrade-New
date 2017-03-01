@@ -4,8 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using Corrade.Structures;
+using CorradeConfigurationSharp;
+using MimeSharp;
+using Newtonsoft.Json;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -17,12 +22,6 @@ using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Corrade.Constants;
-using Corrade.Structures;
-using CorradeConfigurationSharp;
-using MimeSharp;
-using Newtonsoft.Json;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Utilities;
@@ -38,6 +37,11 @@ namespace Corrade.HTTP
 {
     internal class NucleusHTTPServer : HTTPServer
     {
+        public static Dictionary<string, Dictionary<string, string>> NucleusNotifications =
+            new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+        public object NucleusNotificationsLock = new object();
+
         public static readonly Action PurgeNucleus = () =>
         {
             lock (NucleusLock)
@@ -53,12 +57,12 @@ namespace Corrade.HTTP
 
         private static readonly object NucleusLock = new object();
 
-        public readonly Timer CacheExpiryTimer = new Timer(((Expression<Action>) (() =>
-            Nucleus.Value.Values.AsParallel()
-                .TakeWhile(o => o.CachedTime.Add(o.CacheExpire).CompareTo(DateTime.Now) <= 0)
-                .Take(1)
-                .ForAll(o => PurgeNucleus.Invoke()
-                ))).Compile(), TimeSpan.Zero, TimeSpan.Zero);
+        public readonly Timer CacheExpiryTimer = new Timer(((Expression<Action>)(() =>
+           Nucleus.Value.Values.AsParallel()
+               .TakeWhile(o => o.CachedTime.Add(o.CacheExpire).CompareTo(DateTime.Now) <= 0)
+               .Take(1)
+               .ForAll(o => PurgeNucleus.Invoke()
+               ))).Compile(), TimeSpan.Zero, TimeSpan.Zero);
 
         public bool SuggestNoCaching { get; set; } = false;
 
@@ -206,17 +210,17 @@ namespace Corrade.HTTP
                     // If authentication is not enabled or the client has not sent any authentication then stop.
                     if (!httpContext.Request.IsAuthenticated)
                     {
-                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                     }
 
-                    var identity = (HttpListenerBasicIdentity) httpContext.User.Identity;
+                    var identity = (HttpListenerBasicIdentity)httpContext.User.Identity;
                     if (
                         !identity.Name.Equals(Corrade.corradeConfiguration.NucleusServerUsername,
                             StringComparison.Ordinal) ||
                         !Utils.SHA1String(identity.Password).Equals(Corrade.corradeConfiguration.NucleusServerPassword,
                             StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                     }
                 }
 
@@ -235,6 +239,7 @@ namespace Corrade.HTTP
                 var path = httpRequest.Url.Segments.Select(o => o.Replace(@"/", ""))
                     .Where(o => !string.IsNullOrEmpty(o));
 
+                var ContentSent = false;
                 switch (httpRequest.HttpMethod)
                 {
                     case WebRequestMethods.Http.Put:
@@ -265,9 +270,11 @@ namespace Corrade.HTTP
                                         case "gzip":
                                             await httpRequest.InputStream.GZipDecompress(dataMemoryStream);
                                             break;
+
                                         case "deflate":
                                             await httpRequest.InputStream.DeflateDecompress(dataMemoryStream);
                                             break;
+
                                         default:
                                             await httpRequest.InputStream.CopyToAsync(dataMemoryStream);
                                             break;
@@ -292,9 +299,9 @@ namespace Corrade.HTTP
                                                 .AsParallel()
                                                 .Any(p =>
                                                     p is HTTPRequestMapping &&
-                                                    String.Equals(((HTTPRequestMapping) p).Method,
+                                                    string.Equals(((HTTPRequestMapping)p).Method,
                                                         httpRequest.HttpMethod.ToUpperInvariant()) &&
-                                                    String.Equals(((HTTPRequestMapping) p).Map, methodName)));
+                                                    string.Equals(((HTTPRequestMapping)p).Map, methodName)));
 
                                     switch (method != null)
                                     {
@@ -308,10 +315,15 @@ namespace Corrade.HTTP
                                                 .Where(o => o.ParameterType == typeof(string))
                                                 .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                 // Add custom items.
-                                                .Concat(new dynamic[] {dataMemoryStream})
+                                                .Concat(new dynamic[] { dataMemoryStream })
                                                 .ToArray();
 
-                                            await (Task) method.Invoke(this, @params);
+                                            NucleusResponse.StatusCode = (int)HttpStatusCode.OK;
+
+                                            await ((Task)method.Invoke(this, @params)).ContinueWith((o) =>
+                                           {
+                                               ContentSent = true;
+                                           });
                                             break;
                                     }
                                 }
@@ -319,19 +331,24 @@ namespace Corrade.HTTP
                             catch (HTTPException ex)
                             {
                                 /* There was an error and it's our fault */
-                                NucleusResponse.StatusCode = ex.StatusCode;
+                                if (!ContentSent)
+                                {
+                                    NucleusResponse.StatusCode = ex.StatusCode;
+                                }
                                 throw;
                             }
                             catch (Exception)
                             {
                                 /* There was an error and it's our fault */
-                                NucleusResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                if (!ContentSent)
+                                {
+                                    NucleusResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                }
                                 throw;
                             }
-
-                            NucleusResponse.StatusCode = (int) HttpStatusCode.OK;
                         }
                         break;
+
                     case WebRequestMethods.Http.Get:
                         using (var NucleusResponse = httpContext.Response)
                         {
@@ -360,9 +377,9 @@ namespace Corrade.HTTP
                                                     .AsParallel()
                                                     .Any(p =>
                                                         p is HTTPRequestMapping &&
-                                                        String.Equals(((HTTPRequestMapping) p).Method,
+                                                        string.Equals(((HTTPRequestMapping)p).Method,
                                                             httpRequest.HttpMethod.ToUpperInvariant()) &&
-                                                        String.Equals(((HTTPRequestMapping) p).Map, methodName)));
+                                                        string.Equals(((HTTPRequestMapping)p).Map, methodName)));
 
                                         switch (method != null)
                                         {
@@ -376,12 +393,13 @@ namespace Corrade.HTTP
                                                     .Where(o => o.ParameterType == typeof(string))
                                                     .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                     // Add custom items.
-                                                    .Concat(new dynamic[] {NucleusResponse, dataMemoryStream})
+                                                    .Concat(new dynamic[] { NucleusResponse, dataMemoryStream })
                                                     .ToArray();
 
                                                 // Invoke the method.
-                                                await (Task) method.Invoke(this, @params);
+                                                await (Task)method.Invoke(this, @params);
                                                 break;
+
                                             default:
                                                 lock (NucleusLock)
                                                 {
@@ -477,11 +495,11 @@ namespace Corrade.HTTP
                                             {
                                                 etagStream.Position = 0;
                                                 if (
-                                                    String.Equals(
+                                                    string.Equals(
                                                         httpRequest.Headers["If-None-Match"] ?? string.Empty,
                                                         Encoding.UTF8.GetString(etagStream.ToArray())))
                                                 {
-                                                    NucleusResponse.StatusCode = (int) HttpStatusCode.NotModified;
+                                                    NucleusResponse.StatusCode = (int)HttpStatusCode.NotModified;
                                                     return;
                                                 }
                                             }
@@ -490,7 +508,7 @@ namespace Corrade.HTTP
                                         // Create the output stream.
                                         using (var outputStream = new MemoryStream())
                                         {
-                                            // perform compression based on the encoding advertised by the client. 
+                                            // perform compression based on the encoding advertised by the client.
                                             var replyEncoding = new QValue(@"identity");
                                             var acceptEncoding = httpRequest.Headers.GetValues(@"Accept-Encoding");
                                             if (acceptEncoding != null && acceptEncoding.Any())
@@ -512,10 +530,12 @@ namespace Corrade.HTTP
                                                     await dataMemoryStream.GZipCompress(outputStream, true);
                                                     NucleusResponse.AddHeader(@"Content-Encoding", @"gzip");
                                                     break;
+
                                                 case "deflate": // deflate compression
                                                     await dataMemoryStream.DeflateCompress(outputStream, true);
                                                     NucleusResponse.AddHeader(@"Content-Encoding", @"deflate");
                                                     break;
+
                                                 default: // no compression
                                                     NucleusResponse.AddHeader(@"Content-Encoding", @"UTF-8");
                                                     await dataMemoryStream.CopyToAsync(outputStream);
@@ -530,6 +550,7 @@ namespace Corrade.HTTP
                                                     NucleusResponse.SendChunked = true;
                                                     NucleusResponse.KeepAlive = true;
                                                     break;
+
                                                 default:
                                                     // Set content length.
                                                     NucleusResponse.ContentLength64 = outputStream.Length;
@@ -538,21 +559,67 @@ namespace Corrade.HTTP
                                                     break;
                                             }
 
+                                            switch (SuggestNoCaching)
+                                            {
+                                                case true: // No caching was chosen so tell the client to not cache the response.
+                                                    switch (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
+                                                    {
+                                                        case true:
+                                                            NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
+                                                                "no-cache, no-store, must-revalidate");
+                                                            break;
+
+                                                        default:
+                                                            NucleusResponse.Headers.Set(HttpResponseHeader.Pragma, "no-cache");
+                                                            break;
+                                                    }
+                                                    NucleusResponse.Headers.Set(HttpResponseHeader.Expires, "0");
+                                                    break;
+
+                                                default:
+                                                    // Set the expires time of the resource depending on the nucleus rebuild schedule.
+                                                    if (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
+                                                    {
+                                                        NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
+                                                            $"max-age={CacheExpiryTimer.DueTime.Seconds}, public");
+                                                        etagStream.Position = 0;
+                                                        NucleusResponse.Headers.Set(HttpResponseHeader.ETag,
+                                                            Encoding.UTF8.GetString(etagStream.ToArray()));
+                                                        break;
+                                                    }
+                                                    NucleusResponse.Headers.Set(HttpResponseHeader.Expires,
+                                                        DateTime.UtcNow.Add(CacheExpiryTimer.DueTime)
+                                                            .ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
+                                                    NucleusResponse.Headers.Set(HttpResponseHeader.LastModified,
+                                                        CacheExpiryTimer.ScheduledTime.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
+                                                    break;
+                                            }
+                                            NucleusResponse.StatusCode = (int)HttpStatusCode.OK;
+
                                             outputStream.Position = 0;
-                                            await outputStream.CopyToAsync(NucleusResponse.OutputStream);
+                                            await outputStream.CopyToAsync(NucleusResponse.OutputStream).ContinueWith((o) =>
+                                            {
+                                                ContentSent = true;
+                                            });
                                         }
                                     }
                                 }
                                 catch (HTTPException ex)
                                 {
                                     /* There was an error and it's our fault */
-                                    NucleusResponse.StatusCode = ex.StatusCode;
+                                    if (!ContentSent)
+                                    {
+                                        NucleusResponse.StatusCode = ex.StatusCode;
+                                    }
                                     throw;
                                 }
                                 catch (Exception)
                                 {
                                     /* There was an error and it's our fault */
-                                    NucleusResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                    if (!ContentSent)
+                                    {
+                                        NucleusResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                    }
                                     throw;
                                 }
                                 finally
@@ -567,48 +634,16 @@ namespace Corrade.HTTP
                                                     Corrade.corradeConfiguration.NucleusServerCachePurgeInterval),
                                                 TimeSpan.Zero);
                                             break;
+
                                         default:
                                             PurgeNucleus.Invoke();
                                             break;
                                     }
                                 }
-                                switch (SuggestNoCaching)
-                                {
-                                    case true: // No caching was chosen so tell the client to not cache the response.
-                                        switch (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
-                                        {
-                                            case true:
-                                                NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
-                                                    "no-cache, no-store, must-revalidate");
-                                                break;
-                                            default:
-                                                NucleusResponse.Headers.Set(HttpResponseHeader.Pragma, "no-cache");
-                                                break;
-                                        }
-                                        NucleusResponse.Headers.Set(HttpResponseHeader.Expires, "0");
-                                        break;
-                                    default:
-                                        // Set the expires time of the resource depending on the nucleus rebuild schedule.
-                                        if (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
-                                        {
-                                            NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
-                                                $"max-age={CacheExpiryTimer.DueTime.Seconds}, public");
-                                            etagStream.Position = 0;
-                                            NucleusResponse.Headers.Set(HttpResponseHeader.ETag,
-                                                Encoding.UTF8.GetString(etagStream.ToArray()));
-                                            break;
-                                        }
-                                        NucleusResponse.Headers.Set(HttpResponseHeader.Expires,
-                                            DateTime.UtcNow.Add(CacheExpiryTimer.DueTime)
-                                                .ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
-                                        NucleusResponse.Headers.Set(HttpResponseHeader.LastModified,
-                                            CacheExpiryTimer.ScheduledTime.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
-                                        break;
-                                }
-                                NucleusResponse.StatusCode = (int) HttpStatusCode.OK;
                             }
                         }
                         break;
+
                     case WebRequestMethods.Http.Post:
                         using (var NucleusResponse = httpContext.Response)
                         {
@@ -636,9 +671,11 @@ namespace Corrade.HTTP
                                         case "gzip":
                                             await httpRequest.InputStream.GZipDecompress(dataMemoryStream);
                                             break;
+
                                         case "deflate":
                                             await httpRequest.InputStream.DeflateDecompress(dataMemoryStream);
                                             break;
+
                                         default:
                                             await httpRequest.InputStream.CopyToAsync(dataMemoryStream);
                                             break;
@@ -650,7 +687,7 @@ namespace Corrade.HTTP
 
                                     // ignore empty messages right-away.
                                     if (string.IsNullOrEmpty(message))
-                                        throw new HTTPException((int) HttpStatusCode.BadRequest);
+                                        throw new HTTPException((int)HttpStatusCode.BadRequest);
 
                                     // Attempt to retrieve the group from the message.
                                     var commandGroup = Corrade.GetCorradeGroupFromMessage(message,
@@ -667,7 +704,7 @@ namespace Corrade.HTTP
                                                     commandGroup =
                                                         Corrade.corradeConfiguration.Groups.FirstOrDefault(
                                                             o =>
-                                                                String.Equals(o.Name,
+                                                                string.Equals(o.Name,
                                                                     Corrade.corradeConfiguration.NucleusServerGroup));
                                                     data =
                                                         Encoding.UTF8.GetBytes(
@@ -681,6 +718,7 @@ namespace Corrade.HTTP
                                                                     Sender = "Nucleus"
                                                                 })));
                                                     break;
+
                                                 default: // Generate a temporary group if no group was specified.
                                                     commandGroup = new Configuration.Group
                                                     {
@@ -717,6 +755,7 @@ namespace Corrade.HTTP
                                                     break;
                                             }
                                             break;
+
                                         default:
                                             data =
                                                 Encoding.UTF8.GetBytes(
@@ -758,6 +797,7 @@ namespace Corrade.HTTP
                                                 }
                                                 NucleusResponse.AddHeader("Content-Encoding", "gzip");
                                                 break;
+
                                             case "deflate":
                                                 using (var memoryStream = new MemoryStream(data))
                                                 {
@@ -765,6 +805,7 @@ namespace Corrade.HTTP
                                                 }
                                                 NucleusResponse.AddHeader("Content-Encoding", "deflate");
                                                 break;
+
                                             default:
                                                 NucleusResponse.AddHeader("Content-Encoding", "UTF-8");
                                                 using (var memoryStream = new MemoryStream(data))
@@ -775,51 +816,56 @@ namespace Corrade.HTTP
                                         }
 
                                         // KeepAlive and ChunkedEncoding for HTTP 1.1
+                                        // Command output should not be cached.
                                         switch (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
                                         {
                                             case true:
+
                                                 NucleusResponse.ProtocolVersion = HttpVersion.Version11;
                                                 NucleusResponse.SendChunked = true;
                                                 NucleusResponse.KeepAlive = true;
+                                                NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
+                                                    "no-cache, no-store, must-revalidate");
                                                 break;
+
                                             default:
                                                 // Set content length.
                                                 NucleusResponse.ContentLength64 = outputStream.Length;
                                                 NucleusResponse.SendChunked = false;
                                                 NucleusResponse.KeepAlive = false;
+                                                NucleusResponse.Headers.Set(HttpResponseHeader.Pragma, "no-cache");
                                                 break;
                                         }
 
+                                        NucleusResponse.Headers.Set(HttpResponseHeader.Expires, "0");
+                                        NucleusResponse.StatusCode = (int)HttpStatusCode.OK;
+
                                         outputStream.Position = 0;
-                                        await outputStream.CopyToAsync(NucleusResponse.OutputStream);
+                                        await outputStream.CopyToAsync(NucleusResponse.OutputStream).ContinueWith((o) =>
+                                        {
+                                            ContentSent = true;
+                                        });
                                     }
                                 }
                             }
                             catch (HTTPException ex)
                             {
                                 /* There was an error and it's our fault */
-                                NucleusResponse.StatusCode = ex.StatusCode;
+                                if (!ContentSent)
+                                {
+                                    NucleusResponse.StatusCode = ex.StatusCode;
+                                }
                                 throw;
                             }
                             catch (Exception)
                             {
                                 /* There was an error and it's our fault */
-                                NucleusResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                if (!ContentSent)
+                                {
+                                    NucleusResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                }
                                 throw;
                             }
-                            // Command output should not be cached.
-                            switch (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
-                            {
-                                case true:
-                                    NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
-                                        "no-cache, no-store, must-revalidate");
-                                    break;
-                                default:
-                                    NucleusResponse.Headers.Set(HttpResponseHeader.Pragma, "no-cache");
-                                    break;
-                            }
-                            NucleusResponse.Headers.Set(HttpResponseHeader.Expires, "0");
-                            NucleusResponse.StatusCode = (int) HttpStatusCode.OK;
                         }
                         break;
                 }
@@ -859,13 +905,14 @@ namespace Corrade.HTTP
                             await dataMemoryStream.CopyToAsync(fileStream);
                         }
                         break;
+
                     default:
-                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                 }
             }
             catch
             {
-                throw new HTTPException((int) HttpStatusCode.InternalServerError);
+                throw new HTTPException((int)HttpStatusCode.InternalServerError);
             }
         }
 
@@ -880,16 +927,16 @@ namespace Corrade.HTTP
                 {
                     throw new HTTPException((int)HttpStatusCode.Forbidden);
                 }
+                NucleusResponse.ContentType = mime.Lookup(Path.GetFileName(file));
                 using (var fileStream = new FileStream(file, FileMode.Open,
                     FileAccess.Read, FileShare.Read, 16384, true))
                 {
                     await fileStream.CopyToAsync(memoryStream);
                 }
-                NucleusResponse.ContentType = mime.Lookup(Path.GetFileName(file));
             }
             catch
             {
-                throw new HTTPException((int) HttpStatusCode.NotFound);
+                throw new HTTPException((int)HttpStatusCode.NotFound);
             }
         }
 
@@ -912,7 +959,27 @@ namespace Corrade.HTTP
             }
             catch
             {
-                throw new HTTPException((int) HttpStatusCode.NotFound);
+                throw new HTTPException((int)HttpStatusCode.NotFound);
+            }
+        }
+
+        [HTTPRequestMapping("events", "GET")]
+        private async Task GetNotification(string type, string notification, HttpListenerResponse NucleusResponse,
+            MemoryStream memoryStream)
+        {
+            Dictionary<string, string> notificationData;
+
+            lock (NucleusNotifications)
+            {
+                if (!NucleusNotifications.TryGetValue(notification, out notificationData))
+                    throw new HTTPException((int)HttpStatusCode.NotFound);
+            }
+
+            NucleusResponse.ContentType = @"application/json";
+            using (var notificationStream = new MemoryStream(
+                Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(notificationData))))
+            {
+                await notificationStream.CopyToAsync(memoryStream);
             }
         }
 
@@ -925,15 +992,17 @@ namespace Corrade.HTTP
                 switch (file)
                 {
                     case "Corrade.ini":
+                        NucleusResponse.ContentType = @"text/xml";
                         using (
                             var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open,
                                 FileAccess.Read, FileShare.Read, 16384, true))
                         {
                             await fileStream.CopyToAsync(memoryStream);
                         }
-                        NucleusResponse.ContentType = @"text/xml";
                         break;
+
                     case "Corrade.ini.default":
+                        NucleusResponse.ContentType = @"text/xml";
                         using (
                             var manifestStream =
                                 Assembly.GetExecutingAssembly()
@@ -941,15 +1010,15 @@ namespace Corrade.HTTP
                         {
                             await manifestStream.CopyToAsync(memoryStream);
                         }
-                        NucleusResponse.ContentType = @"text/xml";
                         break;
+
                     default:
-                        throw new HTTPException((int) HttpStatusCode.NotFound);
+                        throw new HTTPException((int)HttpStatusCode.NotFound);
                 }
             }
             catch
             {
-                throw new HTTPException((int) HttpStatusCode.NotFound);
+                throw new HTTPException((int)HttpStatusCode.NotFound);
             }
         }
 

@@ -4,15 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using OpenMetaverse;
 using wasOpenMetaverse;
-using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -49,7 +47,7 @@ namespace Corrade
                         case true:
                             var RLVattachment = wasOpenMetaverse.RLV.RLVAttachments.AsParallel().FirstOrDefault(
                                 o =>
-                                    String.Equals(rule.Option, o.Name,
+                                    string.Equals(rule.Option, o.Name,
                                         StringComparison.InvariantCultureIgnoreCase));
                             switch (!RLVattachment.Equals(default(wasOpenMetaverse.RLV.RLVAttachment)))
                             {
@@ -58,11 +56,13 @@ namespace Corrade
                                         goto default;
                                     response.Append(wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER);
                                     break;
+
                                 default:
                                     response.Append(wasOpenMetaverse.RLV.RLV_CONSTANTS.FALSE_MARKER);
                                     break;
                             }
                             break;
+
                         default:
                             var data = new string[wasOpenMetaverse.RLV.RLVAttachments.Count];
                             Enumerable.Range(0, wasOpenMetaverse.RLV.RLVAttachments.Count).AsParallel().ForAll(o =>
@@ -73,6 +73,7 @@ namespace Corrade
                                     case true:
                                         data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.FALSE_MARKER;
                                         return;
+
                                     default:
                                         data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER;
                                         break;

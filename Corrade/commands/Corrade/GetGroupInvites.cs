@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade
@@ -23,7 +22,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -41,7 +40,7 @@ namespace Corrade
                                 {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), o.Agent.LastName});
                                 csv.AddRange(new[]
                                 {Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT), o.Agent.UUID.ToString()});
-                                csv.AddRange(new[] {Reflection.GetNameFromEnumValue(Command.ScriptKeys.GROUP), o.Group});
+                                csv.AddRange(new[] { Reflection.GetNameFromEnumValue(Command.ScriptKeys.GROUP), o.Group });
                                 csv.AddRange(new[]
                                 {Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION), o.Session.ToString()});
                                 csv.AddRange(new[]

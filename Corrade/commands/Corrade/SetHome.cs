@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Threading;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using wasOpenMetaverse;
 
 namespace Corrade
@@ -23,7 +22,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming))
+                            (int)Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -37,6 +36,7 @@ namespace Corrade
                                 succeeded = false;
                                 AlertMessageEvent.Set();
                                 break;
+
                             case wasOpenMetaverse.Constants.ALERTS.HOME_SET:
                                 succeeded = true;
                                 AlertMessageEvent.Set();
@@ -47,7 +47,7 @@ namespace Corrade
                     {
                         Client.Self.AlertMessage += AlertMessageEventHandler;
                         Client.Self.SetHome();
-                        if (!AlertMessageEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!AlertMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME);

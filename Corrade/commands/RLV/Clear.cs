@@ -4,9 +4,8 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
 using OpenMetaverse;
+using System;
 
 namespace Corrade
 {
@@ -25,6 +24,7 @@ namespace Corrade
                                 RLVRules.RemoveWhere(o => o.Behaviour.Contains(rule.Behaviour));
                             }
                             break;
+
                         case false:
                             lock (RLV.RLVRulesLock)
                             {

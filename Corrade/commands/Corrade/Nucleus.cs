@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Net;
-using CorradeConfigurationSharp;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
 
@@ -53,6 +52,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Action.STOP:
                             if (HttpListener.IsSupported && NucleusHTTPServer.IsRunning)
                             {
@@ -69,9 +69,11 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Action.PURGE:
                             NucleusHTTPServer.CacheExpiryTimer.Change(TimeSpan.MinValue, TimeSpan.Zero);
                             break;
+
                         case Enumerations.Action.SET:
                         case Enumerations.Action.GET:
                             var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
@@ -90,6 +92,7 @@ namespace Corrade
                                             break;
                                     }
                                     break;
+
                                 case Enumerations.Entity.AUTHENTICATION:
                                     switch (action)
                                     {
@@ -97,19 +100,21 @@ namespace Corrade
                                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                                 (!NucleusHTTPServer.AuthenticationSchemes.Equals(AuthenticationSchemes.Anonymous)).ToString());
                                             break;
+
                                         case Enumerations.Action.SET:
                                             NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Basic;
                                             break;
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
-
                 };
         }
     }

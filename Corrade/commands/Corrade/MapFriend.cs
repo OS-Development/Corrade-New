@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Threading;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -26,7 +25,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Friendship))
+                            (int)Configuration.Permissions.Friendship))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -84,7 +83,7 @@ namespace Corrade
                     {
                         Client.Friends.FriendFoundReply += FriendFoundEventHandler;
                         Client.Friends.MapFriend(agentUUID);
-                        if (!FriendFoundEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!FriendFoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_MAPPING_FRIEND);
@@ -107,7 +106,7 @@ namespace Corrade
                     {
                         Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                         Client.Parcels.RequestParcelInfo(parcelUUID);
-                        if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -115,7 +114,7 @@ namespace Corrade
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                     }
                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                        CSV.FromEnumerable(new[] {regionName, position.ToString()}));
+                        CSV.FromEnumerable(new[] { regionName, position.ToString() }));
                 };
         }
     }

@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Movement))
+                            (int)Configuration.Permissions.Movement))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -66,6 +65,7 @@ namespace Corrade
                             position.X = x;
                             position.Y = y;
                             break;
+
                         case Enumerations.Entity.REGION:
                             if (!Vector3.TryParse(wasInput(
                                 KeyValue.Get(
@@ -101,6 +101,7 @@ namespace Corrade
                                             Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
                                     region = parcelInfo.SimName;
                                     break;
+
                                 default:
                                     if (string.IsNullOrEmpty(region))
                                     {
@@ -113,7 +114,7 @@ namespace Corrade
                             }
                             // Check if the teleport destination is not too close.
                             if (
-                                String.Equals(region, Client.Network.CurrentSim.Name,
+                                string.Equals(region, Client.Network.CurrentSim.Name,
                                     StringComparison.OrdinalIgnoreCase) &&
                                 Vector3.Distance(Client.Self.SimPosition, position) <
                                 wasOpenMetaverse.Constants.REGION.TELEPORT_MINIMUM_DISTANCE)
@@ -127,6 +128,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                             }
                             break;
+
                         case Enumerations.Entity.LANDMARK:
                             var item = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
@@ -145,6 +147,7 @@ namespace Corrade
                                 landmarkAssetUUID = inventoryItem.AssetUUID;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
@@ -184,12 +187,15 @@ namespace Corrade
                             case Enumerations.Entity.GLOBAL:
                                 succeeded = Client.Self.Teleport(regionHandle, position);
                                 break;
+
                             case Enumerations.Entity.REGION:
                                 succeeded = Client.Self.Teleport(regionHandle, position, lookAt);
                                 break;
+
                             case Enumerations.Entity.LANDMARK:
                                 succeeded = Client.Self.Teleport(landmarkAssetUUID);
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }

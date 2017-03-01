@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Land))
+                                (int)Configuration.Permissions.Land))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -66,6 +65,7 @@ namespace Corrade
                                         case true: // the name could not be resolved to an UUID so add it to the return
                                             data.Add(o);
                                             break;
+
                                         default: // the name could be resolved so send them home
                                             lock (Locks.ClientInstanceEstateLock)
                                             {
@@ -74,6 +74,7 @@ namespace Corrade
                                             break;
                                     }
                                     break;
+
                                 default:
                                     lock (Locks.ClientInstanceEstateLock)
                                     {

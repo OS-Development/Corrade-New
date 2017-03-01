@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -63,6 +62,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindPrimitive(Client,
@@ -77,56 +77,56 @@ namespace Corrade
                         }
                         var particleSystem = new StringBuilder();
                         particleSystem.Append("PSYS_PART_FLAGS, 0");
-                        if (!((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.InterpColor).Equals(0))
+                        if (!((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.InterpColor).Equals(0))
                             particleSystem.Append(" | PSYS_PART_INTERP_COLOR_MASK");
-                        if (!((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.InterpScale).Equals(0))
+                        if (!((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.InterpScale).Equals(0))
                             particleSystem.Append(" | PSYS_PART_INTERP_SCALE_MASK");
                         if (
-                            !((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.Bounce).Equals(0))
+                            !((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.Bounce).Equals(0))
                             particleSystem.Append(" | PSYS_PART_BOUNCE_MASK");
                         if (
-                            !((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.Wind).Equals(0))
+                            !((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.Wind).Equals(0))
                             particleSystem.Append(" | PSYS_PART_WIND_MASK");
                         if (
-                            !((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.FollowSrc).Equals(0))
+                            !((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.FollowSrc).Equals(0))
                             particleSystem.Append(" | PSYS_PART_FOLLOW_SRC_MASK");
-                        if (!((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.FollowVelocity).Equals(0))
+                        if (!((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.FollowVelocity).Equals(0))
                             particleSystem.Append(" | PSYS_PART_FOLLOW_VELOCITY_MASK");
                         if (
-                            !((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.TargetPos).Equals(0))
+                            !((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.TargetPos).Equals(0))
                             particleSystem.Append(" | PSYS_PART_TARGET_POS_MASK");
-                        if (!((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.TargetLinear).Equals(0))
+                        if (!((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.TargetLinear).Equals(0))
                             particleSystem.Append(" | PSYS_PART_TARGET_LINEAR_MASK");
                         if (
-                            !((long) primitive.ParticleSys.PartDataFlags &
-                              (long) Primitive.ParticleSystem.ParticleDataFlags.Emissive).Equals(0))
+                            !((long)primitive.ParticleSys.PartDataFlags &
+                              (long)Primitive.ParticleSystem.ParticleDataFlags.Emissive).Equals(0))
                             particleSystem.Append(" | PSYS_PART_EMISSIVE_MASK");
                         particleSystem.Append(",");
                         particleSystem.Append("PSYS_SRC_PATTERN, 0");
                         if (
-                            !((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Drop)
+                            !((long)primitive.ParticleSys.Pattern & (long)Primitive.ParticleSystem.SourcePattern.Drop)
                                 .Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_DROP");
-                        if (!((long) primitive.ParticleSys.Pattern &
-                              (long) Primitive.ParticleSystem.SourcePattern.Explode).Equals(0))
+                        if (!((long)primitive.ParticleSys.Pattern &
+                              (long)Primitive.ParticleSystem.SourcePattern.Explode).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_EXPLODE");
                         if (
-                            !((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Angle)
+                            !((long)primitive.ParticleSys.Pattern & (long)Primitive.ParticleSystem.SourcePattern.Angle)
                                 .Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE");
-                        if (!((long) primitive.ParticleSys.Pattern &
-                              (long) Primitive.ParticleSystem.SourcePattern.AngleCone).Equals(0))
+                        if (!((long)primitive.ParticleSys.Pattern &
+                              (long)Primitive.ParticleSystem.SourcePattern.AngleCone).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE");
-                        if (!((long) primitive.ParticleSys.Pattern &
-                              (long) Primitive.ParticleSystem.SourcePattern.AngleConeEmpty).Equals(0))
+                        if (!((long)primitive.ParticleSys.Pattern &
+                              (long)Primitive.ParticleSystem.SourcePattern.AngleConeEmpty).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE_EMPTY");
                         particleSystem.Append(",");
                         particleSystem.Append("PSYS_PART_START_ALPHA, " +

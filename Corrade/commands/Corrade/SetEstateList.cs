@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -24,7 +23,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setestatelist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -98,6 +97,7 @@ namespace Corrade
                                                     case true:
                                                         estateList.AddRange(args.Banned);
                                                         break;
+
                                                     default:
                                                         EstateListReceivedAlarm.Signal.Set();
                                                         break;
@@ -133,17 +133,20 @@ namespace Corrade
                                         Client.Estate.BanUser(targetUUID, allEstates);
                                     }
                                     break;
+
                                 case Enumerations.Action.REMOVE:
                                     lock (Locks.ClientInstanceEstateLock)
                                     {
                                         Client.Estate.UnbanUser(targetUUID, allEstates);
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
                             }
                             break;
+
                         case Enumerations.Type.GROUP:
                             if (
                                 !UUID.TryParse(
@@ -182,6 +185,7 @@ namespace Corrade
                                                     case true:
                                                         estateList.AddRange(args.AllowedGroups);
                                                         break;
+
                                                     default:
                                                         EstateListReceivedAlarm.Signal.Set();
                                                         break;
@@ -216,17 +220,20 @@ namespace Corrade
                                         Client.Estate.AddAllowedGroup(targetUUID, allEstates);
                                     }
                                     break;
+
                                 case Enumerations.Action.REMOVE:
                                     lock (Locks.ClientInstanceEstateLock)
                                     {
                                         Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
                             }
                             break;
+
                         case Enumerations.Type.USER:
                             if (
                                 !UUID.TryParse(
@@ -271,6 +278,7 @@ namespace Corrade
                                                     case true:
                                                         estateList.AddRange(args.AllowedUsers);
                                                         break;
+
                                                     default:
                                                         EstateListReceivedAlarm.Signal.Set();
                                                         break;
@@ -305,17 +313,20 @@ namespace Corrade
                                         Client.Estate.AddAllowedUser(targetUUID, allEstates);
                                     }
                                     break;
+
                                 case Enumerations.Action.REMOVE:
                                     lock (Locks.ClientInstanceEstateLock)
                                     {
                                         Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
                             }
                             break;
+
                         case Enumerations.Type.MANAGER:
                             if (
                                 !UUID.TryParse(
@@ -360,6 +371,7 @@ namespace Corrade
                                                     case true:
                                                         estateList.AddRange(args.Managers);
                                                         break;
+
                                                     default:
                                                         EstateListReceivedAlarm.Signal.Set();
                                                         break;
@@ -394,17 +406,20 @@ namespace Corrade
                                         Client.Estate.AddEstateManager(targetUUID, allEstates);
                                     }
                                     break;
+
                                 case Enumerations.Action.REMOVE:
                                     lock (Locks.ClientInstanceEstateLock)
                                     {
                                         Client.Estate.RemoveEstateManager(targetUUID, allEstates);
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.UNKNOWN_ESTATE_LIST_ACTION);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ESTATE_LIST);
                     }

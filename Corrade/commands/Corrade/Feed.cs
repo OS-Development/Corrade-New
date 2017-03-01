@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel.Syndication;
 using System.Xml;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
 
@@ -26,7 +25,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Feed))
+                            (int)Configuration.Permissions.Feed))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -92,6 +91,7 @@ namespace Corrade
                                 });
                             }
                             break;
+
                         case Enumerations.Action.REMOVE:
                             lock (GroupFeedsLock)
                             {
@@ -105,6 +105,7 @@ namespace Corrade
                                     GroupFeeds.Remove(url);
                             }
                             break;
+
                         case Enumerations.Action.LIST:
                             var csv = new List<string>();
                             lock (GroupFeedsLock)
@@ -127,6 +128,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

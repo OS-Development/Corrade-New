@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Globalization;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -25,20 +24,19 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Movement))
+                            (int)Configuration.Permissions.Movement))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    float angle;
+                    float radians;
                     if (!float.TryParse(wasInput(
                         KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEGREES)),
-                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out angle))
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RADIANS)),
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out radians))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ANGLE_PROVIDED);
                     }
                     // Convert angle in radians to degrees.
-                    angle *= Utils.DEG_TO_RAD;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Direction>(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIRECTION)),
@@ -49,11 +47,11 @@ namespace Corrade
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    angle);
+                                    radians);
                                 Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    angle);
+                                    radians);
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
                                         AGENT_CONTROL_TURN_LEFT, Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -64,15 +62,16 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
+
                         case Enumerations.Direction.RIGHT:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.Movement.BodyRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    -angle);
+                                    -radians);
                                 Client.Self.Movement.HeadRotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
-                                    -angle);
+                                    -radians);
                                 Client.Self.Movement.SendManualUpdate(
-                                    (AgentManager.ControlFlags) Client.Self.Movement.AgentControls |
+                                    (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
                                         AGENT_CONTROL_TURN_RIGHT, Client.Self.Movement.Camera.Position,
                                     Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
@@ -83,6 +82,7 @@ namespace Corrade
                                     Client.Self.Movement.State, false);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DIRECTION);
                     }

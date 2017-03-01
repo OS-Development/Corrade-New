@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Linq;
 using System.Threading;
-using OpenMetaverse;
 using wasOpenMetaverse;
 
 namespace Corrade
@@ -60,7 +59,7 @@ namespace Corrade
                         Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                         Client.Self.AlertMessage += AlertMessageEventHandler;
                         Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                        SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                        SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
                     }

@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Xml;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade
@@ -25,7 +24,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.System))
+                            (int)Configuration.Permissions.System))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -56,6 +55,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
                             }
                             break;
+
                         case Enumerations.Action.WRITE:
                             try
                             {
@@ -76,6 +76,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
                             }
                             break;
+
                         case Enumerations.Action.SET:
                         case Enumerations.Action.GET:
                             var path =
@@ -121,6 +122,7 @@ namespace Corrade
                                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), data);
                                     }
                                     break;
+
                                 case Enumerations.Action.SET:
                                     data =
                                         wasInput(
@@ -160,6 +162,7 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

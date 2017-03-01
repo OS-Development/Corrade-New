@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Threading;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -24,7 +23,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -50,7 +49,7 @@ namespace Corrade
                     }
                     if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Economy))
+                            (int)Configuration.Permissions.Economy))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -73,7 +72,7 @@ namespace Corrade
                     {
                         Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                         Client.Groups.RequestCreateGroup(targetGroup);
-                        if (!GroupCreatedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupCreatedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_GROUP);

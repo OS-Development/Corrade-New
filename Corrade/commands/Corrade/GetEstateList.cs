@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -24,7 +23,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getestatelist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -52,6 +51,7 @@ namespace Corrade
                                     case true:
                                         estateList.AddRange(args.Banned);
                                         break;
+
                                     default:
                                         EstateListReceivedAlarm.Signal.Set();
                                         break;
@@ -63,7 +63,7 @@ namespace Corrade
                                 Client.Estate.RequestInfo();
                                 if (
                                     !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int) corradeConfiguration.ServicesTimeout,
+                                        (int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
@@ -73,6 +73,7 @@ namespace Corrade
                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                             }
                             break;
+
                         case Enumerations.Type.GROUP:
                             EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                 (sender, args) =>
@@ -83,6 +84,7 @@ namespace Corrade
                                         case true:
                                             estateList.AddRange(args.AllowedGroups);
                                             break;
+
                                         default:
                                             EstateListReceivedAlarm.Signal.Set();
                                             break;
@@ -94,7 +96,7 @@ namespace Corrade
                                 Client.Estate.RequestInfo();
                                 if (
                                     !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int) corradeConfiguration.ServicesTimeout,
+                                        (int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
@@ -104,6 +106,7 @@ namespace Corrade
                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                             }
                             break;
+
                         case Enumerations.Type.MANAGER:
                             EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                 (sender, args) =>
@@ -114,6 +117,7 @@ namespace Corrade
                                         case true:
                                             estateList.AddRange(args.Managers);
                                             break;
+
                                         default:
                                             EstateListReceivedAlarm.Signal.Set();
                                             break;
@@ -125,7 +129,7 @@ namespace Corrade
                                 Client.Estate.RequestInfo();
                                 if (
                                     !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int) corradeConfiguration.ServicesTimeout,
+                                        (int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
@@ -135,6 +139,7 @@ namespace Corrade
                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                             }
                             break;
+
                         case Enumerations.Type.USER:
                             EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                 (sender, args) =>
@@ -145,6 +150,7 @@ namespace Corrade
                                         case true:
                                             estateList.AddRange(args.AllowedUsers);
                                             break;
+
                                         default:
                                             EstateListReceivedAlarm.Signal.Set();
                                             break;
@@ -156,7 +162,7 @@ namespace Corrade
                                 Client.Estate.RequestInfo();
                                 if (
                                     !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int) corradeConfiguration.ServicesTimeout,
+                                        (int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
@@ -166,6 +172,7 @@ namespace Corrade
                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ESTATE_LIST);
                     }
@@ -191,6 +198,7 @@ namespace Corrade
                                 }
                             });
                             break;
+
                         case Enumerations.Type.GROUP:
                             estateList.AsParallel().ForAll(o =>
                             {

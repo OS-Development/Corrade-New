@@ -4,19 +4,18 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using BayesSharp;
 using Corrade.Constants;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
 using LanguageDetection;
 using OpenMetaverse;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -81,19 +80,19 @@ namespace Corrade.Helpers
                         ? args.AsParallel()
                             .FirstOrDefault(
                                 a =>
-                                    String.Equals(a.GetType().FullName, o.Type) ||
+                                    string.Equals(a.GetType().FullName, o.Type) ||
                                     a.GetType()
                                         .GetBaseTypes()
                                         .AsParallel()
-                                        .Any(t => String.Equals(t.FullName, o.Type)))
+                                        .Any(t => string.Equals(t.FullName, o.Type)))
                         : args.AsParallel()
                             .FirstOrDefault(
                                 a =>
-                                    String.Equals(a.GetType().FullName, type) ||
+                                    string.Equals(a.GetType().FullName, type) ||
                                     a.GetType()
                                         .GetBaseTypes()
                                         .AsParallel()
-                                        .Any(t => String.Equals(t.FullName, o.Type)));
+                                        .Any(t => string.Equals(t.FullName, o.Type)));
 
                     if (arg == null)
                         return;
@@ -103,7 +102,7 @@ namespace Corrade.Helpers
                     {
                         if (
                             o.Condition.AsParallel()
-                                .Select(condition => new {condition, conditional = arg.GetFP(condition.Path)})
+                                .Select(condition => new { condition, conditional = arg.GetFP(condition.Path) })
                                 .Where(t => t.conditional != null && !t.conditional.Equals(t.condition.Value))
                                 .Select(t => t.condition).Any())
                             return;
@@ -144,7 +143,7 @@ namespace Corrade.Helpers
                                     iDict = internalDictionaryInfo.GetValue(dict) as IDictionary;
                                 }
 
-                                PROCESS:
+                            PROCESS:
                                 if (iDict != null)
                                 {
                                     var look = arg.GetFP(process.GetValue.Value);
@@ -169,7 +168,7 @@ namespace Corrade.Helpers
                                         args.AsParallel()
                                             .FirstOrDefault(
                                                 a =>
-                                                    String.Equals(a.GetType().FullName,
+                                                    string.Equals(a.GetType().FullName,
                                                         process.ConditionalSubstitution.Type));
                                     if (arg != null)
                                     {
@@ -200,7 +199,7 @@ namespace Corrade.Helpers
                                         args.AsParallel()
                                             .FirstOrDefault(
                                                 a =>
-                                                    String.Equals(a.GetType().FullName,
+                                                    string.Equals(a.GetType().FullName,
                                                         process.TernarySubstitution.Type));
                                     if (arg != null)
                                     {
@@ -320,6 +319,7 @@ namespace Corrade.Helpers
                                     case true:
                                         methodType = Assembly.Load(process.Method.Assembly).GetType(process.Method.Type);
                                         break;
+
                                     default:
                                         methodType = Type.GetType(process.Method.Type);
                                         break;
@@ -341,6 +341,7 @@ namespace Corrade.Helpers
                                             .Invoke(instance,
                                                 process.Method.Parameters.Keys.Select(arg.GetFP).ToArray());
                                         break;
+
                                     default:
                                         value =
                                             methodType.GetMethod(process.Method.Name)
@@ -354,8 +355,9 @@ namespace Corrade.Helpers
                         }
                     }
                     break;
+
                 default:
-                    if (!args.AsParallel().Any(a => String.Equals(a.GetType().FullName, type)))
+                    if (!args.AsParallel().Any(a => string.Equals(a.GetType().FullName, type)))
                         return;
                     value = o.Value;
                     break;

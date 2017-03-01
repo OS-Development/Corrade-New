@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Corrade.Constants;
 using wasSharp.Collections.Generic;
 using wasSharp.Timers;
 
@@ -79,14 +78,14 @@ namespace Corrade.Structures
                     var currentProcessTime = currentProcess.TotalProcessorTime;
                     AverageCPUUsage =
                         (uint)
-                            (100d*
-                             ((currentProcessTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds)/
-                              UTCNow.Subtract(LastUpdateTime).TotalMilliseconds/
+                            (100d *
+                             ((currentProcessTime.TotalMilliseconds - LastTotalCPUTime.TotalMilliseconds) /
+                              UTCNow.Subtract(LastUpdateTime).TotalMilliseconds /
                               Convert.ToDouble(Environment.ProcessorCount)));
                     LastTotalCPUTime = currentProcessTime;
                     LastUpdateTime = UTCNow;
 
-                    AverageRAMUsage = (AverageRAMUsage + currentProcess.PrivateMemorySize64)/2;
+                    AverageRAMUsage = (AverageRAMUsage + currentProcess.PrivateMemorySize64) / 2;
 
                     // Add to histories.
                     if (CPUAverageUsageHistory.Count >= HistoryLength)

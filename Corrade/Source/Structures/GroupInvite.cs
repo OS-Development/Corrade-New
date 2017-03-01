@@ -14,10 +14,19 @@ namespace Corrade.Structures
     /// </summary>
     public class GroupInvite
     {
-        [Reflection.NameAttribute("agent")] public Agent Agent;
-        [Reflection.NameAttribute("fee")] public int Fee;
-        [Reflection.NameAttribute("group")] public string Group;
-        [Reflection.NameAttribute("id")] public UUID ID;
-        [Reflection.NameAttribute("session")] public UUID Session;
+        [Reflection.NameAttribute("agent")]
+        public Agent Agent;
+
+        [Reflection.NameAttribute("fee")]
+        public int Fee;
+
+        [Reflection.NameAttribute("group")]
+        public string Group;
+
+        [Reflection.NameAttribute("id")]
+        public UUID ID;
+
+        [Reflection.NameAttribute("session")]
+        public UUID Session;
     }
 }

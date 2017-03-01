@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -64,6 +63,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindPrimitive(Client,
@@ -88,7 +88,7 @@ namespace Corrade
                                                                            BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
-                                    String.Equals(o.Name, wasInput(KeyValue.Get(
+                                    string.Equals(o.Name, wasInput(KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MATERIAL)),
                                         corradeCommandParameters.Message)),
                                         StringComparison.OrdinalIgnoreCase));
@@ -97,7 +97,7 @@ namespace Corrade
                         lock (Locks.ClientInstanceObjectsLock)
                         {
                             Client.Objects.SetMaterial(simulator,
-                                primitive.LocalID, (Material) materialFieldInfo.GetValue(null));
+                                primitive.LocalID, (Material)materialFieldInfo.GetValue(null));
                         }
                     };
         }

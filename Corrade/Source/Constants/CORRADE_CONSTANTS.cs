@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade.Constants
@@ -127,8 +126,8 @@ namespace Corrade.Constants
         ///     Corrade compile date.
         /// </summary>
         public static readonly string CORRADE_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
-            TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
-            TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
+            TimeSpan.TicksPerDay * Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+            TimeSpan.TicksPerSecond * 2 * Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
 
         /// <summary>
         ///     Corrade Logo.
@@ -182,7 +181,8 @@ namespace Corrade.Constants
 
         public struct PRIMTIVE_BODIES
         {
-            [Reflection.NameAttribute("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.
+            [Reflection.NameAttribute("cube")]
+            public static readonly Primitive.ConstructionData CUBE = new Primitive.
                 ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -209,7 +209,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.
+            [Reflection.NameAttribute("prism")]
+            public static readonly Primitive.ConstructionData PRISM = new Primitive.
                 ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -236,7 +237,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive
+            [Reflection.NameAttribute("pyramid")]
+            public static readonly Primitive.ConstructionData PYRAMID = new Primitive
                 .ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -263,7 +265,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON
+            [Reflection.NameAttribute("tetrahedron")]
+            public static readonly Primitive.ConstructionData TETRAHEDRON
                 = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
@@ -290,7 +293,8 @@ namespace Corrade.Constants
                     State = 0
                 };
 
-            [Reflection.NameAttribute("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive
+            [Reflection.NameAttribute("cylinder")]
+            public static readonly Primitive.ConstructionData CYLINDER = new Primitive
                 .ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -317,7 +321,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("hemicylinder")] public static readonly Primitive.ConstructionData
+            [Reflection.NameAttribute("hemicylinder")]
+            public static readonly Primitive.ConstructionData
                 HEMICYLINDER = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
@@ -344,7 +349,8 @@ namespace Corrade.Constants
                     State = 0
                 };
 
-            [Reflection.NameAttribute("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.
+            [Reflection.NameAttribute("cone")]
+            public static readonly Primitive.ConstructionData CONE = new Primitive.
                 ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -371,7 +377,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive
+            [Reflection.NameAttribute("hemicone")]
+            public static readonly Primitive.ConstructionData HEMICONE = new Primitive
                 .ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -398,7 +405,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive
+            [Reflection.NameAttribute("sphere")]
+            public static readonly Primitive.ConstructionData SPHERE = new Primitive
                 .ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -425,7 +433,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
+            [Reflection.NameAttribute("hemisphere")]
+            public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
                 .ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -452,7 +461,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.
+            [Reflection.NameAttribute("torus")]
+            public static readonly Primitive.ConstructionData TORUS = new Primitive.
                 ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
@@ -479,7 +489,8 @@ namespace Corrade.Constants
                 State = 0
             };
 
-            [Reflection.NameAttribute("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.
+            [Reflection.NameAttribute("ring")]
+            public static readonly Primitive.ConstructionData RING = new Primitive.
                 ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,

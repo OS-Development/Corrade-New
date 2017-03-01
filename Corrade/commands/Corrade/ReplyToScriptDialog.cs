@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -71,12 +70,14 @@ namespace Corrade
                                     ScriptDialogs.Clear();
                                 }
                                 break;
+
                             case Enumerations.Action.IGNORE:
                                 lock (ScriptDialogsLock)
                                 {
                                     ScriptDialogs.Remove(dialogUUID);
                                 }
                                 break;
+
                             case Enumerations.Action.REPLY:
                                 var label = wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BUTTON)),
@@ -129,6 +130,7 @@ namespace Corrade
                                         scriptDialog.Item);
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }

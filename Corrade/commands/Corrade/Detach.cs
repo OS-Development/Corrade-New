@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Corrade.Constants;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -29,7 +28,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming))
+                            (int)Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -57,7 +56,7 @@ namespace Corrade
                     var attachmentPoints =
                         new Dictionary<string, AttachmentPoint>(typeof(AttachmentPoint).GetFields(BindingFlags.Public |
                                                                                                   BindingFlags.Static)
-                            .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint) o.GetValue(null)));
+                            .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint)o.GetValue(null)));
 
                     // stop non default animations if requested
                     bool deanimate;
@@ -105,12 +104,14 @@ namespace Corrade
                                         }
                                     }
                                     break;
+
                                 case Enumerations.Type.PATH:
                                     inventoryItem =
                                         Inventory.FindInventory<InventoryItem>(Client, o,
                                             CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                             corradeConfiguration.ServicesTimeout);
                                     break;
+
                                 case Enumerations.Type.UUID:
                                     UUID itemUUID;
                                     if (UUID.TryParse(o, out itemUUID))

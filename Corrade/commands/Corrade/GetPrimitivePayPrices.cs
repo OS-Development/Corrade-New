@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -64,6 +63,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindPrimitive(Client,
@@ -96,7 +96,7 @@ namespace Corrade
                                 Client.Network.Simulators.AsParallel()
                                     .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                                 primitive.ID);
-                            if (!PayPrceReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!PayPrceReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_PRICE);

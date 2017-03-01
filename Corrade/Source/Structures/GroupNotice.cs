@@ -14,13 +14,28 @@ namespace Corrade.Structures
     /// </summary>
     public struct GroupNotice
     {
-        [Reflection.NameAttribute("agent")] public Agent Agent;
-        [Reflection.NameAttribute("asset")] public AssetType Asset;
-        [Reflection.NameAttribute("attachment")] public bool Attachment;
-        [Reflection.NameAttribute("folder")] public UUID Folder;
-        [Reflection.NameAttribute("group")] public Group Group;
-        [Reflection.NameAttribute("message")] public string Message;
-        [Reflection.NameAttribute("session")] public UUID Session;
-        [Reflection.NameAttribute("subject")] public string Subject;
+        [Reflection.NameAttribute("agent")]
+        public Agent Agent;
+
+        [Reflection.NameAttribute("asset")]
+        public AssetType Asset;
+
+        [Reflection.NameAttribute("attachment")]
+        public bool Attachment;
+
+        [Reflection.NameAttribute("folder")]
+        public UUID Folder;
+
+        [Reflection.NameAttribute("group")]
+        public Group Group;
+
+        [Reflection.NameAttribute("message")]
+        public string Message;
+
+        [Reflection.NameAttribute("session")]
+        public UUID Session;
+
+        [Reflection.NameAttribute("subject")]
+        public string Subject;
     }
 }

@@ -4,10 +4,9 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Xml.Serialization;
 using OpenMetaverse;
+using System;
+using System.Xml.Serialization;
 
 namespace Corrade.WebForms.SecondLife
 {

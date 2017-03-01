@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.IO;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -26,11 +25,11 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.System))
+                                (int)Configuration.Permissions.System))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        lock(Locks.ClientInstanceConfigurationLock)
+                        lock (Locks.ClientInstanceConfigurationLock)
                         {
                             corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
                                 KeyValue.Get(

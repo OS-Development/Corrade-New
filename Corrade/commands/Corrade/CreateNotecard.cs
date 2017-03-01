@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -28,7 +27,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -43,7 +42,7 @@ namespace Corrade
                         case Enumerations.Entity.FILE:
                             if (
                                 !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                    (int) Configuration.Permissions.System))
+                                    (int)Configuration.Permissions.System))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                             }
@@ -74,12 +73,14 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_READ_FILE);
                             }
                             break;
+
                         case Enumerations.Entity.TEXT:
                             text =
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXT)),
                                         corradeCommandParameters.Message));
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
@@ -109,13 +110,13 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             AssetType.Notecard,
                             UUID.Random(), InventoryType.Notecard, PermissionMask.All,
-                            delegate(bool completed, InventoryItem createdItem)
+                            delegate (bool completed, InventoryItem createdItem)
                             {
                                 succeeded = completed;
                                 newItem = createdItem;
                                 CreateNotecardEvent.Set();
                             });
-                        if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                         }
@@ -134,12 +135,12 @@ namespace Corrade
                     lock (Locks.ClientInstanceInventoryLock)
                     {
                         Client.Inventory.RequestUploadNotecardAsset(blank.AssetData, newItem.UUID,
-                            delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                            delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
                             {
                                 succeeded = completed;
                                 UploadBlankNotecardEvent.Set();
                             });
-                        if (!UploadBlankNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!UploadBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM);
                         }
@@ -162,14 +163,14 @@ namespace Corrade
                         lock (Locks.ClientInstanceInventoryLock)
                         {
                             Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, newItem.UUID,
-                                delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
                                 {
                                     succeeded = completed;
                                     inventoryItemUUID = itemUUID;
                                     inventoryAssetUUID = assetUUID;
                                     UploadNotecardDataEvent.Set();
                                 });
-                            if (!UploadNotecardDataEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!UploadNotecardDataEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);
                             }

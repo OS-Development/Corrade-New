@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Constants;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -29,7 +28,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming))
+                            (int)Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -54,6 +53,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         default:
                             inventoryFolder =
                                 Inventory.FindInventory<InventoryFolder>(Client, folder,
@@ -121,11 +121,12 @@ namespace Corrade
                                                 .Where(t => Inventory.IsBodyPart(Client, t))
                                                 .Any(
                                                     p =>
-                                                        ((InventoryWearable) p).WearableType.Equals(
-                                                            ((InventoryWearable) inventoryItem)
+                                                        ((InventoryWearable)p).WearableType.Equals(
+                                                            ((InventoryWearable)inventoryItem)
                                                                 .WearableType)))
                                             goto default;
                                         break;
+
                                     default:
                                         lock (LockObject)
                                         {
@@ -188,7 +189,6 @@ namespace Corrade
                         Inventory.AddLink(Client, inventoryItem, CurrentOutfitFolder,
                             corradeConfiguration.ServicesTimeout);
                     }
-
 
                     // And replace the outfit wit hthe new items.
                     lock (Locks.ClientInstanceAppearanceLock)

@@ -4,16 +4,15 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using HtmlAgilityPack;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
-using CorradeConfigurationSharp;
-using HtmlAgilityPack;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -133,7 +132,7 @@ namespace Corrade
                             corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out amount))
                         amount = 0;
 
-                    #endregion
+                    #endregion Event Parameters
 
                     var cookieContainer = new CookieContainer();
 
@@ -283,6 +282,7 @@ namespace Corrade
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 id.ToString());
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_GET_EVENT_IDENTIFIER);
                     }

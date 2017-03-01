@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -26,7 +25,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -89,7 +88,7 @@ namespace Corrade
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     groupRolesMembersRequestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -120,6 +119,7 @@ namespace Corrade
                                         o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
                                             agentUUID));
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_EJECT_OWNERS);
                         }
@@ -135,7 +135,7 @@ namespace Corrade
                     {
                         Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                         Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);
-                        if (!GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT);

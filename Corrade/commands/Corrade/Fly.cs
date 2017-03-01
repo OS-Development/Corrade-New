@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
-using CorradeConfigurationSharp;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -24,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Movement))
+                            (int)Configuration.Permissions.Movement))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -68,6 +67,7 @@ namespace Corrade
                                 Client.Self.Fly(action.Equals(Enumerations.Action.START));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.FLY_ACTION_START_OR_STOP);
                     }

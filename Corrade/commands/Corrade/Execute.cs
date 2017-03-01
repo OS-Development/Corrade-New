@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
-using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade
@@ -93,15 +92,15 @@ namespace Corrade
                     };
                     q.BeginErrorReadLine();
                     q.BeginOutputReadLine();
-                    if (!q.WaitForExit((int) corradeConfiguration.ServicesTimeout))
+                    if (!q.WaitForExit((int)corradeConfiguration.ServicesTimeout))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_WAITING_FOR_EXECUTION);
                     }
-                    if (StdEvent[0].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
+                    if (StdEvent[0].WaitOne((int)corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stdout.ToString());
                     }
-                    if (StdEvent[1].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
+                    if (StdEvent[1].WaitOne((int)corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stderr.ToString());
                     }

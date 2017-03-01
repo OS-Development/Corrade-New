@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Globalization;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -26,7 +25,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Economy))
+                            (int)Configuration.Permissions.Economy))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -67,13 +66,14 @@ namespace Corrade
                         case Enumerations.Entity.GROUP:
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int) amount,
+                                Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int)amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)));
                             }
                             break;
+
                         case Enumerations.Entity.AVATAR:
                             if (
                                 !UUID.TryParse(
@@ -100,13 +100,14 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.GiveAvatarMoney(targetUUID, (int) amount,
+                                Client.Self.GiveAvatarMoney(targetUUID, (int)amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)));
                             }
                             break;
+
                         case Enumerations.Entity.OBJECT:
                             if (
                                 !UUID.TryParse(
@@ -120,13 +121,14 @@ namespace Corrade
                             }
                             lock (Locks.ClientInstanceSelfLock)
                             {
-                                Client.Self.GiveObjectMoney(targetUUID, (int) amount,
+                                Client.Self.GiveObjectMoney(targetUUID, (int)amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                             corradeCommandParameters.Message)));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

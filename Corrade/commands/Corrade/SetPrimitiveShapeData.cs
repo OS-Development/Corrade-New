@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -29,7 +28,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -65,6 +64,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindPrimitive(Client,
@@ -101,8 +101,9 @@ namespace Corrade
                         switch (primitiveShapesFieldInfo != null)
                         {
                             case true:
-                                constructionData = (Primitive.ConstructionData) primitiveShapesFieldInfo.GetValue(null);
+                                constructionData = (Primitive.ConstructionData)primitiveShapesFieldInfo.GetValue(null);
                                 break;
+
                             default:
                                 constructionData = primitive.PrimData;
                                 break;

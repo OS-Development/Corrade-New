@@ -4,8 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using BayesSharp;
+using Corrade.Constants;
+using Corrade.Structures;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,12 +18,8 @@ using System.Reflection;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
-using BayesSharp;
-using Corrade.Constants;
-using Corrade.Structures;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Specialized;
@@ -84,6 +84,7 @@ namespace Corrade.HTTP
             {
                 using (var dataMemoryStream = new MemoryStream())
                 {
+                    var ContentSent = false;
                     switch (httpRequest.HttpMethod)
                     {
                         // Add and remove Horde data.
@@ -98,30 +99,30 @@ namespace Corrade.HTTP
                                     if (!Corrade.corradeConfiguration.EnableHTTPServerAuthentication ||
                                         !httpContext.Request.IsAuthenticated)
                                     {
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                                     }
 
                                     // Authenticate.
-                                    var identity = (HttpListenerBasicIdentity) httpContext.User.Identity;
+                                    var identity = (HttpListenerBasicIdentity)httpContext.User.Identity;
                                     if (
                                         !identity.Name.Equals(Corrade.corradeConfiguration.HTTPServerUsername,
                                             StringComparison.Ordinal) ||
                                         !identity.Password.Equals(Corrade.corradeConfiguration.HTTPServerPassword,
                                             StringComparison.OrdinalIgnoreCase))
                                     {
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                                     }
 
                                     // Do not proceed if horde synchronization is not enabled.
                                     if (!Corrade.corradeConfiguration.EnableHorde)
-                                        throw new HTTPException((int) HttpStatusCode.ServiceUnavailable);
+                                        throw new HTTPException((int)HttpStatusCode.ServiceUnavailable);
 
                                     // Get the URL path.
                                     var path =
                                         httpRequest.Url.Segments.Select(o => o.Replace(@"/", ""))
                                             .Where(o => !string.IsNullOrEmpty(o));
                                     if (!path.Any())
-                                        throw new HTTPException((int) HttpStatusCode.BadRequest);
+                                        throw new HTTPException((int)HttpStatusCode.BadRequest);
 
                                     // Find peer from shared secret.
                                     string sharedSecretKey;
@@ -136,11 +137,11 @@ namespace Corrade.HTTP
                                     }
                                     catch (Exception)
                                     {
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                                     }
 
                                     if (string.IsNullOrEmpty(sharedSecretKey))
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
 
                                     // Find the horde peer.
                                     Configuration.HordePeer hordePeer;
@@ -158,11 +159,11 @@ namespace Corrade.HTTP
                                     }
                                     catch (Exception)
                                     {
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                                     }
 
                                     if (hordePeer == null || hordePeer.Equals(default(Configuration.HordePeer)))
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
 
                                     // perform decompression in case the client sent compressed data
                                     var requestEncoding = new QValue("identity");
@@ -184,14 +185,15 @@ namespace Corrade.HTTP
                                         case "gzip":
                                             await httpRequest.InputStream.GZipDecompress(dataMemoryStream);
                                             break;
+
                                         case "deflate":
                                             await httpRequest.InputStream.DeflateDecompress(dataMemoryStream);
                                             break;
+
                                         default:
                                             await httpRequest.InputStream.CopyToAsync(dataMemoryStream);
                                             break;
                                     }
-
 
                                     // Get the first component.
                                     var methodName = path.FirstOrDefault();
@@ -212,9 +214,9 @@ namespace Corrade.HTTP
                                                 .AsParallel()
                                                 .Any(p =>
                                                     p is HTTPRequestMapping &&
-                                                    String.Equals(((HTTPRequestMapping) p).Method,
+                                                    string.Equals(((HTTPRequestMapping)p).Method,
                                                         httpRequest.HttpMethod.ToUpperInvariant()) &&
-                                                    String.Equals(((HTTPRequestMapping) p).Map, methodName)));
+                                                    string.Equals(((HTTPRequestMapping)p).Map, methodName)));
 
                                     switch (method != null)
                                     {
@@ -231,25 +233,36 @@ namespace Corrade.HTTP
                                                 {httpRequest.RemoteEndPoint, hordePeer, dataMemoryStream})
                                                 .ToArray();
 
-                                            method.Invoke(this, @params);
+                                            HTTPServerResponse.StatusCode = (int)HttpStatusCode.OK;
+
+                                            await ((Task)method.Invoke(this, @params)).ContinueWith((o) =>
+                                            {
+                                                ContentSent = true;
+                                            });
                                             break;
+
                                         default:
-                                            throw new HTTPException((int) HttpStatusCode.BadRequest);
+                                            throw new HTTPException((int)HttpStatusCode.BadRequest);
                                     }
                                 }
                                 catch (HTTPException ex)
                                 {
                                     /* There was an error and it's our fault */
-                                    HTTPServerResponse.StatusCode = ex.StatusCode;
+                                    if (!ContentSent)
+                                    {
+                                        HTTPServerResponse.StatusCode = ex.StatusCode;
+                                    }
                                     throw;
                                 }
                                 catch (Exception)
                                 {
                                     /* There was an error and it's our fault */
-                                    HTTPServerResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                    if (!ContentSent)
+                                    {
+                                        HTTPServerResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                    }
                                     throw;
                                 }
-                                HTTPServerResponse.StatusCode = (int) HttpStatusCode.OK;
                             }
                             break;
                         // Process commands.
@@ -278,9 +291,11 @@ namespace Corrade.HTTP
                                         case "gzip":
                                             await httpRequest.InputStream.GZipDecompress(dataMemoryStream);
                                             break;
+
                                         case "deflate":
                                             await httpRequest.InputStream.DeflateDecompress(dataMemoryStream);
                                             break;
+
                                         default:
                                             await httpRequest.InputStream.CopyToAsync(dataMemoryStream);
                                             break;
@@ -292,14 +307,14 @@ namespace Corrade.HTTP
 
                                     // ignore empty messages right-away.
                                     if (string.IsNullOrEmpty(message))
-                                        throw new HTTPException((int) HttpStatusCode.BadRequest);
+                                        throw new HTTPException((int)HttpStatusCode.BadRequest);
 
                                     var commandGroup = Corrade.GetCorradeGroupFromMessage(message,
                                         Corrade.corradeConfiguration);
                                     // do not process anything from unknown groups.
                                     if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
                                     {
-                                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                                        throw new HTTPException((int)HttpStatusCode.Forbidden);
                                     }
 
                                     // set the content type based on chosen output filers
@@ -309,6 +324,7 @@ namespace Corrade.HTTP
                                             HTTPServerResponse.ContentType =
                                                 CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
                                             break;
+
                                         default:
                                             HTTPServerResponse.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                                             break;
@@ -354,6 +370,7 @@ namespace Corrade.HTTP
                                                 }
                                                 HTTPServerResponse.AddHeader("Content-Encoding", "gzip");
                                                 break;
+
                                             case "deflate":
                                                 using (var memoryStream = new MemoryStream(data))
                                                 {
@@ -361,6 +378,7 @@ namespace Corrade.HTTP
                                                 }
                                                 HTTPServerResponse.AddHeader("Content-Encoding", "deflate");
                                                 break;
+
                                             default:
                                                 HTTPServerResponse.AddHeader("Content-Encoding", "UTF-8");
                                                 using (var memoryStream = new MemoryStream(data))
@@ -378,6 +396,7 @@ namespace Corrade.HTTP
                                                 HTTPServerResponse.SendChunked = true;
                                                 HTTPServerResponse.KeepAlive = true;
                                                 break;
+
                                             default:
                                                 // Set content length.
                                                 HTTPServerResponse.ContentLength64 = outputStream.Length;
@@ -386,23 +405,33 @@ namespace Corrade.HTTP
                                                 break;
                                         }
 
+                                        HTTPServerResponse.StatusCode = (int)HttpStatusCode.OK;
+
                                         outputStream.Position = 0;
-                                        await outputStream.CopyToAsync(HTTPServerResponse.OutputStream);
+                                        await outputStream.CopyToAsync(HTTPServerResponse.OutputStream).ContinueWith((o) =>
+                                        {
+                                            ContentSent = true;
+                                        });
                                     }
                                 }
                                 catch (HTTPException ex)
                                 {
                                     /* There was an error and it's our fault */
-                                    HTTPServerResponse.StatusCode = ex.StatusCode;
+                                    if (!ContentSent)
+                                    {
+                                        HTTPServerResponse.StatusCode = ex.StatusCode;
+                                    }
                                     throw;
                                 }
                                 catch (Exception)
                                 {
                                     /* There was an error and it's our fault */
-                                    HTTPServerResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                    if (!ContentSent)
+                                    {
+                                        HTTPServerResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                    }
                                     throw;
                                 }
-                                HTTPServerResponse.StatusCode = (int) HttpStatusCode.OK;
                             }
                             break;
                     }
@@ -428,7 +457,7 @@ namespace Corrade.HTTP
             /* /cache/{asset}/add | /cache/{asset}/remove */
             // Break if the cache request is incompatible with the cache web resource.
             if (string.IsNullOrEmpty(entity) || string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -441,7 +470,7 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Now attempt to add the asset to the cache.
             switch (dataSynchronizationType)
@@ -454,7 +483,7 @@ namespace Corrade.HTTP
                     if (
                         !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                             Configuration.HordeDataSynchronizationOption.Remove))
-                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                        throw new HTTPException((int)HttpStatusCode.Forbidden);
 
                     try
                     {
@@ -468,6 +497,7 @@ namespace Corrade.HTTP
 
                                 Cache.RemoveRegion(region.Name, region.Handle);
                                 break;
+
                             case Configuration.HordeDataSynchronization.Agent:
                                 dataMemoryStream.Position = 0;
                                 var agent = (Cache.Agent)
@@ -476,6 +506,7 @@ namespace Corrade.HTTP
                                 Cache.RemoveAgent(agent.FirstName, agent.LastName,
                                     agent.UUID);
                                 break;
+
                             case Configuration.HordeDataSynchronization.Group:
                                 dataMemoryStream.Position = 0;
                                 var group = (Cache.Group)
@@ -499,8 +530,9 @@ namespace Corrade.HTTP
                             ex.Message);
                     }
                     break;
+
                 default:
-                    throw new HTTPException((int) HttpStatusCode.BadRequest);
+                    throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
         }
 
@@ -511,7 +543,7 @@ namespace Corrade.HTTP
             /* /cache/{asset}/add | /cache/{asset}/remove */
             // Break if the cache request is incompatible with the cache web resource.
             if (string.IsNullOrEmpty(entity) || string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -524,7 +556,7 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Now attempt to add the asset to the cache.
             switch (dataSynchronizationType)
@@ -537,7 +569,7 @@ namespace Corrade.HTTP
                     if (
                         !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                             Configuration.HordeDataSynchronizationOption.Add))
-                        throw new HTTPException((int) HttpStatusCode.Forbidden);
+                        throw new HTTPException((int)HttpStatusCode.Forbidden);
 
                     try
                     {
@@ -550,12 +582,14 @@ namespace Corrade.HTTP
                                         dataMemoryStream);
                                 Cache.UpdateRegion(region.Name, region.Handle);
                                 break;
+
                             case Configuration.HordeDataSynchronization.Agent:
                                 dataMemoryStream.Position = 0;
                                 var agent = (Cache.Agent)
                                     new XmlSerializer(typeof(Cache.Agent)).Deserialize(dataMemoryStream);
                                 Cache.AddAgent(agent.FirstName, agent.LastName, agent.UUID);
                                 break;
+
                             case Configuration.HordeDataSynchronization.Group:
                                 dataMemoryStream.Position = 0;
                                 var group = (Cache.Group)
@@ -578,8 +612,9 @@ namespace Corrade.HTTP
                             ex.Message);
                     }
                     break;
+
                 default:
-                    throw new HTTPException((int) HttpStatusCode.BadRequest);
+                    throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
         }
 
@@ -590,7 +625,7 @@ namespace Corrade.HTTP
             /* /cache/asset/add/UUID | /cache/asset/remove/UUID */
             // Break if the cache request is incompatible with the cache web resource.
             if (string.IsNullOrEmpty(entity) || string.IsNullOrEmpty(type) || string.IsNullOrEmpty(asset))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -603,18 +638,18 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Remove))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Invalid asset UUID.
             UUID assetUUID;
             if (!UUID.TryParse(asset, out assetUUID))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             try
             {
@@ -655,7 +690,7 @@ namespace Corrade.HTTP
             /* /cache/asset/add/UUID | /cache/asset/remove/UUID */
             // Break if the cache request is incompatible with the cache web resource.
             if (string.IsNullOrEmpty(entity) || string.IsNullOrEmpty(type) || string.IsNullOrEmpty(asset))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -668,18 +703,18 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Add))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Invalid asset UUID.
             UUID assetUUID;
             if (!UUID.TryParse(asset, out assetUUID))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             try
             {
@@ -717,7 +752,7 @@ namespace Corrade.HTTP
         {
             // Break if the mute request is incompatible with the mute web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -730,13 +765,13 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Remove))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             MuteEntry mute;
             try
@@ -752,7 +787,7 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
             // The currently active mutes.
@@ -764,6 +799,7 @@ namespace Corrade.HTTP
                     mutesRetrieved = Services.GetMutes(Corrade.Client, Corrade.corradeConfiguration.ServicesTimeout,
                         ref mutes);
                     break;
+
                 default:
                     mutes = Cache.MuteCache.OfType<MuteEntry>();
                     mutesRetrieved = true;
@@ -771,7 +807,7 @@ namespace Corrade.HTTP
             }
 
             if (!mutesRetrieved)
-                throw new HTTPException((int) HttpStatusCode.InternalServerError);
+                throw new HTTPException((int)HttpStatusCode.InternalServerError);
 
             var muteExists =
                 mutes.AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name));
@@ -795,7 +831,7 @@ namespace Corrade.HTTP
             /* /mute/add | /mute/remove */
             // Break if the mute request is incompatible with the mute web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -808,13 +844,13 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Add))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             MuteEntry mute;
             try
@@ -830,7 +866,7 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
             // The currently active mutes.
@@ -842,6 +878,7 @@ namespace Corrade.HTTP
                     mutesRetrieved = Services.GetMutes(Corrade.Client, Corrade.corradeConfiguration.ServicesTimeout,
                         ref mutes);
                     break;
+
                 default:
                     mutes = Cache.MuteCache.OfType<MuteEntry>();
                     mutesRetrieved = true;
@@ -849,11 +886,10 @@ namespace Corrade.HTTP
             }
 
             if (!mutesRetrieved)
-                throw new HTTPException((int) HttpStatusCode.InternalServerError);
+                throw new HTTPException((int)HttpStatusCode.InternalServerError);
 
             var muteExists =
                 mutes.AsParallel().Any(o => o.ID.Equals(mute.ID) && o.Name.Equals(mute.Name));
-
 
             // Check that the mute entry does not already exist
             if (muteExists)
@@ -869,11 +905,11 @@ namespace Corrade.HTTP
                 Corrade.Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                 Corrade.Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
                 if (
-                    !MuteListUpdatedEvent.WaitOne((int) Corrade.corradeConfiguration.ServicesTimeout,
+                    !MuteListUpdatedEvent.WaitOne((int)Corrade.corradeConfiguration.ServicesTimeout,
                         false))
                 {
                     Corrade.Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                    throw new HTTPException((int) HttpStatusCode.InternalServerError);
+                    throw new HTTPException((int)HttpStatusCode.InternalServerError);
                 }
                 Corrade.Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             }
@@ -895,7 +931,7 @@ namespace Corrade.HTTP
 
             // Break if the softban request is incompatible with the softban web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -908,18 +944,18 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Remove))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Group is not a configured group.
             if (!Corrade.corradeConfiguration.Groups.AsParallel().Any(o => o.UUID.Equals(groupUUID)))
             {
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
             SoftBan softBan;
@@ -936,12 +972,12 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
             // Invalid soft ban.
             if (softBan.Equals(default(SoftBan)))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var groupSoftBansModified = false;
 
@@ -973,7 +1009,7 @@ namespace Corrade.HTTP
 
             // Break if the softban request is incompatible with the softban web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -986,18 +1022,18 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Add))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Group is not a configured group.
             if (!Corrade.corradeConfiguration.Groups.AsParallel().Any(o => o.UUID.Equals(groupUUID)))
             {
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
             SoftBan softBan;
@@ -1014,12 +1050,12 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
             // Invalid soft ban.
             if (softBan.Equals(default(SoftBan)))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var groupSoftBansModified = false;
 
@@ -1034,6 +1070,7 @@ namespace Corrade.HTTP
                         Corrade.GroupSoftBans[groupUUID].Add(softBan);
                         groupSoftBansModified = true;
                         break;
+
                     default:
                         if (
                             Corrade.GroupSoftBans[groupUUID].AsParallel()
@@ -1061,7 +1098,7 @@ namespace Corrade.HTTP
             /* /user/add/<Group UUID> /user/remove/<Group UUID> */
             // Break if the user request is incompatible with the user web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -1074,13 +1111,13 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Remove))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             Configuration.Group configurationGroup;
             try
@@ -1096,16 +1133,16 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
             // Invalid configuration group.
             if (configurationGroup == null || configurationGroup.Equals(default(Configuration.Group)))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Check that this is the group that is being pushed.
             if (!groupUUID.Equals(configurationGroup.UUID))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Search the configuration for the pushed group.
             var configuredGroup = Corrade.corradeConfiguration.Groups.AsParallel()
@@ -1138,7 +1175,7 @@ namespace Corrade.HTTP
                 }
                 catch (Exception)
                 {
-                    throw new HTTPException((int) HttpStatusCode.InternalServerError);
+                    throw new HTTPException((int)HttpStatusCode.InternalServerError);
                 }
             }
 
@@ -1155,7 +1192,7 @@ namespace Corrade.HTTP
             /* /user/add/<Group UUID> /user/remove/<Group UUID> */
             // Break if the user request is incompatible with the user web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -1168,13 +1205,13 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Add))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             Configuration.Group configurationGroup;
             try
@@ -1190,16 +1227,16 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
             // Invalid configuration group.
             if (configurationGroup == null || configurationGroup.Equals(default(Configuration.Group)))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Check that this is the group that is being pushed.
             if (!groupUUID.Equals(configurationGroup.UUID))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // Search the configuration for the pushed group.
             var configuredGroup = Corrade.corradeConfiguration.Groups.AsParallel()
@@ -1232,7 +1269,7 @@ namespace Corrade.HTTP
                 }
                 catch (Exception)
                 {
-                    throw new HTTPException((int) HttpStatusCode.InternalServerError);
+                    throw new HTTPException((int)HttpStatusCode.InternalServerError);
                 }
             }
 
@@ -1249,7 +1286,7 @@ namespace Corrade.HTTP
             /* /bayes/add/<Group UUID> /bayes/remove/<Group UUID> */
             // Break if the bayes request is incompatible with the bayes web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -1262,13 +1299,13 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Remove))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             var bayes = new BayesSimpleTextClassifier();
             try
@@ -1283,7 +1320,7 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
             var bayesDataModified = false;
@@ -1312,7 +1349,7 @@ namespace Corrade.HTTP
             /* /bayes/add/<Group UUID> /bayes/remove/<Group UUID> */
             // Break if the bayes request is incompatible with the bayes web resource.
             if (string.IsNullOrEmpty(type))
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
 
             var dataSynchronizationType =
                 Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(type);
@@ -1325,13 +1362,13 @@ namespace Corrade.HTTP
 
             // If this synchronization is not allowed with this peer, then break.
             if (!hordePeer.SynchronizationMask.IsMaskFlagSet(dataSynchronizationType))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             // If this synchronization option is not allowed with this peer, then break.
             if (
                 !hordePeer.HasDataSynchronizationOption(dataSynchronizationType,
                     Configuration.HordeDataSynchronizationOption.Add))
-                throw new HTTPException((int) HttpStatusCode.Forbidden);
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
 
             var bayes = new BayesSimpleTextClassifier();
             try
@@ -1346,7 +1383,7 @@ namespace Corrade.HTTP
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
                     ex.Message);
-                throw new HTTPException((int) HttpStatusCode.BadRequest);
+                throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
             var bayesDataModified = false;
@@ -1358,6 +1395,7 @@ namespace Corrade.HTTP
                         Corrade.GroupBayesClassifiers[groupUUID] = bayes;
                         bayesDataModified = true;
                         break;
+
                     default:
                         Corrade.GroupBayesClassifiers.Add(groupUUID, bayes);
                         bayesDataModified = true;

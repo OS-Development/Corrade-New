@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -28,7 +27,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -63,6 +62,7 @@ namespace Corrade
                                         }
                                     });
                             break;
+
                         case Enumerations.Entity.PARCEL:
                             Vector3 position;
                             if (
@@ -104,6 +104,7 @@ namespace Corrade
                                     }
                                 });
                             break;
+
                         case Enumerations.Entity.REGION:
                             // Get all sim parcels
                             var SimParcelsDownloadedEvent = new ManualResetEvent(false);
@@ -118,7 +119,7 @@ namespace Corrade
                                     SimParcelsDownloadedEvent.Set();
                                 }
                                 if (
-                                    !SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
@@ -154,6 +155,7 @@ namespace Corrade
                                         }
                                     });
                             break;
+
                         case Enumerations.Entity.AVATAR:
                             UUID agentUUID;
                             if (
@@ -186,6 +188,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.AVATAR_NOT_IN_RANGE);
                             avatars.Add(avatar);
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

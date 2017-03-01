@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -41,17 +40,18 @@ namespace Corrade
                                 .FirstOrDefault(
                                     o =>
                                         Reflection.GetAttributeFromEnumValue<Command.StatusAttribute>(
-                                            (Enumerations.ScriptError) o.GetValue(null))
+                                            (Enumerations.ScriptError)o.GetValue(null))
                                             .Status.Equals(status));
                             if (scriptErrorFieldInfo == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.STATUS_NOT_FOUND);
                             var description =
                                 Reflection.GetNameFromEnumValue(
-                                    (Enumerations.ScriptError) scriptErrorFieldInfo.GetValue(null));
+                                    (Enumerations.ScriptError)scriptErrorFieldInfo.GetValue(null));
                             if (string.IsNullOrEmpty(description))
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DESCRIPTION_FOR_STATUS);
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), description);
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

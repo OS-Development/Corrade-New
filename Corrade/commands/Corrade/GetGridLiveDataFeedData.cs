@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse.StructuredData;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using CorradeConfigurationSharp;
-using OpenMetaverse.StructuredData;
 using wasSharp;
 using OSD = wasOpenMetaverse.OSD;
 using Reflection = wasSharp.Reflection;
@@ -28,7 +27,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -46,11 +45,13 @@ namespace Corrade
                                     @"http://secondlife.com/xmlhttp/homepage.php",
                                     new Dictionary<string, string>());
                                 break;
+
                             case Enumerations.Entity.LINDEX:
                                 liveData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
                                     @"http://secondlife.com/xmlhttp/lindex.php",
                                     new Dictionary<string, string>());
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }

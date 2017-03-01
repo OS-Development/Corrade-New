@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using String = wasSharp.String;
+
 using System.Collections.Generic;
 using wasSharp;
 

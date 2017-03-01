@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -63,6 +62,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                                 break;
+
                             default:
                                 if (
                                     !Services.FindPrimitive(Client,
@@ -108,6 +108,7 @@ namespace Corrade
                                                         corradeCommandParameters.Message)));
                                         });
                                         break;
+
                                     case "default":
                                         primitive.Textures.DefaultTexture =
                                             primitive.Textures.DefaultTexture.wasCSVToStructure(wasInput(
@@ -115,11 +116,13 @@ namespace Corrade
                                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                     corradeCommandParameters.Message)));
                                         break;
+
                                     default:
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
                                 }
                                 break;
+
                             default:
                                 if (i > Primitive.TextureEntry.MAX_FACES)
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);

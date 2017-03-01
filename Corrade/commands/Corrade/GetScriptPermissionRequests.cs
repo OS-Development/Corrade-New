@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -25,7 +24,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -53,7 +52,7 @@ namespace Corrade
                                     csv.AddRange(typeof(ScriptPermission).GetFields(BindingFlags.Public |
                                                                                     BindingFlags.Static)
                                         .AsParallel().Where(
-                                            p => o.Permissions.IsMaskFlagSet((ScriptPermission) p.GetValue(null)))
+                                            p => o.Permissions.IsMaskFlagSet((ScriptPermission)p.GetValue(null)))
                                         .Select(p => p.Name).ToArray());
                                     csv.AddRange(new[]
                                     {Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION), o.Region});

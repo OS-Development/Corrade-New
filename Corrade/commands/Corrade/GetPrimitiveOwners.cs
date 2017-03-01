@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -29,7 +28,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Land))
+                                (int)Configuration.Permissions.Land))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -69,6 +68,7 @@ namespace Corrade
                                 }
                                 parcels.Add(parcel);
                                 break;
+
                             default:
                                 // Get all sim parcels
                                 var SimParcelsDownloadedEvent = new ManualResetEvent(false);
@@ -83,7 +83,7 @@ namespace Corrade
                                         SimParcelsDownloadedEvent.Set();
                                     }
                                     if (
-                                        !SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                        !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                             false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
@@ -147,7 +147,7 @@ namespace Corrade
                                 Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
                                 Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
                                 if (
-                                    !ParcelObjectOwnersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    !ParcelObjectOwnersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
@@ -164,6 +164,7 @@ namespace Corrade
                                             case true:
                                                 primitives[o.OwnerID] += o.Count;
                                                 break;
+
                                             default:
                                                 primitives.Add(o.OwnerID, o.Count);
                                                 break;

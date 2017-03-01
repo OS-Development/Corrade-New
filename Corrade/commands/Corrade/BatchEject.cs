@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -26,7 +25,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Group))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -44,6 +43,7 @@ namespace Corrade
                                     new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
+
                         default:
                             groupUUID = corradeCommandParameters.Group.UUID;
                             break;
@@ -83,7 +83,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -110,7 +110,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -180,7 +180,7 @@ namespace Corrade
                                     }
                                     return;
                             }
-                            // If demote is false and the group member belongs to any other roles 
+                            // If demote is false and the group member belongs to any other roles
                             // other than the everyone role then we cannot proceed.
                             switch (
                                 !groupRolesMembers.AsParallel()
@@ -223,7 +223,7 @@ namespace Corrade
                             {
                                 Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                 Client.Groups.EjectUser(groupUUID, agentUUID);
-                                GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                                GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
                                 Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                             }
                             // If the eject was not successful, add them to the output.

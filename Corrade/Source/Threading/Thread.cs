@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Amib.Threading;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using Amib.Threading;
-using OpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
 using Action = Amib.Threading.Action;
@@ -83,7 +82,7 @@ namespace Corrade.Threading
                 // protect inner thread
                 try
                 {
-                    SequentialThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false);
+                    SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, false);
                     SequentialThreadCompletedEvent.Reset();
                     s();
                     SequentialThreadCompletedEvent.Set();
@@ -184,7 +183,7 @@ namespace Corrade.Threading
                 if (GroupExecutionSet.Count > 1 && !groupExecution.Equals(default(GroupExecution)))
                     workItemPriority =
                         threadRangePriority[
-                            (int) (100L*groupExecution.ExecutionTime/GroupExecutionSet.Sum(o => o.ExecutionTime))];
+                            (int)(100L * groupExecution.ExecutionTime / GroupExecutionSet.Sum(o => o.ExecutionTime))];
             }
 
             // Spawn.
@@ -207,10 +206,11 @@ namespace Corrade.Threading
                             case true:
                                 //GroupExecutionSet.Remove(groupExecution);
                                 groupExecution.ExecutionTime = (groupExecution.ExecutionTime +
-                                                                ThreadExecutuionStopwatch.ElapsedMilliseconds)/2;
+                                                                ThreadExecutuionStopwatch.ElapsedMilliseconds) / 2;
                                 groupExecution.TimeStamp = DateTime.UtcNow;
                                 //GroupExecutionSet.Add(groupExecution);
                                 break;
+
                             default:
                                 GroupExecutionSet.Add(new GroupExecution
                                 {
@@ -263,7 +263,7 @@ namespace Corrade.Threading
                 if (GroupExecutionSet.Count > 1 && !groupExecution.Equals(default(GroupExecution)))
                     workItemPriority =
                         threadRangePriority[
-                            (int) (100L*groupExecution.ExecutionTime/GroupExecutionSet.Sum(o => o.ExecutionTime))];
+                            (int)(100L * groupExecution.ExecutionTime / GroupExecutionSet.Sum(o => o.ExecutionTime))];
             }
 
             // Spawn.
@@ -287,10 +287,11 @@ namespace Corrade.Threading
                             case true:
                                 GroupExecutionSet.Remove(groupExecution);
                                 groupExecution.ExecutionTime = (groupExecution.ExecutionTime +
-                                                                ThreadExecutuionStopwatch.ElapsedMilliseconds)/2;
+                                                                ThreadExecutuionStopwatch.ElapsedMilliseconds) / 2;
                                 groupExecution.TimeStamp = DateTime.UtcNow;
                                 GroupExecutionSet.Add(groupExecution);
                                 break;
+
                             default:
                                 GroupExecutionSet.Add(new GroupExecution
                                 {

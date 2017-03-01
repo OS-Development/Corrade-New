@@ -4,17 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using OpenMetaverse.Messages.Linden;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
-using System.Threading;
 
 namespace Corrade
 {
@@ -102,7 +101,7 @@ namespace Corrade
                     object LockObject = new object();
                     parcelResourceDetail.Objects.AsParallel().ForAll(o =>
                     {
-                        lock(LockObject)
+                        lock (LockObject)
                         {
                             data.AddRange(o.GetStructuredData(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),

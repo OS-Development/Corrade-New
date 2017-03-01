@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using HtmlAgilityPack;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
-using CorradeConfigurationSharp;
-using HtmlAgilityPack;
 using wasSharp;
 
 namespace Corrade
@@ -25,7 +24,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -100,7 +99,7 @@ namespace Corrade
                     if (postData.Result == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    #endregion
+                    #endregion Authenticate
 
                     // Check whether a proposal has been sent.
                     postData =

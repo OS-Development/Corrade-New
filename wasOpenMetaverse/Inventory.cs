@@ -12,7 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
-using String = wasSharp.String;
+
 
 namespace wasOpenMetaverse
 {
@@ -90,8 +90,8 @@ namespace wasOpenMetaverse
                         return;
 
                     if (!prim.NameValues.AsParallel()
-                        .Where(o => String.Equals(o.Name, "AttachItemID"))
-                        .Any(o => String.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                        .Where(o => string.Equals(o.Name, "AttachItemID"))
+                        .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
                     attachmentPoint = (AttachmentPoint) (((prim.PrimData.State & 0xF0) >> 4) |
@@ -146,8 +146,8 @@ namespace wasOpenMetaverse
                         return;
 
                     if (!prim.NameValues.AsParallel()
-                        .Where(o => String.Equals(o.Name, "AttachItemID"))
-                        .Any(o => String.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                        .Where(o => string.Equals(o.Name, "AttachItemID"))
+                        .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
                     attachmentPoint = (AttachmentPoint) (((prim.PrimData.State & 0xF0) >> 4) |
@@ -406,13 +406,13 @@ namespace wasOpenMetaverse
                         // If not, the path is phony!
                         return null;
                     default: // There is no root and the first of the path is a name, hmm...
-                        if (String.Equals(Client.Inventory.Store.RootFolder.Name, first, comparison))
+                        if (string.Equals(Client.Inventory.Store.RootFolder.Name, first, comparison))
                         {
                             // ..set the root to the inventory folder.
                             root = Client.Inventory.Store.RootFolder;
                             break;
                         }
-                        if (String.Equals(Client.Inventory.Store.LibraryFolder.Name, first, comparison))
+                        if (string.Equals(Client.Inventory.Store.LibraryFolder.Name, first, comparison))
                         {
                             // .. set the root to the library folder.
                             root = Client.Inventory.Store.LibraryFolder;
@@ -446,7 +446,7 @@ namespace wasOpenMetaverse
                 case true:
                     try
                     {
-                        root = contents.SingleOrDefault(q => String.Equals(q.Name, first, comparison));
+                        root = contents.SingleOrDefault(q => string.Equals(q.Name, first, comparison));
                         break;
                     }
                     catch (Exception)

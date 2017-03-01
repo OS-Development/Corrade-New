@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Constants;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -28,7 +27,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -105,10 +104,11 @@ namespace Corrade
                                         });
                                     }
                                     break;
+
                                 case false:
                                     var dir = DirItem.FromInventoryBase(Client, item,
                                         corradeConfiguration.ServicesTimeout);
-                                    csv.AddRange(new[] {Reflection.GetStructureMemberName(dir, dir.Name), dir.Name});
+                                    csv.AddRange(new[] { Reflection.GetStructureMemberName(dir, dir.Name), dir.Name });
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetStructureMemberName(dir, dir.Item),
@@ -132,6 +132,7 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         case Enumerations.Action.CWD:
                             lock (GroupDirectoryTrackersLock)
                             {
@@ -160,6 +161,7 @@ namespace Corrade
                                 });
                             }
                             break;
+
                         case Enumerations.Action.CD:
                             if (string.IsNullOrEmpty(path))
                             {
@@ -187,6 +189,7 @@ namespace Corrade
                                 GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] = item;
                             }
                             break;
+
                         case Enumerations.Action.MKDIR:
                             var mkdirName =
                                 wasInput(
@@ -223,6 +226,7 @@ namespace Corrade
                                 updateFolders.Add(item.UUID);
                             }
                             break;
+
                         case Enumerations.Action.CHMOD:
                             var itemPermissions =
                                 wasInput(
@@ -265,6 +269,7 @@ namespace Corrade
                                         updateFolders.Add(item.UUID);
                                     }
                                     break;
+
                                 default:
                                     var inventoryItem = item as InventoryItem;
                                     inventoryItem.Permissions =
@@ -277,6 +282,7 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         case Enumerations.Action.RM:
                             if (string.IsNullOrEmpty(path))
                             {
@@ -305,6 +311,7 @@ namespace Corrade
                                             Client.Inventory.FindFolderForType(AssetType.TrashFolder));
                                     }
                                     break;
+
                                 default:
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
@@ -323,6 +330,7 @@ namespace Corrade
                                 updateFolders.Add(trashFolderUUID);
                             }
                             break;
+
                         case Enumerations.Action.CP:
                         case Enumerations.Action.MV:
                         case Enumerations.Action.LN:
@@ -424,6 +432,7 @@ namespace Corrade
                                             });
                                     }
                                     break;
+
                                 case Enumerations.Action.MV:
                                     switch (sourceItem is InventoryFolder)
                                     {
@@ -433,6 +442,7 @@ namespace Corrade
                                                 Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID, targetName);
                                             }
                                             break;
+
                                         default:
                                             lock (Locks.ClientInstanceInventoryLock)
                                             {
@@ -460,6 +470,7 @@ namespace Corrade
                                                     updateFolders.Add(libraryFolderUUID);
                                                 }
                                                 break;
+
                                             default:
                                                 if (!updateFolders.Contains(sourceItem.ParentUUID))
                                                 {
@@ -483,6 +494,7 @@ namespace Corrade
                                                     updateFolders.Add(libraryFolderUUID);
                                                 }
                                                 break;
+
                                             default:
                                                 if (!updateFolders.Contains(targetItem.ParentUUID))
                                                 {
@@ -492,6 +504,7 @@ namespace Corrade
                                         }
                                     }
                                     break;
+
                                 case Enumerations.Action.CP:
                                     lock (Locks.ClientInstanceInventoryLock)
                                     {
@@ -514,6 +527,7 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

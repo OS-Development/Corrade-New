@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Linq;
-using System.Reflection;
 using Corrade.Constants;
 using OpenMetaverse;
+using System;
+using System.Linq;
+using System.Reflection;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -20,11 +19,20 @@ namespace Corrade.Structures
     /// </summary>
     public struct DirItem
     {
-        [Reflection.NameAttribute("item")] public UUID Item;
-        [Reflection.NameAttribute("name")] public string Name;
-        [Reflection.NameAttribute("permissions")] public string Permissions;
-        [Reflection.NameAttribute("type")] public Enumerations.DirItemType Type;
-        [Reflection.NameAttribute("time")] public DateTime Time;
+        [Reflection.NameAttribute("item")]
+        public UUID Item;
+
+        [Reflection.NameAttribute("name")]
+        public string Name;
+
+        [Reflection.NameAttribute("permissions")]
+        public string Permissions;
+
+        [Reflection.NameAttribute("type")]
+        public Enumerations.DirItemType Type;
+
+        [Reflection.NameAttribute("time")]
+        public DateTime Time;
 
         public static DirItem FromInventoryBase(GridClient Client, InventoryBase inventoryBase, uint millisecondsTimeout)
         {
@@ -51,11 +59,11 @@ namespace Corrade.Structures
             if (inventoryItem is InventoryWearable)
             {
                 item.Type =
-                    (Enumerations.DirItemType) typeof(Enumerations.DirItemType).GetFields(BindingFlags.Public |
+                    (Enumerations.DirItemType)typeof(Enumerations.DirItemType).GetFields(BindingFlags.Public |
                                                                                           BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
-                                String.Equals(o.Name,
+                                string.Equals(o.Name,
                                     Enum.GetName(typeof(WearableType),
                                         (inventoryItem as InventoryWearable).WearableType),
                                     StringComparison.OrdinalIgnoreCase)).GetValue(null);

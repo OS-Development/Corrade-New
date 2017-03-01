@@ -17,29 +17,37 @@ namespace Corrade.Structures
         /// <summary>
         ///     The agent UUID.
         /// </summary>
-        [Reflection.NameAttribute("agent")] public UUID Agent;
+        [Reflection.NameAttribute("agent")]
+        public UUID Agent;
 
-        [Reflection.NameAttribute("firstname")] public string FirstName;
-        [Reflection.NameAttribute("lastname")] public string LastName;
+        [Reflection.NameAttribute("firstname")]
+        public string FirstName;
+
+        [Reflection.NameAttribute("lastname")]
+        public string LastName;
 
         /// <summary>
         ///     Hard time measured in minutes.
         /// </summary>
-        [Reflection.NameAttribute("time")] public ulong Time;
+        [Reflection.NameAttribute("time")]
+        public ulong Time;
 
         /// <summary>
         ///     Optional notes for the ban.
         /// </summary>
-        [Reflection.NameAttribute("note")] public string Note;
+        [Reflection.NameAttribute("note")]
+        public string Note;
 
         /// <summary>
         ///     The time span when the ban was placed originally.
         /// </summary>
-        [Reflection.NameAttribute("timestamp")] public string Timestamp;
+        [Reflection.NameAttribute("timestamp")]
+        public string Timestamp;
 
         /// <summary>
         ///     The last time the agent attempted to join the group and got banned.
         /// </summary>
-        [Reflection.NameAttribute("last")] public string Last;
+        [Reflection.NameAttribute("last")]
+        public string Last;
     }
 }

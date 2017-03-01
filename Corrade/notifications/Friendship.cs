@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Helpers;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade
@@ -25,9 +24,9 @@ namespace Corrade
                     if (friendshipNotificationType == typeof(FriendInfoEventArgs))
                     {
                         var friendInfoEventArgs =
-                            (FriendInfoEventArgs) corradeNotificationParameters.Event;
+                            (FriendInfoEventArgs)corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -42,7 +41,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> {friendInfoEventArgs},
+                                    new List<object> { friendInfoEventArgs },
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
@@ -51,9 +50,9 @@ namespace Corrade
                     if (friendshipNotificationType == typeof(FriendshipResponseEventArgs))
                     {
                         var friendshipResponseEventArgs =
-                            (FriendshipResponseEventArgs) corradeNotificationParameters.Event;
+                            (FriendshipResponseEventArgs)corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -69,7 +68,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> {friendshipResponseEventArgs},
+                                    new List<object> { friendshipResponseEventArgs },
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
@@ -78,9 +77,9 @@ namespace Corrade
                     if (friendshipNotificationType == typeof(FriendshipOfferedEventArgs))
                     {
                         var friendshipOfferedEventArgs =
-                            (FriendshipOfferedEventArgs) corradeNotificationParameters.Event;
+                            (FriendshipOfferedEventArgs)corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -96,7 +95,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> {friendshipOfferedEventArgs},
+                                    new List<object> { friendshipOfferedEventArgs },
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));

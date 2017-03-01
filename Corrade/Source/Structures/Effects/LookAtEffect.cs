@@ -14,10 +14,19 @@ namespace Corrade.Structures.Effects
     /// </summary>
     public struct LookAtEffect
     {
-        [Reflection.NameAttribute("effect")] public UUID Effect;
-        [Reflection.NameAttribute("offset")] public Vector3d Offset;
-        [Reflection.NameAttribute("source")] public UUID Source;
-        [Reflection.NameAttribute("target")] public UUID Target;
-        [Reflection.NameAttribute("type")] public LookAtType Type;
+        [Reflection.NameAttribute("effect")]
+        public UUID Effect;
+
+        [Reflection.NameAttribute("offset")]
+        public Vector3d Offset;
+
+        [Reflection.NameAttribute("source")]
+        public UUID Source;
+
+        [Reflection.NameAttribute("target")]
+        public UUID Target;
+
+        [Reflection.NameAttribute("type")]
+        public LookAtType Type;
     }
 }

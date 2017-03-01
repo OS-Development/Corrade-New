@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Xml.Serialization;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
 
@@ -32,7 +31,8 @@ namespace Corrade
         ///     Holds TCP notification destinations.
         /// </summary>
         /// <remarks>These are state dependant so they do not have to be serialized.</remarks>
-        [XmlIgnore] public Dictionary<Configuration.Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
+        [XmlIgnore]
+        public Dictionary<Configuration.Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
 
         public SerializableDictionary<Configuration.Notifications, HashSet<string>>
             NotificationURLDestination;
@@ -51,9 +51,14 @@ namespace Corrade
     /// </summary>
     public struct NotificationParameters
     {
-        [Reflection.NameAttribute("event")] public object Event;
-        [Reflection.NameAttribute("notification")] public Notification Notification;
-        [Reflection.NameAttribute("type")] public Configuration.Notifications Type;
+        [Reflection.NameAttribute("event")]
+        public object Event;
+
+        [Reflection.NameAttribute("notification")]
+        public Notification Notification;
+
+        [Reflection.NameAttribute("type")]
+        public Configuration.Notifications Type;
     }
 
     /// <summary>

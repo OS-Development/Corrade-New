@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Corrade.Structures;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -88,44 +87,47 @@ namespace Corrade
                                         o =>
                                             typeof(ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
                                                 .AsParallel()
-                                                .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
+                                                .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                                 .ForAll(
                                                     q =>
                                                     {
-                                                        var permission = (ScriptPermission) q.GetValue(null);
+                                                        var permission = (ScriptPermission)q.GetValue(null);
                                                         switch (permission)
                                                         {
                                                             case ScriptPermission.Debit:
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int) Configuration.Permissions.Economy))
+                                                                        (int)Configuration.Permissions.Economy))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
                                                                 }
                                                                 break;
+
                                                             case ScriptPermission.Teleport:
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int) Configuration.Permissions.Movement))
+                                                                        (int)Configuration.Permissions.Movement))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
                                                                 }
                                                                 break;
+
                                                             case ScriptPermission.ChangeJoints:
                                                             case ScriptPermission.ChangeLinks:
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int) Configuration.Permissions.Interact))
+                                                                        (int)Configuration.Permissions.Interact))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
                                                                 }
                                                                 break;
+
                                                             case ScriptPermission.TriggerAnimation:
                                                             case ScriptPermission.TrackCamera:
                                                             case ScriptPermission.TakeControls:
@@ -135,25 +137,28 @@ namespace Corrade
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int) Configuration.Permissions.Grooming))
+                                                                        (int)Configuration.Permissions.Grooming))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
                                                                 }
                                                                 break;
+
                                                             case ScriptPermission.ReleaseOwnership:
                                                             case ScriptPermission.ChangePermissions:
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int) Configuration.Permissions.Inventory))
+                                                                        (int)Configuration.Permissions.Inventory))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
                                                                 }
                                                                 break;
+
                                                             case ScriptPermission.None:
                                                                 return;
+
                                                             default: // ignore any unimplemented permissions
                                                                 succeeded = false;
                                                                 return;
@@ -171,7 +176,7 @@ namespace Corrade
                                 lock (Locks.ClientInstanceNetworkLock)
                                 {
                                     simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o => String.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
+                                        o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
                                 }
                                 if (simulator == null)
                                 {
@@ -188,18 +193,21 @@ namespace Corrade
                                         permissionMask);
                                 }
                                 break;
+
                             case Enumerations.Action.PURGE:
                                 lock (ScriptPermissionsRequestsLock)
                                 {
                                     ScriptPermissionRequests.Clear();
                                 }
                                 break;
+
                             case Enumerations.Action.IGNORE:
                                 lock (ScriptPermissionsRequestsLock)
                                 {
                                     ScriptPermissionRequests.Remove(scriptPermissionRequest);
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                         }

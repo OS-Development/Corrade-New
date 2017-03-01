@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -26,7 +25,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -62,6 +61,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
+
                         default:
                             if (
                                 !Services.FindPrimitive(Client,
@@ -140,7 +140,7 @@ namespace Corrade
                     {
                         Client.Objects.ClickObject(
                             simulator,
-                            primitive.LocalID, uvCoord, stCoord, (int) faceIndex, position,
+                            primitive.LocalID, uvCoord, stCoord, (int)faceIndex, position,
                             normal, binormal);
                     }
                 };

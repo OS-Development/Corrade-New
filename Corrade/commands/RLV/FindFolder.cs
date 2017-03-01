@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -45,7 +44,7 @@ namespace Corrade
                         return;
                     }
                     var parts =
-                        new HashSet<string>(rule.Option.Split(new[] {wasOpenMetaverse.RLV.RLV_CONSTANTS.AND_OPERATOR},
+                        new HashSet<string>(rule.Option.Split(new[] { wasOpenMetaverse.RLV.RLV_CONSTANTS.AND_OPERATOR },
                             StringSplitOptions.RemoveEmptyEntries));
                     var folders = RLVFolder.GetInventoryRecursive(Client, corradeConfiguration.ServicesTimeout)
                         .ToArray()

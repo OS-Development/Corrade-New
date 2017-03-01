@@ -4,8 +4,8 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System.Threading;
 using OpenMetaverse;
+using System.Threading;
 using wasSharp;
 
 namespace Corrade.Structures
@@ -15,8 +15,13 @@ namespace Corrade.Structures
     /// </summary>
     public class InventoryOffer
     {
-        [Reflection.NameAttribute("args")] public InventoryObjectOfferedEventArgs Args;
-        [Reflection.NameAttribute("event")] public ManualResetEvent Event;
-        [Reflection.NameAttribute("name")] public string Name;
+        [Reflection.NameAttribute("args")]
+        public InventoryObjectOfferedEventArgs Args;
+
+        [Reflection.NameAttribute("event")]
+        public ManualResetEvent Event;
+
+        [Reflection.NameAttribute("name")]
+        public string Name;
     }
 }

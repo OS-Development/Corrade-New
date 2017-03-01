@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using Mono.Data.Sqlite;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using CorradeConfigurationSharp;
-using Mono.Data.Sqlite;
 using wasSharp;
 
 namespace Corrade
@@ -24,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Database))
+                            (int)Configuration.Permissions.Database))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }

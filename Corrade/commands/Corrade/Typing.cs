@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -24,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming))
+                            (int)Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -40,12 +39,14 @@ namespace Corrade
                                 Client.Self.AnimationStart(Animations.TYPE, true);
                             }
                             break;
+
                         case Enumerations.Action.DISABLE:
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.AnimationStop(Animations.TYPE, true);
                             }
                             break;
+
                         case Enumerations.Action.GET:
                             lock (Locks.ClientInstanceSelfLock)
                             {
@@ -53,6 +54,7 @@ namespace Corrade
                                     Client.Self.SignaledAnimations.ContainsKey(Animations.TYPE).ToString());
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

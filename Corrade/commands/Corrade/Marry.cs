@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using HtmlAgilityPack;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
-using CorradeConfigurationSharp;
-using HtmlAgilityPack;
 using wasSharp;
 
 namespace Corrade
@@ -25,7 +24,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -101,7 +100,7 @@ namespace Corrade
                     if (postData.Result == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
-                    #endregion
+                    #endregion Authenticate
 
                     HtmlNode revokeNode;
                     HtmlNode formNode;
@@ -146,7 +145,7 @@ namespace Corrade
                                         Enumerations.ScriptError.MESSAGE_MAY_NOT_CONTAIN_HTML);
                             }
 
-                            #endregion
+                            #endregion Partnership Parameters
 
                             // Check whether a proposal has been sent.
                             postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
@@ -207,6 +206,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.PROPOSAL_REJECTED);
                             }
                             break;
+
                         case Enumerations.Action.REVOKE: // Revoke a sent proposal.
                             // Check whether a proposal has been sent.
                             postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
@@ -242,6 +242,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_REVOKE_PROPOSAL);
 
                             break;
+
                         case Enumerations.Action.ACCEPT: // Accept a proposal from someone
 
                             message = wasInput(KeyValue.Get(
@@ -310,6 +311,7 @@ namespace Corrade
                             }
 
                             break;
+
                         case Enumerations.Action.REJECT: // Reject a proposal from someone.
                             message = wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
@@ -377,6 +379,7 @@ namespace Corrade
                             }
 
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

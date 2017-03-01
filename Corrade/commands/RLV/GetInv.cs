@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using Inventory = wasOpenMetaverse.Inventory;
 
@@ -45,6 +44,7 @@ namespace Corrade
                         case true:
                             optionFolder = RLVFolder;
                             break;
+
                         default:
                             optionFolder = Inventory.FindInventory<InventoryFolder>(Client, rule.Option,
                                 wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null,
@@ -63,7 +63,7 @@ namespace Corrade
                     }
                     var csv = new HashSet<string>();
                     csv.UnionWith(Inventory.FolderContents(Client, optionFolder.UUID, optionFolder.UUID, true, false,
-                        InventorySortOrder.ByDate, (int) corradeConfiguration.ServicesTimeout).AsParallel()
+                        InventorySortOrder.ByDate, (int)corradeConfiguration.ServicesTimeout).AsParallel()
                         .Where(
                             o =>
                                 o is InventoryFolder &&
@@ -80,6 +80,7 @@ namespace Corrade
                                     ChatType.Normal);
                             }
                             break;
+
                         default:
                             lock (Locks.ClientInstanceSelfLock)
                             {

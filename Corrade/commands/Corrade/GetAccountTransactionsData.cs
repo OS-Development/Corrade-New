@@ -4,17 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.WebForms.SecondLife;
+using CorradeConfigurationSharp;
+using HtmlAgilityPack;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Xml.Serialization;
-using Corrade.WebForms.SecondLife;
-using CorradeConfigurationSharp;
-using HtmlAgilityPack;
 using wasSharp;
 
 namespace Corrade
@@ -29,7 +28,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -142,7 +141,7 @@ namespace Corrade
                         {
                             using (TextReader reader = new StringReader(Encoding.UTF8.GetString(postData.Result)))
                             {
-                                transactions = (Transactions) serializer.Deserialize(reader);
+                                transactions = (Transactions)serializer.Deserialize(reader);
                             }
                         }
                         catch (Exception)

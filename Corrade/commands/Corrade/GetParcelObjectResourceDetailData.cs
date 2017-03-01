@@ -4,17 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using OpenMetaverse.Messages.Linden;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
-using System.Threading;
 
 namespace Corrade
 {
@@ -74,7 +73,7 @@ namespace Corrade
                     }
                     UUID parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle, UUID.Zero);
                     var succeeded = false;
-                    
+
                     // Establish CAPs connection if not established.
                     if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
                     {
@@ -111,10 +110,11 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => String.Equals(o.ID, itemUUID));
+                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => string.Equals(o.ID, itemUUID));
                             break;
+
                         default:
-                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => String.Equals(o.Name, item));
+                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => string.Equals(o.Name, item));
                             break;
                     }
 

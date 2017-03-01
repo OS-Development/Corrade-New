@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -26,7 +25,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -69,6 +68,7 @@ namespace Corrade
                         {
                             case Enumerations.Entity.REGION:
                                 break;
+
                             case Enumerations.Entity.PARCEL:
                                 if (
                                     !Services.GetParcelAtPosition(Client, simulator, position,
@@ -77,6 +77,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }
@@ -95,6 +96,7 @@ namespace Corrade
                             {
                                 case Enumerations.Entity.REGION:
                                     break;
+
                                 case Enumerations.Entity.PARCEL:
                                     Parcel avatarParcel = null;
                                     if (

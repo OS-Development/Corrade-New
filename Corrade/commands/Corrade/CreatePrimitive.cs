@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -29,7 +28,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -147,8 +146,9 @@ namespace Corrade
                     switch (primitiveShapesFieldInfo != null)
                     {
                         case true:
-                            constructionData = (Primitive.ConstructionData) primitiveShapesFieldInfo.GetValue(null);
+                            constructionData = (Primitive.ConstructionData)primitiveShapesFieldInfo.GetValue(null);
                             break;
+
                         default:
                             // Build the construction data as a default primitive box.
                             constructionData = CORRADE_CONSTANTS.PRIMTIVE_BODIES.CUBE;
@@ -172,9 +172,9 @@ namespace Corrade
                             o =>
                                 typeof(PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel()
-                                    .Where(p => String.Equals(o, p.Name, StringComparison.Ordinal))
+                                    .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
-                                        q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags) q.GetValue(null)); }));
+                                        q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags)q.GetValue(null)); }));
 
                     // Finally, add the primitive to the simulator.
                     lock (Locks.ClientInstanceObjectsLock)

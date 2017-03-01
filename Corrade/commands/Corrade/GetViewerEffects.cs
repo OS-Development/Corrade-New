@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade
@@ -24,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Interact))
+                            (int)Configuration.Permissions.Interact))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -58,6 +57,7 @@ namespace Corrade
                                 }
                             });
                             break;
+
                         case Enumerations.ViewerEffectType.POINT:
                             PointAtEffects.AsParallel().ForAll(o =>
                             {
@@ -79,6 +79,7 @@ namespace Corrade
                                 }
                             });
                             break;
+
                         case Enumerations.ViewerEffectType.SPHERE:
                             lock (SphereEffectsLock)
                             {
@@ -111,6 +112,7 @@ namespace Corrade
                                 });
                             }
                             break;
+
                         case Enumerations.ViewerEffectType.BEAM:
                             lock (BeamEffectsLock)
                             {
@@ -147,6 +149,7 @@ namespace Corrade
                                 });
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_EFFECT);
                     }

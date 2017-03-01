@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Linq;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Linq;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -47,7 +46,7 @@ namespace Corrade
                         Inventory.FolderContents(Client, inventoryFolder.UUID, inventoryFolder.OwnerID,
                             false,
                             true,
-                            InventorySortOrder.ByDate, (int) corradeConfiguration.ServicesTimeout)
+                            InventorySortOrder.ByDate, (int)corradeConfiguration.ServicesTimeout)
                             .AsParallel()
                             .Where(Inventory.CanBeWorn).ForAll(
                                 o =>

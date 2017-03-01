@@ -4,8 +4,8 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System.Collections.Generic;
 using OpenMetaverse;
+using System.Collections.Generic;
 using wasSharp;
 
 namespace Corrade.Structures
@@ -15,12 +15,25 @@ namespace Corrade.Structures
     /// </summary>
     public class ScriptDialog
     {
-        [Reflection.NameAttribute("agent")] public Agent Agent;
-        [Reflection.NameAttribute("button")] public List<string> Button;
-        [Reflection.NameAttribute("channel")] public int Channel;
-        [Reflection.NameAttribute("id")] public UUID ID;
-        [Reflection.NameAttribute("item")] public UUID Item;
-        [Reflection.NameAttribute("message")] public string Message;
-        [Reflection.NameAttribute("name")] public string Name;
+        [Reflection.NameAttribute("agent")]
+        public Agent Agent;
+
+        [Reflection.NameAttribute("button")]
+        public List<string> Button;
+
+        [Reflection.NameAttribute("channel")]
+        public int Channel;
+
+        [Reflection.NameAttribute("id")]
+        public UUID ID;
+
+        [Reflection.NameAttribute("item")]
+        public UUID Item;
+
+        [Reflection.NameAttribute("message")]
+        public string Message;
+
+        [Reflection.NameAttribute("name")]
+        public string Name;
     }
 }

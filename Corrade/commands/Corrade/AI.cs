@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.IO;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using wasSharp;
 
 namespace Corrade
@@ -21,7 +20,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> ai =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Talk))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -55,6 +54,7 @@ namespace Corrade
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), reply);
                             }
                             break;
+
                         case Enumerations.Action.REBUILD:
                             lock (SIMLBotLock)
                             {
@@ -78,6 +78,7 @@ namespace Corrade
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

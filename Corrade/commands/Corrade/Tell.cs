@@ -4,17 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -29,7 +28,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> tell =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Talk))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -80,6 +79,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Entity.AVATAR:
                             UUID agentUUID;
                             if (
@@ -170,7 +170,7 @@ namespace Corrade
                                 Client.Self.InstantMessage(Client.Self.FirstName + @" " + Client.Self.LastName,
                                     agentUUID, data, sessionUUID, instantMessageDialog,
                                     instantMessageOnline, Client.Self.SimPosition,
-                                    Client.Network.CurrentSim.RegionID, new byte[] {});
+                                    Client.Network.CurrentSim.RegionID, new byte[] { });
                             }
                             // do not log empty messages
                             if (string.IsNullOrEmpty(data))
@@ -230,6 +230,7 @@ namespace Corrade
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
                             break;
+
                         case Enumerations.Entity.GROUP:
                             UUID groupUUID;
                             var target = wasInput(
@@ -245,6 +246,7 @@ namespace Corrade
                                             new DecayingAlarm(corradeConfiguration.DataDecayType), ref groupUUID))
                                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                                     break;
+
                                 default:
                                     groupUUID = corradeCommandParameters.Group.UUID;
                                     break;
@@ -337,6 +339,7 @@ namespace Corrade
                                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                     });
                             break;
+
                         case Enumerations.Entity.LOCAL:
                             int chatChannel;
                             if (
@@ -451,6 +454,7 @@ namespace Corrade
                                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                     }
                                     break;
+
                                 default:
                                     // that's how the big boys do it
                                     lock (Locks.ClientInstanceSelfLock)
@@ -460,18 +464,21 @@ namespace Corrade
                                     break;
                             }
                             break;
+
                         case Enumerations.Entity.ESTATE:
                             lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateMessage(data);
                             }
                             break;
+
                         case Enumerations.Entity.REGION:
                             lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.SimulatorMessage(data);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

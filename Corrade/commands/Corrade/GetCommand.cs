@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
-using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade
@@ -69,10 +68,12 @@ namespace Corrade
                                             commandInputSyntaxAttribute.Syntax);
                                     }
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_SYNTAX_TYPE);
                             }
                             break;
+
                         case Enumerations.Entity.PERMISSION:
                             var data = new HashSet<string>();
                             var LockObject = new object();
@@ -95,6 +96,7 @@ namespace Corrade
                                     CSV.FromEnumerable(data));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

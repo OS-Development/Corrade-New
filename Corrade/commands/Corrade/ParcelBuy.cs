@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -25,7 +24,7 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> parcelbuy =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int) Configuration.Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -116,7 +115,7 @@ namespace Corrade
                     {
                         Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                         Client.Parcels.RequestParcelInfo(parcelUUID);
-                        if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -139,7 +138,7 @@ namespace Corrade
                                 DirectorySearchResultsAlarm.Signal.Set();
                             });
                             if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
-                                ((handledEvents - counter)%
+                                ((handledEvents - counter) %
                                  wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                             {
                                 ++counter;
@@ -154,7 +153,7 @@ namespace Corrade
                         Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                             DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
                         if (
-                            !DirectorySearchResultsAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                            !DirectorySearchResultsAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                 false))
                         {
                             Client.Directory.DirLandReply -= DirLandReplyEventArgs;
@@ -179,7 +178,7 @@ namespace Corrade
                     }
                     if (!parcel.SalePrice.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Economy))
+                            (int)Configuration.Permissions.Economy))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }

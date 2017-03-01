@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using BayesSharp;
 using CorradeConfigurationSharp;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade
@@ -23,7 +22,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Database))
+                            (int)Configuration.Permissions.Database))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -73,6 +72,7 @@ namespace Corrade
                                     Configuration.HordeDataSynchronizationOption.Add);
                             }
                             break;
+
                         case Enumerations.Action.CLASSIFY:
                             data =
                                 wasInput(
@@ -95,6 +95,7 @@ namespace Corrade
                                     CSV.FromDictionary(output));
                             }
                             break;
+
                         case Enumerations.Action.LIST:
                             lock (GroupBayesClassifiersLock)
                             {
@@ -110,6 +111,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Action.MERGE:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
                                 break;
@@ -143,6 +145,7 @@ namespace Corrade
                                     Configuration.HordeDataSynchronizationOption.Add);
                             }
                             break;
+
                         case Enumerations.Action.UNTRAIN:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
                                 break;
@@ -175,6 +178,7 @@ namespace Corrade
                                     Configuration.HordeDataSynchronizationOption.Add);
                             }
                             break;
+
                         case Enumerations.Action.IMPORT:
                             data =
                                 wasInput(
@@ -196,6 +200,7 @@ namespace Corrade
                             // We are importing so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
                             break;
+
                         case Enumerations.Action.EXPORT:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
                                 break;
@@ -213,6 +218,7 @@ namespace Corrade
                                 }
                             }
                             break;
+
                         case Enumerations.Action.REMOVE:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
                                 break;
@@ -237,6 +243,7 @@ namespace Corrade
                                     Configuration.HordeDataSynchronizationOption.Add);
                             }
                             break;
+
                         case Enumerations.Action.ADD:
                             category = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
@@ -264,6 +271,7 @@ namespace Corrade
                                     Configuration.HordeDataSynchronizationOption.Add);
                             }
                             break;
+
                         case Enumerations.Action.RENAME:
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
                                 break;
@@ -298,6 +306,7 @@ namespace Corrade
                                     Configuration.HordeDataSynchronizationOption.Add);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

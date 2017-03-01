@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Land))
+                                (int)Configuration.Permissions.Land))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -57,6 +56,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
                                 region = parcelInfo.SimName;
                                 break;
+
                             default:
                                 if (string.IsNullOrEmpty(region))
                                 {
@@ -71,7 +71,7 @@ namespace Corrade
                         var gridRegion = new GridRegion();
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
-                            if (!String.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
+                            if (!string.Equals(region, args.Region.Name, StringComparison.OrdinalIgnoreCase))
                                 return;
                             gridRegion = args.Region;
                             GridRegionEvent.Set();
@@ -80,7 +80,7 @@ namespace Corrade
                         {
                             Client.Grid.GridRegion += GridRegionEventHandler;
                             Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!GridRegionEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_REGION);

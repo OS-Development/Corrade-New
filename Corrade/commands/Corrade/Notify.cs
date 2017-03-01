@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using CorradeConfigurationSharp;
 using wasSharp;
 using wasSharp.Collections.Generic;
 
@@ -25,7 +24,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Notifications))
+                            (int)Configuration.Permissions.Notifications))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -138,6 +137,7 @@ namespace Corrade
                                         Afterburn = afterburn
                                     };
                                     break;
+
                                 case true:
                                     if (notification.NotificationTCPDestination == null)
                                     {
@@ -158,7 +158,7 @@ namespace Corrade
                                 (o, state) =>
                                 {
                                     var notificationValue =
-                                        (ulong) Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
+                                        (ulong)Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
                                     if (!GroupHasNotification(corradeCommandParameters.Group.UUID, notificationValue))
                                     {
                                         // one of the notification was not allowed, so abort
@@ -169,36 +169,38 @@ namespace Corrade
                                     notification.Afterburn = afterburn;
                                     switch (
                                         !notification.NotificationURLDestination.ContainsKey(
-                                            (Configuration.Notifications) notificationValue))
+                                            (Configuration.Notifications)notificationValue))
                                     {
                                         case true:
                                             lock (LockObject)
                                             {
                                                 notification.NotificationURLDestination.Add(
-                                                    (Configuration.Notifications) notificationValue,
-                                                    new HashSet<string> {url});
+                                                    (Configuration.Notifications)notificationValue,
+                                                    new HashSet<string> { url });
                                             }
                                             break;
+
                                         default:
                                             switch (action)
                                             {
                                                 case Enumerations.Action.ADD:
                                                     // notification destination is already there
                                                     if (notification.NotificationURLDestination[
-                                                        (Configuration.Notifications) notificationValue].Contains(url))
+                                                        (Configuration.Notifications)notificationValue].Contains(url))
                                                         break;
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationURLDestination[
-                                                            (Configuration.Notifications) notificationValue]
+                                                            (Configuration.Notifications)notificationValue]
                                                             .Add(url);
                                                     }
                                                     break;
+
                                                 case Enumerations.Action.SET:
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationURLDestination[
-                                                            (Configuration.Notifications) notificationValue] = new HashSet
+                                                            (Configuration.Notifications)notificationValue] = new HashSet
                                                                 <string>
                                                             {
                                                                 url
@@ -226,6 +228,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
+
                         case Enumerations.Action.REMOVE:
                             lock (GroupNotificationsLock)
                             {
@@ -271,13 +274,14 @@ namespace Corrade
                                                     notificationDestination.Add(p.Key, p.Value);
                                                 }
                                                 break;
+
                                             default:
                                                 var URLs =
                                                     new HashSet<string>(
                                                         p.Value.AsParallel()
                                                             .Where(
                                                                 q =>
-                                                                    !String.Equals(url, q,
+                                                                    !string.Equals(url, q,
                                                                         StringComparison.Ordinal)));
                                                 if (!URLs.Any()) return;
                                                 lock (NotficatinDestinationLock)
@@ -308,6 +312,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
+
                         case Enumerations.Action.LIST:
                             // If the group has no installed notifications, bail
                             var csv = new List<string>();
@@ -343,6 +348,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         case Enumerations.Action.CLEAR:
                             lock (GroupNotificationsLock)
                             {
@@ -381,6 +387,7 @@ namespace Corrade
                                                 Afterburn = o.Afterburn
                                             });
                                             break;
+
                                         default: // not our group
                                             groupNotifications.Add(o);
                                             break;
@@ -391,6 +398,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
+
                         case Enumerations.Action.PURGE:
                             lock (GroupNotificationsLock)
                             {
@@ -400,6 +408,7 @@ namespace Corrade
                             // Save the notifications state.
                             SaveNotificationState.Invoke();
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
@@ -430,7 +439,7 @@ namespace Corrade
                                                         GroupNotificationsCache[o].Add(p);
                                                         return;
                                                     }
-                                                    GroupNotificationsCache.Add(o, new HashSet<Notification> {p});
+                                                    GroupNotificationsCache.Add(o, new HashSet<Notification> { p });
                                                 }
                                             });
                                     });

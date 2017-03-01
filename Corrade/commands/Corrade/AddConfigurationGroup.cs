@@ -4,16 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -31,7 +29,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.System))
+                                (int)Configuration.Permissions.System))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -49,6 +47,7 @@ namespace Corrade
                                     ref groupName))
                                     throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                                 break;
+
                             default:
                                 if (!Resolvers.GroupNameToUUID(Client, target, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
@@ -60,7 +59,7 @@ namespace Corrade
 
                         if (
                             corradeConfiguration.Groups.AsParallel()
-                                .Any(o => String.Equals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) || o.UUID.Equals(groupUUID)))
+                                .Any(o => string.Equals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) || o.UUID.Equals(groupUUID)))
                             throw new Command.ScriptException(Enumerations.ScriptError.GROUP_ALREADY_CONFIGURED);
 
                         // Fetch group password.

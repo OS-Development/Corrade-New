@@ -4,10 +4,9 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Globalization;
 using OpenMetaverse;
+using System;
+using System.Globalization;
 using wasOpenMetaverse;
 
 namespace Corrade
@@ -28,7 +27,7 @@ namespace Corrade
                     }
                     lock (Locks.ClientInstanceSelfLock)
                     {
-                        Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
+                        Client.Self.Movement.UpdateFromHeading(Math.PI / 2d - rotation, true);
                     }
                 };
         }

@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -30,7 +29,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -56,6 +55,7 @@ namespace Corrade
                             case Enumerations.Entity.RANGE:
                                 updatePrimitives.UnionWith(Services.GetPrimitives(Client, range));
                                 break;
+
                             case Enumerations.Entity.WORLD:
                                 var avatars =
                                     new HashSet<uint>(Services.GetAvatars(Client, range).Select(o => o.LocalID));
@@ -65,6 +65,7 @@ namespace Corrade
                                             .AsParallel()
                                             .Where(o => o.ParentID.Equals(0) && !avatars.Contains(o.ParentID)));
                                 break;
+
                             case Enumerations.Entity.PARCEL:
                                 Vector3 position;
                                 if (
@@ -102,6 +103,7 @@ namespace Corrade
                                         case true:
                                             objectsPrimitives.TryGetValue(o.ParentID, out prim);
                                             break;
+
                                         default:
                                             prim = o;
                                             break;
@@ -116,6 +118,7 @@ namespace Corrade
                                     }
                                 });
                                 break;
+
                             case Enumerations.Entity.REGION:
                                 // Get all sim parcels
                                 var SimParcelsDownloadedEvent = new ManualResetEvent(false);
@@ -130,7 +133,7 @@ namespace Corrade
                                         SimParcelsDownloadedEvent.Set();
                                     }
                                     if (
-                                        !SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                        !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                             false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
@@ -150,6 +153,7 @@ namespace Corrade
                                             new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
                                     }.Max()).Max());
                                 break;
+
                             case Enumerations.Entity.AVATAR:
                                 UUID agentUUID;
                                 if (
@@ -199,6 +203,7 @@ namespace Corrade
                                                     }
                                                 }
                                                 break;
+
                                             default:
                                                 lock (LockObject)
                                                 {
@@ -208,6 +213,7 @@ namespace Corrade
                                         }
                                     });
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }

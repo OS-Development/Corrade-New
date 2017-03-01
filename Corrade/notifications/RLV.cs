@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Helpers;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasSharp;
 
 namespace Corrade
@@ -21,9 +20,9 @@ namespace Corrade
             public static Action<NotificationParameters, Dictionary<string, string>> rlv =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    var RLVEventArgs = (ChatEventArgs) corradeNotificationParameters.Event;
+                    var RLVEventArgs = (ChatEventArgs)corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
-                    if (corradeNotificationParameters.Notification.Data != null &&
+                    if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
                         notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -38,7 +37,7 @@ namespace Corrade
                         .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
                             p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                new List<object> {RLVEventArgs},
+                                new List<object> { RLVEventArgs },
                                 notificationData, LockObject, languageDetector,
                                 GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));

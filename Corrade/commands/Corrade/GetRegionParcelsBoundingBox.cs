@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Land))
+                                (int)Configuration.Permissions.Land))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -61,7 +60,7 @@ namespace Corrade
                             {
                                 SimParcelsDownloadedEvent.Set();
                             }
-                            if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -69,7 +68,7 @@ namespace Corrade
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                         }
                         var csv = new List<Vector3>();
-                        simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
+                        simulator.Parcels.ForEach(o => csv.AddRange(new[] { o.AABBMin, o.AABBMax }));
                         if (csv.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

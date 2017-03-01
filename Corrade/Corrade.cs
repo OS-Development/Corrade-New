@@ -6,8 +6,26 @@
 
 #region
 
+using BayesSharp;
+using CommandLine;
+using Corrade.Constants;
+using Corrade.Events;
+using Corrade.HTTP;
+using Corrade.Source;
+using Corrade.Structures;
+using Corrade.Structures.Effects;
+using CorradeConfigurationSharp;
+using Jint;
+using LanguageDetection;
+using log4net;
+using log4net.Appender;
+using log4net.Config;
+using log4net.Layout;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
+using Syn.Bot.Siml;
+using Syn.Bot.Siml.Events;
 using System;
-using String = wasSharp.String;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -36,25 +54,6 @@ using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
-using BayesSharp;
-using CommandLine;
-using Corrade.Constants;
-using Corrade.Events;
-using Corrade.HTTP;
-using Corrade.Source;
-using Corrade.Structures;
-using Corrade.Structures.Effects;
-using CorradeConfigurationSharp;
-using Jint;
-using log4net;
-using log4net.Appender;
-using log4net.Config;
-using log4net.Layout;
-using LanguageDetection;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
-using Syn.Bot.Siml;
-using Syn.Bot.Siml.Events;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
@@ -73,7 +72,6 @@ using Parallel = System.Threading.Tasks.Parallel;
 using Reflection = wasSharp.Reflection;
 using ThreadState = System.Threading.ThreadState;
 using Timer = wasSharp.Timers.Timer;
-using log4net.Repository.Hierarchy;
 
 #endregion
 
@@ -110,7 +108,7 @@ namespace Corrade
                         typeof(Action<NotificationParameters, Dictionary<string, string>>))
                 .ToDictionary(
                     o => string.Intern(o.Name), o =>
-                        (Action<NotificationParameters, Dictionary<string, string>>) o.GetValue(null));
+                        (Action<NotificationParameters, Dictionary<string, string>>)o.GetValue(null));
 
         /// <summary>
         ///     A map of Corrade command name to Corrade command.
@@ -124,7 +122,7 @@ namespace Corrade
                         typeof(Action<CorradeCommandParameters, Dictionary<string, string>>))
                 .ToDictionary(
                     o => string.Intern(o.Name), o =>
-                        (Action<CorradeCommandParameters, Dictionary<string, string>>) o.GetValue(null));
+                        (Action<CorradeCommandParameters, Dictionary<string, string>>)o.GetValue(null));
 
         /// <summary>
         ///     Holds all the active RLV rules.
@@ -144,7 +142,7 @@ namespace Corrade
                     typeof(Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>))
             .ToDictionary(
                 o => string.Intern(o.Name), o =>
-                    (Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>) o.GetValue(null));
+                    (Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>)o.GetValue(null));
 
         public static HashSet<string> CorradeResultKeys =
             new HashSet<string>(Reflection.GetEnumNames<ResultKeys>().AsParallel().Select(o => string.Intern(o)));
@@ -214,6 +212,7 @@ namespace Corrade
         private static LoginParams Login;
         private static object CorradeLastExecStatusFileLock = new object();
         private static LastExecStatus _CorradeLastExecStatus = LastExecStatus.Normal;
+
         private static LastExecStatus CorradeLastExecStatus
         {
             get
@@ -359,6 +358,7 @@ namespace Corrade
 
         // script dialogs can be identical
         private static readonly Dictionary<UUID, ScriptDialog> ScriptDialogs = new Dictionary<UUID, ScriptDialog>();
+
         private static readonly object ScriptDialogsLock = new object();
 
         private static readonly HashSet<KeyValuePair<UUID, int>> CurrentAnimations =
@@ -462,7 +462,7 @@ namespace Corrade
         {
             // Log heartbeat data.
             Feedback("Heartbeat",
-                $"CPU: {CorradeHeartbeat.AverageCPUUsage}% RAM: {CorradeHeartbeat.AverageRAMUsage/1024/1024:0.}MiB Uptime: {TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Days}d:{TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Hours}h:{TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Minutes}m Commands: {CorradeHeartbeat.ProcessedCommands} Behaviours: {CorradeHeartbeat.ProcessedRLVBehaviours}");
+                $"CPU: {CorradeHeartbeat.AverageCPUUsage}% RAM: {CorradeHeartbeat.AverageRAMUsage / 1024 / 1024:0.}MiB Uptime: {TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Days}d:{TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Hours}h:{TimeSpan.FromSeconds(CorradeHeartbeat.Uptime).Minutes}m Commands: {CorradeHeartbeat.ProcessedCommands} Behaviours: {CorradeHeartbeat.ProcessedRLVBehaviours}");
         }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
@@ -549,7 +549,7 @@ namespace Corrade
                             Client.Groups.RequestBanAction(o.Group,
                                 GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
                                 (sender, args) => { GroupBanEvent.Set(); });
-                            if (!GroupBanEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
@@ -615,6 +615,7 @@ namespace Corrade
                         case true:
                             groupMembersRequestUUIDs.Remove(args.RequestID);
                             break;
+
                         default:
                             return;
                     }
@@ -629,6 +630,7 @@ namespace Corrade
                             case true:
                                 GroupMembers[args.GroupID].UnionWith(args.Members.Values.Select(o => o.ID));
                                 break;
+
                             default:
                                 GroupMembers[args.GroupID].ExceptWith(GroupMembers[args.GroupID].AsParallel()
                                     .Where(o => !args.Members.Values.Any(p => p.ID.Equals(o))));
@@ -649,7 +651,7 @@ namespace Corrade
                 {
                     groupMembersRequestUUIDs.Add(Client.Groups.RequestGroupMembers(o));
                 }
-                GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                GroupMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             });
         }, TimeSpan.Zero, TimeSpan.Zero);
@@ -801,7 +803,7 @@ namespace Corrade
                         {
                             var serializer =
                                 new XmlSerializer(typeof(Configuration));
-                            var loadedConfiguration = (Configuration) serializer.Deserialize(stream);
+                            var loadedConfiguration = (Configuration)serializer.Deserialize(stream);
                             if (corradeConfiguration.EnableHorde)
                             {
                                 corradeConfiguration.Groups.AsParallel()
@@ -933,7 +935,7 @@ namespace Corrade
                     (sender, args) => { AppearanceSetEvent.Set(); };
                 Client.Appearance.AppearanceSet += HandleAppearanceSet;
                 Client.Appearance.RequestSetAppearance(true);
-                AppearanceSetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                AppearanceSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
                 Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             }
         });
@@ -976,23 +978,29 @@ namespace Corrade
                     case Configuration.Filter.RFC1738:
                         o = o.URLUnescapeDataString();
                         break;
+
                     case Configuration.Filter.RFC3986:
                         o = o.URIUnescapeDataString();
                         break;
+
                     case Configuration.Filter.ENIGMA:
                         o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.plugs.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.reflector);
                         break;
+
                     case Configuration.Filter.VIGENERE:
                         o = Cryptography.DecryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
                         break;
+
                     case Configuration.Filter.ATBASH:
                         o = Cryptography.ATBASH(o);
                         break;
+
                     case Configuration.Filter.AES:
                         o = CorradeAES.wasAESDecrypt(o, corradeConfiguration.AESKey);
                         break;
+
                     case Configuration.Filter.BASE64:
                         o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
                         break;
@@ -1021,23 +1029,29 @@ namespace Corrade
                     case Configuration.Filter.RFC1738:
                         o = o.URLEscapeDataString();
                         break;
+
                     case Configuration.Filter.RFC3986:
                         o = o.URIEscapeDataString();
                         break;
+
                     case Configuration.Filter.ENIGMA:
                         o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.plugs.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.reflector);
                         break;
+
                     case Configuration.Filter.VIGENERE:
                         o = Cryptography.EncryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
                         break;
+
                     case Configuration.Filter.ATBASH:
                         o = Cryptography.ATBASH(o);
                         break;
+
                     case Configuration.Filter.AES:
                         o = CorradeAES.wasAESEncrypt(o, corradeConfiguration.AESKey);
                         break;
+
                     case Configuration.Filter.BASE64:
                         o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
                         break;
@@ -1045,7 +1059,6 @@ namespace Corrade
             }
             return o;
         };
-
 
         /// <summary>
         ///     Loads the OpenMetaverse inventory cache.
@@ -1369,6 +1382,7 @@ namespace Corrade
                                                     GroupMembers[o.Key].CollectionChanged += HandleGroupMemberJoinPart;
                                                     GroupMembers[o.Key].UnionWith(o.Value);
                                                     break;
+
                                                 default:
                                                     GroupMembers[o.Key].UnionWith(o.Value);
                                                     break;
@@ -1471,6 +1485,7 @@ namespace Corrade
                                                     GroupSoftBans[o.Key].CollectionChanged += HandleGroupSoftBansChanged;
                                                     GroupSoftBans[o.Key].UnionWith(o.Value);
                                                     break;
+
                                                 default:
                                                     GroupSoftBans[o.Key].UnionWith(o.Value);
                                                     break;
@@ -1688,7 +1703,7 @@ namespace Corrade
                                             GroupNotificationsCache[o].Add(p);
                                             return;
                                         }
-                                        GroupNotificationsCache.Add(o, new HashSet<Notification> {p});
+                                        GroupNotificationsCache.Add(o, new HashSet<Notification> { p });
                                     }
                                 });
                         }
@@ -1767,7 +1782,7 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var serializer = new XmlSerializer(typeof(AgentMovement));
-                                var movement = (AgentMovement) serializer.Deserialize(streamReader);
+                                var movement = (AgentMovement)serializer.Deserialize(streamReader);
                                 lock (Locks.ClientInstanceSelfLock)
                                 {
                                     Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
@@ -1853,7 +1868,7 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var serializer = new XmlSerializer(typeof(HashSet<Conference>));
-                                ((HashSet<Conference>) serializer.Deserialize(streamReader)).AsParallel()
+                                ((HashSet<Conference>)serializer.Deserialize(streamReader)).AsParallel()
                                     .ForAll(o =>
                                     {
                                         try
@@ -2106,6 +2121,7 @@ namespace Corrade
                     case true:
                         SynBot.PackageManager.LoadFromString(File.ReadAllText(SIMLPackage));
                         break;
+
                     default:
                         var elementList = new List<XDocument>();
                         foreach (var simlDocument in Directory.GetFiles(Path.Combine(
@@ -2189,6 +2205,7 @@ namespace Corrade
                         InstalledServiceName = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
                     }
                     break;
+
                 default:
                     InstalledServiceName = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
                     break;
@@ -2214,7 +2231,7 @@ namespace Corrade
                 TCPListener =
                     new TcpListener(
                         new IPEndPoint(IPAddress.Parse(corradeConfiguration.TCPNotificationsServerAddress),
-                            (int) corradeConfiguration.TCPNotificationsServerPort));
+                            (int)corradeConfiguration.TCPNotificationsServerPort));
                 TCPListener.Start();
             }
             catch (Exception ex)
@@ -2338,6 +2355,7 @@ namespace Corrade
                                                 Data = data
                                             };
                                             break;
+
                                         case true:
                                             if (notification.NotificationTCPDestination == null)
                                             {
@@ -2377,21 +2395,22 @@ namespace Corrade
                                             }
                                             switch (
                                                 !notification.NotificationTCPDestination.ContainsKey(
-                                                    (Configuration.Notifications) notificationValue))
+                                                    (Configuration.Notifications)notificationValue))
                                             {
                                                 case true:
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationTCPDestination.Add(
-                                                            (Configuration.Notifications) notificationValue,
-                                                            new HashSet<IPEndPoint> {remoteEndPoint});
+                                                            (Configuration.Notifications)notificationValue,
+                                                            new HashSet<IPEndPoint> { remoteEndPoint });
                                                     }
                                                     break;
+
                                                 default:
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationTCPDestination[
-                                                            (Configuration.Notifications) notificationValue]
+                                                            (Configuration.Notifications)notificationValue]
                                                             .Add(
                                                                 remoteEndPoint);
                                                     }
@@ -2426,7 +2445,7 @@ namespace Corrade
                                                                         return;
                                                                     }
                                                                     GroupNotificationsCache.Add(o,
-                                                                        new HashSet<Notification> {p});
+                                                                        new HashSet<Notification> { p });
                                                                 }
                                                             });
                                                     });
@@ -2444,6 +2463,7 @@ namespace Corrade
                                                 }));
                                             streamWriter.Flush();
                                             break;
+
                                         default:
                                             streamWriter.WriteLine(
                                                 KeyValue.Encode(new Dictionary<string, string>
@@ -2464,7 +2484,7 @@ namespace Corrade
                                         var notificationTCPQueueElement = new NotificationTCPQueueElement();
                                         if (
                                             !NotificationTCPQueue.Dequeue(
-                                                (int) corradeConfiguration.TCPNotificationThrottle,
+                                                (int)corradeConfiguration.TCPNotificationThrottle,
                                                 ref notificationTCPQueueElement))
                                             continue;
                                         if (notificationTCPQueueElement.Equals(default(NotificationTCPQueueElement)) ||
@@ -2487,6 +2507,7 @@ namespace Corrade
                                         Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
                                     ex.Message, ex.InnerException.Message);
                                 break;
+
                             default:
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
@@ -2522,6 +2543,7 @@ namespace Corrade
                                                         o.Value.Where(p => !p.Equals(remoteEndPoint)));
                                                 notificationTCPDestination.Add(o.Key, destinations);
                                                 break;
+
                                             default:
                                                 notificationTCPDestination.Add(o.Key, o.Value);
                                                 break;
@@ -2557,7 +2579,7 @@ namespace Corrade
                                                             return;
                                                         }
                                                         GroupNotificationsCache.Add(o,
-                                                            new HashSet<Notification> {p});
+                                                            new HashSet<Notification> { p });
                                                     }
                                                 });
                                         });
@@ -2577,7 +2599,7 @@ namespace Corrade
             // Set the user disconnect semaphore.
             ConnectionSemaphores['u'].Set();
             // Wait for threads to finish.
-            Thread.Sleep((int) corradeConfiguration.ServicesTimeout);
+            Thread.Sleep((int)corradeConfiguration.ServicesTimeout);
             return true;
         }
 
@@ -2590,21 +2612,21 @@ namespace Corrade
         private static bool Authenticate(UUID group, string password)
         {
             /*
-             * If the master override feature is enabled and the password matches the 
+             * If the master override feature is enabled and the password matches the
              * master override password then consider the request to be authenticated.
              * Otherwise, check that the password matches the password for the group.
              */
             return !group.Equals(UUID.Zero) && !string.IsNullOrEmpty(password) &&
                    ((corradeConfiguration.EnableMasterPasswordOverride &&
                      !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
-                         String.Equals(corradeConfiguration.MasterPasswordOverride, password,
+                         string.Equals(corradeConfiguration.MasterPasswordOverride, password,
                              StringComparison.Ordinal) ||
                          Utils.SHA1String(password)
                              .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase))) ||
                     corradeConfiguration.Groups.AsParallel().Any(
                         o =>
                             group.Equals(o.UUID) &&
-                            (String.Equals(o.Password, password, StringComparison.Ordinal) ||
+                            (string.Equals(o.Password, password, StringComparison.Ordinal) ||
                              Utils.SHA1String(password)
                                  .Equals(o.Password, StringComparison.OrdinalIgnoreCase))));
         }
@@ -2619,7 +2641,7 @@ namespace Corrade
         {
             return !permission.Equals(0) && corradeConfiguration.Groups.AsParallel()
                 .Any(
-                    o => group.Equals(o.UUID) && o.PermissionMask.IsMaskFlagSet((Configuration.Permissions) permission));
+                    o => group.Equals(o.UUID) && o.PermissionMask.IsMaskFlagSet((Configuration.Permissions)permission));
         }
 
         /// <summary>
@@ -2636,7 +2658,7 @@ namespace Corrade
             return UUID.TryParse(group, out groupUUID)
                 ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
                 : corradeConfiguration.Groups.AsParallel()
-                    .FirstOrDefault(o => String.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -2649,7 +2671,7 @@ namespace Corrade
         {
             return !notification.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
                 o => group.Equals(o.UUID) &&
-                     o.NotificationMask.IsMaskFlagSet((Configuration.Notifications) notification));
+                     o.NotificationMask.IsMaskFlagSet((Configuration.Notifications)notification));
         }
 
         /// <summary>
@@ -2694,6 +2716,7 @@ namespace Corrade
                     var corrade = new Corrade();
                     corrade.OnStart(null);
                     return 0;
+
                 default:
                     var exitCode = 0;
                     if (Parser.Default.ParseArgumentsStrict(args, new CommandLineOptions(), (o, p) =>
@@ -2729,7 +2752,7 @@ namespace Corrade
                         switch (o)
                         {
                             case "info":
-                                var infoOptions = (InfoSubOptions) p;
+                                var infoOptions = (InfoSubOptions)p;
                                 if (infoOptions == null)
                                 {
                                     exitCode = -1;
@@ -2738,8 +2761,9 @@ namespace Corrade
                                 Console.WriteLine("Version: " + CORRADE_CONSTANTS.CORRADE_VERSION);
                                 Console.WriteLine("Compiled on: " + CORRADE_CONSTANTS.CORRADE_COMPILE_DATE);
                                 break;
+
                             case "install":
-                                var installOptions = (InstallSubOptions) p;
+                                var installOptions = (InstallSubOptions)p;
                                 if (installOptions == null)
                                 {
                                     exitCode = -1;
@@ -2761,7 +2785,7 @@ namespace Corrade
                                         if (ex.InnerException != null &&
                                             ex.InnerException.GetType() == typeof(Win32Exception))
                                         {
-                                            var we = (Win32Exception) ex.InnerException;
+                                            var we = (Win32Exception)ex.InnerException;
                                             Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
                                             exitCode = we.ErrorCode;
                                         }
@@ -2778,8 +2802,9 @@ namespace Corrade
                                     exitCode = -1;
                                 }
                                 break;
+
                             case "uninstall":
-                                var uninstallOptions = (UninstallSubOptions) p;
+                                var uninstallOptions = (UninstallSubOptions)p;
                                 if (uninstallOptions == null)
                                 {
                                     exitCode = -1;
@@ -2800,7 +2825,7 @@ namespace Corrade
                                     {
                                         if (ex.InnerException?.GetType() == typeof(Win32Exception))
                                         {
-                                            var we = (Win32Exception) ex.InnerException;
+                                            var we = (Win32Exception)ex.InnerException;
                                             Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
                                             exitCode = we.ErrorCode;
                                         }
@@ -2876,7 +2901,7 @@ namespace Corrade
                     NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Anonymous;
                     // Disable caching.
                     NucleusHTTPServer.SuggestNoCaching = true;
-                    NucleusHTTPServer.Start(new[] {prefix});
+                    NucleusHTTPServer.Start(new[] { prefix });
                     ConsoleCancelEventHandler ConsoleCancelKeyPress = (sender, args) =>
                     {
                         try
@@ -2941,7 +2966,8 @@ namespace Corrade
                     }
                     // Watch the directory for files.
                     var watchConfiguration = new FileSystemWatcher(Directory.GetCurrentDirectory(),
-                        CORRADE_CONSTANTS.CONFIGURATION_FILE) {EnableRaisingEvents = true};
+                        CORRADE_CONSTANTS.CONFIGURATION_FILE)
+                    { EnableRaisingEvents = true };
                     // Wait for the Corrade configuration to be created.
                     watchConfiguration.WaitForChanged(WatcherChangeTypes.Created);
                     // Wait for all transfers to complete.
@@ -2949,7 +2975,7 @@ namespace Corrade
                     // Attempt to acquire an exclusive lock on the configuration file.
                     lock (ConfigurationFileLock)
                     {
-                        ACQUIRE_EXCLUSIVE_LOCK:
+                    ACQUIRE_EXCLUSIVE_LOCK:
                         Thread.Sleep(100);
                         try
                         {
@@ -2989,6 +3015,7 @@ namespace Corrade
                     // This was a first run.
                     firstRun = true;
                     break;
+
                 default:
                     // Load the configuration file.
                     lock (ConfigurationFileLock)
@@ -3294,7 +3321,7 @@ namespace Corrade
                     try
                     {
                         var callbackQueueElement = new CallbackQueueElement();
-                        if (CallbackQueue.Dequeue((int) corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
+                        if (CallbackQueue.Dequeue((int)corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
                         {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.POST].Spawn(async () =>
                             {
@@ -3335,7 +3362,7 @@ namespace Corrade
                     try
                     {
                         var notificationQueueElement = new NotificationQueueElement();
-                        if (NotificationQueue.Dequeue((int) corradeConfiguration.NotificationThrottle,
+                        if (NotificationQueue.Dequeue((int)corradeConfiguration.NotificationThrottle,
                             ref notificationQueueElement))
                         {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.POST].Spawn(async () =>
@@ -3498,7 +3525,7 @@ namespace Corrade
                 // Assume Corrade crashed.
                 CorradeLastExecStatus = LastExecStatus.OtherCrash;
                 // Wait for any semaphore.
-                WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
+                WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle)o).ToArray());
                 // User disconnect.
                 CorradeLastExecStatus = LastExecStatus.Normal;
 
@@ -3649,7 +3676,7 @@ namespace Corrade
                     Client.Network.LoggedOut += LoggedOutEventHandler;
                     CorradeLastExecStatus = LastExecStatus.LogoutCrash;
                     Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
+                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, false))
                     {
                         CorradeLastExecStatus = LastExecStatus.LogoutFroze;
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -3800,7 +3827,7 @@ namespace Corrade
                     lock (Locks.ClientInstanceAssetsLock)
                     {
                         Client.Assets.RequestAsset(e.SoundID, AssetType.Sound, false,
-                            delegate(AssetDownload transfer, Asset asset)
+                            delegate (AssetDownload transfer, Asset asset)
                             {
                                 if (!transfer.AssetID.Equals(e.SoundID))
                                     return;
@@ -3809,7 +3836,7 @@ namespace Corrade
                                 RequestAssetEvent.Set();
                             });
                         if (
-                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
@@ -3858,6 +3885,7 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.RadarAvatars, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     break;
+
                 default:
                     CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Configuration.Notifications.RadarPrimitives, e),
@@ -3910,6 +3938,7 @@ namespace Corrade
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.APPEARANCE_SET_SUCCEEDED));
                     break;
+
                 default:
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.APPEARANCE_SET_FAILED));
@@ -4019,6 +4048,7 @@ namespace Corrade
                                         Message = notificationData
                                     });
                                     break;
+
                                 default:
                                     Feedback(
                                         Reflection.GetDescriptionFromEnumValue(
@@ -4047,6 +4077,7 @@ namespace Corrade
                                         IPEndPoint = p
                                     });
                                     break;
+
                                 default:
                                     Feedback(
                                         Reflection.GetDescriptionFromEnumValue(
@@ -4145,6 +4176,7 @@ namespace Corrade
                         }),
                         corradeConfiguration.MaximumNotificationThreads);
                     break;
+
                 case ChatType.OwnerSay:
                     // If this is a message from an agent, add the agent to the cache.
                     if (fullName != null && e.SourceType.Equals(ChatSourceType.Agent))
@@ -4184,12 +4216,14 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.OwnerSay, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     break;
+
                 case ChatType.Debug:
                     // Send debug notifications.
                     CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Configuration.Notifications.DebugMessage, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     break;
+
                 case ChatType.Normal:
                 case ChatType.Shout:
                 case ChatType.Whisper:
@@ -4243,7 +4277,8 @@ namespace Corrade
                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                     }
                     break;
-                case (ChatType) 9:
+
+                case (ChatType)9:
                     // Send llRegionSayTo notification in case we do not have a command.
                     if (!Helpers.Utilities.IsCorradeCommand(e.Message))
                     {
@@ -4310,7 +4345,7 @@ namespace Corrade
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(
                         p =>
-                            String.Equals(inventoryOffer.Args.Offer.FromAgentName, p,
+                            string.Equals(inventoryOffer.Args.Offer.FromAgentName, p,
                                 StringComparison.OrdinalIgnoreCase)))
             {
                 inventoryOffer.Args.Accept = true;
@@ -4336,6 +4371,7 @@ namespace Corrade
                                 Inventory.UpdateInventoryRecursive(Client, Client.Inventory.Store.RootFolder,
                                     corradeConfiguration.ServicesTimeout);
                                 break;
+
                             default:
                                 Inventory.UpdateInventoryRecursive(Client,
                                     Client.Inventory.Store.Items[
@@ -4401,6 +4437,7 @@ namespace Corrade
                         var groups = CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
                         inventoryOffer.Name = groups.Count > 0 ? groups[1].Value : e.Offer.Message;
                         break;
+
                     case InstantMessageDialog.InventoryOffered: // from agents
                         if (e.Offer.BinaryBucket.Length.Equals(17))
                         {
@@ -4499,6 +4536,7 @@ namespace Corrade
                         sourceParentUUID = libraryFolderUUID;
                     }
                     break;
+
                 default:
                     sourceParentUUID = inventoryBaseItem.ParentUUID;
                     break;
@@ -4515,6 +4553,7 @@ namespace Corrade
                                 Client.Inventory.RemoveFolder(inventoryBaseItem.UUID);
                             }
                             break;
+
                         default:
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -4579,6 +4618,7 @@ namespace Corrade
                                                 inventoryFolder.UUID, inventoryOffer.Name);
                                         }
                                         break;
+
                                     default:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
@@ -4588,6 +4628,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
+
                             default: // all other items
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
@@ -4599,6 +4640,7 @@ namespace Corrade
                                             Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
                                         }
                                         break;
+
                                     default:
                                         lock (Locks.ClientInstanceInventoryLock)
                                         {
@@ -4615,6 +4657,7 @@ namespace Corrade
                         }
                     }
                     break;
+
                 default: // no destination folder was specified
                     switch (inventoryBaseItem is InventoryFolder)
                     {
@@ -4630,6 +4673,7 @@ namespace Corrade
                                             inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID,
                                             inventoryOffer.Name);
                                         break;
+
                                     default:
                                         Client.Inventory.MoveFolder(
                                             inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID);
@@ -4640,6 +4684,7 @@ namespace Corrade
                                     true;
                             }
                             break;
+
                         default: // move items to their respective asset folder type
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -4661,6 +4706,7 @@ namespace Corrade
                                                 inventoryOffer.Name);
                                             Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
                                             break;
+
                                         default:
                                             Client.Inventory.Move(inventoryBaseItem, destinationFolder);
                                             break;
@@ -4860,7 +4906,7 @@ namespace Corrade
                                 EventHandler<EventQueueRunningEventArgs> handler =
                                     (o, p) => { EventQueueRunningEvent.Set(); };
                                 Client.Network.EventQueueRunning += handler;
-                                EventQueueRunningEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                                EventQueueRunningEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
                                 Client.Network.EventQueueRunning -= handler;
                             }
 
@@ -4919,6 +4965,7 @@ namespace Corrade
                                         Client.Inventory.Store.InventoryObjectRemoved += HandleInventoryObjectRemoved;
                                         Client.Inventory.Store.InventoryObjectUpdated += HandleInventoryObjectUpdated;
                                         break;
+
                                     default:
                                         Client.Inventory.Store.InventoryObjectAdded -= HandleInventoryObjectAdded;
                                         Client.Inventory.Store.InventoryObjectRemoved -= HandleInventoryObjectRemoved;
@@ -4956,23 +5003,28 @@ namespace Corrade
                         Client.Self.SimPosition
                         );
                     break;
+
                 case LoginStatus.Failed:
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGIN_FAILED),
                         e.FailReason,
                         e.Message);
                     ConnectionSemaphores['l'].Set();
                     break;
+
                 case LoginStatus.ConnectingToLogin:
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.CONNECTING_TO_LOGIN_SERVER));
                     break;
+
                 case LoginStatus.Redirecting:
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.REDIRECTING));
                     break;
+
                 case LoginStatus.ReadingResponse:
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.READING_RESPONSE));
                     break;
+
                 case LoginStatus.ConnectingToSim:
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
@@ -5028,6 +5080,7 @@ namespace Corrade
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     }
                     break;
+
                 case TeleportStatus.Failed:
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TELEPORT_FAILED));
                     break;
@@ -5063,6 +5116,7 @@ namespace Corrade
                         }),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
+
                 case InstantMessageDialog.FriendshipOffered:
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
@@ -5070,14 +5124,15 @@ namespace Corrade
                     if (
                         !corradeConfiguration.Masters.AsParallel().Any(
                             o =>
-                                String.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
-                                String.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
+                                string.Equals(fullName.First(), o.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(fullName.Last(), o.LastName, StringComparison.OrdinalIgnoreCase)))
                         return;
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.ACCEPTED_FRIENDSHIP),
                         args.IM.FromAgentName);
                     Client.Friends.AcceptFriendship(args.IM.FromAgentID, args.IM.IMSessionID);
                     break;
+
                 case InstantMessageDialog.TaskInventoryAccepted:
                 case InstantMessageDialog.TaskInventoryDeclined:
                 case InstantMessageDialog.InventoryAccepted:
@@ -5086,9 +5141,11 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.Inventory, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
+
                 case InstantMessageDialog.MessageBox:
                     // Not used.
                     return;
+
                 case InstantMessageDialog.RequestTeleport:
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
@@ -5138,9 +5195,9 @@ namespace Corrade
                             !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
-                                        String.Equals(fullName.First(), o.FirstName,
+                                        string.Equals(fullName.First(), o.FirstName,
                                             StringComparison.OrdinalIgnoreCase) &&
-                                        String.Equals(fullName.Last(), o.LastName,
+                                        string.Equals(fullName.Last(), o.LastName,
                                             StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
@@ -5211,9 +5268,9 @@ namespace Corrade
                             !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
-                                        String.Equals(fullName.First(), o.FirstName,
+                                        string.Equals(fullName.First(), o.FirstName,
                                             StringComparison.OrdinalIgnoreCase) &&
-                                        String.Equals(fullName.Last(), o.LastName,
+                                        string.Equals(fullName.Last(), o.LastName,
                                             StringComparison.OrdinalIgnoreCase)))
                             return;
                     }
@@ -5244,10 +5301,11 @@ namespace Corrade
                     switch (args.IM.BinaryBucket.Length > 18 && !args.IM.BinaryBucket[0].Equals(0))
                     {
                         case true:
-                            noticeAssetType = (AssetType) args.IM.BinaryBucket[1];
+                            noticeAssetType = (AssetType)args.IM.BinaryBucket[1];
                             noticeFolder = Client.Inventory.FindFolderForType(noticeAssetType);
                             noticeAttachment = true;
                             break;
+
                         default:
                             noticeAttachment = false;
                             break;
@@ -5287,6 +5345,7 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.GroupNotice, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
+
                 case InstantMessageDialog.SessionSend:
                 case InstantMessageDialog.MessageFromAgent:
                     // Check if this is a group message.
@@ -5615,7 +5674,6 @@ namespace Corrade
                 corradeConfiguration.SchedulerExpiration);
         }
 
-
         public static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier,
             Configuration.Group commandGroup)
         {
@@ -5684,7 +5742,7 @@ namespace Corrade
             uint currentWorkers;
             lock (GroupWorkersLock)
             {
-                currentWorkers = (uint) GroupWorkers[commandGroup.Name];
+                currentWorkers = (uint)GroupWorkers[commandGroup.Name];
             }
 
             // Refuse to proceed if the workers have been exceeded.
@@ -5698,7 +5756,7 @@ namespace Corrade
             // Increment the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] + 1;
+                GroupWorkers[commandGroup.Name] = (uint)GroupWorkers[commandGroup.Name] + 1;
             }
             // Perform the command.
             var result = ProcessCommand(new CorradeCommandParameters
@@ -5711,7 +5769,7 @@ namespace Corrade
             // Decrement the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] - 1;
+                GroupWorkers[commandGroup.Name] = (uint)GroupWorkers[commandGroup.Name] - 1;
             }
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
@@ -5797,9 +5855,10 @@ namespace Corrade
                                         uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
                                             out take))
                                     {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take((int) take));
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take((int)take));
                                     }
                                     break;
+
                                 case Sift.SKIP:
                                     // Skip a number of elements if requested.
                                     uint skip;
@@ -5807,9 +5866,10 @@ namespace Corrade
                                         uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
                                             out skip))
                                     {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip((int) skip));
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip((int)skip));
                                     }
                                     break;
+
                                 case Sift.EACH:
                                     // Return a stride in case it was requested.
                                     uint each;
@@ -5817,9 +5877,10 @@ namespace Corrade
                                         uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
                                             out each))
                                     {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i%each == 0));
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i % each == 0));
                                     }
                                     break;
+
                                 case Sift.MATCH:
                                     // Match the results if requested.
                                     var regex = wasInput(kvp.Value);
@@ -5841,12 +5902,14 @@ namespace Corrade
                                                     (t, j) => t.matchGroups[t.i].Captures[j].Value));
                                     }
                                     break;
+
                                 case Sift.COUNT:
                                     if (!string.IsNullOrEmpty(data))
                                     {
                                         data = CSV.ToEnumerable(data).Count().ToString(Utils.EnUsCulture);
                                     }
                                     break;
+
                                 case Sift.JS:
                                     if (!string.IsNullOrEmpty(data))
                                     {
@@ -5856,6 +5919,7 @@ namespace Corrade
                                             .ToString();
                                     }
                                     break;
+
                                 default:
                                     throw new ScriptException(Enumerations.ScriptError.UNKNOWN_SIFT);
                             }
@@ -5864,6 +5928,7 @@ namespace Corrade
                                 case true:
                                     result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
                                     break;
+
                                 default:
                                     result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
                                     break;
@@ -5979,6 +6044,7 @@ namespace Corrade
                     OpenMetaverse.Logger.OnLogMessage += OnLogOpenmetaverseMessage;
                     Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.Error;
                     break;
+
                 default:
                     OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
                     Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
@@ -5995,6 +6061,7 @@ namespace Corrade
                 case Configuration.Filter.RFC1738:
                     CorradePOSTMediaType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
                     break;
+
                 default:
                     CorradePOSTMediaType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                     break;
@@ -6069,6 +6136,7 @@ namespace Corrade
                             Cache.ObservableAgentCache.CollectionChanged -= HandleAgentCacheChanged;
                             Cache.ObservableAgentCache.CollectionChanged += HandleAgentCacheChanged;
                             break;
+
                         default:
                             Cache.ObservableAgentCache.CollectionChanged -= HandleAgentCacheChanged;
                             break;
@@ -6083,6 +6151,7 @@ namespace Corrade
                             Cache.ObservableRegionCache.CollectionChanged -= HandleRegionCacheChanged;
                             Cache.ObservableRegionCache.CollectionChanged += HandleRegionCacheChanged;
                             break;
+
                         default:
                             Cache.ObservableRegionCache.CollectionChanged -= HandleRegionCacheChanged;
                             break;
@@ -6096,6 +6165,7 @@ namespace Corrade
                             Cache.ObservableGroupCache.CollectionChanged -= HandleGroupCacheChanged;
                             Cache.ObservableGroupCache.CollectionChanged += HandleGroupCacheChanged;
                             break;
+
                         default:
                             Cache.ObservableGroupCache.CollectionChanged -= HandleGroupCacheChanged;
                             break;
@@ -6109,11 +6179,13 @@ namespace Corrade
                             Cache.ObservableMuteCache.CollectionChanged -= HandleMuteCacheChanged;
                             Cache.ObservableMuteCache.CollectionChanged += HandleMuteCacheChanged;
                             break;
+
                         default:
                             Cache.ObservableMuteCache.CollectionChanged -= HandleMuteCacheChanged;
                             break;
                     }
                     break;
+
                 default:
                     // Remove HTTP clients.
                     lock (HordeHTTPClientsLock)
@@ -6138,6 +6210,7 @@ namespace Corrade
                     GroupSchedulesTimer.Change(TimeSpan.FromMilliseconds(configuration.SchedulesResolution),
                         TimeSpan.FromMilliseconds(configuration.SchedulesResolution));
                     break;
+
                 default:
                     GroupSchedulesTimer.Stop();
                     break;
@@ -6158,6 +6231,7 @@ namespace Corrade
                                 o => { SynBotTimer.Change(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)); }, null);
                         }
                         break;
+
                     default:
                         lock (SIMLBotLock)
                         {
@@ -6192,22 +6266,26 @@ namespace Corrade
                             case true:
                                 Client.Sound.SoundTrigger += HandleSoundTrigger;
                                 break;
+
                             default:
                                 Client.Sound.SoundTrigger -= HandleSoundTrigger;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.AnimationsChanged:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.AnimationsChanged += HandleAnimationsChanged;
                                 break;
+
                             default:
                                 Client.Self.AnimationsChanged -= HandleAnimationsChanged;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.Feed:
                         switch (enabled)
                         {
@@ -6217,12 +6295,14 @@ namespace Corrade
                                     TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval),
                                     TimeSpan.FromMilliseconds(corradeConfiguration.FeedsUpdateInterval));
                                 break;
+
                             default:
                                 // Stop the group feed thread.
                                 GroupFeedsTimer.Stop();
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.Friendship:
                         switch (enabled)
                         {
@@ -6233,6 +6313,7 @@ namespace Corrade
                                 Client.Friends.FriendOffline += HandleFriendOnlineStatus;
                                 Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
                                 break;
+
                             default:
                                 Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
                                 Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
@@ -6242,83 +6323,98 @@ namespace Corrade
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.ScriptPermission:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.ScriptQuestion += HandleScriptQuestion;
                                 break;
+
                             default:
                                 Client.Self.ScriptQuestion -= HandleScriptQuestion;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.AlertMessage:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.AlertMessage += HandleAlertMessage;
                                 break;
+
                             default:
                                 Client.Self.AlertMessage -= HandleAlertMessage;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.Balance:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.MoneyBalance += HandleMoneyBalance;
                                 break;
+
                             default:
                                 Client.Self.MoneyBalance -= HandleMoneyBalance;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.Economy:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.MoneyBalanceReply += HandleMoneyBalance;
                                 break;
+
                             default:
                                 Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.ScriptDialog:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.ScriptDialog += HandleScriptDialog;
                                 break;
+
                             default:
                                 Client.Self.ScriptDialog -= HandleScriptDialog;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.SitChanged:
                         switch (enabled)
                         {
                             case true:
                                 Client.Objects.AvatarSitChanged += HandleAvatarSitChanged;
                                 break;
+
                             default:
                                 Client.Objects.AvatarSitChanged -= HandleAvatarSitChanged;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.TerseUpdates:
                         switch (enabled)
                         {
                             case true:
                                 Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
                                 break;
+
                             default:
                                 Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.ViewerEffect:
                         switch (enabled)
                         {
@@ -6327,6 +6423,7 @@ namespace Corrade
                                 Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
                                 Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
                                 break;
+
                             default:
                                 Client.Avatars.ViewerEffect -= HandleViewerEffect;
                                 Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
@@ -6334,17 +6431,20 @@ namespace Corrade
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.MeanCollision:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.MeanCollision += HandleMeanCollision;
                                 break;
+
                             default:
                                 Client.Self.MeanCollision -= HandleMeanCollision;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.RegionCrossed:
                         switch (enabled)
                         {
@@ -6352,34 +6452,40 @@ namespace Corrade
                                 Client.Self.RegionCrossed += HandleRegionCrossed;
                                 Client.Network.SimChanged += HandleSimChanged;
                                 break;
+
                             default:
                                 Client.Self.RegionCrossed -= HandleRegionCrossed;
                                 Client.Network.SimChanged -= HandleSimChanged;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.LoadURL:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.LoadURL += HandleLoadURL;
                                 break;
+
                             default:
                                 Client.Self.LoadURL -= HandleLoadURL;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.ScriptControl:
                         switch (enabled)
                         {
                             case true:
                                 Client.Self.ScriptControlChange += HandleScriptControlChange;
                                 break;
+
                             default:
                                 Client.Self.ScriptControlChange -= HandleScriptControlChange;
                                 break;
                         }
                         break;
+
                     case Configuration.Notifications.Store:
                         if (Client.Inventory.Store != null)
                         {
@@ -6390,6 +6496,7 @@ namespace Corrade
                                     Client.Inventory.Store.InventoryObjectRemoved += HandleInventoryObjectRemoved;
                                     Client.Inventory.Store.InventoryObjectUpdated += HandleInventoryObjectUpdated;
                                     break;
+
                                 default:
                                     Client.Inventory.Store.InventoryObjectAdded -= HandleInventoryObjectAdded;
                                     Client.Inventory.Store.InventoryObjectRemoved -= HandleInventoryObjectRemoved;
@@ -6411,6 +6518,7 @@ namespace Corrade
                     // Start sphere and beam effect expiration thread
                     EffectsExpirationTimer.Change(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
                     break;
+
                 default:
                     // Stop the effects expiration thread.
                     EffectsExpirationTimer.Stop();
@@ -6431,6 +6539,7 @@ namespace Corrade
                     Client.Objects.ObjectUpdate += HandleObjectUpdate;
                     Client.Objects.KillObject += HandleKillObject;
                     break;
+
                 default:
                     Client.Network.SimChanged -= HandleRadarObjects;
                     Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
@@ -6455,6 +6564,7 @@ namespace Corrade
                     TCPNotificationsThread.IsBackground = true;
                     TCPNotificationsThread.Start();
                     break;
+
                 default:
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
@@ -6529,7 +6639,7 @@ namespace Corrade
                                 // Perform caching.
                                 NucleusHTTPServer.SuggestNoCaching = false;
                                 // Start the server.
-                                NucleusHTTPServer.Start(new[] {corradeConfiguration.NucleusServerPrefix});
+                                NucleusHTTPServer.Start(new[] { corradeConfiguration.NucleusServerPrefix });
                             }
                             catch (Exception ex)
                             {
@@ -6538,6 +6648,7 @@ namespace Corrade
                                         Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.Message);
                             }
                             break;
+
                         default:
                             if (!NucleusHTTPServer.IsRunning)
                                 break;
@@ -6556,6 +6667,7 @@ namespace Corrade
                             break;
                     }
                     break;
+
                 default:
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
@@ -6590,7 +6702,7 @@ namespace Corrade
                                 corradeConfiguration.HTTPServerPrefix);
                             try
                             {
-                                CorradeHTTPServer.Start(new[] {corradeConfiguration.HTTPServerPrefix});
+                                CorradeHTTPServer.Start(new[] { corradeConfiguration.HTTPServerPrefix });
                             }
                             catch (Exception ex)
                             {
@@ -6600,6 +6712,7 @@ namespace Corrade
                                     ex.Message);
                             }
                             break;
+
                         default:
                             if (!CorradeHTTPServer.IsRunning)
                                 break;
@@ -6618,6 +6731,7 @@ namespace Corrade
                             break;
                     }
                     break;
+
                 default:
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
@@ -6627,14 +6741,14 @@ namespace Corrade
             }
 
             // Apply settings to the instance.
-            Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
-            Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;
-            Client.Settings.SIMULATOR_TIMEOUT = (int) configuration.ServicesTimeout;
-            Client.Settings.CAPS_TIMEOUT = (int) configuration.ServicesTimeout;
-            Client.Settings.MAP_REQUEST_TIMEOUT = (int) configuration.ServicesTimeout;
-            Client.Settings.TRANSFER_TIMEOUT = (int) configuration.ServicesTimeout;
-            Client.Settings.TELEPORT_TIMEOUT = (int) configuration.ServicesTimeout;
-            Settings.MAX_HTTP_CONNECTIONS = (int) configuration.ConnectionLimit;
+            Client.Settings.LOGIN_TIMEOUT = (int)configuration.ServicesTimeout;
+            Client.Settings.LOGOUT_TIMEOUT = (int)configuration.ServicesTimeout;
+            Client.Settings.SIMULATOR_TIMEOUT = (int)configuration.ServicesTimeout;
+            Client.Settings.CAPS_TIMEOUT = (int)configuration.ServicesTimeout;
+            Client.Settings.MAP_REQUEST_TIMEOUT = (int)configuration.ServicesTimeout;
+            Client.Settings.TRANSFER_TIMEOUT = (int)configuration.ServicesTimeout;
+            Client.Settings.TELEPORT_TIMEOUT = (int)configuration.ServicesTimeout;
+            Settings.MAX_HTTP_CONNECTIONS = (int)configuration.ConnectionLimit;
 
             // Network Settings
             // Set the outgoing IP address if specified in the configuration file.
@@ -6665,10 +6779,10 @@ namespace Corrade
                 Login.MAC = Utils.MD5String(corradeConfiguration.NetworkCardMAC);
             }
             // ServicePoint settings.
-            ServicePointManager.DefaultConnectionLimit = (int) configuration.ConnectionLimit;
+            ServicePointManager.DefaultConnectionLimit = (int)configuration.ConnectionLimit;
             ServicePointManager.UseNagleAlgorithm = configuration.UseNaggle;
             ServicePointManager.Expect100Continue = configuration.UseExpect100Continue;
-            ServicePointManager.MaxServicePointIdleTime = (int) configuration.ConnectionIdleTime;
+            ServicePointManager.MaxServicePointIdleTime = (int)configuration.ConnectionIdleTime;
             // Do not use SSLv3 - POODLE
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 |
                                                    SecurityProtocolType.Tls12;
@@ -6735,7 +6849,7 @@ namespace Corrade
                                     p =>
                                     {
                                         var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                            q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                         return peer != null && peer
                                             .SynchronizationMask.IsMaskFlagSet(
                                                 Configuration.HordeDataSynchronization.Asset);
@@ -6753,6 +6867,7 @@ namespace Corrade
                                                         memorySteam);
                                             }
                                             break;
+
                                         case Configuration.HordeDataSynchronizationOption.Remove:
                                             using (var memorySteam = new MemoryStream(data))
                                             {
@@ -6792,7 +6907,7 @@ namespace Corrade
                                     p =>
                                     {
                                         var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                            q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                         return peer != null && peer
                                             .SynchronizationMask.IsMaskFlagSet(
                                                 Configuration.HordeDataSynchronization.Bayes);
@@ -6808,6 +6923,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.BAYES)}/{groupUUID.ToString()}",
                                                         data);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -6842,7 +6958,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Group);
                                 })
@@ -6861,6 +6977,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group)}",
                                                         memoryStream);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -6897,7 +7014,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Region);
                                 })
@@ -6916,6 +7033,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region)}",
                                                         memoryStream);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -6951,7 +7069,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Agent);
                                 })
@@ -6970,6 +7088,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Enumerations.WebResource.CACHE)}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent)}",
                                                         memoryStream);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -7005,7 +7124,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Mute);
                                 })
@@ -7024,6 +7143,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute)}",
                                                         memoryStream);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -7060,7 +7180,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(
                                             Configuration.HordeDataSynchronization.SoftBan);
@@ -7080,6 +7200,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan)}/{groupUUID.ToString()}",
                                                         memoryStream);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -7116,7 +7237,7 @@ namespace Corrade
                                 p =>
                                 {
                                     var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => String.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                     return peer != null && peer
                                         .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.User);
                                 })
@@ -7135,6 +7256,7 @@ namespace Corrade
                                                         $"{p.Key.TrimEnd('/')}/{Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.User)}/{group.UUID.ToString()}",
                                                         memoryStream);
                                                 break;
+
                                             case Configuration.HordeDataSynchronizationOption.Remove:
                                                 await
                                                     p.Value.DELETE(
@@ -7167,6 +7289,7 @@ namespace Corrade
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheGroup(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
+
                 case NotifyCollectionChangedAction.Remove:
                     e.OldItems?.OfType<Cache.Group>()
                         .ToList()
@@ -7186,6 +7309,7 @@ namespace Corrade
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheRegion(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
+
                 case NotifyCollectionChangedAction.Remove:
                     e.OldItems?.OfType<Cache.Region>()
                         .ToList()
@@ -7205,6 +7329,7 @@ namespace Corrade
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheAgent(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
+
                 case NotifyCollectionChangedAction.Remove:
                     e.OldItems?.OfType<Cache.Agent>()
                         .ToList()
@@ -7224,6 +7349,7 @@ namespace Corrade
                         .AsParallel()
                         .ForAll(o => HordeDistributeCacheMute(o, Configuration.HordeDataSynchronizationOption.Add));
                     break;
+
                 case NotifyCollectionChangedAction.Remove:
                     e.OldItems?.OfType<MuteEntry>()
                         .ToList()
@@ -7344,7 +7470,7 @@ namespace Corrade
                                         groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(group.Key);
                                         if (
                                             !GroupRoleMembersReplyEvent.WaitOne(
-                                                (int) corradeConfiguration.ServicesTimeout,
+                                                (int)corradeConfiguration.ServicesTimeout,
                                                 false))
                                         {
                                             Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
@@ -7370,6 +7496,7 @@ namespace Corrade
                                                         p => Client.Groups.RemoveFromRole(group.Key, p.Key,
                                                             o));
                                                 break;
+
                                             default:
                                                 Feedback(
                                                     Reflection.GetDescriptionFromEnumValue(
@@ -7446,11 +7573,11 @@ namespace Corrade
                                                 {
                                                     var GroupBanEvent = new ManualResetEvent(false);
                                                     Client.Groups.RequestBanAction(group.Key,
-                                                        GroupBanAction.Ban, new[] {o},
+                                                        GroupBanAction.Ban, new[] { o },
                                                         (s, a) => { GroupBanEvent.Set(); });
                                                     if (
                                                         !GroupBanEvent.WaitOne(
-                                                            (int) corradeConfiguration.ServicesTimeout,
+                                                            (int)corradeConfiguration.ServicesTimeout,
                                                             false))
                                                     {
                                                         Feedback(
@@ -7477,7 +7604,7 @@ namespace Corrade
                                     {
                                         Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                         Client.Groups.EjectUser(group.Key, o);
-                                        if (!GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                        if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                         {
                                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                             Feedback(

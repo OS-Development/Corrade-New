@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Helpers;
 using Corrade.Structures;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -28,9 +27,9 @@ namespace Corrade
                     if (inventoryEventType == typeof(InstantMessageEventArgs))
                     {
                         var instantMessageEventArgs =
-                            (InstantMessageEventArgs) corradeNotificationParameters.Event;
+                            (InstantMessageEventArgs)corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
@@ -84,9 +83,9 @@ namespace Corrade
                     if (inventoryEventType == typeof(InventoryObjectOfferedEventArgs))
                     {
                         var inventoryObjectOfferedEventArgs =
-                            (InventoryObjectOfferedEventArgs) corradeNotificationParameters.Event;
+                            (InventoryObjectOfferedEventArgs)corradeNotificationParameters.Event;
                         // In case we should send specific data then query the structure and return.
-                        if (corradeNotificationParameters.Notification.Data != null &&
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                             corradeNotificationParameters.Notification.Data.Any())
                         {
                             notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),

@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Globalization;
 using Corrade.Constants;
 using OpenMetaverse;
+using System;
+using System.Globalization;
 using wasOpenMetaverse;
 
 namespace Corrade

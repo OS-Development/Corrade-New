@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using Corrade.Structures.Effects;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int) Configuration.Permissions.Interact))
+                                (int)Configuration.Permissions.Interact))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -67,6 +66,7 @@ namespace Corrade
                                         LookAtType.Idle, effectUUID);
                                 }
                                 break;
+
                             case Enumerations.ViewerEffectType.POINT:
                                 PointAtEffect pointAtEffect;
                                 lock (PointAtEffectsLock)
@@ -92,6 +92,7 @@ namespace Corrade
                                     PointAtEffects.Remove(pointAtEffect);
                                 }
                                 break;
+
                             case Enumerations.ViewerEffectType.BEAM:
                                 BeamEffect beamEffect;
                                 lock (BeamEffectsLock)
@@ -116,6 +117,7 @@ namespace Corrade
                                     BeamEffects.Remove(beamEffect);
                                 }
                                 break;
+
                             case Enumerations.ViewerEffectType.SPHERE:
                                 SphereEffect sphereEffect;
                                 lock (SphereEffectsLock)
@@ -141,6 +143,7 @@ namespace Corrade
                                     SphereEffects.Remove(sphereEffect);
                                 }
                                 break;
+
                             default:
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVALID_VIEWER_EFFECT);
                         }

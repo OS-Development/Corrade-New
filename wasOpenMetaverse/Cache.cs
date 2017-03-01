@@ -13,7 +13,7 @@ using OpenMetaverse;
 using wasOpenMetaverse.Caches;
 using wasSharp;
 using wasSharp.Collections.Specialized;
-using String = wasSharp.String;
+
 
 namespace wasOpenMetaverse
 {
@@ -467,7 +467,7 @@ namespace wasOpenMetaverse
 
             public bool Equals(Region other)
             {
-                return String.Equals(Name, other.Name) && Handle.Equals(other.Handle) && UUID.Equals(other.UUID);
+                return string.Equals(Name, other.Name) && Handle.Equals(other.Handle) && UUID.Equals(other.UUID);
             }
 
             public override int GetHashCode()
@@ -490,8 +490,8 @@ namespace wasOpenMetaverse
 
             public bool Equals(Agent other)
             {
-                return String.Equals(FirstName, other.FirstName) &&
-                       String.Equals(LastName, other.LastName) && UUID.Equals(other.UUID);
+                return string.Equals(FirstName, other.FirstName) &&
+                       string.Equals(LastName, other.LastName) && UUID.Equals(other.UUID);
             }
 
             public override int GetHashCode()
@@ -511,7 +511,7 @@ namespace wasOpenMetaverse
 
             public bool Equals(Group other)
             {
-                return String.Equals(Name, other.Name) && UUID.Equals(other.UUID);
+                return string.Equals(Name, other.Name) && UUID.Equals(other.UUID);
             }
 
             public override int GetHashCode()
@@ -553,7 +553,7 @@ namespace wasOpenMetaverse
 
             public bool Equals(MuteEntry other)
             {
-                return ID.Equals(other.ID) && String.Equals(Name, other.Name) && Type.Equals(other.Type);
+                return ID.Equals(other.ID) && string.Equals(Name, other.Name) && Type.Equals(other.Type);
             }
 
             public override int GetHashCode()

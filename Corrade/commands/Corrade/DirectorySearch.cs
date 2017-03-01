@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Linq;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Directory))
+                            (int)Configuration.Permissions.Directory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -69,12 +68,12 @@ namespace Corrade
                                                 p =>
                                                     (from q in wasSharpNET.Reflection.wasGetFields(o,
                                                         o.GetType().Name)
-                                                        let r = wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
-                                                        where r != null
-                                                        let s = wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
-                                                        where s != null
-                                                        where r.Equals(s)
-                                                        select r).Count())
+                                                     let r = wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
+                                                     where r != null
+                                                     let s = wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
+                                                     where s != null
+                                                     where r.Equals(s)
+                                                     select r).Count())
                                         : 0;
                                     lock (LockObject)
                                     {
@@ -89,7 +88,7 @@ namespace Corrade
                                 Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                 Client.Directory.StartClassifiedSearch(name);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int) corradeConfiguration.ServicesTimeout,
+                                    (int)corradeConfiguration.ServicesTimeout,
                                     false);
                                 Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
                             }
@@ -115,6 +114,7 @@ namespace Corrade
                                             }
                                         }));
                             break;
+
                         case Enumerations.Type.EVENT:
                             var searchEvent = new DirectoryManager.EventsSearchData();
                             searchEvent = searchEvent.wasCSVToStructure(wasInput(
@@ -137,14 +137,14 @@ namespace Corrade
                                                     p =>
                                                         (from q in
                                                             wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
-                                                            let r =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
-                                                            where r != null
-                                                            let s =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
-                                                            where s != null
-                                                            where r.Equals(s)
-                                                            select r).Count())
+                                                         let r =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
+                                                         where r != null
+                                                         let s =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
+                                                         where s != null
+                                                         where r.Equals(s)
+                                                         select r).Count())
                                             : 0;
                                         lock (LockObject)
                                         {
@@ -155,20 +155,20 @@ namespace Corrade
                                         }
                                     });
                                     if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT &&
-                                        ((handledEvents - counter)%
+                                        ((handledEvents - counter) %
                                          wasOpenMetaverse.Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
-                                        Client.Directory.StartEventsSearch(name, (uint) handledEvents);
+                                        Client.Directory.StartEventsSearch(name, (uint)handledEvents);
                                     }
                                 };
                             lock (Locks.ClientInstanceDirectoryLock)
                             {
                                 Client.Directory.DirEventsReply += DirEventsEventHandler;
                                 Client.Directory.StartEventsSearch(name,
-                                    (uint) handledEvents);
+                                    (uint)handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int) corradeConfiguration.ServicesTimeout,
+                                    (int)corradeConfiguration.ServicesTimeout,
                                     false);
                                 Client.Directory.DirEventsReply -= DirEventsEventHandler;
                             }
@@ -193,6 +193,7 @@ namespace Corrade
                                             }
                                         }));
                             break;
+
                         case Enumerations.Type.GROUP:
                             if (string.IsNullOrEmpty(name))
                             {
@@ -219,14 +220,14 @@ namespace Corrade
                                                     p =>
                                                         (from q in
                                                             wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
-                                                            let r =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
-                                                            where r != null
-                                                            let s =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
-                                                            where s != null
-                                                            where r.Equals(s)
-                                                            select r).Count())
+                                                         let r =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
+                                                         where r != null
+                                                         let s =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
+                                                         where s != null
+                                                         where r.Equals(s)
+                                                         select r).Count())
                                             : 0;
                                         lock (LockObject)
                                         {
@@ -237,7 +238,7 @@ namespace Corrade
                                         }
                                     });
                                     if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT &&
-                                        ((handledEvents - counter)%
+                                        ((handledEvents - counter) %
                                          wasOpenMetaverse.Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
@@ -249,7 +250,7 @@ namespace Corrade
                                 Client.Directory.DirGroupsReply += DirGroupsEventHandler;
                                 Client.Directory.StartGroupSearch(name, handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int) corradeConfiguration.ServicesTimeout,
+                                    (int)corradeConfiguration.ServicesTimeout,
                                     false);
                                 Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
                             }
@@ -274,6 +275,7 @@ namespace Corrade
                                             }
                                         }));
                             break;
+
                         case Enumerations.Type.LAND:
                             var searchLand = new DirectoryManager.DirectoryParcel();
                             searchLand = searchLand.wasCSVToStructure(wasInput(
@@ -295,14 +297,14 @@ namespace Corrade
                                                     p =>
                                                         (from q in
                                                             wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
-                                                            let r =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
-                                                            where r != null
-                                                            let s =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
-                                                            where s != null
-                                                            where r.Equals(s)
-                                                            select r).Count())
+                                                         let r =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
+                                                         where r != null
+                                                         let s =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
+                                                         where s != null
+                                                         where r.Equals(s)
+                                                         select r).Count())
                                             : 0;
                                         lock (LockObject)
                                         {
@@ -313,7 +315,7 @@ namespace Corrade
                                         }
                                     });
                                     if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
-                                        ((handledEvents - counter)%
+                                        ((handledEvents - counter) %
                                          wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
@@ -328,7 +330,7 @@ namespace Corrade
                                 Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                     DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int) corradeConfiguration.ServicesTimeout,
+                                    (int)corradeConfiguration.ServicesTimeout,
                                     false);
                                 Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                             }
@@ -353,6 +355,7 @@ namespace Corrade
                                             }
                                         }));
                             break;
+
                         case Enumerations.Type.PEOPLE:
                             if (string.IsNullOrEmpty(name))
                             {
@@ -375,14 +378,14 @@ namespace Corrade
                                                     p =>
                                                         (from q in
                                                             wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
-                                                            let r =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
-                                                            where r != null
-                                                            let s =
-                                                                wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
-                                                            where s != null
-                                                            where r.Equals(s)
-                                                            select r).Count())
+                                                         let r =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
+                                                         where r != null
+                                                         let s =
+                                                             wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
+                                                         where s != null
+                                                         where r.Equals(s)
+                                                         select r).Count())
                                             : 0;
                                         lock (LockObject)
                                         {
@@ -393,7 +396,7 @@ namespace Corrade
                                         }
                                     });
                                     if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT &&
-                                        ((handledEvents - counter)%
+                                        ((handledEvents - counter) %
                                          wasOpenMetaverse.Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
@@ -405,7 +408,7 @@ namespace Corrade
                                 Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
                                 Client.Directory.StartPeopleSearch(name, handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int) corradeConfiguration.ServicesTimeout,
+                                    (int)corradeConfiguration.ServicesTimeout,
                                     false);
                                 Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
                             }
@@ -430,6 +433,7 @@ namespace Corrade
                                             }
                                         }));
                             break;
+
                         case Enumerations.Type.PLACE:
                             if (string.IsNullOrEmpty(name))
                             {
@@ -451,12 +455,12 @@ namespace Corrade
                                             .Sum(
                                                 p =>
                                                     (from q in wasSharpNET.Reflection.wasGetFields(o, o.GetType().Name)
-                                                        let r = wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
-                                                        where r != null
-                                                        let s = wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
-                                                        where s != null
-                                                        where r.Equals(s)
-                                                        select r).Count())
+                                                     let r = wasSharpNET.Reflection.wasGetInfoValue(p.Key, p.Value)
+                                                     where r != null
+                                                     let s = wasSharpNET.Reflection.wasGetInfoValue(q.Key, q.Value)
+                                                     where s != null
+                                                     where r.Equals(s)
+                                                     select r).Count())
                                         : 0;
                                     lock (LockObject)
                                     {
@@ -471,7 +475,7 @@ namespace Corrade
                                 Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                 Client.Directory.StartPlacesSearch(name);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int) corradeConfiguration.ServicesTimeout,
+                                    (int)corradeConfiguration.ServicesTimeout,
                                     false);
                                 Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
                             }
@@ -496,6 +500,7 @@ namespace Corrade
                                             }
                                         }));
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DIRECTORY_SEARCH_TYPE);
                     }

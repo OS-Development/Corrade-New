@@ -4,14 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -27,7 +26,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Movement))
+                            (int)Configuration.Permissions.Movement))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -74,6 +73,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
+
                         default:
                             if (
                                 !Services.FindPrimitive(Client,
@@ -130,7 +130,7 @@ namespace Corrade
                         Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                         Client.Self.AlertMessage += AlertMessageEventHandler;
                         Client.Self.RequestSit(primitive.ID, offset);
-                        if (!SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        if (!SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                             Client.Self.AlertMessage -= AlertMessageEventHandler;

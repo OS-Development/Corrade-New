@@ -4,19 +4,18 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using Facebook;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
+using System;
+using System.Collections.Generic;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -33,7 +32,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Talk))
+                            (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -120,6 +119,7 @@ namespace Corrade
                                         itemUUID = inventoryItem.AssetUUID;
                                         facebookMediaObject.FileName = inventoryItem.Name;
                                         break;
+
                                     default:
                                         facebookMediaObject.FileName = itemUUID.ToString();
                                         break;
@@ -137,7 +137,7 @@ namespace Corrade
                                         lock (Locks.ClientInstanceAssetsLock)
                                         {
                                             Client.Assets.RequestImage(itemUUID, ImageType.Normal,
-                                                delegate(TextureRequestState state, AssetTexture asset)
+                                                delegate (TextureRequestState state, AssetTexture asset)
                                                 {
                                                     if (!asset.AssetID.Equals(itemUUID)) return;
                                                     if (!state.Equals(TextureRequestState.Finished)) return;
@@ -145,7 +145,7 @@ namespace Corrade
                                                     RequestAssetEvent.Set();
                                                 });
                                             if (
-                                                !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                                !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
                                                     false))
                                             {
                                                 throw new Command.ScriptException(
@@ -153,6 +153,7 @@ namespace Corrade
                                             }
                                         }
                                         break;
+
                                     default:
                                         lock (Locks.ClientInstanceAssetsLock)
                                         {
@@ -210,11 +211,13 @@ namespace Corrade
                                 case true:
                                     client.Post(id + "/photos", facebookPostObject);
                                     break;
+
                                 default:
                                     client.Post(id + "/feed", facebookPostObject);
                                     break;
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

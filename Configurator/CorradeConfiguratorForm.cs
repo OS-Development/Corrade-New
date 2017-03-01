@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using String = wasSharp.String;
+
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -66,11 +66,11 @@ namespace Configurator
 
             // language
             mainForm.ClientLanguageAdvertise.Checked = corradeConfiguration.AdvertiseClientLanguage;
-            var configuredLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => String.Equals(o.Text, corradeConfiguration.ClientLanguage));
+            var configuredLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, corradeConfiguration.ClientLanguage));
             switch (mainForm.ClientLanguage.Items.IndexOf(configuredLanguage))
             {
                 case -1:
-                    var englishLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => String.Equals(o.Text, @"en"));
+                    var englishLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, @"en"));
                     mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(englishLanguage);
                     mainForm.ClientLanguage.SelectedItem = englishLanguage;
                     break;
@@ -203,7 +203,7 @@ namespace Configurator
                 mainForm.NucleusServerGroup.Items.Add(nucleusGroupItem);
                 
                 // Set the group as selected if it can be found in the configuration.
-                if (String.Equals(configuredGroup.Name, corradeConfiguration.NucleusServerGroup))
+                if (string.Equals(configuredGroup.Name, corradeConfiguration.NucleusServerGroup))
                 {
                     mainForm.NucleusServerGroup.SelectedIndex = mainForm.NucleusServerGroup.Items.IndexOf(nucleusGroupItem);
                     mainForm.NucleusServerGroup.SelectedItem = nucleusGroupItem;
@@ -4222,7 +4222,7 @@ namespace Configurator
             mainForm.BeginInvoke((MethodInvoker)(() =>
             {
                 // If no file is entered or the file is already added then refuse to continue.
-                if (string.IsNullOrEmpty(NucleusServerBlessingsBox.Text) || mainForm.NucleusServerBlessings.Items.Cast<ListViewItem>().Any(o => String.Equals(o.Tag.ToString(), NucleusServerBlessingsBox.Text)))
+                if (string.IsNullOrEmpty(NucleusServerBlessingsBox.Text) || mainForm.NucleusServerBlessings.Items.Cast<ListViewItem>().Any(o => string.Equals(o.Tag.ToString(), NucleusServerBlessingsBox.Text)))
                 {
                     NucleusServerBlessingsBox.BackColor = Color.MistyRose;
                     return;

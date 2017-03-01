@@ -4,13 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -24,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Schedule))
+                            (int)Configuration.Permissions.Schedule))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -74,6 +73,7 @@ namespace Corrade
                             // Save the group schedules state.
                             SaveGroupSchedulesState.Invoke();
                             break;
+
                         case Enumerations.Action.GET:
                             if (!uint.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
@@ -90,7 +90,7 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SCHEDULE_FOUND);
                             }
-                            var groupSchedule = groupSchedules[(int) index];
+                            var groupSchedule = groupSchedules[(int)index];
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(new[]
                                 {
@@ -100,6 +100,7 @@ namespace Corrade
                                     groupSchedule.Message
                                 }));
                             break;
+
                         case Enumerations.Action.REMOVE:
                             if (!uint.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
@@ -119,11 +120,12 @@ namespace Corrade
                             // remove by group name, group UUID, scheduled time or command message
                             lock (GroupSchedulesLock)
                             {
-                                GroupSchedules.Remove(groupSchedules[(int) index]);
+                                GroupSchedules.Remove(groupSchedules[(int)index]);
                             }
                             // Save the group schedules state.
                             SaveGroupSchedulesState.Invoke();
                             break;
+
                         case Enumerations.Action.LIST:
                             var csv = new List<string>();
                             lock (GroupSchedulesLock)
@@ -143,6 +145,7 @@ namespace Corrade
                                     CSV.FromEnumerable(csv));
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }

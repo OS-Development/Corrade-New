@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -29,7 +28,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Inventory))
+                            (int)Configuration.Permissions.Inventory))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -63,6 +62,7 @@ namespace Corrade
                                         }
                                     }
                                     break;
+
                                 default:
                                     inventoryFolder =
                                         Inventory.FindInventory<InventoryFolder>(Client, folder,
@@ -75,6 +75,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
                             }
                             break;
+
                         default:
                             lock (Locks.ClientInstanceInventoryLock)
                             {
@@ -116,6 +117,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                             }
                             break;
+
                         default:
                             if (
                                 !Services.FindPrimitive(Client,

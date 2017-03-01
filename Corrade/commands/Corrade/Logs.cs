@@ -4,17 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
+using Corrade.Structures;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using System;
-using String = wasSharp.String;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Corrade.Constants;
-using Corrade.Structures;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using wasSharp;
 using InstantMessage = Corrade.Structures.InstantMessage;
 
@@ -28,7 +27,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
-                        (int) Configuration.Permissions.Talk))
+                        (int)Configuration.Permissions.Talk))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -65,7 +64,7 @@ namespace Corrade
                             }
                             // process the log file and create the set of messages to process
                             var groupMessages = new HashSet<GroupMessage>();
-                            groupChatLog.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                            groupChatLog.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                                 .AsParallel()
                                 .ForAll(
                                     o =>
@@ -186,6 +185,7 @@ namespace Corrade
                                                     }
                                                 });
                                     break;
+
                                 case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchGroupMessagesRegex;
@@ -236,10 +236,12 @@ namespace Corrade
                                                         }
                                                     });
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
+
                         case Enumerations.Entity.MESSAGE:
                             var instantMessages = new HashSet<InstantMessage>();
                             Directory.GetFiles(corradeConfiguration.InstantMessageLogDirectory).AsParallel().ForAll(o =>
@@ -258,7 +260,7 @@ namespace Corrade
                                     }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
-                                messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                messageLine.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                                     .AsParallel()
                                     .ForAll(
                                         p =>
@@ -395,6 +397,7 @@ namespace Corrade
                                                                                     }
                                                                                 });
                                     break;
+
                                 case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchInstantMessagesRegex;
@@ -445,10 +448,12 @@ namespace Corrade
                                                         }
                                                     });
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
+
                         case Enumerations.Entity.CONFERENCE:
                             var conferenceMessages = new HashSet<InstantMessage>();
                             Directory.GetFiles(corradeConfiguration.ConferenceMessageLogDirectory)
@@ -469,7 +474,7 @@ namespace Corrade
                                         }
                                     }
                                     if (string.IsNullOrEmpty(messageLine)) return;
-                                    messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                    messageLine.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                                         .AsParallel()
                                         .ForAll(
                                             p =>
@@ -603,6 +608,7 @@ namespace Corrade
                                                             }
                                                         });
                                     break;
+
                                 case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchConferenceMessagesRegex;
@@ -653,10 +659,12 @@ namespace Corrade
                                                         }
                                                     });
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
+
                         case Enumerations.Entity.LOCAL:
                             var localMessages = new HashSet<LocalMessage>();
                             Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory).AsParallel().ForAll(o =>
@@ -675,7 +683,7 @@ namespace Corrade
                                     }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
-                                messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                messageLine.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                                     .AsParallel()
                                     .ForAll(
                                         p =>
@@ -844,6 +852,7 @@ namespace Corrade
                                                         }
                                                     });
                                     break;
+
                                 case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchLocalMessagesRegex;
@@ -912,10 +921,12 @@ namespace Corrade
                                                             }
                                                         });
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
+
                         case Enumerations.Entity.REGION:
                             var regionMessages = new HashSet<RegionMessage>();
                             Directory.GetFiles(corradeConfiguration.RegionMessageLogDirectory).AsParallel().ForAll(o =>
@@ -934,7 +945,7 @@ namespace Corrade
                                     }
                                 }
                                 if (string.IsNullOrEmpty(messageLine)) return;
-                                messageLine.Split(new[] {Environment.NewLine}, StringSplitOptions.None)
+                                messageLine.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
                                     .AsParallel()
                                     .ForAll(
                                         p =>
@@ -1075,6 +1086,7 @@ namespace Corrade
                                                     }
                                                 });
                                     break;
+
                                 case Enumerations.Action.SEARCH:
                                     // build regular expressions based on fed data
                                     Regex searchRegionMessagesRegex;
@@ -1132,10 +1144,12 @@ namespace Corrade
                                                         }
                                                     });
                                     break;
+
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }

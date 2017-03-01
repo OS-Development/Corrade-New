@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-using String = wasSharp.String;
-using System.Collections.Generic;
-using System.Threading;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -25,14 +24,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int) Configuration.Permissions.Grooming))
+                            (int)Configuration.Permissions.Grooming))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var previous = string.Empty;
                     lock (Locks.ClientInstanceAvatarsLock)
                     {
-                        Client.Avatars.GetDisplayNames(new List<UUID> {Client.Self.AgentID},
+                        Client.Avatars.GetDisplayNames(new List<UUID> { Client.Self.AgentID },
                             (succeded, names, IDs) =>
                             {
                                 if (!succeded || names.Length < 1)
@@ -53,6 +52,7 @@ namespace Corrade
                         case Enumerations.Action.GET:
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), previous);
                             break;
+
                         case Enumerations.Action.SET:
                             var name =
                                 wasInput(
@@ -77,14 +77,14 @@ namespace Corrade
                                 {
                                     succeeded =
                                         args.Status.Equals(
-                                            (int) wasOpenMetaverse.Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
+                                            (int)wasOpenMetaverse.Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                     SetDisplayNameEvent.Set();
                                 };
                             lock (Locks.ClientInstanceSelfLock)
                             {
                                 Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                                 Client.Self.SetDisplayName(previous, name);
-                                if (!SetDisplayNameEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                if (!SetDisplayNameEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                     throw new Command.ScriptException(
@@ -97,6 +97,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_DISPLAY_NAME);
                             }
                             break;
+
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
