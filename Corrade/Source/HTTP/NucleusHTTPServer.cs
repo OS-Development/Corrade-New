@@ -37,11 +37,6 @@ namespace Corrade.HTTP
 {
     internal class NucleusHTTPServer : HTTPServer
     {
-        public static Dictionary<string, Dictionary<string, string>> NucleusNotifications =
-            new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-
-        public object NucleusNotificationsLock = new object();
-
         public static readonly Action PurgeNucleus = () =>
         {
             lock (NucleusLock)
@@ -960,26 +955,6 @@ namespace Corrade.HTTP
             catch
             {
                 throw new HTTPException((int)HttpStatusCode.NotFound);
-            }
-        }
-
-        [HTTPRequestMapping("events", "GET")]
-        private async Task GetNotification(string type, string notification, HttpListenerResponse NucleusResponse,
-            MemoryStream memoryStream)
-        {
-            Dictionary<string, string> notificationData;
-
-            lock (NucleusNotifications)
-            {
-                if (!NucleusNotifications.TryGetValue(notification, out notificationData))
-                    throw new HTTPException((int)HttpStatusCode.NotFound);
-            }
-
-            NucleusResponse.ContentType = @"application/json";
-            using (var notificationStream = new MemoryStream(
-                Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(notificationData))))
-            {
-                await notificationStream.CopyToAsync(memoryStream);
             }
         }
 
