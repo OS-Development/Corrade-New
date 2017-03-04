@@ -39,6 +39,12 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
+                    var data = wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(data))
+                    {
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
+                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
@@ -97,21 +103,19 @@ namespace Corrade
                     if (parcelResourceDetail == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_RESOURCES);
 
-                    var data = new List<string>();
+                    var csv = new List<string>();
                     object LockObject = new object();
                     parcelResourceDetail.Objects.AsParallel().ForAll(o =>
                     {
                         lock (LockObject)
                         {
-                            data.AddRange(o.GetStructuredData(
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message))));
+                            csv.AddRange(o.GetStructuredData(data));
                         }
                     });
-                    if (data.Any())
+                    if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

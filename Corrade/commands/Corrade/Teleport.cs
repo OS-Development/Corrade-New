@@ -203,7 +203,6 @@ namespace Corrade
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 Client.Self.TeleportMessage);
-                            result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)), Client.Self.TeleportMessage);
                             throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
                         }
                     }

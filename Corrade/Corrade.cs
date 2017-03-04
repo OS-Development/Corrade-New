@@ -152,46 +152,7 @@ namespace Corrade
 
         public static Configuration corradeConfiguration = new Configuration();
 
-        public static GridClient Client = new GridClient
-        {
-            // Set the initial client configuration.
-            Settings =
-            {
-                ALWAYS_REQUEST_PARCEL_ACL = true,
-                ALWAYS_DECODE_OBJECTS = true,
-                ALWAYS_REQUEST_OBJECTS = true,
-                SEND_AGENT_APPEARANCE = true,
-                AVATAR_TRACKING = true,
-                OBJECT_TRACKING = true,
-                PARCEL_TRACKING = true,
-                ALWAYS_REQUEST_PARCEL_DWELL = true,
-                // Smoother movement for autopilot.
-                SEND_AGENT_UPDATES = true,
-                DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
-                ENABLE_CAPS = true,
-                // Inventory settings.
-                FETCH_MISSING_INVENTORY = true,
-                HTTP_INVENTORY = true,
-                // Set the asset cache directory.
-                ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                    CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY),
-                USE_ASSET_CACHE = true,
-                // More precision for object and avatar tracking updates.
-                USE_INTERPOLATION_TIMER = true,
-                // Transfer textures over HTTP if possible.
-                USE_HTTP_TEXTURES = true,
-                // Needed for commands dealing with terrain height.
-                STORE_LAND_PATCHES = true,
-                // Decode simulator statistics.
-                ENABLE_SIMSTATS = true,
-                // Send pings for lag measurement.
-                SEND_PINGS = true,
-                // Throttling.
-                SEND_AGENT_THROTTLE = true,
-                // Enable multiple simulators.
-                MULTIPLE_SIMS = true
-            }
-        };
+        public static GridClient Client;
 
         public static string InstalledServiceName;
         private static Thread programThread;
@@ -3397,16 +3358,15 @@ namespace Corrade
             };
             NotificationThread.Start();
 
-            var initializeClient = false;
             do
             {
+                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
+
                 // Create a new grid client.
-                if (initializeClient)
+                Client = new GridClient
                 {
-                    Client = new GridClient
-                    {
-                        // Set the initial client configuration.
-                        Settings =
+                    // Set the initial client configuration.
+                    Settings =
                         {
                             ALWAYS_REQUEST_PARCEL_ACL = true,
                             ALWAYS_DECODE_OBJECTS = true,
@@ -3441,9 +3401,8 @@ namespace Corrade
                             SEND_AGENT_THROTTLE = true,
                             // Enable multiple simulators.
                             MULTIPLE_SIMS = corradeConfiguration.EnableMultipleSimulators
-                        }
-                    };
-                }
+                    }
+                };
 
                 // Update the configuration.
                 UpdateDynamicConfiguration(corradeConfiguration, firstRun);
@@ -3526,6 +3485,7 @@ namespace Corrade
                 CorradeLastExecStatus = LastExecStatus.OtherCrash;
                 // Wait for any semaphore.
                 WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle)o).ToArray());
+
                 // User disconnect.
                 CorradeLastExecStatus = LastExecStatus.Normal;
 
@@ -3583,8 +3543,58 @@ namespace Corrade
                 NotificationThreadState.Reset();
                 CallbackThreadState.Reset();
                 TCPNotificationsThreadState.Reset();
-                initializeClient = true;
-                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
+
+                // Save group soft bans state.
+                SaveGroupSoftBansState.Invoke();
+                // Save conferences state.
+                SaveConferenceState.Invoke();
+                // Save feeds state.
+                SaveGroupFeedState.Invoke();
+                // Save notification states.
+                SaveNotificationState.Invoke();
+                // Save group members.
+                SaveGroupMembersState.Invoke();
+                // Save group schedules.
+                SaveGroupSchedulesState.Invoke();
+                // Save movement state.
+                SaveMovementState.Invoke();
+                // Save Corrade caches.
+                SaveCorradeCache.Invoke();
+                // Save Bayes classifications.
+                SaveGroupBayesClassificiations.Invoke();
+                // Save group cookies.
+                SaveGroupCookiesState.Invoke();
+
+                // Perform the logout now.
+                lock (Locks.ClientInstanceNetworkLock)
+                {
+                    if (Client.Network.Connected)
+                    {
+                        // Full speed ahead; do not even attempt to grab a lock.
+                        var LoggedOutEvent = new ManualResetEvent(false);
+                        EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) =>
+                        {
+                            CorradeLastExecStatus = LastExecStatus.Normal;
+                            LoggedOutEvent.Set();
+                        };
+                        Client.Network.LoggedOut += LoggedOutEventHandler;
+                        CorradeLastExecStatus = LastExecStatus.LogoutCrash;
+                        Client.Network.BeginLogout();
+                        if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, false))
+                        {
+                            CorradeLastExecStatus = LastExecStatus.LogoutFroze;
+                            Client.Network.LoggedOut -= LoggedOutEventHandler;
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
+                        }
+                        Client.Network.LoggedOut -= LoggedOutEventHandler;
+                    }
+                }
+
+                // This is libomv we're talking about...
+                Client = null;
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
             } while (!ConnectionSemaphores['u'].WaitOne(0));
 
             // Now log-out.
@@ -3661,32 +3671,6 @@ namespace Corrade
                 });
             }
 
-            // Perform the logout now.
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                if (Client.Network.Connected)
-                {
-                    // Full speed ahead; do not even attempt to grab a lock.
-                    var LoggedOutEvent = new ManualResetEvent(false);
-                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) =>
-                    {
-                        CorradeLastExecStatus = LastExecStatus.Normal;
-                        LoggedOutEvent.Set();
-                    };
-                    Client.Network.LoggedOut += LoggedOutEventHandler;
-                    CorradeLastExecStatus = LastExecStatus.LogoutCrash;
-                    Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, false))
-                    {
-                        CorradeLastExecStatus = LastExecStatus.LogoutFroze;
-                        Client.Network.LoggedOut -= LoggedOutEventHandler;
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
-                    }
-                    Client.Network.LoggedOut -= LoggedOutEventHandler;
-                }
-            }
-
             // Stop the sphere effects expiration timer.
             EffectsExpirationTimer.Stop();
             // Stop the group membership timer.
@@ -3697,27 +3681,6 @@ namespace Corrade
             GroupSchedulesTimer.Stop();
             // Stop the heartbeat timer.
             CorradeHeartBeatTimer.Stop();
-
-            // Save group soft bans state.
-            SaveGroupSoftBansState.Invoke();
-            // Save conferences state.
-            SaveConferenceState.Invoke();
-            // Save feeds state.
-            SaveGroupFeedState.Invoke();
-            // Save notification states.
-            SaveNotificationState.Invoke();
-            // Save group members.
-            SaveGroupMembersState.Invoke();
-            // Save group schedules.
-            SaveGroupSchedulesState.Invoke();
-            // Save movement state.
-            SaveMovementState.Invoke();
-            // Save Corrade caches.
-            SaveCorradeCache.Invoke();
-            // Save Bayes classifications.
-            SaveGroupBayesClassificiations.Invoke();
-            // Save group cookies.
-            SaveGroupCookiesState.Invoke();
 
             // Stop the notification thread.
             try
@@ -4885,10 +4848,6 @@ namespace Corrade
                     // Login succeeded so start all the updates.
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGIN_SUCCEEDED));
 
-                    // Apply settings.
-                    Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
-                    Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
-
                     // Reset the start location cursor.
                     LoginLocationIndex = 0;
 
@@ -4996,6 +4955,10 @@ namespace Corrade
                     {
                         Client.Self.RetrieveInstantMessages();
                     }
+
+                    // Apply settings.
+                    Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
+                    Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
 
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
@@ -5846,6 +5809,7 @@ namespace Corrade
                     {
                         foreach (var kvp in CSV.ToKeyValue(sift))
                         {
+                            var regex = string.Empty;
                             switch (Reflection.GetEnumValueFromName<Sift>(wasInput(kvp.Key)))
                             {
                                 case Sift.TAKE:
@@ -5883,7 +5847,7 @@ namespace Corrade
 
                                 case Sift.MATCH:
                                     // Match the results if requested.
-                                    var regex = wasInput(kvp.Value);
+                                    regex = wasInput(kvp.Value);
                                     if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
                                     {
                                         data =
@@ -5904,9 +5868,11 @@ namespace Corrade
                                     break;
 
                                 case Sift.COUNT:
-                                    if (!string.IsNullOrEmpty(data))
+                                    regex = wasInput(kvp.Value);
+                                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
                                     {
-                                        data = CSV.ToEnumerable(data).Count().ToString(Utils.EnUsCulture);
+                                        var criteria = new Regex(regex, RegexOptions.Compiled);
+                                        data = CSV.ToEnumerable(data).Count(o => criteria.IsMatch(o)).ToString(Utils.EnUsCulture);
                                     }
                                     break;
 
@@ -6040,13 +6006,13 @@ namespace Corrade
             switch (corradeConfiguration.OpenMetaverseLogEnabled)
             {
                 case true:
-                    OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
-                    OpenMetaverse.Logger.OnLogMessage += OnLogOpenmetaverseMessage;
+                    Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
+                    Logger.OnLogMessage += OnLogOpenmetaverseMessage;
                     Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.Error;
                     break;
 
                 default:
-                    OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
+                    Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
                     Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
                     break;
             }

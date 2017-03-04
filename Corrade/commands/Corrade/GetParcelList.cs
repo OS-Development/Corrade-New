@@ -88,7 +88,8 @@ namespace Corrade
                         if (!args.LocalID.Equals(parcel.LocalID)) return;
 
                         ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
-                        accessList.AddRange(args.AccessList);
+                        if (args.AccessList != null && args.AccessList.Any())
+                            accessList.AddRange(args.AccessList);
                     };
                     lock (Locks.ClientInstanceParcelsLock)
                     {
