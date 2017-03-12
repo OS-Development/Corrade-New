@@ -131,8 +131,6 @@ namespace Corrade
 
                     #endregion Event Parameters
 
-                    var cookieContainer = new CookieContainer();
-
                     var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                         "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>

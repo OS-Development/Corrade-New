@@ -4,16 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.WebForms.SecondLife;
+using Corrade.Source.WebForms.SecondLife;
 using CorradeConfigurationSharp;
 using HtmlAgilityPack;
+using ServiceStack.Text;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
-using System.Xml.Serialization;
 using wasSharp;
 
 namespace Corrade
@@ -23,7 +21,7 @@ namespace Corrade
         public partial class CorradeCommands
         {
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
-                getaccounttransactionsdata =
+                getaccounthistorydata =
                     (corradeCommandParameters, result) =>
                     {
                         if (
@@ -56,20 +54,11 @@ namespace Corrade
                         if (string.IsNullOrEmpty(secret))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
-                        DateTime from;
+                        DateTime date;
                         if (!DateTime.TryParse(wasInput(
                             KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
-                                corradeCommandParameters.Message)), out from))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DATE);
-                        }
-
-                        DateTime to;
-                        if (!DateTime.TryParse(wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
-                                corradeCommandParameters.Message)), out to))
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATE)),
+                                corradeCommandParameters.Message)), out date))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DATE);
                         }
@@ -120,27 +109,21 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
                         postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
-                            "https://accounts.secondlife.com/get_transaction_history_csv",
+                            "https://accounts.secondlife.com/get_account_history_file",
                             new Dictionary<string, string>
                             {
-                                {"startDate", from.ToString("yyyy-MM-dd")},
-                                {"endDate", to.ToString("yyyy-MM-dd")},
-                                {"type", "xml"},
-                                {"xml", "1"},
-                                {"omit_zero_amounts", "false"}
+                                {"month", date.ToString("yyyy-MM")},
+                                {"csv", "1"},
+                                {"lang", "enUS" }
                             });
 
                         if (postData.Result == null)
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_TRANSACTIONS_FOUND);
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_HISTORY_FOUND);
 
-                        Transactions transactions;
-                        var serializer = new XmlSerializer(typeof(Transactions));
+                        List<Statement> statement;
                         try
                         {
-                            using (TextReader reader = new StringReader(Encoding.UTF8.GetString(postData.Result)))
-                            {
-                                transactions = (Transactions)serializer.Deserialize(reader);
-                            }
+                            statement = CsvSerializer.DeserializeFromString<List<Statement>>(Encoding.UTF8.GetString(postData.Result));
                         }
                         catch (Exception)
                         {
@@ -152,7 +135,7 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                         var csv =
                             new List<string>(
-                                transactions.list.SelectMany(o => wasOpenMetaverse.Reflection.GetStructuredData(o, data)));
+                                statement.SelectMany(o => wasOpenMetaverse.Reflection.GetStructuredData(o, data)));
                         if (csv.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

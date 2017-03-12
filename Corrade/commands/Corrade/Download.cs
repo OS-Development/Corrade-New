@@ -245,9 +245,9 @@ namespace Corrade
                                 /*
                                  * Use ImageMagick on Windows and the .NET converter otherwise.
                                  */
-                                switch (Environment.OSVersion.Platform)
+                                switch (OpenMetaverse.Utils.GetRunningPlatform())
                                 {
-                                    case PlatformID.Win32NT:
+                                    case OpenMetaverse.Utils.Platform.Windows:
                                         var magickFormat = Enum.GetValues(typeof(MagickFormat))
                                             .Cast<MagickFormat>()
                                             .Select(i => new { i, name = Enum.GetName(typeof(MagickFormat), i) })

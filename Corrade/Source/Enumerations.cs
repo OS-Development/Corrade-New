@@ -654,7 +654,16 @@ namespace Corrade
             UNABLE_TO_STORE_LAST_EXECUTION_STATE,
 
             [Reflection.DescriptionAttribute("unable to retrieve last execution state")]
-            UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE
+            UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE,
+
+            [Reflection.DescriptionAttribute("scripted agent status")]
+            SCRIPTED_AGENT_STATUS,
+
+            [Reflection.DescriptionAttribute("registered as scripted agent")]
+            REGISTERED_AS_SCRIPTED_AGENT,
+
+            [Reflection.DescriptionAttribute("unregistered as scripted agent")]
+            UNREGISTERED_AS_SCRIPTED_AGENT
         }
 
         /// <summary>
@@ -2291,7 +2300,11 @@ namespace Corrade
 
             [Command.StatusAttribute(53059)]
             [Reflection.DescriptionAttribute("could not update parcel list")]
-            COULD_NOT_UPDATE_PARCEL_LIST
+            COULD_NOT_UPDATE_PARCEL_LIST,
+
+            [Command.StatusAttribute(48110)]
+            [Reflection.DescriptionAttribute("no history found")]
+            NO_HISTORY_FOUND
         }
 
         /// <summary>
@@ -2406,6 +2419,24 @@ namespace Corrade
 
             [Reflection.NameAttribute("bayes")]
             BAYES
+        }
+
+        /// <summary>
+        ///     Possible outcomes of setting or retrieving the agent status.
+        /// </summary>
+        public enum ScriptedAgentStatusError
+        {
+            [Reflection.DescriptionAttribute("unable to authenticate")]
+            UNABLE_TO_AUTHENTICATE,
+
+            [Reflection.DescriptionAttribute("unable to reach scripted agent status page")]
+            UNABLE_TO_REACH_SCRIPTED_AGENT_STATUS_PAGE,
+
+            [Reflection.DescriptionAttribute("could not get scripted agent status")]
+            COULD_NOT_GET_SCRIPTED_AGENT_STATUS,
+
+            [Reflection.DescriptionAttribute("could not set scripted agent status")]
+            COULD_NOT_SET_SCRIPTED_AGENT_STATUS
         }
     }
 }

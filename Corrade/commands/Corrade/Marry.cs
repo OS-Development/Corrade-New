@@ -52,8 +52,6 @@ namespace Corrade
                     if (string.IsNullOrEmpty(secret))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
 
-                    var cookieContainer = new CookieContainer();
-
                     #region Authenticate
 
                     var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(

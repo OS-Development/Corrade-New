@@ -66,14 +66,15 @@ namespace Configurator
 
             // language
             mainForm.ClientLanguageAdvertise.Checked = corradeConfiguration.AdvertiseClientLanguage;
-            var configuredLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, corradeConfiguration.ClientLanguage));
+            var configuredLanguage = mainForm.ClientLanguage.Items.OfType<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, corradeConfiguration.ClientLanguage));
             switch (mainForm.ClientLanguage.Items.IndexOf(configuredLanguage))
             {
                 case -1:
-                    var englishLanguage = mainForm.ClientLanguage.Items.Cast<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, @"en"));
+                    var englishLanguage = mainForm.ClientLanguage.Items.OfType<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, @"en"));
                     mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(englishLanguage);
                     mainForm.ClientLanguage.SelectedItem = englishLanguage;
                     break;
+
                 default:
                     mainForm.ClientLanguage.SelectedItem = configuredLanguage;
                     mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(configuredLanguage);
@@ -201,7 +202,7 @@ namespace Configurator
                     Tag = configuredGroup
                 };
                 mainForm.NucleusServerGroup.Items.Add(nucleusGroupItem);
-                
+
                 // Set the group as selected if it can be found in the configuration.
                 if (string.Equals(configuredGroup.Name, corradeConfiguration.NucleusServerGroup))
                 {
@@ -235,6 +236,7 @@ namespace Configurator
                     mainForm.TCPNotificationsServerSSLProtocol.Text = Enum.GetName(typeof(SslProtocols),
                         SslProtocols.Tls12);
                     break;
+
                 default:
                     mainForm.TCPNotificationsServerSSLProtocol.Text = corradeConfiguration.TCPNotificationsSSLProtocol;
                     break;
@@ -311,86 +313,88 @@ namespace Configurator
         private readonly Action SetExperienceLevel = () =>
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    var experienceComboBox = mainForm.ExperienceLevel;
-                    if (experienceComboBox == null) return;
-                    mainForm.Tabs.Enabled = false;
-                    switch ((string) experienceComboBox.SelectedItem)
-                    {
-                        case "Basic":
-                            /* Hide non-basic experience tabs. */
-                            mainForm.LogsTabPage.Enabled = false;
-                            mainForm.FiltersTabPage.Enabled = false;
-                            mainForm.CryptographyTabPage.Enabled = false;
-                            mainForm.SIMLTabPage.Enabled = false;
-                            mainForm.RLVTabPage.Enabled = false;
-                            mainForm.HTTPTabPage.Enabled = false;
-                            mainForm.NucleusTabPage.Enabled = false;
-                            mainForm.HordeTabPage.Enabled = false;
-                            mainForm.TCPTabPage.Enabled = false;
-                            mainForm.NetworkTabPage.Enabled = false;
-                            mainForm.ThrottlesTabPage.Enabled = false;
-                            mainForm.LimitsTabPage.Enabled = false;
-                            /* Hide non-basic experience group boxes. */
-                            mainForm.AutoActivateGroupBox.Visible = false;
-                            mainForm.AutoPruneCacheBox.Visible = false;
-                            mainForm.GroupCreateFeeBox.Visible = false;
-                            mainForm.ClientIdentificationTagBox.Visible = false;
-                            mainForm.ExpectedExitCodeBox.Visible = false;
-                            mainForm.AbnormalExitCodeBox.Visible = false;
-                            break;
-                        case "Intermediary":
-                            /* Hide non-advanced experience tabs. */
-                            mainForm.LogsTabPage.Enabled = false;
-                            mainForm.FiltersTabPage.Enabled = false;
-                            mainForm.CryptographyTabPage.Enabled = false;
-                            mainForm.SIMLTabPage.Enabled = true;
-                            mainForm.RLVTabPage.Enabled = true;
-                            mainForm.HTTPTabPage.Enabled = true;
-                            mainForm.NucleusTabPage.Enabled = true;
-                            mainForm.HordeTabPage.Enabled = true;
-                            mainForm.TCPTabPage.Enabled = false;
-                            mainForm.NetworkTabPage.Enabled = false;
-                            mainForm.ThrottlesTabPage.Enabled = false;
-                            mainForm.LimitsTabPage.Enabled = false;
-                            /* Hide non-advanced experience group boxes. */
-                            mainForm.AutoActivateGroupBox.Visible = true;
-                            mainForm.AutoPruneCacheBox.Visible = true;
-                            mainForm.GroupCreateFeeBox.Visible = false;
-                            mainForm.ClientIdentificationTagBox.Visible = false;
-                            mainForm.ExpectedExitCodeBox.Visible = false;
-                            mainForm.AbnormalExitCodeBox.Visible = false;
-                            break;
-                        case "Advanced":
-                            /* Show everything. */
-                            mainForm.LogsTabPage.Enabled = true;
-                            mainForm.FiltersTabPage.Enabled = true;
-                            mainForm.CryptographyTabPage.Enabled = true;
-                            mainForm.SIMLTabPage.Enabled = true;
-                            mainForm.RLVTabPage.Enabled = true;
-                            mainForm.HTTPTabPage.Enabled = true;
-                            mainForm.NucleusTabPage.Enabled = true;
-                            mainForm.HordeTabPage.Enabled = true;
-                            mainForm.TCPTabPage.Enabled = true;
-                            mainForm.NetworkTabPage.Enabled = true;
-                            mainForm.ThrottlesTabPage.Enabled = true;
-                            mainForm.LimitsTabPage.Enabled = true;
-                            /* Show everything. */
-                            mainForm.AutoActivateGroupBox.Visible = true;
-                            mainForm.AutoPruneCacheBox.Visible = true;
-                            mainForm.GroupCreateFeeBox.Visible = true;
-                            mainForm.ClientIdentificationTagBox.Visible = true;
-                            mainForm.ExpectedExitCodeBox.Visible = true;
-                            mainForm.AbnormalExitCodeBox.Visible = true;
-                            break;
-                    }
-                    mainForm.Tabs.Enabled = true;
+                (Action)(() =>
+               {
+                   var experienceComboBox = mainForm.ExperienceLevel;
+                   if (experienceComboBox == null) return;
+                   mainForm.Tabs.Enabled = false;
+                   switch ((string)experienceComboBox.SelectedItem)
+                   {
+                       case "Basic":
+                           /* Hide non-basic experience tabs. */
+                           mainForm.LogsTabPage.Enabled = false;
+                           mainForm.FiltersTabPage.Enabled = false;
+                           mainForm.CryptographyTabPage.Enabled = false;
+                           mainForm.SIMLTabPage.Enabled = false;
+                           mainForm.RLVTabPage.Enabled = false;
+                           mainForm.HTTPTabPage.Enabled = false;
+                           mainForm.NucleusTabPage.Enabled = false;
+                           mainForm.HordeTabPage.Enabled = false;
+                           mainForm.TCPTabPage.Enabled = false;
+                           mainForm.NetworkTabPage.Enabled = false;
+                           mainForm.ThrottlesTabPage.Enabled = false;
+                           mainForm.LimitsTabPage.Enabled = false;
+                           /* Hide non-basic experience group boxes. */
+                           mainForm.AutoActivateGroupBox.Visible = false;
+                           mainForm.AutoPruneCacheBox.Visible = false;
+                           mainForm.GroupCreateFeeBox.Visible = false;
+                           mainForm.ClientIdentificationTagBox.Visible = false;
+                           mainForm.ExpectedExitCodeBox.Visible = false;
+                           mainForm.AbnormalExitCodeBox.Visible = false;
+                           break;
 
-                    // Save form settings.
-                    Settings.Default["ExperienceLevel"] = (string) experienceComboBox.SelectedItem;
-                    Settings.Default.Save();
-                }));
+                       case "Intermediary":
+                           /* Hide non-advanced experience tabs. */
+                           mainForm.LogsTabPage.Enabled = false;
+                           mainForm.FiltersTabPage.Enabled = false;
+                           mainForm.CryptographyTabPage.Enabled = false;
+                           mainForm.SIMLTabPage.Enabled = true;
+                           mainForm.RLVTabPage.Enabled = true;
+                           mainForm.HTTPTabPage.Enabled = true;
+                           mainForm.NucleusTabPage.Enabled = true;
+                           mainForm.HordeTabPage.Enabled = true;
+                           mainForm.TCPTabPage.Enabled = false;
+                           mainForm.NetworkTabPage.Enabled = false;
+                           mainForm.ThrottlesTabPage.Enabled = false;
+                           mainForm.LimitsTabPage.Enabled = false;
+                           /* Hide non-advanced experience group boxes. */
+                           mainForm.AutoActivateGroupBox.Visible = true;
+                           mainForm.AutoPruneCacheBox.Visible = true;
+                           mainForm.GroupCreateFeeBox.Visible = false;
+                           mainForm.ClientIdentificationTagBox.Visible = false;
+                           mainForm.ExpectedExitCodeBox.Visible = false;
+                           mainForm.AbnormalExitCodeBox.Visible = false;
+                           break;
+
+                       case "Advanced":
+                           /* Show everything. */
+                           mainForm.LogsTabPage.Enabled = true;
+                           mainForm.FiltersTabPage.Enabled = true;
+                           mainForm.CryptographyTabPage.Enabled = true;
+                           mainForm.SIMLTabPage.Enabled = true;
+                           mainForm.RLVTabPage.Enabled = true;
+                           mainForm.HTTPTabPage.Enabled = true;
+                           mainForm.NucleusTabPage.Enabled = true;
+                           mainForm.HordeTabPage.Enabled = true;
+                           mainForm.TCPTabPage.Enabled = true;
+                           mainForm.NetworkTabPage.Enabled = true;
+                           mainForm.ThrottlesTabPage.Enabled = true;
+                           mainForm.LimitsTabPage.Enabled = true;
+                           /* Show everything. */
+                           mainForm.AutoActivateGroupBox.Visible = true;
+                           mainForm.AutoPruneCacheBox.Visible = true;
+                           mainForm.GroupCreateFeeBox.Visible = true;
+                           mainForm.ClientIdentificationTagBox.Visible = true;
+                           mainForm.ExpectedExitCodeBox.Visible = true;
+                           mainForm.AbnormalExitCodeBox.Visible = true;
+                           break;
+                   }
+                   mainForm.Tabs.Enabled = true;
+
+                   // Save form settings.
+                   Settings.Default["ExperienceLevel"] = (string)experienceComboBox.SelectedItem;
+                   Settings.Default.Save();
+               }));
         };
 
         private readonly Action SetUserConfiguration = () =>
@@ -404,6 +408,7 @@ namespace Configurator
                 case true:
                     corradeConfiguration.Password = mainForm.Password.Text;
                     break;
+
                 default:
                     if (mainForm.Password.Text.Length > 16)
                     {
@@ -417,7 +422,7 @@ namespace Configurator
             corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
             // start locations
             corradeConfiguration.StartLocations =
-                new List<string>(mainForm.StartLocations.Items.Cast<ListViewItem>().Select(o => o.Tag.ToString()));
+                new List<string>(mainForm.StartLocations.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
             corradeConfiguration.EnableMultipleSimulators = mainForm.EnableMultipleSimulators.Checked;
             UUID outUUID;
@@ -442,16 +447,17 @@ namespace Configurator
             {
                 corradeConfiguration.GroupCreateFee = outUint;
             }
-            corradeConfiguration.ExitCodeExpected = (int) mainForm.ExpectedExitCode.Value;
-            corradeConfiguration.ExitCodeAbnormal = (int) mainForm.AbnomalExitCode.Value;
+            corradeConfiguration.ExitCodeExpected = (int)mainForm.ExpectedExitCode.Value;
+            corradeConfiguration.ExitCodeAbnormal = (int)mainForm.AbnomalExitCode.Value;
 
             // language
             corradeConfiguration.AdvertiseClientLanguage = mainForm.ClientLanguageAdvertise.Checked;
-            switch(mainForm.ClientLanguage.SelectedIndex)
+            switch (mainForm.ClientLanguage.SelectedIndex)
             {
                 case -1:
                     corradeConfiguration.ClientLanguage = @"en";
                     break;
+
                 default:
                     corradeConfiguration.ClientLanguage = ((CultureInfo)((ListViewItem)mainForm.ClientLanguage.SelectedItem).Tag).TwoLetterISOLanguageName;
                     break;
@@ -473,19 +479,19 @@ namespace Configurator
 
             // filters
             corradeConfiguration.InputFilters =
-                mainForm.ActiveInputFilters.Items.Cast<ListViewItem>()
-                    .Select(o => (Configuration.Filter) o.Tag)
+                mainForm.ActiveInputFilters.Items.OfType<ListViewItem>()
+                    .Select(o => (Configuration.Filter)o.Tag)
                     .ToList();
             corradeConfiguration.OutputFilters =
-                mainForm.ActiveOutputFilters.Items.Cast<ListViewItem>()
-                    .Select(o => (Configuration.Filter) o.Tag)
+                mainForm.ActiveOutputFilters.Items.OfType<ListViewItem>()
+                    .Select(o => (Configuration.Filter)o.Tag)
                     .ToList();
 
             // cryptography
             corradeConfiguration.ENIGMAConfiguration = new Configuration.ENIGMA
             {
-                rotors = mainForm.ENIGMARotorSequence.Items.Cast<ListViewItem>().Select(o => (char) o.Tag).ToArray(),
-                plugs = mainForm.ENIGMAPlugSequence.Items.Cast<ListViewItem>().Select(o => (char) o.Tag).ToArray(),
+                rotors = mainForm.ENIGMARotorSequence.Items.OfType<ListViewItem>().Select(o => (char)o.Tag).ToArray(),
+                plugs = mainForm.ENIGMAPlugSequence.Items.OfType<ListViewItem>().Select(o => (char)o.Tag).ToArray(),
                 reflector = mainForm.ENIGMAReflector.Text[0]
             };
 
@@ -582,7 +588,7 @@ namespace Configurator
             }
             // Nucleus Blessed Files
             corradeConfiguration.NucleusServerBlessings =
-                new HashSet<string>(mainForm.NucleusServerBlessings.Items.Cast<ListViewItem>().Select(o => o.Tag.ToString()));
+                new HashSet<string>(mainForm.NucleusServerBlessings.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
 
             // Hash HTTP password.
             switch (Regex.IsMatch(mainForm.NucleusServerPassword.Text, "[a-fA-F0-9]{40}"))
@@ -599,7 +605,7 @@ namespace Configurator
             {
                 corradeConfiguration.NucleusServerCachePurgeInterval = outUint;
             }
-            
+
             // TCP
             corradeConfiguration.EnableTCPNotificationsServer = mainForm.TCPNotificationsServerEnabled.Checked;
             corradeConfiguration.TCPNotificationsServerAddress = mainForm.TCPNotificationsServerAddress.Text;
@@ -617,6 +623,7 @@ namespace Configurator
                     corradeConfiguration.TCPNotificationsSSLProtocol = Enum.GetName(typeof(SslProtocols),
                         SslProtocols.Tls12);
                     break;
+
                 default:
                     corradeConfiguration.TCPNotificationsSSLProtocol = mainForm.TCPNotificationsServerSSLProtocol.Text;
                     break;
@@ -740,7 +747,7 @@ namespace Configurator
             // Hash the group passwords using SHA1
             foreach (ListViewItem item in mainForm.Groups.Items)
             {
-                var group = (Configuration.Group) item.Tag;
+                var group = (Configuration.Group)item.Tag;
                 switch (Regex.IsMatch(group.Password, "[a-fA-F0-9]{40}"))
                 {
                     case false:
@@ -754,7 +761,7 @@ namespace Configurator
             // Hash the cache peer passwords using SHA1 and trim trailing slashes from URLs
             foreach (ListViewItem item in mainForm.HordePeers.Items)
             {
-                var hordePeer = (Configuration.HordePeer) item.Tag;
+                var hordePeer = (Configuration.HordePeer)item.Tag;
                 switch (Regex.IsMatch(hordePeer.Password, "[a-fA-F0-9]{40}"))
                 {
                     case false:
@@ -886,880 +893,879 @@ namespace Configurator
 
         private void LoadCorradeLegacyConfigurationRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                mainForm.LoadLegacyConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
-                switch (mainForm.LoadLegacyConfigurationDialog.ShowDialog())
-                {
-                    case DialogResult.OK:
-                        var file = mainForm.LoadLegacyConfigurationDialog.FileName;
-                        new Thread(() =>
-                        {
-                            mainForm.BeginInvoke((MethodInvoker) (() =>
-                            {
-                                try
-                                {
-                                    mainForm.StatusText.Text = @"loading legacy configuration...";
-                                    mainForm.StatusProgress.Value = 0;
-                                    corradeConfiguration = new Configuration();
-                                    LoadLegacy(file, ref corradeConfiguration);
-                                    mainForm.StatusText.Text = @"applying settings...";
-                                    mainForm.StatusProgress.Value = 50;
-                                    GetUserConfiguration.Invoke();
-                                    mainForm.StatusText.Text = @"configuration loaded";
-                                    mainForm.StatusProgress.Value = 100;
-                                }
-                                catch (Exception ex)
-                                {
-                                    mainForm.StatusText.Text = ex.Message;
-                                }
-                            }));
-                        })
-                        {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
-                        break;
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               mainForm.LoadLegacyConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
+               switch (mainForm.LoadLegacyConfigurationDialog.ShowDialog())
+               {
+                   case DialogResult.OK:
+                       var file = mainForm.LoadLegacyConfigurationDialog.FileName;
+                       new Thread(() =>
+                       {
+                           mainForm.BeginInvoke((MethodInvoker)(() =>
+                           {
+                               try
+                               {
+                                   mainForm.StatusText.Text = @"loading legacy configuration...";
+                                   mainForm.StatusProgress.Value = 0;
+                                   corradeConfiguration = new Configuration();
+                                   LoadLegacy(file, ref corradeConfiguration);
+                                   mainForm.StatusText.Text = @"applying settings...";
+                                   mainForm.StatusProgress.Value = 50;
+                                   GetUserConfiguration.Invoke();
+                                   mainForm.StatusText.Text = @"configuration loaded";
+                                   mainForm.StatusProgress.Value = 100;
+                               }
+                               catch (Exception ex)
+                               {
+                                   mainForm.StatusText.Text = ex.Message;
+                               }
+                           }));
+                       })
+                       { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+                       break;
+               }
+           }));
         }
 
         private void LoadCorradeConfigurationRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                mainForm.LoadConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
-                switch (mainForm.LoadConfigurationDialog.ShowDialog())
-                {
-                    case DialogResult.OK:
-                        var file = mainForm.LoadConfigurationDialog.FileName;
-                        new Thread(() =>
-                        {
-                            mainForm.BeginInvoke((MethodInvoker) (() =>
-                            {
-                                try
-                                {
-                                    mainForm.StatusText.Text = @"loading configuration...";
-                                    mainForm.StatusProgress.Value = 0;
-                                    using (var fileStream = new FileStream(file, FileMode.Open))
-                                    {
-                                        corradeConfiguration.Load(fileStream, ref corradeConfiguration);
-                                    }
-                                    mainForm.StatusProgress.Value = 50;
-                                    mainForm.StatusText.Text = @"applying settings...";
-                                    GetUserConfiguration.Invoke();
-                                    mainForm.StatusText.Text = @"configuration loaded";
-                                    mainForm.StatusProgress.Value = 100;
-                                }
-                                catch (Exception ex)
-                                {
-                                    mainForm.StatusText.Text = ex.Message;
-                                }
-                            }));
-                        })
-                        {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
-                        break;
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               mainForm.LoadConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
+               switch (mainForm.LoadConfigurationDialog.ShowDialog())
+               {
+                   case DialogResult.OK:
+                       var file = mainForm.LoadConfigurationDialog.FileName;
+                       new Thread(() =>
+                       {
+                           mainForm.BeginInvoke((MethodInvoker)(() =>
+                           {
+                               try
+                               {
+                                   mainForm.StatusText.Text = @"loading configuration...";
+                                   mainForm.StatusProgress.Value = 0;
+                                   using (var fileStream = new FileStream(file, FileMode.Open))
+                                   {
+                                       corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                                   }
+                                   mainForm.StatusProgress.Value = 50;
+                                   mainForm.StatusText.Text = @"applying settings...";
+                                   GetUserConfiguration.Invoke();
+                                   mainForm.StatusText.Text = @"configuration loaded";
+                                   mainForm.StatusProgress.Value = 100;
+                               }
+                               catch (Exception ex)
+                               {
+                                   mainForm.StatusText.Text = ex.Message;
+                               }
+                           }));
+                       })
+                       { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+                       break;
+               }
+           }));
         }
 
         private void SaveCorradeConfigurationRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                mainForm.SaveConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
-                switch (mainForm.SaveConfigurationDialog.ShowDialog())
-                {
-                    case DialogResult.OK:
-                        var file = mainForm.SaveConfigurationDialog.FileName;
-                        new Thread(() =>
-                        {
-                            mainForm.BeginInvoke((MethodInvoker) (() =>
-                            {
-                                try
-                                {
-                                    mainForm.StatusText.Text = @"applying settings...";
-                                    mainForm.StatusProgress.Value = 0;
-                                    SetUserConfiguration.Invoke();
-                                    mainForm.StatusText.Text = @"saving configuration...";
-                                    mainForm.StatusProgress.Value = 50;
-                                    using (var fileStream = new FileStream(file, FileMode.Create))
-                                    {
-                                        corradeConfiguration.Save(fileStream, ref corradeConfiguration);
-                                    }
-                                    mainForm.StatusText.Text = @"configuration saved";
-                                    mainForm.StatusProgress.Value = 100;
-                                    isConfigurationSaved = true;
-                                }
-                                catch (Exception ex)
-                                {
-                                    mainForm.StatusText.Text = ex.Message;
-                                }
-                            }));
-                        })
-                        {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
-                        break;
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               mainForm.SaveConfigurationDialog.InitialDirectory = Directory.GetCurrentDirectory();
+               switch (mainForm.SaveConfigurationDialog.ShowDialog())
+               {
+                   case DialogResult.OK:
+                       var file = mainForm.SaveConfigurationDialog.FileName;
+                       new Thread(() =>
+                       {
+                           mainForm.BeginInvoke((MethodInvoker)(() =>
+                           {
+                               try
+                               {
+                                   mainForm.StatusText.Text = @"applying settings...";
+                                   mainForm.StatusProgress.Value = 0;
+                                   SetUserConfiguration.Invoke();
+                                   mainForm.StatusText.Text = @"saving configuration...";
+                                   mainForm.StatusProgress.Value = 50;
+                                   using (var fileStream = new FileStream(file, FileMode.Create))
+                                   {
+                                       corradeConfiguration.Save(fileStream, ref corradeConfiguration);
+                                   }
+                                   mainForm.StatusText.Text = @"configuration saved";
+                                   mainForm.StatusProgress.Value = 100;
+                                   isConfigurationSaved = true;
+                               }
+                               catch (Exception ex)
+                               {
+                                   mainForm.StatusText.Text = ex.Message;
+                               }
+                           }));
+                       })
+                       { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+                       break;
+               }
+           }));
         }
 
         private void MasterSelected(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Masters.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
-                var master = (Configuration.Master) listViewItem.Tag;
-                MasterFirstName.Text = master.FirstName;
-                MasterLastName.Text = master.LastName;
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Masters.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
+               var master = (Configuration.Master)listViewItem.Tag;
+               MasterFirstName.Text = master.FirstName;
+               MasterLastName.Text = master.LastName;
+           }));
         }
 
         private void GroupSelected(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Groups.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Groups.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
 
-                var group = (Configuration.Group) listViewItem.Tag;
-                GroupName.Text = group.Name;
-                GroupPassword.Text = group.Password;
-                GroupUUID.Text = group.UUID;
-                GroupWorkers.Text = group.Workers.ToString();
-                GroupSchedules.Text = group.Schedules.ToString();
-                GroupDatabaseFile.Text = group.DatabaseFile;
-                GroupChatLogEnabled.Checked = group.ChatLogEnabled;
-                GroupChatLogFile.Text = group.ChatLog;
+               var group = (Configuration.Group)listViewItem.Tag;
+               GroupName.Text = group.Name;
+               GroupPassword.Text = group.Password;
+               GroupUUID.Text = group.UUID;
+               GroupWorkers.Text = group.Workers.ToString();
+               GroupSchedules.Text = group.Schedules.ToString();
+               GroupDatabaseFile.Text = group.DatabaseFile;
+               GroupChatLogEnabled.Checked = group.ChatLogEnabled;
+               GroupChatLogFile.Text = group.ChatLog;
 
-                // Permissions
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    switch (
-                        group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
-                            (string) GroupPermissions.Items[i])))
-                    {
-                        case true:
-                            GroupPermissions.SetItemChecked(i, true);
-                            break;
-                        default:
-                            GroupPermissions.SetItemChecked(i, false);
-                            break;
-                    }
-                }
+               // Permissions
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   switch (
+                       group.PermissionMask.IsMaskFlagSet(Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                           (string)GroupPermissions.Items[i])))
+                   {
+                       case true:
+                           GroupPermissions.SetItemChecked(i, true);
+                           break;
 
-                // Notifications
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    switch (
-                        group.NotificationMask.IsMaskFlagSet(Reflection
-                            .GetEnumValueFromName<Configuration.Notifications>(
-                                (string) GroupNotifications.Items[i]))
-                        /*!(group.NotificationMask &
-                          (ulong)
-                              Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                  (string) GroupNotifications.Items[i]))
-                            .Equals(0)*/)
-                    {
-                        case true:
-                            GroupNotifications.SetItemChecked(i, true);
-                            break;
-                        default:
-                            GroupNotifications.SetItemChecked(i, false);
-                            break;
-                    }
-                }
-            }));
+                       default:
+                           GroupPermissions.SetItemChecked(i, false);
+                           break;
+                   }
+               }
+
+               // Notifications
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   switch (
+                       group.NotificationMask.IsMaskFlagSet(Reflection
+                           .GetEnumValueFromName<Configuration.Notifications>(
+                               (string)GroupNotifications.Items[i]))
+                                       /*!(group.NotificationMask &
+                                         (ulong)
+                                             Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                 (string) GroupNotifications.Items[i]))
+                                           .Equals(0)*/)
+                   {
+                       case true:
+                           GroupNotifications.SetItemChecked(i, true);
+                           break;
+
+                       default:
+                           GroupNotifications.SetItemChecked(i, false);
+                           break;
+                   }
+               }
+           }));
         }
 
         private void PermissionsSelected(object sender, ItemCheckEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Groups.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
-                var group = (Configuration.Group) listViewItem.Tag;
-                corradeConfiguration.Groups.Remove(group);
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Groups.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
+               var group = (Configuration.Group)listViewItem.Tag;
+               corradeConfiguration.Groups.Remove(group);
 
-                var permission =
-                    Reflection.GetEnumValueFromName<Configuration.Permissions>(
-                        (string) GroupPermissions.Items[e.Index]);
+               var permission =
+                   Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                       (string)GroupPermissions.Items[e.Index]);
 
-                switch (e.NewValue)
-                {
-                    case CheckState.Checked: // add permission
-                        if (!group.Permissions.Contains(permission))
-                            group.Permissions.Add(permission);
-                        break;
-                    case CheckState.Unchecked: // remove permission
-                        if (group.Permissions.Contains(permission))
-                            group.Permissions.Remove(permission);
-                        break;
-                }
+               switch (e.NewValue)
+               {
+                   case CheckState.Checked: // add permission
+                       if (!group.Permissions.Contains(permission))
+                           group.Permissions.Add(permission);
+                       break;
 
-                corradeConfiguration.Groups.Add(group);
-                Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = group.Name, Tag = group};
-            }));
+                   case CheckState.Unchecked: // remove permission
+                       if (group.Permissions.Contains(permission))
+                           group.Permissions.Remove(permission);
+                       break;
+               }
+
+               corradeConfiguration.Groups.Add(group);
+               Groups.Items[Groups.SelectedIndex] = new ListViewItem { Text = group.Name, Tag = group };
+           }));
         }
 
         private void SelectedNotifications(object sender, ItemCheckEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Groups.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
-                var group = (Configuration.Group) listViewItem.Tag;
-                corradeConfiguration.Groups.Remove(group);
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Groups.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
+               var group = (Configuration.Group)listViewItem.Tag;
+               corradeConfiguration.Groups.Remove(group);
 
-                var notification =
-                    Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                        (string) GroupNotifications.Items[e.Index]);
+               var notification =
+                   Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                       (string)GroupNotifications.Items[e.Index]);
 
-                switch (e.NewValue)
-                {
-                    case CheckState.Checked: // add notification
-                        if (!group.Notifications.Contains(notification))
-                            group.Notifications.Add(notification);
-                        break;
-                    case CheckState.Unchecked: // remove notification
-                        if (group.Notifications.Contains(notification))
-                            group.Notifications.Remove(notification);
-                        break;
-                }
+               switch (e.NewValue)
+               {
+                   case CheckState.Checked: // add notification
+                       if (!group.Notifications.Contains(notification))
+                           group.Notifications.Add(notification);
+                       break;
 
-                corradeConfiguration.Groups.Add(group);
-                Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = group.Name, Tag = group};
-            }));
+                   case CheckState.Unchecked: // remove notification
+                       if (group.Notifications.Contains(notification))
+                           group.Notifications.Remove(notification);
+                       break;
+               }
+
+               corradeConfiguration.Groups.Add(group);
+               Groups.Items[Groups.SelectedIndex] = new ListViewItem { Text = group.Name, Tag = group };
+           }));
         }
 
         private void DeleteGroupRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Groups.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
-                var group = (Configuration.Group) listViewItem.Tag;
-                corradeConfiguration.Groups.Remove(group);
-                Groups.Items.RemoveAt(Groups.SelectedIndex);
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Groups.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
+               var group = (Configuration.Group)listViewItem.Tag;
+               corradeConfiguration.Groups.Remove(group);
+               Groups.Items.RemoveAt(Groups.SelectedIndex);
 
-                // Add Nucleus server groups.
-                mainForm.NucleusServerGroup.Items.Clear();
-                foreach (var configuredGroup in corradeConfiguration.Groups)
-                {
-                    mainForm.NucleusServerGroup.Items.Add(new ListViewItem
-                    {
-                        Text = XML.UnescapeXML(configuredGroup.Name),
-                        Tag = configuredGroup
-                    });
-                }
-                mainForm.NucleusServerGroup.DisplayMember = "Text";
+               // Add Nucleus server groups.
+               mainForm.NucleusServerGroup.Items.Clear();
+               foreach (var configuredGroup in corradeConfiguration.Groups)
+               {
+                   mainForm.NucleusServerGroup.Items.Add(new ListViewItem
+                   {
+                       Text = XML.UnescapeXML(configuredGroup.Name),
+                       Tag = configuredGroup
+                   });
+               }
+               mainForm.NucleusServerGroup.DisplayMember = "Text";
 
-                // Void all the selected items
-                GroupName.Text = string.Empty;
-                GroupPassword.Text = string.Empty;
-                GroupUUID.Text = string.Empty;
-                GroupWorkers.Text = string.Empty;
-                GroupSchedules.Text = string.Empty;
-                GroupDatabaseFile.Text = string.Empty;
-                GroupChatLogEnabled.Checked = false;
-                GroupChatLogFile.Text = string.Empty;
+               // Void all the selected items
+               GroupName.Text = string.Empty;
+               GroupPassword.Text = string.Empty;
+               GroupUUID.Text = string.Empty;
+               GroupWorkers.Text = string.Empty;
+               GroupSchedules.Text = string.Empty;
+               GroupDatabaseFile.Text = string.Empty;
+               GroupChatLogEnabled.Checked = false;
+               GroupChatLogFile.Text = string.Empty;
 
-                // Permissions
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    GroupPermissions.SetItemChecked(i, false);
-                }
+               // Permissions
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   GroupPermissions.SetItemChecked(i, false);
+               }
 
-                // Notifications
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    GroupNotifications.SetItemChecked(i, false);
-                }
-            }));
+               // Notifications
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   GroupNotifications.SetItemChecked(i, false);
+               }
+           }));
         }
 
         private void MasterConfigurationChanged(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Masters.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Masters.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
 
-                var master = (Configuration.Master) listViewItem.Tag;
+               var master = (Configuration.Master)listViewItem.Tag;
 
-                if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
-                {
-                    MasterFirstName.BackColor = Color.MistyRose;
-                    MasterLastName.BackColor = Color.MistyRose;
-                    return;
-                }
+               if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
+               {
+                   MasterFirstName.BackColor = Color.MistyRose;
+                   MasterLastName.BackColor = Color.MistyRose;
+                   return;
+               }
 
-                MasterFirstName.BackColor = Color.Empty;
-                MasterLastName.BackColor = Color.Empty;
-                corradeConfiguration.Masters.Remove(master);
-                master = new Configuration.Master {FirstName = MasterFirstName.Text, LastName = MasterLastName.Text};
-                corradeConfiguration.Masters.Add(master);
-                Masters.Items[Masters.SelectedIndex] = new ListViewItem
-                {
-                    Text = MasterFirstName.Text + @" " + MasterLastName.Text,
-                    Tag = master
-                };
-            }));
+               MasterFirstName.BackColor = Color.Empty;
+               MasterLastName.BackColor = Color.Empty;
+               corradeConfiguration.Masters.Remove(master);
+               master = new Configuration.Master { FirstName = MasterFirstName.Text, LastName = MasterLastName.Text };
+               corradeConfiguration.Masters.Add(master);
+               Masters.Items[Masters.SelectedIndex] = new ListViewItem
+               {
+                   Text = MasterFirstName.Text + @" " + MasterLastName.Text,
+                   Tag = master
+               };
+           }));
         }
 
         private void GroupConfigurationChanged(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Groups.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Groups.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
 
-                var group = (Configuration.Group) listViewItem.Tag;
+               var group = (Configuration.Group)listViewItem.Tag;
 
-                if (GroupName.Text.Equals(string.Empty))
-                {
-                    GroupName.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupName.BackColor = Color.Empty;
+               if (GroupName.Text.Equals(string.Empty))
+               {
+                   GroupName.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupName.BackColor = Color.Empty;
 
-                // Do not accept collisions with the master password override.
-                if (GroupPassword.Text.Equals(string.Empty) ||
-                    GroupPassword.Text.Equals(MasterPasswordOverride.Text, StringComparison.Ordinal))
-                {
-                    GroupPassword.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupPassword.BackColor = Color.Empty;
+               // Do not accept collisions with the master password override.
+               if (GroupPassword.Text.Equals(string.Empty) ||
+                  GroupPassword.Text.Equals(MasterPasswordOverride.Text, StringComparison.Ordinal))
+               {
+                   GroupPassword.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupPassword.BackColor = Color.Empty;
 
-                UUID groupUUID;
-                if (GroupUUID.Text.Equals(string.Empty) || !UUID.TryParse(GroupUUID.Text, out groupUUID))
-                {
-                    GroupUUID.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupUUID.BackColor = Color.Empty;
+               UUID groupUUID;
+               if (GroupUUID.Text.Equals(string.Empty) || !UUID.TryParse(GroupUUID.Text, out groupUUID))
+               {
+                   GroupUUID.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupUUID.BackColor = Color.Empty;
 
-                uint groupWorkers;
-                if (GroupWorkers.Text.Equals(string.Empty) ||
-                    !uint.TryParse(GroupWorkers.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupWorkers))
-                {
-                    GroupWorkers.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupWorkers.BackColor = Color.Empty;
+               uint groupWorkers;
+               if (GroupWorkers.Text.Equals(string.Empty) ||
+                   !uint.TryParse(GroupWorkers.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupWorkers))
+               {
+                   GroupWorkers.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupWorkers.BackColor = Color.Empty;
 
-                uint groupSchedules;
-                if (GroupSchedules.Text.Equals(string.Empty) ||
-                    !uint.TryParse(GroupSchedules.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupSchedules))
-                {
-                    GroupSchedules.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupSchedules.BackColor = Color.Empty;
+               uint groupSchedules;
+               if (GroupSchedules.Text.Equals(string.Empty) ||
+                   !uint.TryParse(GroupSchedules.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupSchedules))
+               {
+                   GroupSchedules.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupSchedules.BackColor = Color.Empty;
 
-                if (GroupDatabaseFile.Text.Equals(string.Empty))
-                {
-                    GroupDatabaseFile.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupDatabaseFile.BackColor = Color.Empty;
+               if (GroupDatabaseFile.Text.Equals(string.Empty))
+               {
+                   GroupDatabaseFile.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupDatabaseFile.BackColor = Color.Empty;
 
-                if (GroupChatLogFile.Text.Equals(string.Empty))
-                {
-                    GroupChatLogFile.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupChatLogFile.BackColor = Color.Empty;
+               if (GroupChatLogFile.Text.Equals(string.Empty))
+               {
+                   GroupChatLogFile.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupChatLogFile.BackColor = Color.Empty;
 
-                // Permissions
-                var permissions = new HashSet<Configuration.Permissions>();
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    switch (GroupPermissions.GetItemCheckState(i))
-                    {
-                        case CheckState.Checked:
-                            permissions.Add(
-                                Reflection.GetEnumValueFromName<Configuration.Permissions>(
-                                    (string) GroupPermissions.Items[i]));
-                            break;
-                    }
-                }
+               // Permissions
+               var permissions = new HashSet<Configuration.Permissions>();
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   switch (GroupPermissions.GetItemCheckState(i))
+                   {
+                       case CheckState.Checked:
+                           permissions.Add(
+                               Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                                   (string)GroupPermissions.Items[i]));
+                           break;
+                   }
+               }
 
-                // Notifications
-                var notifications = new HashSet<Configuration.Notifications>();
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    switch (GroupNotifications.GetItemCheckState(i))
-                    {
-                        case CheckState.Checked:
-                            notifications.Add(
-                                Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                    (string) GroupNotifications.Items[i]));
-                            break;
-                    }
-                }
+               // Notifications
+               var notifications = new HashSet<Configuration.Notifications>();
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   switch (GroupNotifications.GetItemCheckState(i))
+                   {
+                       case CheckState.Checked:
+                           notifications.Add(
+                               Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                   (string)GroupNotifications.Items[i]));
+                           break;
+                   }
+               }
 
+               corradeConfiguration.Groups.Remove(group);
 
-                corradeConfiguration.Groups.Remove(group);
+               group = new Configuration.Group
+               {
+                   Name = GroupName.Text,
+                   UUID = groupUUID,
+                   Password = GroupPassword.Text,
+                   Workers = groupWorkers,
+                   Schedules = groupSchedules,
+                   DatabaseFile = GroupDatabaseFile.Text,
+                   ChatLog = GroupChatLogFile.Text,
+                   ChatLogEnabled = GroupChatLogEnabled.Checked,
+                   Permissions = permissions,
+                   Notifications = notifications
+               };
 
-                group = new Configuration.Group
-                {
-                    Name = GroupName.Text,
-                    UUID = groupUUID,
-                    Password = GroupPassword.Text,
-                    Workers = groupWorkers,
-                    Schedules = groupSchedules,
-                    DatabaseFile = GroupDatabaseFile.Text,
-                    ChatLog = GroupChatLogFile.Text,
-                    ChatLogEnabled = GroupChatLogEnabled.Checked,
-                    Permissions = permissions,
-                    Notifications = notifications
-                };
+               corradeConfiguration.Groups.Add(group);
+               Groups.Items[Groups.SelectedIndex] = new ListViewItem { Text = GroupName.Text, Tag = group };
 
-                corradeConfiguration.Groups.Add(group);
-                Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = GroupName.Text, Tag = group};
-
-                // Add Nucleus server groups.
-                mainForm.NucleusServerGroup.Items.Clear();
-                foreach (var configuredGroup in corradeConfiguration.Groups)
-                {
-                    mainForm.NucleusServerGroup.Items.Add(new ListViewItem
-                    {
-                        Text = XML.UnescapeXML(configuredGroup.Name),
-                        Tag = configuredGroup
-                    });
-                }
-                mainForm.NucleusServerGroup.DisplayMember = "Text";
-            }));
+               // Add Nucleus server groups.
+               mainForm.NucleusServerGroup.Items.Clear();
+               foreach (var configuredGroup in corradeConfiguration.Groups)
+               {
+                   mainForm.NucleusServerGroup.Items.Add(new ListViewItem
+                   {
+                       Text = XML.UnescapeXML(configuredGroup.Name),
+                       Tag = configuredGroup
+                   });
+               }
+               mainForm.NucleusServerGroup.DisplayMember = "Text";
+           }));
         }
 
         private void AddGroupRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (GroupName.Text.Equals(string.Empty))
-                {
-                    GroupName.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupName.BackColor = Color.Empty;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (GroupName.Text.Equals(string.Empty))
+               {
+                   GroupName.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupName.BackColor = Color.Empty;
 
-                if (GroupPassword.Text.Equals(string.Empty))
-                {
-                    GroupPassword.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupPassword.BackColor = Color.Empty;
+               if (GroupPassword.Text.Equals(string.Empty))
+               {
+                   GroupPassword.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupPassword.BackColor = Color.Empty;
 
-                UUID groupUUID;
-                if (GroupUUID.Text.Equals(string.Empty) || !UUID.TryParse(GroupUUID.Text, out groupUUID))
-                {
-                    GroupUUID.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupUUID.BackColor = Color.Empty;
+               UUID groupUUID;
+               if (GroupUUID.Text.Equals(string.Empty) || !UUID.TryParse(GroupUUID.Text, out groupUUID))
+               {
+                   GroupUUID.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupUUID.BackColor = Color.Empty;
 
-                uint groupWorkers;
-                if (GroupWorkers.Text.Equals(string.Empty) ||
-                    !uint.TryParse(GroupWorkers.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupWorkers))
-                {
-                    GroupWorkers.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupWorkers.BackColor = Color.Empty;
+               uint groupWorkers;
+               if (GroupWorkers.Text.Equals(string.Empty) ||
+                   !uint.TryParse(GroupWorkers.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupWorkers))
+               {
+                   GroupWorkers.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupWorkers.BackColor = Color.Empty;
 
-                uint groupSchedules;
-                if (GroupSchedules.Text.Equals(string.Empty) ||
-                    !uint.TryParse(GroupSchedules.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupSchedules))
-                {
-                    GroupSchedules.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupSchedules.BackColor = Color.Empty;
+               uint groupSchedules;
+               if (GroupSchedules.Text.Equals(string.Empty) ||
+                   !uint.TryParse(GroupSchedules.Text, NumberStyles.Integer, Utils.EnUsCulture, out groupSchedules))
+               {
+                   GroupSchedules.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupSchedules.BackColor = Color.Empty;
 
-                if (GroupDatabaseFile.Text.Equals(string.Empty))
-                {
-                    GroupDatabaseFile.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupDatabaseFile.BackColor = Color.Empty;
+               if (GroupDatabaseFile.Text.Equals(string.Empty))
+               {
+                   GroupDatabaseFile.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupDatabaseFile.BackColor = Color.Empty;
 
-                if (GroupChatLogFile.Text.Equals(string.Empty))
-                {
-                    GroupChatLogFile.BackColor = Color.MistyRose;
-                    return;
-                }
-                GroupChatLogFile.BackColor = Color.Empty;
+               if (GroupChatLogFile.Text.Equals(string.Empty))
+               {
+                   GroupChatLogFile.BackColor = Color.MistyRose;
+                   return;
+               }
+               GroupChatLogFile.BackColor = Color.Empty;
 
-                // Permissions
-                var permissions = new HashSet<Configuration.Permissions>();
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    switch (GroupPermissions.GetItemCheckState(i))
-                    {
-                        case CheckState.Checked:
-                            permissions.Add(
-                                Reflection.GetEnumValueFromName<Configuration.Permissions>(
-                                    (string) GroupPermissions.Items[i]));
-                            break;
-                    }
-                }
+               // Permissions
+               var permissions = new HashSet<Configuration.Permissions>();
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   switch (GroupPermissions.GetItemCheckState(i))
+                   {
+                       case CheckState.Checked:
+                           permissions.Add(
+                               Reflection.GetEnumValueFromName<Configuration.Permissions>(
+                                   (string)GroupPermissions.Items[i]));
+                           break;
+                   }
+               }
 
-                // Notifications
-                var notifications = new HashSet<Configuration.Notifications>();
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    switch (GroupNotifications.GetItemCheckState(i))
-                    {
-                        case CheckState.Checked:
-                            notifications.Add(
-                                Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                    (string) GroupNotifications.Items[i]));
-                            break;
-                    }
-                }
+               // Notifications
+               var notifications = new HashSet<Configuration.Notifications>();
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   switch (GroupNotifications.GetItemCheckState(i))
+                   {
+                       case CheckState.Checked:
+                           notifications.Add(
+                               Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                   (string)GroupNotifications.Items[i]));
+                           break;
+                   }
+               }
 
-                var group = new Configuration.Group
-                {
-                    Name = GroupName.Text,
-                    UUID = groupUUID,
-                    Password = GroupPassword.Text,
-                    Workers = groupWorkers,
-                    Schedules = groupSchedules,
-                    DatabaseFile = GroupDatabaseFile.Text,
-                    ChatLog = GroupChatLogFile.Text,
-                    ChatLogEnabled = GroupChatLogEnabled.Checked,
-                    Permissions = permissions,
-                    Notifications = notifications
-                };
+               var group = new Configuration.Group
+               {
+                   Name = GroupName.Text,
+                   UUID = groupUUID,
+                   Password = GroupPassword.Text,
+                   Workers = groupWorkers,
+                   Schedules = groupSchedules,
+                   DatabaseFile = GroupDatabaseFile.Text,
+                   ChatLog = GroupChatLogFile.Text,
+                   ChatLogEnabled = GroupChatLogEnabled.Checked,
+                   Permissions = permissions,
+                   Notifications = notifications
+               };
 
-                corradeConfiguration.Groups.Add(group);
-                Groups.Items.Add(new ListViewItem {Text = GroupName.Text, Tag = group});
+               corradeConfiguration.Groups.Add(group);
+               Groups.Items.Add(new ListViewItem { Text = GroupName.Text, Tag = group });
 
-                // Add Nucleus server groups.
-                mainForm.NucleusServerGroup.Items.Clear();
-                foreach (var configuredGroup in corradeConfiguration.Groups)
-                {
-                    mainForm.NucleusServerGroup.Items.Add(new ListViewItem
-                    {
-                        Text = XML.UnescapeXML(configuredGroup.Name),
-                        Tag = configuredGroup
-                    });
-                }
-                mainForm.NucleusServerGroup.DisplayMember = "Text";
-            }));
+               // Add Nucleus server groups.
+               mainForm.NucleusServerGroup.Items.Clear();
+               foreach (var configuredGroup in corradeConfiguration.Groups)
+               {
+                   mainForm.NucleusServerGroup.Items.Add(new ListViewItem
+                   {
+                       Text = XML.UnescapeXML(configuredGroup.Name),
+                       Tag = configuredGroup
+                   });
+               }
+               mainForm.NucleusServerGroup.DisplayMember = "Text";
+           }));
         }
 
         private void AddInputDecoderRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(InputDecode.Text))
-                {
-                    InputDecode.BackColor = Color.MistyRose;
-                    return;
-                }
-                InputDecode.BackColor = Color.Empty;
-                ActiveInputFilters.Items.Add(new ListViewItem
-                {
-                    Text = InputDecode.Text,
-                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(InputDecode.Text)
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(InputDecode.Text))
+               {
+                   InputDecode.BackColor = Color.MistyRose;
+                   return;
+               }
+               InputDecode.BackColor = Color.Empty;
+               ActiveInputFilters.Items.Add(new ListViewItem
+               {
+                   Text = InputDecode.Text,
+                   Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(InputDecode.Text)
+               });
+           }));
         }
 
         private void AddInputDecryptionRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(InputDecryption.Text))
-                {
-                    InputDecryption.BackColor = Color.MistyRose;
-                    return;
-                }
-                InputDecryption.BackColor = Color.Empty;
-                ActiveInputFilters.Items.Add(new ListViewItem
-                {
-                    Text = InputDecryption.Text,
-                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(InputDecryption.Text)
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(InputDecryption.Text))
+               {
+                   InputDecryption.BackColor = Color.MistyRose;
+                   return;
+               }
+               InputDecryption.BackColor = Color.Empty;
+               ActiveInputFilters.Items.Add(new ListViewItem
+               {
+                   Text = InputDecryption.Text,
+                   Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(InputDecryption.Text)
+               });
+           }));
         }
 
         private void AddOutputEncryptionRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(OutputEncrypt.Text))
-                {
-                    OutputEncrypt.BackColor = Color.MistyRose;
-                    return;
-                }
-                OutputEncrypt.BackColor = Color.Empty;
-                ActiveOutputFilters.Items.Add(new ListViewItem
-                {
-                    Text = OutputEncrypt.Text,
-                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(OutputEncrypt.Text)
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(OutputEncrypt.Text))
+               {
+                   OutputEncrypt.BackColor = Color.MistyRose;
+                   return;
+               }
+               OutputEncrypt.BackColor = Color.Empty;
+               ActiveOutputFilters.Items.Add(new ListViewItem
+               {
+                   Text = OutputEncrypt.Text,
+                   Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(OutputEncrypt.Text)
+               });
+           }));
         }
 
         private void AddOutputEncoderRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(OutputEncode.Text))
-                {
-                    OutputEncode.BackColor = Color.MistyRose;
-                    return;
-                }
-                OutputEncode.BackColor = Color.Empty;
-                ActiveOutputFilters.Items.Add(new ListViewItem
-                {
-                    Text = OutputEncode.Text,
-                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(OutputEncode.Text)
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(OutputEncode.Text))
+               {
+                   OutputEncode.BackColor = Color.MistyRose;
+                   return;
+               }
+               OutputEncode.BackColor = Color.Empty;
+               ActiveOutputFilters.Items.Add(new ListViewItem
+               {
+                   Text = OutputEncode.Text,
+                   Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(OutputEncode.Text)
+               });
+           }));
         }
 
         private void DeleteSelectedOutputFilterRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = ActiveOutputFilters.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    ActiveOutputFilters.BackColor = Color.MistyRose;
-                    return;
-                }
-                ActiveOutputFilters.BackColor = Color.Empty;
-                ActiveOutputFilters.Items.RemoveAt(ActiveOutputFilters.SelectedIndex);
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = ActiveOutputFilters.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   ActiveOutputFilters.BackColor = Color.MistyRose;
+                   return;
+               }
+               ActiveOutputFilters.BackColor = Color.Empty;
+               ActiveOutputFilters.Items.RemoveAt(ActiveOutputFilters.SelectedIndex);
+           }));
         }
 
         private void DeleteSelectedInputFilterRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = ActiveInputFilters.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    ActiveInputFilters.BackColor = Color.MistyRose;
-                    return;
-                }
-                ActiveInputFilters.BackColor = Color.Empty;
-                ActiveInputFilters.Items.RemoveAt(ActiveInputFilters.SelectedIndex);
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = ActiveInputFilters.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   ActiveInputFilters.BackColor = Color.MistyRose;
+                   return;
+               }
+               ActiveInputFilters.BackColor = Color.Empty;
+               ActiveInputFilters.Items.RemoveAt(ActiveInputFilters.SelectedIndex);
+           }));
         }
 
         private void AddENIGMARotorRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(ENIGMARotor.Text))
-                {
-                    ENIGMARotor.BackColor = Color.MistyRose;
-                    return;
-                }
-                ENIGMARotor.BackColor = Color.Empty;
-                ENIGMARotorSequence.Items.Add(new ListViewItem
-                {
-                    Text = ENIGMARotor.Text,
-                    Tag = ENIGMARotor.Text[0]
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(ENIGMARotor.Text))
+               {
+                   ENIGMARotor.BackColor = Color.MistyRose;
+                   return;
+               }
+               ENIGMARotor.BackColor = Color.Empty;
+               ENIGMARotorSequence.Items.Add(new ListViewItem
+               {
+                   Text = ENIGMARotor.Text,
+                   Tag = ENIGMARotor.Text[0]
+               });
+           }));
         }
 
         private void DeleteENIGMARotorRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = ENIGMARotorSequence.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    ENIGMARotorSequence.BackColor = Color.MistyRose;
-                    return;
-                }
-                ENIGMARotorSequence.BackColor = Color.Empty;
-                ENIGMARotorSequence.Items.RemoveAt(ENIGMARotorSequence.SelectedIndex);
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = ENIGMARotorSequence.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   ENIGMARotorSequence.BackColor = Color.MistyRose;
+                   return;
+               }
+               ENIGMARotorSequence.BackColor = Color.Empty;
+               ENIGMARotorSequence.Items.RemoveAt(ENIGMARotorSequence.SelectedIndex);
+           }));
         }
 
         private void AddENIGMAPlugRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(ENIGMARing.Text))
-                {
-                    ENIGMARing.BackColor = Color.MistyRose;
-                    return;
-                }
-                ENIGMARing.BackColor = Color.Empty;
-                ENIGMAPlugSequence.Items.Add(new ListViewItem
-                {
-                    Text = ENIGMARing.Text,
-                    Tag = ENIGMARing.Text[0]
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(ENIGMARing.Text))
+               {
+                   ENIGMARing.BackColor = Color.MistyRose;
+                   return;
+               }
+               ENIGMARing.BackColor = Color.Empty;
+               ENIGMAPlugSequence.Items.Add(new ListViewItem
+               {
+                   Text = ENIGMARing.Text,
+                   Tag = ENIGMARing.Text[0]
+               });
+           }));
         }
 
         private void DeleteENIGMAPlugRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = ENIGMAPlugSequence.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    ENIGMAPlugSequence.BackColor = Color.MistyRose;
-                    return;
-                }
-                ENIGMAPlugSequence.BackColor = Color.Empty;
-                ENIGMAPlugSequence.Items.RemoveAt(ENIGMAPlugSequence.SelectedIndex);
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = ENIGMAPlugSequence.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   ENIGMAPlugSequence.BackColor = Color.MistyRose;
+                   return;
+               }
+               ENIGMAPlugSequence.BackColor = Color.Empty;
+               ENIGMAPlugSequence.Items.RemoveAt(ENIGMAPlugSequence.SelectedIndex);
+           }));
         }
 
         private void AddMasterRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
-                {
-                    MasterFirstName.BackColor = Color.MistyRose;
-                    MasterLastName.BackColor = Color.MistyRose;
-                    return;
-                }
-                MasterFirstName.BackColor = Color.Empty;
-                MasterLastName.BackColor = Color.Empty;
-                Masters.Items.Add(new ListViewItem
-                {
-                    Text = MasterFirstName.Text + @" " + MasterLastName.Text,
-                    Tag = new Configuration.Master {FirstName = MasterFirstName.Text, LastName = MasterLastName.Text}
-                });
-                corradeConfiguration.Masters.Add(new Configuration.Master
-                {
-                    FirstName = MasterFirstName.Text,
-                    LastName = MasterLastName.Text
-                });
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
+               {
+                   MasterFirstName.BackColor = Color.MistyRose;
+                   MasterLastName.BackColor = Color.MistyRose;
+                   return;
+               }
+               MasterFirstName.BackColor = Color.Empty;
+               MasterLastName.BackColor = Color.Empty;
+               Masters.Items.Add(new ListViewItem
+               {
+                   Text = MasterFirstName.Text + @" " + MasterLastName.Text,
+                   Tag = new Configuration.Master { FirstName = MasterFirstName.Text, LastName = MasterLastName.Text }
+               });
+               corradeConfiguration.Masters.Add(new Configuration.Master
+               {
+                   FirstName = MasterFirstName.Text,
+                   LastName = MasterLastName.Text
+               });
+           }));
         }
 
         private void DeleteMasterRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = Masters.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    Masters.BackColor = Color.MistyRose;
-                    return;
-                }
-                Masters.BackColor = Color.Empty;
-                corradeConfiguration.Masters.Remove(
-                    (Configuration.Master) ((ListViewItem) Masters.Items[Masters.SelectedIndex]).Tag);
-                Masters.Items.RemoveAt(Masters.SelectedIndex);
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = Masters.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   Masters.BackColor = Color.MistyRose;
+                   return;
+               }
+               Masters.BackColor = Color.Empty;
+               corradeConfiguration.Masters.Remove(
+                   (Configuration.Master)((ListViewItem)Masters.Items[Masters.SelectedIndex]).Tag);
+               Masters.Items.RemoveAt(Masters.SelectedIndex);
+           }));
         }
 
         private void ClearPasswordRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
+            mainForm.BeginInvoke((MethodInvoker)(() => { mainForm.Password.Text = string.Empty; }));
         }
 
         private void ClearNucleusServerPasswordRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker)(() => {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
                 mainForm.NucleusServerPassword.Text = string.Empty;
             }));
         }
 
         private void ClearGroupPasswordRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.GroupPassword.Text = string.Empty; }));
+            mainForm.BeginInvoke((MethodInvoker)(() => { mainForm.GroupPassword.Text = string.Empty; }));
         }
 
         private void CorradeConfiguratorShown(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                mainForm.Version.Text = @"v" +
-                                        CORRADE_CONSTANTS
-                                            .CONFIGURATOR_VERSION;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               mainForm.Version.Text = @"v" +
+                                       CORRADE_CONSTANTS
+                                           .CONFIGURATOR_VERSION;
 
+               // add Horde data synchronization options.
+               foreach (var sync in Reflection.GetEnumNames<Configuration.HordeDataSynchronization>())
+               {
+                   switch (Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(sync))
+                   {
+                       case Configuration.HordeDataSynchronization.None:
+                           break;
 
-                // add Horde data synchronization options.
-                foreach (var sync in Reflection.GetEnumNames<Configuration.HordeDataSynchronization>())
-                {
-                    switch (Reflection.GetEnumValueFromName<Configuration.HordeDataSynchronization>(sync))
-                    {
-                        case Configuration.HordeDataSynchronization.None:
-                            break;
-                        default:
-                            HordeSynchronizationDataGridView.Rows.Add(sync, false, false);
-                            break;
-                    }
-                }
+                       default:
+                           HordeSynchronizationDataGridView.Rows.Add(sync, false, false);
+                           break;
+                   }
+               }
 
-                // add TCP SSL protocols.
-                foreach (var protocol in Enum.GetNames(typeof(SslProtocols)))
-                {
-                    TCPNotificationsServerSSLProtocol.Items.Add(protocol);
-                }
+               // add TCP SSL protocols.
+               foreach (var protocol in Enum.GetNames(typeof(SslProtocols)))
+               {
+                   TCPNotificationsServerSSLProtocol.Items.Add(protocol);
+               }
 
-                foreach (var language in CultureInfo.GetCultures(CultureTypes.AllCultures).Where(o => !(o.CultureTypes & CultureTypes.UserCustomCulture).Equals(CultureTypes.UserCustomCulture)))
-                {
-                    mainForm.ClientLanguage.Items.Add(new ListViewItem { Text = language.TwoLetterISOLanguageName, Tag = language });
-                }
-                mainForm.ClientLanguage.DisplayMember = "Text";
-            }));
+               foreach (var language in CultureInfo.GetCultures(CultureTypes.AllCultures).Where(o => !(o.CultureTypes & CultureTypes.UserCustomCulture).Equals(CultureTypes.UserCustomCulture)))
+               {
+                   mainForm.ClientLanguage.Items.Add(new ListViewItem { Text = language.TwoLetterISOLanguageName, Tag = language });
+               }
+               mainForm.ClientLanguage.DisplayMember = "Text";
+           }));
 
             switch (File.Exists("Corrade.ini"))
             {
                 case true:
                     new Thread(() =>
                     {
-                        mainForm.BeginInvoke((MethodInvoker) (() =>
-                        {
-                            try
-                            {
-                                mainForm.StatusText.Text = @"loading configuration...";
-                                mainForm.StatusProgress.Value = 0;
-                                using (var fileStream = new FileStream("Corrade.ini", FileMode.Open))
-                                {
-                                    corradeConfiguration.Load(fileStream, ref corradeConfiguration);
-                                }
-                                mainForm.StatusProgress.Value = 50;
-                                mainForm.StatusText.Text = @"applying settings...";
-                                GetUserConfiguration.Invoke();
-                                mainForm.StatusText.Text = @"configuration loaded";
-                                mainForm.StatusProgress.Value = 100;
+                        mainForm.BeginInvoke((MethodInvoker)(() =>
+                       {
+                           try
+                           {
+                               mainForm.StatusText.Text = @"loading configuration...";
+                               mainForm.StatusProgress.Value = 0;
+                               using (var fileStream = new FileStream("Corrade.ini", FileMode.Open))
+                               {
+                                   corradeConfiguration.Load(fileStream, ref corradeConfiguration);
+                               }
+                               mainForm.StatusProgress.Value = 50;
+                               mainForm.StatusText.Text = @"applying settings...";
+                               GetUserConfiguration.Invoke();
+                               mainForm.StatusText.Text = @"configuration loaded";
+                               mainForm.StatusProgress.Value = 100;
 
-                                var experienceLevel = Settings.Default["ExperienceLevel"];
-                                mainForm.ExperienceLevel.SelectedIndex =
-                                    mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
-                                mainForm.ExperienceLevel.SelectedItem = experienceLevel;
-                            }
-                            catch (Exception ex)
-                            {
-                                mainForm.StatusText.Text = ex.Message;
-                            }
-                        }));
-                    }) {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+                               var experienceLevel = Settings.Default["ExperienceLevel"];
+                               mainForm.ExperienceLevel.SelectedIndex =
+                                   mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                               mainForm.ExperienceLevel.SelectedItem = experienceLevel;
+                           }
+                           catch (Exception ex)
+                           {
+                               mainForm.StatusText.Text = ex.Message;
+                           }
+                       }));
+                    })
+                    { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
                     break;
+
                 default:
-                    mainForm.BeginInvoke((MethodInvoker) (() =>
-                    {
-                        var dialogResult = MessageBox.Show("No configuration found, would you like to load defaults?",
-                            "Load defaults", MessageBoxButtons.YesNo);
-                        if (dialogResult == DialogResult.Yes)
-                        {
-                            LoadDefaults(null, null);
-                        }
-                    }));
+                    // Just load defaults here or people will end up using partially configured bots.
+                    LoadDefaults(null, null);
                     break;
             }
         }
@@ -1770,43 +1776,44 @@ namespace Configurator
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&'()*+,-./:;<=>?@[\\]^_`{}~0123456789";
             var random = new Random();
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    mainForm.AESKey.Text = new string(Enumerable.Repeat(readableCharacters, 32)
-                        .Select(s => s[random.Next(s.Length)]).ToArray());
-                }));
+                (Action)(() =>
+               {
+                   mainForm.AESKey.Text = new string(Enumerable.Repeat(readableCharacters, 32)
+                       .Select(s => s[random.Next(s.Length)]).ToArray());
+               }));
         }
 
         private void AESKeyChanged(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    if (string.IsNullOrEmpty(mainForm.AESKey.Text))
-                    {
-                        mainForm.AESKey.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    var AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
-                    switch (AESKeyBytes.Length)
-                    {
-                        case 16:
-                        case 24:
-                        case 32:
-                            mainForm.AESKey.BackColor = Color.Empty;
-                            break;
-                        default:
-                            mainForm.AESKey.BackColor = Color.MistyRose;
-                            break;
-                    }
-                }));
+                (Action)(() =>
+               {
+                   if (string.IsNullOrEmpty(mainForm.AESKey.Text))
+                   {
+                       mainForm.AESKey.BackColor = Color.MistyRose;
+                       return;
+                   }
+                   var AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
+                   switch (AESKeyBytes.Length)
+                   {
+                       case 16:
+                       case 24:
+                       case 32:
+                           mainForm.AESKey.BackColor = Color.Empty;
+                           break;
+
+                       default:
+                           mainForm.AESKey.BackColor = Color.MistyRose;
+                           break;
+                   }
+               }));
         }
 
         public void LoadLegacy(string file, ref Configuration corradeConfiguration)
         {
             mainForm.BeginInvoke(
-                (Action) (() => { mainForm.StatusText.Text = @"loading configuration"; }));
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 0; }));
+                (Action)(() => { mainForm.StatusText.Text = @"loading configuration"; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 0; }));
 
             try
             {
@@ -1818,7 +1825,7 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
                 return;
             }
 
@@ -1830,7 +1837,7 @@ namespace Configurator
             catch (XmlException ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
                 return;
             }
 
@@ -1838,11 +1845,11 @@ namespace Configurator
             if (root == null)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = @"invalid configuration file"; }));
+                    (Action)(() => { mainForm.StatusText.Text = @"invalid configuration file"; }));
                 return;
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 6; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 6; }));
 
             // Process client.
             try
@@ -1857,6 +1864,7 @@ namespace Configurator
                             }
                             corradeConfiguration.FirstName = client.InnerText;
                             break;
+
                         case ConfigurationKeys.LAST_NAME:
                             if (string.IsNullOrEmpty(client.InnerText))
                             {
@@ -1864,6 +1872,7 @@ namespace Configurator
                             }
                             corradeConfiguration.LastName = client.InnerText;
                             break;
+
                         case ConfigurationKeys.PASSWORD:
                             if (string.IsNullOrEmpty(client.InnerText))
                             {
@@ -1871,6 +1880,7 @@ namespace Configurator
                             }
                             corradeConfiguration.Password = client.InnerText;
                             break;
+
                         case ConfigurationKeys.LOGIN_URL:
                             if (string.IsNullOrEmpty(client.InnerText))
                             {
@@ -1878,6 +1888,7 @@ namespace Configurator
                             }
                             corradeConfiguration.LoginURL = client.InnerText;
                             break;
+
                         case ConfigurationKeys.TOS_ACCEPTED:
                             bool accepted;
                             if (!bool.TryParse(client.InnerText, out accepted))
@@ -1886,6 +1897,7 @@ namespace Configurator
                             }
                             corradeConfiguration.TOSAccepted = accepted;
                             break;
+
                         case ConfigurationKeys.GROUP_CREATE_FEE:
                             uint groupCreateFee;
                             if (
@@ -1896,6 +1908,7 @@ namespace Configurator
                             }
                             corradeConfiguration.GroupCreateFee = groupCreateFee;
                             break;
+
                         case ConfigurationKeys.EXIT_CODE:
                             var exitCodeNodeList = client.SelectNodes("*");
                             if (exitCodeNodeList == null)
@@ -1916,6 +1929,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.ExitCodeExpected = exitCodeExpected;
                                         break;
+
                                     case ConfigurationKeys.ABNORMAL:
                                         int exitCodeAbnormal;
                                         if (
@@ -1929,6 +1943,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
                             bool autoActivateGroup;
                             if (!bool.TryParse(client.InnerText, out autoActivateGroup))
@@ -1937,22 +1952,23 @@ namespace Configurator
                             }
                             corradeConfiguration.AutoActivateGroup = autoActivateGroup;
                             break;
+
                         case ConfigurationKeys.START_LOCATION:
                             if (string.IsNullOrEmpty(client.InnerText))
                             {
                                 throw new Exception("error in client section");
                             }
-                            corradeConfiguration.StartLocations = new List<string>(new[] {client.InnerText});
+                            corradeConfiguration.StartLocations = new List<string>(new[] { client.InnerText });
                             break;
                     }
             }
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 12; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 12; }));
 
             // Process logs.
             try
@@ -1978,6 +1994,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.InstantMessageLogEnabled = enable;
                                         break;
+
                                     case ConfigurationKeys.DIRECTORY:
                                         if (string.IsNullOrEmpty(imLogNode.InnerText))
                                         {
@@ -1988,6 +2005,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.CLIENT:
                             var clientLogNodeList = LogNode.SelectNodes("*");
                             if (clientLogNodeList == null)
@@ -2006,6 +2024,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.ClientLogEnabled = enable;
                                         break;
+
                                     case ConfigurationKeys.FILE:
                                         if (string.IsNullOrEmpty(clientLogNode.InnerText))
                                         {
@@ -2016,6 +2035,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.LOCAL:
                             var localLogNodeList = LogNode.SelectNodes("*");
                             if (localLogNodeList == null)
@@ -2034,6 +2054,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.LocalMessageLogEnabled = enable;
                                         break;
+
                                     case ConfigurationKeys.DIRECTORY:
                                         if (string.IsNullOrEmpty(localLogNode.InnerText))
                                         {
@@ -2044,6 +2065,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.REGION:
                             var regionLogNodeList = LogNode.SelectNodes("*");
                             if (regionLogNodeList == null)
@@ -2062,6 +2084,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.RegionMessageLogEnabled = enable;
                                         break;
+
                                     case ConfigurationKeys.DIRECTORY:
                                         if (string.IsNullOrEmpty(regionLogNode.InnerText))
                                         {
@@ -2077,10 +2100,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 18; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 18; }));
 
             // Process filters.
             try
@@ -2107,11 +2130,13 @@ namespace Configurator
                                             .GetEnumValueFromName<Configuration.Filter>(
                                                 inputFilterNode.InnerText));
                                         break;
+
                                     default:
                                         throw new Exception("error in input filters section");
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.OUTPUT:
                             var outputFilterNodeList = FilterNode.SelectNodes("*");
                             if (outputFilterNodeList == null)
@@ -2131,6 +2156,7 @@ namespace Configurator
                                             .GetEnumValueFromName<Configuration.Filter>(
                                                 outputFilterNode.InnerText));
                                         break;
+
                                     default:
                                         throw new Exception("error in output filters section");
                                 }
@@ -2141,10 +2167,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 24; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 24; }));
 
             // Process cryptography.
             try
@@ -2166,9 +2192,11 @@ namespace Configurator
                                     case ConfigurationKeys.ROTORS:
                                         enigma.rotors = ENIGMANode.InnerText.ToArray();
                                         break;
+
                                     case ConfigurationKeys.PLUGS:
                                         enigma.plugs = ENIGMANode.InnerText.ToArray();
                                         break;
+
                                     case ConfigurationKeys.REFLECTOR:
                                         enigma.reflector = ENIGMANode.InnerText.SingleOrDefault();
                                         break;
@@ -2176,6 +2204,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ENIGMAConfiguration = enigma;
                             break;
+
                         case ConfigurationKeys.VIGENERE:
                             var VIGENERENodeList = FilterNode.SelectNodes("*");
                             if (VIGENERENodeList == null)
@@ -2197,10 +2226,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 30; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 30; }));
 
             // Process AIML.
             try
@@ -2221,10 +2250,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 36; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 36; }));
 
             // Process RLV.
             try
@@ -2245,10 +2274,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 42; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 42; }));
 
             // Process server.
             try
@@ -2264,6 +2293,7 @@ namespace Configurator
                             }
                             corradeConfiguration.EnableHTTPServer = enableHTTPServer;
                             break;
+
                         case ConfigurationKeys.PREFIX:
                             if (string.IsNullOrEmpty(serverNode.InnerText))
                             {
@@ -2276,10 +2306,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 48; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 48; }));
 
             // Process network.
             try
@@ -2293,18 +2323,21 @@ namespace Configurator
                                 corradeConfiguration.BindIPAddress = networkNode.InnerText;
                             }
                             break;
+
                         case ConfigurationKeys.MAC:
                             if (!string.IsNullOrEmpty(networkNode.InnerText))
                             {
                                 corradeConfiguration.NetworkCardMAC = networkNode.InnerText;
                             }
                             break;
+
                         case ConfigurationKeys.ID0:
                             if (!string.IsNullOrEmpty(networkNode.InnerText))
                             {
                                 corradeConfiguration.DriveIdentifierHash = networkNode.InnerText;
                             }
                             break;
+
                         case ConfigurationKeys.NAGGLE:
                             bool useNaggle;
                             if (!bool.TryParse(networkNode.InnerText, out useNaggle))
@@ -2313,6 +2346,7 @@ namespace Configurator
                             }
                             corradeConfiguration.UseNaggle = useNaggle;
                             break;
+
                         case ConfigurationKeys.EXPECT100CONTINUE:
                             bool useExpect100Continue;
                             if (!bool.TryParse(networkNode.InnerText, out useExpect100Continue))
@@ -2326,10 +2360,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 54; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 54; }));
 
             // Process throttles
             try
@@ -2346,6 +2380,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleTotal = throttleTotal;
                             break;
+
                         case ConfigurationKeys.LAND:
                             uint throttleLand;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2355,6 +2390,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleLand = throttleLand;
                             break;
+
                         case ConfigurationKeys.TASK:
                             uint throttleTask;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2364,6 +2400,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleLand = throttleTask;
                             break;
+
                         case ConfigurationKeys.TEXTURE:
                             uint throttleTexture;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2373,6 +2410,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleTexture = throttleTexture;
                             break;
+
                         case ConfigurationKeys.WIND:
                             uint throttleWind;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2382,6 +2420,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleWind = throttleWind;
                             break;
+
                         case ConfigurationKeys.RESEND:
                             uint throttleResend;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2391,6 +2430,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleResend = throttleResend;
                             break;
+
                         case ConfigurationKeys.ASSET:
                             uint throttleAsset;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2400,6 +2440,7 @@ namespace Configurator
                             }
                             corradeConfiguration.ThrottleAsset = throttleAsset;
                             break;
+
                         case ConfigurationKeys.CLOUD:
                             uint throttleCloud;
                             if (!uint.TryParse(throttlesNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2414,10 +2455,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 60; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 60; }));
 
             // Process limits.
             try
@@ -2434,6 +2475,7 @@ namespace Configurator
                             }
                             corradeConfiguration.Range = range;
                             break;
+
                         case ConfigurationKeys.RLV:
                             var rlvLimitNodeList = limitsNode.SelectNodes("*");
                             if (rlvLimitNodeList == null)
@@ -2458,6 +2500,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.COMMANDS:
                             var commandsLimitNodeList = limitsNode.SelectNodes("*");
                             if (commandsLimitNodeList == null)
@@ -2482,6 +2525,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.SCHEDULER:
                             var schedulerLimitNodeList = limitsNode.SelectNodes("*");
                             if (schedulerLimitNodeList == null)
@@ -2506,6 +2550,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.LOG:
                             var logLimitNodeList = limitsNode.SelectNodes("*");
                             if (logLimitNodeList == null)
@@ -2530,6 +2575,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.POST:
                             var postLimitNodeList = limitsNode.SelectNodes("*");
                             if (postLimitNodeList == null)
@@ -2554,6 +2600,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.CLIENT:
                             var clientLimitNodeList = limitsNode.SelectNodes("*");
                             if (clientLimitNodeList == null)
@@ -2575,6 +2622,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.ConnectionLimit = connectionLimit;
                                         break;
+
                                     case ConfigurationKeys.IDLE:
                                         uint connectionIdleTime;
                                         if (
@@ -2589,6 +2637,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.CALLBACKS:
                             var callbackLimitNodeList = limitsNode.SelectNodes("*");
                             if (callbackLimitNodeList == null)
@@ -2609,6 +2658,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.CallbackTimeout = callbackTimeout;
                                         break;
+
                                     case ConfigurationKeys.THROTTLE:
                                         uint callbackThrottle;
                                         if (
@@ -2619,6 +2669,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.CallbackThrottle = callbackThrottle;
                                         break;
+
                                     case ConfigurationKeys.QUEUE_LENGTH:
                                         uint callbackQueueLength;
                                         if (
@@ -2633,6 +2684,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.NOTIFICATIONS:
                             var notificationLimitNodeList = limitsNode.SelectNodes("*");
                             if (notificationLimitNodeList == null)
@@ -2654,6 +2706,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.NotificationTimeout = notificationTimeout;
                                         break;
+
                                     case ConfigurationKeys.THROTTLE:
                                         uint notificationThrottle;
                                         if (
@@ -2665,6 +2718,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.NotificationThrottle = notificationThrottle;
                                         break;
+
                                     case ConfigurationKeys.QUEUE_LENGTH:
                                         uint notificationQueueLength;
                                         if (
@@ -2676,6 +2730,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.NotificationQueueLength = notificationQueueLength;
                                         break;
+
                                     case ConfigurationKeys.THREADS:
                                         uint maximumNotificationThreads;
                                         if (
@@ -2690,6 +2745,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.SERVER:
                             var HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
                             if (HTTPServerLimitNodeList == null)
@@ -2711,6 +2767,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.HTTPServerTimeout = HTTPServerTimeoutValue;
                                         break;
+
                                     case ConfigurationKeys.QUEUE:
                                         uint HTTPServerQueueTimeoutValue;
                                         if (
@@ -2725,6 +2782,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.SERVICES:
                             var servicesLimitNodeList = limitsNode.SelectNodes("*");
                             if (servicesLimitNodeList == null)
@@ -2746,6 +2804,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.ServicesTimeout = servicesTimeout;
                                         break;
+
                                     case ConfigurationKeys.REBAKE:
                                         uint rebakeDelay;
                                         if (
@@ -2756,6 +2815,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.RebakeDelay = rebakeDelay;
                                         break;
+
                                     case ConfigurationKeys.ACTIVATE:
                                         uint activateDelay;
                                         if (
@@ -2770,6 +2830,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.DATA:
                             var dataLimitNodeList = limitsNode.SelectNodes("*");
                             if (dataLimitNodeList == null)
@@ -2791,6 +2852,7 @@ namespace Configurator
                                         }
                                         corradeConfiguration.DataTimeout = dataTimeout;
                                         break;
+
                                     case ConfigurationKeys.DECAY:
                                         corradeConfiguration.DataDecayType =
                                             Reflection.GetEnumValueFromName<DecayingAlarm.DECAY_TYPE>(
@@ -2799,6 +2861,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.MEMBERSHIP:
                             var membershipLimitNodeList = limitsNode.SelectNodes("*");
                             if (membershipLimitNodeList == null)
@@ -2823,6 +2886,7 @@ namespace Configurator
                                 }
                             }
                             break;
+
                         case ConfigurationKeys.LOGOUT:
                             var logoutLimitNodeList = limitsNode.SelectNodes("*");
                             if (logoutLimitNodeList == null)
@@ -2852,10 +2916,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 66; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 66; }));
 
             // Process masters.
             try
@@ -2874,6 +2938,7 @@ namespace Configurator
                                 }
                                 configMaster.FirstName = masterNode.InnerText;
                                 break;
+
                             case ConfigurationKeys.LAST_NAME:
                                 if (string.IsNullOrEmpty(masterNode.InnerText))
                                 {
@@ -2889,10 +2954,10 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 80; }));
+            mainForm.BeginInvoke((Action)(() => { mainForm.StatusProgress.Value = 80; }));
 
             // Process groups.
             try
@@ -2922,6 +2987,7 @@ namespace Configurator
                                 }
                                 configGroup.Name = groupNode.InnerText;
                                 break;
+
                             case ConfigurationKeys.UUID:
                                 UUID configGroupUUID;
                                 if (!UUID.TryParse(groupNode.InnerText, out configGroupUUID))
@@ -2930,6 +2996,7 @@ namespace Configurator
                                 }
                                 configGroup.UUID = configGroupUUID;
                                 break;
+
                             case ConfigurationKeys.PASSWORD:
                                 if (string.IsNullOrEmpty(groupNode.InnerText))
                                 {
@@ -2937,6 +3004,7 @@ namespace Configurator
                                 }
                                 configGroup.Password = groupNode.InnerText;
                                 break;
+
                             case ConfigurationKeys.WORKERS:
                                 if (
                                     !uint.TryParse(groupNode.InnerText, NumberStyles.Integer, Utils.EnUsCulture,
@@ -2945,6 +3013,7 @@ namespace Configurator
                                     throw new Exception("error in group section");
                                 }
                                 break;
+
                             case ConfigurationKeys.CHATLOG:
                                 var groupChatLogNodeList = groupNode.SelectNodes("*");
                                 if (groupChatLogNodeList == null)
@@ -2963,6 +3032,7 @@ namespace Configurator
                                             }
                                             configGroup.ChatLogEnabled = enable;
                                             break;
+
                                         case ConfigurationKeys.FILE:
                                             if (string.IsNullOrEmpty(groupChatLogNode.InnerText))
                                             {
@@ -2973,6 +3043,7 @@ namespace Configurator
                                     }
                                 }
                                 break;
+
                             case ConfigurationKeys.DATABASE:
                                 if (string.IsNullOrEmpty(groupNode.InnerText))
                                 {
@@ -2980,6 +3051,7 @@ namespace Configurator
                                 }
                                 configGroup.DatabaseFile = groupNode.InnerText;
                                 break;
+
                             case ConfigurationKeys.PERMISSIONS:
                                 var permissionNodeList = groupNode.SelectNodes("*");
                                 if (permissionNodeList == null)
@@ -3017,6 +3089,7 @@ namespace Configurator
                                 }
                                 configGroup.Permissions = permissions;
                                 break;
+
                             case ConfigurationKeys.NOTIFICATIONS:
                                 var notificationNodeList = groupNode.SelectNodes("*");
                                 if (notificationNodeList == null)
@@ -3063,40 +3136,40 @@ namespace Configurator
             catch (Exception ex)
             {
                 mainForm.BeginInvoke(
-                    (Action) (() => { mainForm.StatusText.Text = ex.Message; }));
+                    (Action)(() => { mainForm.StatusText.Text = ex.Message; }));
             }
 
-            mainForm.BeginInvoke((Action) (() =>
-            {
-                mainForm.StatusText.Text = @"read configuration file";
-                mainForm.StatusProgress.Value = 100;
-            }));
+            mainForm.BeginInvoke((Action)(() =>
+           {
+               mainForm.StatusText.Text = @"read configuration file";
+               mainForm.StatusProgress.Value = 100;
+           }));
         }
 
         private void ShowToolTip(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    var pictureBox = sender as PictureBox;
-                    if (pictureBox != null)
-                    {
-                        var help = toolTip1.GetToolTip(pictureBox);
-                        if (!string.IsNullOrEmpty(help))
-                            toolTip1.Show(help, pictureBox);
-                    }
-                }));
+                (Action)(() =>
+               {
+                   var pictureBox = sender as PictureBox;
+                   if (pictureBox != null)
+                   {
+                       var help = toolTip1.GetToolTip(pictureBox);
+                       if (!string.IsNullOrEmpty(help))
+                           toolTip1.Show(help, pictureBox);
+                   }
+               }));
         }
 
         private void SaveCheck(object sender, FormClosingEventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    // Save form settings.
-                    Settings.Default["ExperienceLevel"] = (string) mainForm.ExperienceLevel.SelectedItem;
-                    Settings.Default.Save();
-                }));
+                (Action)(() =>
+               {
+                   // Save form settings.
+                   Settings.Default["ExperienceLevel"] = (string)mainForm.ExperienceLevel.SelectedItem;
+                   Settings.Default.Save();
+               }));
 
             // Prompt for saving Corrade configuration.
             switch (isConfigurationSaved)
@@ -3114,38 +3187,38 @@ namespace Configurator
         {
             new Thread(() =>
             {
-                mainForm.BeginInvoke((MethodInvoker) (() =>
-                {
-                    try
-                    {
-                        using (
-                            var stream =
-                                Assembly.GetExecutingAssembly()
-                                    .GetManifestResourceStream(@"Configurator.Corrade.ini.default"))
-                        {
-                            mainForm.StatusText.Text = @"loading configuration...";
-                            mainForm.StatusProgress.Value = 0;
-                            corradeConfiguration.Load(stream, ref corradeConfiguration);
-                            mainForm.StatusProgress.Value = 50;
-                            mainForm.StatusText.Text = @"applying settings...";
-                            GetUserConfiguration.Invoke();
+                mainForm.BeginInvoke((MethodInvoker)(() =>
+               {
+                   try
+                   {
+                       using (
+                           var stream =
+                               Assembly.GetExecutingAssembly()
+                                   .GetManifestResourceStream(@"Configurator.Corrade.ini.default"))
+                       {
+                           mainForm.StatusText.Text = @"loading configuration...";
+                           mainForm.StatusProgress.Value = 0;
+                           corradeConfiguration.Load(stream, ref corradeConfiguration);
+                           mainForm.StatusProgress.Value = 50;
+                           mainForm.StatusText.Text = @"applying settings...";
+                           GetUserConfiguration.Invoke();
 
-                            var experienceLevel = Settings.Default["ExperienceLevel"];
-                            mainForm.ExperienceLevel.SelectedIndex =
-                                mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
-                            mainForm.ExperienceLevel.SelectedItem = experienceLevel;
+                           var experienceLevel = Settings.Default["ExperienceLevel"];
+                           mainForm.ExperienceLevel.SelectedIndex =
+                               mainForm.ExperienceLevel.Items.IndexOf(experienceLevel);
+                           mainForm.ExperienceLevel.SelectedItem = experienceLevel;
 
-                            mainForm.StatusText.Text = @"configuration loaded";
-                            mainForm.StatusProgress.Value = 100;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        mainForm.StatusText.Text = ex.Message;
-                    }
-                }));
+                           mainForm.StatusText.Text = @"configuration loaded";
+                           mainForm.StatusProgress.Value = 100;
+                       }
+                   }
+                   catch (Exception ex)
+                   {
+                       mainForm.StatusText.Text = ex.Message;
+                   }
+               }));
             })
-            {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
+            { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
         }
 
         private void ExperienceLevelChanged(object sender, EventArgs e)
@@ -3156,455 +3229,463 @@ namespace Configurator
         private void MasterPasswordOverrideChanged(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    // Check if the master password override is empty.
-                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
-                    {
-                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                        return;
-                    }
+                (Action)(() =>
+               {
+                   // Check if the master password override is empty.
+                   if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
+                   {
+                       mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                       mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                       return;
+                   }
 
-                    // Hash the group passwords using SHA1
-                    foreach (ListViewItem item in mainForm.Groups.Items)
-                    {
-                        var group = (Configuration.Group) item.Tag;
-                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
-                        {
-                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                            return;
-                        }
-                    }
-                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
-                }));
+                   // Hash the group passwords using SHA1
+                   foreach (ListViewItem item in mainForm.Groups.Items)
+                   {
+                       var group = (Configuration.Group)item.Tag;
+                       if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
+                       {
+                           mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                           mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                           return;
+                       }
+                   }
+                   mainForm.MasterPasswordOverride.BackColor = Color.Empty;
+               }));
         }
 
         private void EnableMasterPasswordOverrideRequested(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    // Check if the master password override is empty.
-                    if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
-                    {
-                        mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                        mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                        return;
-                    }
+                (Action)(() =>
+               {
+                   // Check if the master password override is empty.
+                   if (string.IsNullOrEmpty(mainForm.MasterPasswordOverride.Text))
+                   {
+                       mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                       mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                       return;
+                   }
 
-                    // Check if the master password override matches any group password.
-                    foreach (ListViewItem item in mainForm.Groups.Items)
-                    {
-                        var group = (Configuration.Group) item.Tag;
-                        if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
-                        {
-                            mainForm.MasterPasswordOverrideEnabled.Checked = false;
-                            mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
-                            return;
-                        }
-                    }
-                    mainForm.MasterPasswordOverride.BackColor = Color.Empty;
-                }));
+                   // Check if the master password override matches any group password.
+                   foreach (ListViewItem item in mainForm.Groups.Items)
+                   {
+                       var group = (Configuration.Group)item.Tag;
+                       if (group.Password.Equals(mainForm.MasterPasswordOverride.Text))
+                       {
+                           mainForm.MasterPasswordOverrideEnabled.Checked = false;
+                           mainForm.MasterPasswordOverride.BackColor = Color.MistyRose;
+                           return;
+                       }
+                   }
+                   mainForm.MasterPasswordOverride.BackColor = Color.Empty;
+               }));
         }
 
         private void HordePeerSelected(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = HordePeers.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
-                var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = HordePeers.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
+               var hordePeer = (Configuration.HordePeer)listViewItem.Tag;
 
-                // Synchronization
-                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
-                {
-                    var data = Reflection
-                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                            dataRow.Cells["Data"].Value as string);
+               // Synchronization
+               foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+               {
+                   var data = Reflection
+                       .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                           dataRow.Cells["Data"].Value as string);
 
-                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+                   var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
 
-                    if (addCheckBox != null)
-                    {
-                        addCheckBox.Value = hordePeer.HasDataSynchronizationOption(data,
-                            Configuration.HordeDataSynchronizationOption.Add)
-                            ? 1
-                            : 0;
-                    }
+                   if (addCheckBox != null)
+                   {
+                       addCheckBox.Value = hordePeer.HasDataSynchronizationOption(data,
+                           Configuration.HordeDataSynchronizationOption.Add)
+                           ? 1
+                           : 0;
+                   }
 
-                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+                   var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
 
-                    if (removeCheckBox != null)
-                    {
-                        removeCheckBox.Value = hordePeer.HasDataSynchronizationOption(data,
-                            Configuration.HordeDataSynchronizationOption.Remove)
-                            ? 1
-                            : 0;
-                    }
-                }
+                   if (removeCheckBox != null)
+                   {
+                       removeCheckBox.Value = hordePeer.HasDataSynchronizationOption(data,
+                           Configuration.HordeDataSynchronizationOption.Remove)
+                           ? 1
+                           : 0;
+                   }
+               }
 
-                HordePeerURL.Text = hordePeer.URL;
-                HordePeerName.Text = hordePeer.Name;
-                HordePeerUsername.Text = hordePeer.Username;
-                HordePeerPassword.Text = hordePeer.Password;
-                HordePeerSharedSecret.Text = hordePeer.SharedSecret;
-            }));
+               HordePeerURL.Text = hordePeer.URL;
+               HordePeerName.Text = hordePeer.Name;
+               HordePeerUsername.Text = hordePeer.Username;
+               HordePeerPassword.Text = hordePeer.Password;
+               HordePeerSharedSecret.Text = hordePeer.SharedSecret;
+           }));
         }
 
         private void HordePeerConfigurationChanged(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = HordePeers.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = HordePeers.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
 
-                var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
-                if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
-                    string.IsNullOrEmpty(HordePeerPassword.Text) ||
-                    string.IsNullOrEmpty(HordePeerURL.Text) ||
-                    string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
-                    string.IsNullOrEmpty(HordePeerName.Text) ||
-                    corradeConfiguration.HordePeers.AsParallel().Where(o => !o.Equals(hordePeer))
-                        .Any(
-                            o =>
-                                !string.IsNullOrEmpty(o.SharedSecret) &&
-                                o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
-                {
-                    HordePeerUsername.BackColor = Color.MistyRose;
-                    HordePeerPassword.BackColor = Color.MistyRose;
-                    HordePeerURL.BackColor = Color.MistyRose;
-                    HordePeerName.BackColor = Color.MistyRose;
-                    HordePeerSharedSecret.BackColor = Color.MistyRose;
-                    return;
-                }
+               var hordePeer = (Configuration.HordePeer)listViewItem.Tag;
+               if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
+                   string.IsNullOrEmpty(HordePeerPassword.Text) ||
+                   string.IsNullOrEmpty(HordePeerURL.Text) ||
+                   string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                   string.IsNullOrEmpty(HordePeerName.Text) ||
+                   corradeConfiguration.HordePeers.AsParallel().Where(o => !o.Equals(hordePeer))
+                       .Any(
+                           o =>
+                               !string.IsNullOrEmpty(o.SharedSecret) &&
+                               o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
+               {
+                   HordePeerUsername.BackColor = Color.MistyRose;
+                   HordePeerPassword.BackColor = Color.MistyRose;
+                   HordePeerURL.BackColor = Color.MistyRose;
+                   HordePeerName.BackColor = Color.MistyRose;
+                   HordePeerSharedSecret.BackColor = Color.MistyRose;
+                   return;
+               }
 
-                HordePeerUsername.BackColor = Color.Empty;
-                HordePeerPassword.BackColor = Color.Empty;
-                HordePeerURL.BackColor = Color.Empty;
-                HordePeerName.BackColor = Color.Empty;
-                HordePeerSharedSecret.BackColor = Color.Empty;
+               HordePeerUsername.BackColor = Color.Empty;
+               HordePeerPassword.BackColor = Color.Empty;
+               HordePeerURL.BackColor = Color.Empty;
+               HordePeerName.BackColor = Color.Empty;
+               HordePeerSharedSecret.BackColor = Color.Empty;
 
-                // Synchronization
-                var synchronization =
-                    new SerializableDictionary
-                        <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>();
-                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
-                {
-                    var data = Reflection
-                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                            dataRow.Cells["Data"].Value as string);
+               // Synchronization
+               var synchronization =
+                  new SerializableDictionary
+                      <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>();
+               foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+               {
+                   var data = Reflection
+                       .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                           dataRow.Cells["Data"].Value as string);
 
-                    var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
+                   var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
 
-                    switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
-                    {
-                        case true:
-                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Add);
-                            break;
-                        default:
-                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Add);
-                            break;
-                    }
-                    switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
-                    {
-                        case true:
-                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Remove);
-                            break;
-                        default:
-                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Remove);
-                            break;
-                    }
-                    switch (synchronization.ContainsKey(data))
-                    {
-                        case true:
-                            synchronization[data] = synchronizationOption;
-                            break;
-                        default:
-                            synchronization.Add(data, synchronizationOption);
-                            break;
-                    }
-                }
+                   switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
+                   {
+                       case true:
+                           BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Add);
+                           break;
 
-                corradeConfiguration.HordePeers.Remove(hordePeer);
-                hordePeer = new Configuration.HordePeer
-                {
-                    URL = HordePeerURL.Text,
-                    Name = HordePeerName.Text,
-                    Username = HordePeerUsername.Text,
-                    Password = HordePeerPassword.Text,
-                    DataSynchronization = synchronization,
-                    SharedSecret = HordePeerSharedSecret.Text
-                };
-                corradeConfiguration.HordePeers.Add(hordePeer);
-                HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem
-                {
-                    Text = HordePeerName.Text,
-                    Tag = hordePeer
-                };
-            }));
+                       default:
+                           BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Add);
+                           break;
+                   }
+                   switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
+                   {
+                       case true:
+                           BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Remove);
+                           break;
+
+                       default:
+                           BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Remove);
+                           break;
+                   }
+                   switch (synchronization.ContainsKey(data))
+                   {
+                       case true:
+                           synchronization[data] = synchronizationOption;
+                           break;
+
+                       default:
+                           synchronization.Add(data, synchronizationOption);
+                           break;
+                   }
+               }
+
+               corradeConfiguration.HordePeers.Remove(hordePeer);
+               hordePeer = new Configuration.HordePeer
+               {
+                   URL = HordePeerURL.Text,
+                   Name = HordePeerName.Text,
+                   Username = HordePeerUsername.Text,
+                   Password = HordePeerPassword.Text,
+                   DataSynchronization = synchronization,
+                   SharedSecret = HordePeerSharedSecret.Text
+               };
+               corradeConfiguration.HordePeers.Add(hordePeer);
+               HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem
+               {
+                   Text = HordePeerName.Text,
+                   Tag = hordePeer
+               };
+           }));
         }
 
         private void AddHordePeerRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
-                    string.IsNullOrEmpty(HordePeerPassword.Text) ||
-                    string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
-                    string.IsNullOrEmpty(HordePeerName.Text) ||
-                    corradeConfiguration.HordePeers.AsParallel()
-                        .Any(
-                            o =>
-                                !string.IsNullOrEmpty(o.SharedSecret) &&
-                                o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
-                {
-                    HordePeerUsername.BackColor = Color.MistyRose;
-                    HordePeerPassword.BackColor = Color.MistyRose;
-                    HordePeerURL.BackColor = Color.MistyRose;
-                    HordePeerName.BackColor = Color.MistyRose;
-                    HordePeerSharedSecret.BackColor = Color.MistyRose;
-                    return;
-                }
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (string.IsNullOrEmpty(HordePeerUsername.Text) ||
+                   string.IsNullOrEmpty(HordePeerPassword.Text) ||
+                   string.IsNullOrEmpty(HordePeerURL.Text) || string.IsNullOrEmpty(HordePeerSharedSecret.Text) ||
+                   string.IsNullOrEmpty(HordePeerName.Text) ||
+                   corradeConfiguration.HordePeers.AsParallel()
+                       .Any(
+                           o =>
+                               !string.IsNullOrEmpty(o.SharedSecret) &&
+                               o.SharedSecret.Equals(HordePeerSharedSecret.Text)))
+               {
+                   HordePeerUsername.BackColor = Color.MistyRose;
+                   HordePeerPassword.BackColor = Color.MistyRose;
+                   HordePeerURL.BackColor = Color.MistyRose;
+                   HordePeerName.BackColor = Color.MistyRose;
+                   HordePeerSharedSecret.BackColor = Color.MistyRose;
+                   return;
+               }
 
-                HordePeerUsername.BackColor = Color.Empty;
-                HordePeerPassword.BackColor = Color.Empty;
-                HordePeerURL.BackColor = Color.Empty;
-                HordePeerName.BackColor = Color.Empty;
-                HordePeerSharedSecret.BackColor = Color.Empty;
+               HordePeerUsername.BackColor = Color.Empty;
+               HordePeerPassword.BackColor = Color.Empty;
+               HordePeerURL.BackColor = Color.Empty;
+               HordePeerName.BackColor = Color.Empty;
+               HordePeerSharedSecret.BackColor = Color.Empty;
 
-                // Synchronization
-                var synchronization =
-                    new SerializableDictionary
-                        <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>
-                        ();
-                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
-                {
-                    var data = Reflection
-                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                            dataRow.Cells["Data"].Value as string);
+               // Synchronization
+               var synchronization =
+                  new SerializableDictionary
+                      <Configuration.HordeDataSynchronization, Configuration.HordeDataSynchronizationOption>
+                      ();
+               foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+               {
+                   var data = Reflection
+                       .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                           dataRow.Cells["Data"].Value as string);
 
-                    var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
+                   var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
 
-                    switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
-                    {
-                        case true:
-                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Add);
-                            break;
-                        default:
-                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Add);
-                            break;
-                    }
-                    switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
-                    {
-                        case true:
-                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Remove);
-                            break;
-                        default:
-                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Remove);
-                            break;
-                    }
+                   switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
+                   {
+                       case true:
+                           BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Add);
+                           break;
 
-                    switch (synchronization.ContainsKey(data))
-                    {
-                        case true:
-                            synchronization[data] = synchronizationOption;
-                            break;
-                        default:
-                            synchronization.Add(data, synchronizationOption);
-                            break;
-                    }
-                }
+                       default:
+                           BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Add);
+                           break;
+                   }
+                   switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
+                   {
+                       case true:
+                           BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Remove);
+                           break;
 
-                var hordePeer = new Configuration.HordePeer
-                {
-                    URL = HordePeerURL.Text,
-                    Name = HordePeerName.Text,
-                    Username = HordePeerUsername.Text,
-                    Password = HordePeerPassword.Text,
-                    DataSynchronization = synchronization,
-                    SharedSecret = HordePeerSharedSecret.Text
-                };
+                       default:
+                           BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Remove);
+                           break;
+                   }
 
-                HordePeers.Items.Add(new ListViewItem
-                {
-                    Text = HordePeerName.Text,
-                    Tag = hordePeer
-                });
-                corradeConfiguration.HordePeers.Add(hordePeer);
-            }));
+                   switch (synchronization.ContainsKey(data))
+                   {
+                       case true:
+                           synchronization[data] = synchronizationOption;
+                           break;
+
+                       default:
+                           synchronization.Add(data, synchronizationOption);
+                           break;
+                   }
+               }
+
+               var hordePeer = new Configuration.HordePeer
+               {
+                   URL = HordePeerURL.Text,
+                   Name = HordePeerName.Text,
+                   Username = HordePeerUsername.Text,
+                   Password = HordePeerPassword.Text,
+                   DataSynchronization = synchronization,
+                   SharedSecret = HordePeerSharedSecret.Text
+               };
+
+               HordePeers.Items.Add(new ListViewItem
+               {
+                   Text = HordePeerName.Text,
+                   Tag = hordePeer
+               });
+               corradeConfiguration.HordePeers.Add(hordePeer);
+           }));
         }
 
         private void RemoveHordePeerRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = HordePeers.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    HordePeers.BackColor = Color.MistyRose;
-                    return;
-                }
-                HordePeers.BackColor = Color.Empty;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = HordePeers.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   HordePeers.BackColor = Color.MistyRose;
+                   return;
+               }
+               HordePeers.BackColor = Color.Empty;
 
-                // Synchronization
-                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
-                {
-                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
-                    if (addCheckBox != null)
-                    {
-                        addCheckBox.Value = 0;
-                    }
-                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
-                    if (removeCheckBox != null)
-                    {
-                        removeCheckBox.Value = 0;
-                    }
-                }
+               // Synchronization
+               foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+               {
+                   var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+                   if (addCheckBox != null)
+                   {
+                       addCheckBox.Value = 0;
+                   }
+                   var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+                   if (removeCheckBox != null)
+                   {
+                       removeCheckBox.Value = 0;
+                   }
+               }
 
-                corradeConfiguration.HordePeers.Remove(
-                    (Configuration.HordePeer) ((ListViewItem) HordePeers.Items[HordePeers.SelectedIndex]).Tag);
-                HordePeers.Items.RemoveAt(HordePeers.SelectedIndex);
-            }));
+               corradeConfiguration.HordePeers.Remove(
+                   (Configuration.HordePeer)((ListViewItem)HordePeers.Items[HordePeers.SelectedIndex]).Tag);
+               HordePeers.Items.RemoveAt(HordePeers.SelectedIndex);
+           }));
         }
 
         private void HordePeersClicked(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (e.Y < HordePeers.ItemHeight*HordePeers.Items.Count)
-                    return;
-                HordePeers.ClearSelected();
-                HordePeerUsername.Text = string.Empty;
-                HordePeerPassword.Text = string.Empty;
-                HordePeerURL.Text = string.Empty;
-                HordePeerName.Text = string.Empty;
-                HordePeerSharedSecret.Text = string.Empty;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (e.Y < HordePeers.ItemHeight * HordePeers.Items.Count)
+                   return;
+               HordePeers.ClearSelected();
+               HordePeerUsername.Text = string.Empty;
+               HordePeerPassword.Text = string.Empty;
+               HordePeerURL.Text = string.Empty;
+               HordePeerName.Text = string.Empty;
+               HordePeerSharedSecret.Text = string.Empty;
 
-                // Synchronization
-                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
-                {
-                    var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
-                    if (addCheckBox != null)
-                    {
-                        addCheckBox.Value = 0;
-                    }
-                    var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
-                    if (removeCheckBox != null)
-                    {
-                        removeCheckBox.Value = 0;
-                    }
-                }
-            }));
+               // Synchronization
+               foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+               {
+                   var addCheckBox = dataRow.Cells["Add"] as DataGridViewCheckBoxCell;
+                   if (addCheckBox != null)
+                   {
+                       addCheckBox.Value = 0;
+                   }
+                   var removeCheckBox = dataRow.Cells["Remove"] as DataGridViewCheckBoxCell;
+                   if (removeCheckBox != null)
+                   {
+                       removeCheckBox.Value = 0;
+                   }
+               }
+           }));
         }
 
         private void MastersClicked(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (e.Y < Masters.ItemHeight*Masters.Items.Count)
-                    return;
-                Masters.ClearSelected();
-                MasterFirstName.Text = string.Empty;
-                MasterLastName.Text = string.Empty;
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (e.Y < Masters.ItemHeight * Masters.Items.Count)
+                   return;
+               Masters.ClearSelected();
+               MasterFirstName.Text = string.Empty;
+               MasterLastName.Text = string.Empty;
+           }));
         }
 
         private void GroupsClicked(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (e.Y < Groups.ItemHeight*Groups.Items.Count)
-                    return;
-                Groups.ClearSelected();
-                GroupName.Text = string.Empty;
-                GroupPassword.Text = string.Empty;
-                GroupUUID.Text = string.Empty;
-                GroupWorkers.Text = string.Empty;
-                GroupSchedules.Text = string.Empty;
-                GroupDatabaseFile.Text = string.Empty;
-                GroupChatLogEnabled.Checked = false;
-                GroupChatLogFile.Text = string.Empty;
-                // Permissions
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    GroupPermissions.SetItemChecked(i, false);
-                }
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (e.Y < Groups.ItemHeight * Groups.Items.Count)
+                   return;
+               Groups.ClearSelected();
+               GroupName.Text = string.Empty;
+               GroupPassword.Text = string.Empty;
+               GroupUUID.Text = string.Empty;
+               GroupWorkers.Text = string.Empty;
+               GroupSchedules.Text = string.Empty;
+               GroupDatabaseFile.Text = string.Empty;
+               GroupChatLogEnabled.Checked = false;
+               GroupChatLogFile.Text = string.Empty;
+               // Permissions
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   GroupPermissions.SetItemChecked(i, false);
+               }
 
-                // Notifications
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    GroupNotifications.SetItemChecked(i, false);
-                }
-            }));
+               // Notifications
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   GroupNotifications.SetItemChecked(i, false);
+               }
+           }));
         }
 
         private void GenerateHordePeerSharedSecretRequested(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (MethodInvoker) (() => { HordePeerSharedSecret.Text = Membership.GeneratePassword(128, 64); }));
+                (MethodInvoker)(() => { HordePeerSharedSecret.Text = Membership.GeneratePassword(128, 64); }));
         }
 
         private void SynchronizationDataChanged(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = HordePeers.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
-                var hordePeer = (Configuration.HordePeer) listViewItem.Tag;
-                corradeConfiguration.HordePeers.Remove(hordePeer);
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = HordePeers.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
+               var hordePeer = (Configuration.HordePeer)listViewItem.Tag;
+               corradeConfiguration.HordePeers.Remove(hordePeer);
 
-                // Synchronization
-                foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
-                {
-                    var data = Reflection
-                        .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
-                            dataRow.Cells["Data"].Value as string);
+               // Synchronization
+               foreach (DataGridViewRow dataRow in HordeSynchronizationDataGridView.Rows)
+               {
+                   var data = Reflection
+                       .GetEnumValueFromName<Configuration.HordeDataSynchronization>(
+                           dataRow.Cells["Data"].Value as string);
 
-                    if (!hordePeer.DataSynchronization.ContainsKey(data)) continue;
+                   if (!hordePeer.DataSynchronization.ContainsKey(data)) continue;
 
-                    var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
+                   var synchronizationOption = Configuration.HordeDataSynchronizationOption.None;
 
-                    switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
-                    {
-                        case true:
-                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Add);
-                            break;
-                        default:
-                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Add);
-                            break;
-                    }
-                    switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
-                    {
-                        case true:
-                            BitTwiddling.SetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Remove);
-                            break;
-                        default:
-                            BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
-                                Configuration.HordeDataSynchronizationOption.Remove);
-                            break;
-                    }
-                    hordePeer.DataSynchronization[data] = synchronizationOption;
-                }
+                   switch (Convert.ToBoolean(dataRow.Cells["Add"].Value))
+                   {
+                       case true:
+                           BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Add);
+                           break;
 
-                corradeConfiguration.HordePeers.Add(hordePeer);
-                HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem {Text = hordePeer.Name, Tag = hordePeer};
-            }));
+                       default:
+                           BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Add);
+                           break;
+                   }
+                   switch (Convert.ToBoolean(dataRow.Cells["Remove"].Value))
+                   {
+                       case true:
+                           BitTwiddling.SetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Remove);
+                           break;
+
+                       default:
+                           BitTwiddling.UnsetMaskFlag(ref synchronizationOption,
+                               Configuration.HordeDataSynchronizationOption.Remove);
+                           break;
+                   }
+                   hordePeer.DataSynchronization[data] = synchronizationOption;
+               }
+
+               corradeConfiguration.HordePeers.Add(hordePeer);
+               HordePeers.Items[HordePeers.SelectedIndex] = new ListViewItem { Text = hordePeer.Name, Tag = hordePeer };
+           }));
         }
 
         private void SynchronizationDataClick(object sender, DataGridViewCellEventArgs e)
@@ -3614,291 +3695,291 @@ namespace Configurator
 
         private void LoadTCPNofitifcationsServerCertificateFileRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                mainForm.LoadTCPNotificationsServerCertificateFileDialog.InitialDirectory =
-                    Directory.GetCurrentDirectory();
-                switch (mainForm.LoadTCPNotificationsServerCertificateFileDialog.ShowDialog())
-                {
-                    case DialogResult.OK:
-                        var file = mainForm.LoadTCPNotificationsServerCertificateFileDialog.FileName;
-                        new Thread(() =>
-                        {
-                            mainForm.BeginInvoke((MethodInvoker) (() =>
-                            {
-                                try
-                                {
-                                    mainForm.StatusText.Text = @"loading TCP notifications server certificate...";
-                                    mainForm.StatusProgress.Value = 0;
-                                    mainForm.TCPNotificationsServerCertificatePath.Text = file;
-                                    mainForm.StatusText.Text = @"TCP notifications certificate loaded";
-                                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
-                                    mainForm.StatusProgress.Value = 100;
-                                }
-                                catch (Exception ex)
-                                {
-                                    mainForm.StatusText.Text = ex.Message;
-                                }
-                            }));
-                        })
-                        {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
-                        break;
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               mainForm.LoadTCPNotificationsServerCertificateFileDialog.InitialDirectory =
+                   Directory.GetCurrentDirectory();
+               switch (mainForm.LoadTCPNotificationsServerCertificateFileDialog.ShowDialog())
+               {
+                   case DialogResult.OK:
+                       var file = mainForm.LoadTCPNotificationsServerCertificateFileDialog.FileName;
+                       new Thread(() =>
+                       {
+                           mainForm.BeginInvoke((MethodInvoker)(() =>
+                           {
+                               try
+                               {
+                                   mainForm.StatusText.Text = @"loading TCP notifications server certificate...";
+                                   mainForm.StatusProgress.Value = 0;
+                                   mainForm.TCPNotificationsServerCertificatePath.Text = file;
+                                   mainForm.StatusText.Text = @"TCP notifications certificate loaded";
+                                   mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
+                                   mainForm.StatusProgress.Value = 100;
+                               }
+                               catch (Exception ex)
+                               {
+                                   mainForm.StatusText.Text = ex.Message;
+                               }
+                           }));
+                       })
+                       { IsBackground = true, Priority = ThreadPriority.Normal }.Start();
+                       break;
+               }
+           }));
         }
 
         private void EnableTCPNotificationsServerRequested(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerAddress.Text))
-                    {
-                        mainForm.TCPNotificationsServerEnabled.Checked = false;
-                        mainForm.TCPNotificationsServerAddress.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    mainForm.TCPNotificationsServerAddress.BackColor = Color.Empty;
+                (Action)(() =>
+               {
+                   if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerAddress.Text))
+                   {
+                       mainForm.TCPNotificationsServerEnabled.Checked = false;
+                       mainForm.TCPNotificationsServerAddress.BackColor = Color.MistyRose;
+                       return;
+                   }
+                   mainForm.TCPNotificationsServerAddress.BackColor = Color.Empty;
 
-                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerPort.Text))
-                    {
-                        mainForm.TCPNotificationsServerEnabled.Checked = false;
-                        mainForm.TCPNotificationsServerPort.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    mainForm.TCPNotificationsServerPort.BackColor = Color.Empty;
+                   if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerPort.Text))
+                   {
+                       mainForm.TCPNotificationsServerEnabled.Checked = false;
+                       mainForm.TCPNotificationsServerPort.BackColor = Color.MistyRose;
+                       return;
+                   }
+                   mainForm.TCPNotificationsServerPort.BackColor = Color.Empty;
 
-                    if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerCertificatePath.Text))
-                    {
-                        mainForm.TCPNotificationsServerEnabled.Checked = false;
-                        mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.MistyRose;
-                        return;
-                    }
-                    mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
-                }));
+                   if (string.IsNullOrEmpty(mainForm.TCPNotificationsServerCertificatePath.Text))
+                   {
+                       mainForm.TCPNotificationsServerEnabled.Checked = false;
+                       mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.MistyRose;
+                       return;
+                   }
+                   mainForm.TCPNotificationsServerCertificatePath.BackColor = Color.Empty;
+               }));
         }
 
         private void StartLocationSelected(object sender, EventArgs e)
         {
             mainForm.BeginInvoke(
-                (Action) (() =>
-                {
-                    var listViewItem = StartLocations.SelectedItem as ListViewItem;
-                    if (listViewItem == null)
-                        return;
-                    var location = listViewItem.Tag.ToString();
-                    mainForm.StartLocationTextBox.Text = location;
-                }));
+                (Action)(() =>
+               {
+                   var listViewItem = StartLocations.SelectedItem as ListViewItem;
+                   if (listViewItem == null)
+                       return;
+                   var location = listViewItem.Tag.ToString();
+                   mainForm.StartLocationTextBox.Text = location;
+               }));
         }
 
         private void StartLocationChanged(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = StartLocations.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                    return;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = StartLocations.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+                   return;
 
-                if (string.IsNullOrEmpty(StartLocationTextBox.Text))
-                {
-                    StartLocationTextBox.BackColor = Color.MistyRose;
-                    return;
-                }
+               if (string.IsNullOrEmpty(StartLocationTextBox.Text))
+               {
+                   StartLocationTextBox.BackColor = Color.MistyRose;
+                   return;
+               }
 
-                StartLocationTextBox.BackColor = Color.Empty;
+               StartLocationTextBox.BackColor = Color.Empty;
 
-                var location = listViewItem.Tag.ToString();
-                corradeConfiguration.StartLocations.Remove(location);
-                location = StartLocationTextBox.Text;
-                corradeConfiguration.StartLocations.Add(location);
+               var location = listViewItem.Tag.ToString();
+               corradeConfiguration.StartLocations.Remove(location);
+               location = StartLocationTextBox.Text;
+               corradeConfiguration.StartLocations.Add(location);
 
-                StartLocations.Items[StartLocations.SelectedIndex] = new ListViewItem
-                {
-                    Text = location,
-                    Tag = location
-                };
-            }));
+               StartLocations.Items[StartLocations.SelectedIndex] = new ListViewItem
+               {
+                   Text = location,
+                   Tag = location
+               };
+           }));
         }
 
         private void LocationsClicked(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                if (e.Y < StartLocations.ItemHeight*StartLocations.Items.Count)
-                    return;
-                StartLocations.ClearSelected();
-                StartLocationTextBox.Text = string.Empty;
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               if (e.Y < StartLocations.ItemHeight * StartLocations.Items.Count)
+                   return;
+               StartLocations.ClearSelected();
+               StartLocationTextBox.Text = string.Empty;
+           }));
         }
 
         private void AddStartLocationRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                // If no location is entered then refuse to continue.
-                if (string.IsNullOrEmpty(StartLocationTextBox.Text))
-                {
-                    StartLocationTextBox.BackColor = Color.MistyRose;
-                    return;
-                }
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               // If no location is entered then refuse to continue.
+               if (string.IsNullOrEmpty(StartLocationTextBox.Text))
+               {
+                   StartLocationTextBox.BackColor = Color.MistyRose;
+                   return;
+               }
 
-                // Check if the start location is properly formatted.
-                if (!new wasOpenMetaverse.Helpers.GridLocation(StartLocationTextBox.Text).isValid)
-                {
-                    StartLocationTextBox.BackColor = Color.MistyRose;
-                    return;
-                }
+               // Check if the start location is properly formatted.
+               if (!new wasOpenMetaverse.Helpers.GridLocation(StartLocationTextBox.Text).isValid)
+               {
+                   StartLocationTextBox.BackColor = Color.MistyRose;
+                   return;
+               }
 
-                // Add the start location to the list.
-                StartLocationTextBox.BackColor = Color.Empty;
-                StartLocations.Items.Add(new ListViewItem
-                {
-                    Text = StartLocationTextBox.Text,
-                    Tag = StartLocationTextBox.Text
-                });
-                corradeConfiguration.StartLocations.Add(StartLocationTextBox.Text);
-            }));
+               // Add the start location to the list.
+               StartLocationTextBox.BackColor = Color.Empty;
+               StartLocations.Items.Add(new ListViewItem
+               {
+                   Text = StartLocationTextBox.Text,
+                   Tag = StartLocationTextBox.Text
+               });
+               corradeConfiguration.StartLocations.Add(StartLocationTextBox.Text);
+           }));
         }
 
         private void DeleteStartLocationRequested(object sender, EventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = StartLocations.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    StartLocations.BackColor = Color.MistyRose;
-                    return;
-                }
-                StartLocations.BackColor = Color.Empty;
-                corradeConfiguration.StartLocations.Remove(
-                    ((ListViewItem) StartLocations.Items[StartLocations.SelectedIndex]).Tag.ToString());
-                StartLocations.Items.RemoveAt(StartLocations.SelectedIndex);
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = StartLocations.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   StartLocations.BackColor = Color.MistyRose;
+                   return;
+               }
+               StartLocations.BackColor = Color.Empty;
+               corradeConfiguration.StartLocations.Remove(
+                   ((ListViewItem)StartLocations.Items[StartLocations.SelectedIndex]).Tag.ToString());
+               StartLocations.Items.RemoveAt(StartLocations.SelectedIndex);
+           }));
         }
 
         private void UpArrowMouseUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    StartLocationsUpArrowButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.up.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   StartLocationsUpArrowButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.up.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void UpArrowMouseDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    StartLocationsUpArrowButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.up-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   StartLocationsUpArrowButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly()
+                           .GetManifestResourceStream("Configurator.img.up-state.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void DownArrowMouseDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    StartLocationsDownArrowButton.Image =
-                        new Bitmap(
-                            Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.down-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   StartLocationsDownArrowButton.Image =
+                       new Bitmap(
+                           Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.down-state.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void DownArrowMouseUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    StartLocationsDownArrowButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.down.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   StartLocationsDownArrowButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.down.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void MoveStartLocationUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = StartLocations.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    StartLocations.BackColor = Color.MistyRose;
-                    return;
-                }
-                StartLocations.BackColor = Color.Empty;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = StartLocations.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   StartLocations.BackColor = Color.MistyRose;
+                   return;
+               }
+               StartLocations.BackColor = Color.Empty;
 
-                var clickIndex = StartLocations.SelectedIndex;
-                if (clickIndex <= 0)
-                    return;
+               var clickIndex = StartLocations.SelectedIndex;
+               if (clickIndex <= 0)
+                   return;
 
-                var clickItem = (ListViewItem) StartLocations.Items[clickIndex];
-                var aboveItem = (ListViewItem) StartLocations.Items[clickIndex - 1];
+               var clickItem = (ListViewItem)StartLocations.Items[clickIndex];
+               var aboveItem = (ListViewItem)StartLocations.Items[clickIndex - 1];
 
-                corradeConfiguration.StartLocations[clickIndex - 1] = clickItem.Tag.ToString();
-                StartLocations.Items[clickIndex - 1] = clickItem;
+               corradeConfiguration.StartLocations[clickIndex - 1] = clickItem.Tag.ToString();
+               StartLocations.Items[clickIndex - 1] = clickItem;
 
-                corradeConfiguration.StartLocations[clickIndex] = aboveItem.Tag.ToString();
-                StartLocations.Items[clickIndex] = aboveItem;
+               corradeConfiguration.StartLocations[clickIndex] = aboveItem.Tag.ToString();
+               StartLocations.Items[clickIndex] = aboveItem;
 
-                StartLocations.SelectedIndex = clickIndex - 1;
-            }));
+               StartLocations.SelectedIndex = clickIndex - 1;
+           }));
         }
 
         private void MoveStartLocationDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                var listViewItem = StartLocations.SelectedItem as ListViewItem;
-                if (listViewItem == null)
-                {
-                    StartLocations.BackColor = Color.MistyRose;
-                    return;
-                }
-                StartLocations.BackColor = Color.Empty;
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               var listViewItem = StartLocations.SelectedItem as ListViewItem;
+               if (listViewItem == null)
+               {
+                   StartLocations.BackColor = Color.MistyRose;
+                   return;
+               }
+               StartLocations.BackColor = Color.Empty;
 
-                var clickIndex = StartLocations.SelectedIndex;
-                if (clickIndex >= StartLocations.Items.Count - 1)
-                    return;
+               var clickIndex = StartLocations.SelectedIndex;
+               if (clickIndex >= StartLocations.Items.Count - 1)
+                   return;
 
-                var clickItem = (ListViewItem) StartLocations.Items[clickIndex];
-                var belowItem = (ListViewItem) StartLocations.Items[clickIndex + 1];
+               var clickItem = (ListViewItem)StartLocations.Items[clickIndex];
+               var belowItem = (ListViewItem)StartLocations.Items[clickIndex + 1];
 
-                corradeConfiguration.StartLocations[clickIndex + 1] = clickItem.Tag.ToString();
-                StartLocations.Items[clickIndex + 1] = clickItem;
+               corradeConfiguration.StartLocations[clickIndex + 1] = clickItem.Tag.ToString();
+               StartLocations.Items[clickIndex + 1] = clickItem;
 
-                corradeConfiguration.StartLocations[clickIndex] = belowItem.Tag.ToString();
-                StartLocations.Items[clickIndex] = belowItem;
+               corradeConfiguration.StartLocations[clickIndex] = belowItem.Tag.ToString();
+               StartLocations.Items[clickIndex] = belowItem;
 
-                StartLocations.SelectedIndex = clickIndex + 1;
-            }));
+               StartLocations.SelectedIndex = clickIndex + 1;
+           }));
         }
 
         private void AllNotificationsRequested(object sender, EventArgs e)
@@ -3919,178 +4000,178 @@ namespace Configurator
 
         private void AllPermissionsMouseDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    AllPermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.all-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   AllPermissionsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly()
+                           .GetManifestResourceStream("Configurator.img.all-state.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void AllPermissionsMouseUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    AllPermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   AllPermissionsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void AllPermissionsRequested(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    GroupPermissions.SetItemChecked(i, true);
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   GroupPermissions.SetItemChecked(i, true);
+               }
+           }));
         }
 
         private void NonePermissionsRequested(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                for (var i = 0; i < GroupPermissions.Items.Count; ++i)
-                {
-                    GroupPermissions.SetItemChecked(i, false);
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               for (var i = 0; i < GroupPermissions.Items.Count; ++i)
+               {
+                   GroupPermissions.SetItemChecked(i, false);
+               }
+           }));
         }
 
         private void NonePermissionsMouseDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    NonePermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.none-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   NonePermissionsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly()
+                           .GetManifestResourceStream("Configurator.img.none-state.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void NonePermissionsMouseUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    NonePermissionsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   NonePermissionsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void AllNotificationsRequested(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    GroupNotifications.SetItemChecked(i, true);
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   GroupNotifications.SetItemChecked(i, true);
+               }
+           }));
         }
 
         private void AllNotificationsMouseDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    AllNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.all-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   AllNotificationsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly()
+                           .GetManifestResourceStream("Configurator.img.all-state.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void AllNotificationsMouseUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    AllNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   AllNotificationsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void NoneNotificationsRequested(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                for (var i = 0; i < GroupNotifications.Items.Count; ++i)
-                {
-                    GroupNotifications.SetItemChecked(i, false);
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               for (var i = 0; i < GroupNotifications.Items.Count; ++i)
+               {
+                   GroupNotifications.SetItemChecked(i, false);
+               }
+           }));
         }
 
         private void NoneNotificationsMouseDown(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    NoneNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly()
-                            .GetManifestResourceStream("Configurator.img.none-state.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   NoneNotificationsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly()
+                           .GetManifestResourceStream("Configurator.img.none-state.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         private void NoneNotificationsMouseUp(object sender, MouseEventArgs e)
         {
-            mainForm.BeginInvoke((MethodInvoker) (() =>
-            {
-                try
-                {
-                    NoneNotificationsButton.Image =
-                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
-                }
-                catch
-                {
-                    mainForm.StatusText.Text = @"Could not load arrow resource...";
-                }
-            }));
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+           {
+               try
+               {
+                   NoneNotificationsButton.Image =
+                       new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
+               }
+               catch
+               {
+                   mainForm.StatusText.Text = @"Could not load arrow resource...";
+               }
+           }));
         }
 
         /// <summary>
@@ -4105,8 +4186,8 @@ namespace Configurator
             ///     Corrade compile date.
             /// </summary>
             public static readonly string CORRADE_CONFIGURATOR_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
-                TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
-                TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
+                TimeSpan.TicksPerDay * Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+                TimeSpan.TicksPerSecond * 2 * Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
 
             /// <summary>
             ///     Corrade version.
@@ -4222,7 +4303,9 @@ namespace Configurator
             mainForm.BeginInvoke((MethodInvoker)(() =>
             {
                 // If no file is entered or the file is already added then refuse to continue.
-                if (string.IsNullOrEmpty(NucleusServerBlessingsBox.Text) || mainForm.NucleusServerBlessings.Items.Cast<ListViewItem>().Any(o => string.Equals(o.Tag.ToString(), NucleusServerBlessingsBox.Text)))
+                if (string.IsNullOrEmpty(NucleusServerBlessingsBox.Text) ||
+                    mainForm.NucleusServerBlessings.Items.OfType<ListViewItem>()
+                        .Any(o => string.Equals(o.Tag.ToString(), NucleusServerBlessingsBox.Text)))
                 {
                     NucleusServerBlessingsBox.BackColor = Color.MistyRose;
                     return;
@@ -4233,7 +4316,7 @@ namespace Configurator
                 {
                     new Regex(NucleusServerBlessingsBox.Text, RegexOptions.Compiled);
                 }
-                catch(Exception)
+                catch (Exception)
                 {
                     NucleusServerBlessingsBox.BackColor = Color.MistyRose;
                     return;

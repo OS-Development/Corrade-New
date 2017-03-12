@@ -25,12 +25,6 @@ namespace Corrade.WebForms.SecondLife
         [XmlElement("description")]
         public string Description { get; set; }
 
-        [XmlElement("region")]
-        public string Region { get; set; }
-
-        [XmlElement("deposit")]
-        public uint Deposit { get; set; }
-
         [XmlIgnore]
         public DateTime Time { get; set; }
 

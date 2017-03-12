@@ -61,8 +61,6 @@ namespace Corrade
                             corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture, out id))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_EVENT_IDENTIFIER_PROVIDED);
 
-                    var cookieContainer = new CookieContainer();
-
                     var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                         "https://id.secondlife.com/openid/loginsubmit",
                         new Dictionary<string, string>

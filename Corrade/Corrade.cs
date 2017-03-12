@@ -12,6 +12,7 @@ using Corrade.Constants;
 using Corrade.Events;
 using Corrade.HTTP;
 using Corrade.Source;
+using Corrade.Source.WebForms.SecondLife;
 using Corrade.Structures;
 using Corrade.Structures.Effects;
 using CorradeConfigurationSharp;
@@ -169,7 +170,6 @@ namespace Corrade
 
         private static readonly NucleusHTTPServer NucleusHTTPServer = new NucleusHTTPServer();
 
-        private static readonly EventLog CorradeEventLog = new EventLog();
         private static LoginParams Login;
         private static object CorradeLastExecStatusFileLock = new object();
         private static LastExecStatus _CorradeLastExecStatus = LastExecStatus.Normal;
@@ -1742,8 +1742,8 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var serializer = new XmlSerializer(typeof(AgentMovement));
-                                var movement = (AgentMovement)serializer.Deserialize(streamReader);
+                                var movement = (AgentMovement)(new XmlSerializer(typeof(AgentMovement)))
+                                    .Deserialize(streamReader);
                                 lock (Locks.ClientInstanceSelfLock)
                                 {
                                     Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
@@ -2150,9 +2150,9 @@ namespace Corrade
         {
             if (Environment.UserInteractive)
                 return;
-            switch (Environment.OSVersion.Platform)
+            switch (OpenMetaverse.Utils.GetRunningPlatform())
             {
-                case PlatformID.Win32NT:
+                case OpenMetaverse.Utils.Platform.Windows:
                     try
                     {
                         InstalledServiceName = (string)
@@ -2171,14 +2171,6 @@ namespace Corrade
                     InstalledServiceName = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
                     break;
             }
-            CorradeEventLog.Source = InstalledServiceName;
-            CorradeEventLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
-            CorradeEventLog.BeginInit();
-            if (!EventLog.SourceExists(CorradeEventLog.Source))
-            {
-                EventLog.CreateEventSource(CorradeEventLog.Source, CorradeEventLog.Log);
-            }
-            CorradeEventLog.EndInit();
         }
 
         /// <summary>
@@ -2889,7 +2881,7 @@ namespace Corrade
                     var consoleSpinner = new ConsoleSpin(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                     if (Environment.UserInteractive)
                     {
-                        if (Environment.OSVersion.Platform.Equals(PlatformID.Win32NT))
+                        if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows))
                         {
                             // Setup native console handler.
                             ConsoleEventHandler += ConsoleXButton;
@@ -2967,7 +2959,7 @@ namespace Corrade
                         consoleSpinner.Stop();
                         consoleSpinner.Dispose();
                         Console.Clear();
-                        if (Environment.OSVersion.Platform.Equals(PlatformID.Win32NT))
+                        if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows))
                         {
                             ConsoleEventHandler -= ConsoleXButton;
                         }
@@ -3003,9 +2995,9 @@ namespace Corrade
             }
 
             // Branch on platform and set-up termination handlers.
-            switch (Environment.OSVersion.Platform)
+            switch (OpenMetaverse.Utils.GetRunningPlatform())
             {
-                case PlatformID.Win32NT:
+                case OpenMetaverse.Utils.Platform.Windows:
                     if (Environment.UserInteractive)
                     {
                         // Setup console handler.
@@ -3077,27 +3069,44 @@ namespace Corrade
                 rollingFileAppender.ActivateOptions();
                 BasicConfigurator.Configure(rollingFileAppender);
             }
-            switch (Environment.OSVersion.Platform)
+            switch (OpenMetaverse.Utils.GetRunningPlatform())
             {
-                case PlatformID.Win32NT: // only initialize the event logger on Windows in service mode
+                case OpenMetaverse.Utils.Platform.Windows: // only initialize the event logger on Windows in service mode
                     if (!Environment.UserInteractive)
                     {
                         var eventLogAppender = new EventLogAppender();
-                        var layout = new PatternLayout
+                        var eventLogLayout = new PatternLayout
                         {
                             ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
                                                 corradeConfiguration.FirstName +
                                                 @" " +
                                                 corradeConfiguration.LastName + " : %message%newline"
                         };
-                        eventLogAppender.Layout = layout;
-                        layout.ActivateOptions();
+                        eventLogAppender.Layout = eventLogLayout;
+                        eventLogLayout.ActivateOptions();
                         eventLogAppender.ApplicationName = !string.IsNullOrEmpty(InstalledServiceName)
                             ? InstalledServiceName
                             : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
                         eventLogAppender.ActivateOptions();
                         BasicConfigurator.Configure(eventLogAppender);
                     }
+                    break;
+
+                case OpenMetaverse.Utils.Platform.OSX:
+                case OpenMetaverse.Utils.Platform.Linux:
+                    var sysLogAppender = new LocalSyslogAppender();
+                    var sysLogLayout = new PatternLayout
+                    {
+                        ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
+                                            corradeConfiguration.FirstName +
+                                            @" " +
+                                            corradeConfiguration.LastName + " : %message%newline"
+                    };
+                    sysLogAppender.Layout = sysLogLayout;
+                    sysLogLayout.ActivateOptions();
+                    sysLogAppender.Facility = LocalSyslogAppender.SyslogFacility.Daemons;
+                    sysLogAppender.ActivateOptions();
+                    BasicConfigurator.Configure(sysLogAppender);
                     break;
             }
 
@@ -3358,9 +3367,34 @@ namespace Corrade
             };
             NotificationThread.Start();
 
+            bool? accountAgentStatus = null;
             do
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CYCLING_SIMULATORS));
+
+                // If this is Second Life, ensure that the scripted agent status is set as per the Terms of Service.
+                if (string.Equals(corradeConfiguration.LoginURL,
+                    Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    try
+                    {
+                        using (var status = new ScriptedAgentStatus())
+                        {
+                            accountAgentStatus = status.IsScriptedAgent();
+                            if (accountAgentStatus == false)
+                            {
+                                status.SetScriptedAgentStatus(true);
+                                Feedback(Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.REGISTERED_AS_SCRIPTED_AGENT));
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS), ex.Message);
+                    }
+                }
 
                 // Create a new grid client.
                 Client = new GridClient
@@ -3588,6 +3622,28 @@ namespace Corrade
                                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
                         }
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
+                    }
+                }
+
+                // If this is Second Life, return the agent status to its initial value if one was set initially.
+                if (accountAgentStatus != null && string.Equals(corradeConfiguration.LoginURL,
+                    Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    try
+                    {
+                        using (var status = new ScriptedAgentStatus())
+                        {
+                            status.SetScriptedAgentStatus(
+                                accountAgentStatus.HasValue && accountAgentStatus.Value);
+                        }
+
+                        Feedback(Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.UNREGISTERED_AS_SCRIPTED_AGENT));
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS), ex.Message);
                     }
                 }
 

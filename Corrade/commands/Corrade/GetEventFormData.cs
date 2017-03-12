@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Compat.Web;
 using System.Globalization;
 using System.Linq;
-using System.Net;
 using System.Text;
 using wasSharp;
 
@@ -56,8 +55,6 @@ namespace Corrade
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(secret))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_SECRET_PROVIDED);
-
-                    var cookieContainer = new CookieContainer();
 
                     var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                         "https://id.secondlife.com/openid/loginsubmit",

@@ -1440,6 +1440,15 @@
             </value>
             <remarks>Default is <c>0.9</c></remarks>
         </member>
+        <member name="P:Syn.Bot.Oscova.ScoreConfiguration.IsolatedTextEntityConfidence">
+            <summary>
+            Gets or sets the isolated text entity confidence.
+            </summary>
+            <value>
+            The isolated text entity confidence.
+            </value>
+            <remarks>Default value is <c>0.8</c></remarks>
+        </member>
         <member name="T:Syn.Bot.Oscova.Sys">
             <summary>
             List of all known System Entity types.
@@ -2071,14 +2080,6 @@
             The stop words.
             </value>
             <remarks>Stop words are commonly used words which are filtered or ignored during text processing.</remarks>
-        </member>
-        <member name="M:Syn.Bot.Oscova.Language.AddFilter(Syn.Bot.Oscova.FilterType,System.String,System.String)">
-            <summary>
-            Adds the filter.
-            </summary>
-            <param name="type">The filter type.</param>
-            <param name="input">The input.</param>
-            <param name="output">The output.</param>
         </member>
         <member name="M:Syn.Bot.Oscova.Language.Normalize(System.String)">
             <summary>

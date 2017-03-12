@@ -46,6 +46,14 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=getaccounthistorydata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<date=<STRING>>&[data=<Statement[,Statement...]>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getaccounthistorydata")]
+            [Reflection.NameAttribute("getaccounthistorydata")]
+            GETACCOUNTHISTORYDATA,
+
             [Reflection.NameAttribute("radians")]
             RADIANS,
 
@@ -420,7 +428,7 @@ namespace Corrade
             GETEVENTFORMDATA,
 
             [CommandInputSyntax(
-                "<command=getaccounttransactionsdata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&[data=<Transaction[,Transaction...]>]&[callback=<STRING>]"
+                "<command=getaccounttransactionsdata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<from=<STRING>>&<to=<STRING>>&[data=<Transaction[,Transaction...]>]&[callback=<STRING>]"
                 )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
             [CorradeCommand("getaccounttransactionsdata")]

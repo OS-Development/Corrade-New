@@ -126,9 +126,9 @@ namespace Corrade
                                         /*
                                          * Use ImageMagick on Windows and the .NET converter otherwise.
                                          */
-                                        switch (Environment.OSVersion.Platform)
+                                        switch (OpenMetaverse.Utils.GetRunningPlatform())
                                         {
-                                            case PlatformID.Win32NT:
+                                            case OpenMetaverse.Utils.Platform.Windows:
                                                 try
                                                 {
                                                     using (var magickImage = new MagickImage(data))
