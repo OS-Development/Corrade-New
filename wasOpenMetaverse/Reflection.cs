@@ -13,7 +13,6 @@ using System.Reflection;
 using OpenMetaverse;
 using wasSharp;
 
-
 namespace wasOpenMetaverse
 {
     public static class Reflection
@@ -32,9 +31,9 @@ namespace wasOpenMetaverse
             // Handle arrays and lists
             if (data is Array || data is IList)
             {
-                var iList = (IList) data;
+                var iList = (IList)data;
                 foreach (
-                    var item in iList.Cast<object>().Where(o => o != null).Select((value, index) => new {value, index}))
+                    var item in iList.Cast<object>().Where(o => o != null).Select((value, index) => new { value, index }))
                 {
                     // These are index collections so pre-prend an index.
                     yield return "Index";
@@ -44,6 +43,7 @@ namespace wasOpenMetaverse
                         case true: // Don't bother with primitive types.
                             yield return item.value.ToString();
                             break;
+
                         default:
                             foreach (
                                 var fi in wasSharpNET.Reflection.wasGetFields(item.value, item.value.GetType().Name))
@@ -84,7 +84,7 @@ namespace wasOpenMetaverse
             // Handle Dictionary
             if (data is IDictionary)
             {
-                var dictionary = (IDictionary) data;
+                var dictionary = (IDictionary)data;
                 foreach (DictionaryEntry entry in dictionary)
                 {
                     // First the keys.
@@ -93,6 +93,7 @@ namespace wasOpenMetaverse
                         case true: // Don't bother with primitive types.
                             yield return entry.Key.ToString();
                             break;
+
                         default:
                             foreach (var fi in wasSharpNET.Reflection.wasGetFields(entry.Key, entry.Key.GetType().Name))
                             {
@@ -132,6 +133,7 @@ namespace wasOpenMetaverse
                         case true: // Don't bother with primitive types.
                             yield return entry.Value.ToString();
                             break;
+
                         default:
                             foreach (
                                 var fi in wasSharpNET.Reflection.wasGetFields(entry.Value, entry.Value.GetType().Name)
@@ -186,6 +188,7 @@ namespace wasOpenMetaverse
                         case true: // Don't bother with primitive types.
                             yield return entry.Key.ToString();
                             break;
+
                         default:
                             foreach (var fi in wasSharpNET.Reflection.wasGetFields(entry.Key, entry.Key.GetType().Name))
                             {
@@ -225,6 +228,7 @@ namespace wasOpenMetaverse
                         case true: // Don't bother with primitive types.
                             yield return entry.Value.ToString();
                             break;
+
                         default:
                             foreach (
                                 var fi in wasSharpNET.Reflection.wasGetFields(entry.Value, entry.Value.GetType().Name)
@@ -266,7 +270,7 @@ namespace wasOpenMetaverse
 
             if (data is IEnumerable<string>)
             {
-                var iEnumerable = (IEnumerable<string>) data;
+                var iEnumerable = (IEnumerable<string>)data;
                 foreach (var item in iEnumerable)
                 {
                     yield return item;
@@ -277,10 +281,10 @@ namespace wasOpenMetaverse
             // Handle friend rights.
             if (data is FriendRights)
             {
-                var friendRights = (FriendRights) data;
+                var friendRights = (FriendRights)data;
                 foreach (var flag in typeof(FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
-                    .Where(o => friendRights.IsMaskFlagSet((FriendRights) o.GetValue(null)))
+                    .Where(o => friendRights.IsMaskFlagSet((FriendRights)o.GetValue(null)))
                     .Select(o => o.Name))
                 {
                     yield return flag;
@@ -305,10 +309,10 @@ namespace wasOpenMetaverse
             // Handle script controls.
             if (data is ScriptControlChange)
             {
-                var scriptControlChange = (ScriptControlChange) data;
+                var scriptControlChange = (ScriptControlChange)data;
                 foreach (var flag in typeof(ScriptControlChange).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
-                    .Where(o => scriptControlChange.IsMaskFlagSet((ScriptControlChange) o.GetValue(null)))
+                    .Where(o => scriptControlChange.IsMaskFlagSet((ScriptControlChange)o.GetValue(null)))
                     .Select(o => o.Name))
                 {
                     yield return flag;
@@ -319,23 +323,23 @@ namespace wasOpenMetaverse
             // Handle date and time as an LSL timestamp.
             if (data is DateTime)
             {
-                yield return ((DateTime) data).ToString(Constants.LSL.DATE_TIME_STAMP);
+                yield return ((DateTime)data).ToString(Constants.LSL.DATE_TIME_STAMP);
                 yield break;
             }
 
             // Use the Corrade permission system instead.
             if (data is Permissions)
             {
-                yield return Inventory.wasPermissionsToString((Permissions) data);
+                yield return Inventory.wasPermissionsToString((Permissions)data);
                 yield break;
             }
 
             if (data is ParcelFlags)
             {
-                var parcelFlags = (ParcelFlags) data;
+                var parcelFlags = (ParcelFlags)data;
                 foreach (var flag in typeof(ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
-                    .Where(o => parcelFlags.IsMaskFlagSet((ParcelFlags) o.GetValue(null)))
+                    .Where(o => parcelFlags.IsMaskFlagSet((ParcelFlags)o.GetValue(null)))
                     .Select(o => o.Name))
                 {
                     yield return flag;
@@ -345,10 +349,10 @@ namespace wasOpenMetaverse
 
             if (data is GroupPowers)
             {
-                var groupPowers = (GroupPowers) data;
+                var groupPowers = (GroupPowers)data;
                 foreach (var power in typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                     .AsParallel()
-                    .Where(o => groupPowers.IsMaskFlagSet((GroupPowers) o.GetValue(null)))
+                    .Where(o => groupPowers.IsMaskFlagSet((GroupPowers)o.GetValue(null)))
                     .Select(o => o.Name))
                 {
                     yield return power;
@@ -395,7 +399,7 @@ namespace wasOpenMetaverse
                         case true:
                             var allFlags =
                                 typeof(ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .ToDictionary(o => o.Name, o => (ParcelFlags) o.GetValue(null));
+                                    .ToDictionary(o => o.Name, o => (ParcelFlags)o.GetValue(null));
                             CSV.ToEnumerable(d.Value).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                                 o =>
                                 {
@@ -419,7 +423,7 @@ namespace wasOpenMetaverse
                         case true:
                             var allPowers =
                                 typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .ToDictionary(o => o.Name, o => (GroupPowers) o.GetValue(null));
+                                    .ToDictionary(o => o.Name, o => (GroupPowers)o.GetValue(null));
                             CSV.ToEnumerable(d.Value).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(
                                 o =>
                                 {
@@ -445,7 +449,7 @@ namespace wasOpenMetaverse
                                     .AsParallel()
                                     .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (attachmentPointFieldInfo == null) break;
-                            attachmentPoint = (byte) attachmentPointFieldInfo.GetValue(null);
+                            attachmentPoint = (byte)attachmentPointFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, attachmentPoint);
@@ -462,7 +466,7 @@ namespace wasOpenMetaverse
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (treeFieldInfo == null) break;
-                            tree = (byte) treeFieldInfo.GetValue(null);
+                            tree = (byte)treeFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, tree);
@@ -479,7 +483,7 @@ namespace wasOpenMetaverse
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (materialFieldInfo == null) break;
-                            material = (byte) materialFieldInfo.GetValue(null);
+                            material = (byte)materialFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, material);
@@ -496,7 +500,7 @@ namespace wasOpenMetaverse
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (pathCurveFieldInfo == null) break;
-                            pathCurve = (byte) pathCurveFieldInfo.GetValue(null);
+                            pathCurve = (byte)pathCurveFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, pathCurve);
@@ -512,7 +516,7 @@ namespace wasOpenMetaverse
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (pCodeFieldInfo == null) break;
-                            pCode = (byte) pCodeFieldInfo.GetValue(null);
+                            pCode = (byte)pCodeFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, pCode);
@@ -529,7 +533,7 @@ namespace wasOpenMetaverse
                                     .AsParallel()
                                     .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (profileCurveFieldInfo == null) break;
-                            profileCurve = (byte) profileCurveFieldInfo.GetValue(null);
+                            profileCurve = (byte)profileCurveFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, profileCurve);
@@ -546,7 +550,7 @@ namespace wasOpenMetaverse
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (holeTypeFieldInfo == null) break;
-                            holeType = (byte) holeTypeFieldInfo.GetValue(null);
+                            holeType = (byte)holeTypeFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, holeType);
@@ -563,7 +567,7 @@ namespace wasOpenMetaverse
                                 .AsParallel()
                                 .FirstOrDefault(p => string.Equals(d.Value, p.Name, StringComparison.Ordinal));
                             if (sculptTypeFieldInfo == null) break;
-                            sculptType = (byte) sculptTypeFieldInfo.GetValue(null);
+                            sculptType = (byte)sculptTypeFieldInfo.GetValue(null);
                             break;
                     }
                     wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, sculptType);
@@ -734,17 +738,12 @@ namespace wasOpenMetaverse
             var LockObject = new object();
             CSV.ToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
             {
-                var data = new List<string> {name};
+                var data = new List<string> { name };
                 var vals = new List<string>(wasSerializeObject(structure.GetFP(name)));
-                switch (vals.Any())
-                {
-                    case true:
-                        data.AddRange(vals);
-                        break;
-                    default:
-                        data.Add(string.Empty);
-                        break;
-                }
+                if (!vals.Any())
+                    return;
+
+                data.AddRange(vals);
                 lock (LockObject)
                 {
                     result.Add(data.ToArray());
