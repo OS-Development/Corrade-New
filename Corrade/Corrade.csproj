@@ -211,6 +211,9 @@
     <Compile Include="commands\Corrade\AgentAccess.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\BatchGetProfileData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\BatchSetInventoryData.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -253,6 +256,9 @@
     <Compile Include="commands\Corrade\GetParcelObjectsResourceDetailData.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetProfilesData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetRemoteParcelInfoData.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -275,6 +281,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\Shoot.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\Verify.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\RLV\AttachAll.cs">
@@ -2103,6 +2112,10 @@
     <ProjectReference Include="..\wasSharp\wasSharp.csproj">
       <Project>{a971e1c9-776c-4cd2-88ac-71197c7b955e}</Project>
       <Name>wasSharp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasStitchNET\wasStitchNET.csproj">
+      <Project>{585e377c-c6a4-424d-9eab-23eca8393927}</Project>
+      <Name>wasStitchNET</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

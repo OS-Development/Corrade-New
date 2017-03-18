@@ -60,17 +60,23 @@ namespace Corrade
                     var LockObject = new object();
                     EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(agentUUID))
+                            return;
                         ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                         interests = args.Interests;
                     };
                     EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                         (sender, args) =>
                         {
+                            if (!args.AvatarID.Equals(agentUUID))
+                                return;
                             ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             properties = args.Properties;
                         };
                     EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(agentUUID))
+                            return;
                         ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                         lock (LockObject)
                         {
@@ -80,12 +86,16 @@ namespace Corrade
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                         (sender, args) =>
                         {
+                            if (!args.AvatarID.Equals(agentUUID))
+                                return;
                             ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             picks = args;
                         };
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
                         (sender, args) =>
                         {
+                            if (!args.AvatarID.Equals(agentUUID))
+                                return;
                             ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             classifieds = args;
                         };

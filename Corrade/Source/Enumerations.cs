@@ -2304,7 +2304,15 @@ namespace Corrade
 
             [Command.StatusAttribute(48110)]
             [Reflection.DescriptionAttribute("no history found")]
-            NO_HISTORY_FOUND
+            NO_HISTORY_FOUND,
+
+            [Command.StatusAttribute(36675)]
+            [Reflection.DescriptionAttribute("no server provided")]
+            NO_SERVER_PROVIDED,
+
+            [Command.StatusAttribute(02021)]
+            [Reflection.DescriptionAttribute("invalid version provided")]
+            INVALID_VERSION_PROVIDED
         }
 
         /// <summary>

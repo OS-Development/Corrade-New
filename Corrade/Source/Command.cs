@@ -46,6 +46,37 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [CommandInputSyntax("<command=verify>&<group=<UUID|STRING>>&<password=<STRING>>&<server=<STRING>>&[callback=<STRING>]")]
+            [CommandPermissionMask((ulong)Configuration.Permissions.None)]
+            [CorradeCommand("verify")]
+            [Reflection.NameAttribute("verify")]
+            VERIFY,
+
+            [Reflection.NameAttribute("modified")]
+            MODIFIED,
+
+            [Reflection.NameAttribute("verified")]
+            VERIFIED,
+
+            [Reflection.NameAttribute("server")]
+            SERVER,
+
+            [CommandInputSyntax(
+                "<command=batchgetprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&<data=<AvatarProperties[,AvatarProperties...]>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("batchgetprofiledata")]
+            [Reflection.NameAttribute("batchgetprofiledata")]
+            BATCHGETPROFILEDATA,
+
+            [CommandInputSyntax(
+                "<command=getprofilesdata>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getprofilesdata")]
+            [Reflection.NameAttribute("getprofilesdata")]
+            GETPROFILESDATA,
+
             [CommandInputSyntax(
                 "<command=getaccounthistorydata>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<date=<STRING>>&[data=<Statement[,Statement...]>]&[callback=<STRING>]"
             )]
@@ -385,9 +416,6 @@ namespace Corrade
             [CorradeCommand("marry")]
             [Reflection.NameAttribute("marry")]
             MARRY,
-
-            [Reflection.NameAttribute("verify")]
-            VERIFY,
 
             [CommandInputSyntax(
                 "<command=modifyevent>&<group=<UUID|STRING>>&<password=<STRING>>&[firstname=<STRING>]&[lastname=<STRING>]&<secret=<STRING>>&<id=<INTEGER>>&[name=<STRING>]&[description=<STRING>]&[date=<DateTime>]&[time=<DateTime>]&[duration=<INTEGER>]&[location=<STRING>]&[category=<INTEGER>]&[amount=<INTEGER>]&[callback=<STRING>]"

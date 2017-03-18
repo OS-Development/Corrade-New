@@ -29,6 +29,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CorradeConfigurationSharp",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configurator", "Configurator\Configurator.csproj", "{695D4BED-5254-4092-B5DC-BFA13228A151}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasStitchNET", "wasStitchNET\wasStitchNET.csproj", "{585E377C-C6A4-424D-9EAB-23ECA8393927}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasDAVClient", "wasDAVClient\wasDAVClient\wasDAVClient.csproj", "{8C9A5D56-E5A1-4E18-BD00-FFF55A2AE01D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +63,14 @@ Global
 		{695D4BED-5254-4092-B5DC-BFA13228A151}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.Build.0 = Release|Any CPU
+		{585E377C-C6A4-424D-9EAB-23ECA8393927}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{585E377C-C6A4-424D-9EAB-23ECA8393927}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{585E377C-C6A4-424D-9EAB-23ECA8393927}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{585E377C-C6A4-424D-9EAB-23ECA8393927}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C9A5D56-E5A1-4E18-BD00-FFF55A2AE01D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C9A5D56-E5A1-4E18-BD00-FFF55A2AE01D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C9A5D56-E5A1-4E18-BD00-FFF55A2AE01D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C9A5D56-E5A1-4E18-BD00-FFF55A2AE01D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
