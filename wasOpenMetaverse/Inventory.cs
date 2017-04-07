@@ -13,7 +13,6 @@ using System.Threading;
 using OpenMetaverse;
 using wasSharp;
 
-
 namespace wasOpenMetaverse
 {
     public static class Inventory
@@ -41,7 +40,7 @@ namespace wasOpenMetaverse
             {
                 return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
                        Client.Inventory.Store[item.AssetUUID] is InventoryItem
-                    ? (InventoryItem) Client.Inventory.Store[item.AssetUUID]
+                    ? (InventoryItem)Client.Inventory.Store[item.AssetUUID]
                     : item;
             }
         }
@@ -61,7 +60,7 @@ namespace wasOpenMetaverse
             {
                 return Client.Inventory.Store.GetContents(outfitFolder)
                     .AsParallel()
-                    .Where(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
+                    .Where(o => CanBeWorn(o) && ((InventoryItem)o).AssetType.Equals(AssetType.Link))
                     .Select(o => o as InventoryItem);
             }
         }
@@ -94,7 +93,7 @@ namespace wasOpenMetaverse
                         .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
-                    attachmentPoint = (AttachmentPoint) (((prim.PrimData.State & 0xF0) >> 4) |
+                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
                                                          ((prim.PrimData.State & ~0xF0) << 4));
 
                     objectAttachedEvent.Set();
@@ -104,7 +103,7 @@ namespace wasOpenMetaverse
                 {
                     Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                     Client.Appearance.Attach(realItem, point, replace);
-                    objectAttachedEvent.WaitOne((int) millisecondsTimeout, false);
+                    objectAttachedEvent.WaitOne((int)millisecondsTimeout, false);
                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                 }
             }
@@ -150,7 +149,7 @@ namespace wasOpenMetaverse
                         .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
                             StringComparison.OrdinalIgnoreCase))) return;
 
-                    attachmentPoint = (AttachmentPoint) (((prim.PrimData.State & 0xF0) >> 4) |
+                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
                                                          ((prim.PrimData.State & ~0xF0) << 4));
 
                     objectDetachedEvent.Set();
@@ -160,7 +159,7 @@ namespace wasOpenMetaverse
                 {
                     Client.Objects.KillObject += KillObjectEventHandler;
                     Client.Appearance.Detach(realItem);
-                    objectDetachedEvent.WaitOne((int) millisecondsTimeout, false);
+                    objectDetachedEvent.WaitOne((int)millisecondsTimeout, false);
                     Client.Objects.KillObject -= KillObjectEventHandler;
                 }
             }
@@ -212,7 +211,7 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return false;
-            var t = ((InventoryWearable) realItem).WearableType;
+            var t = ((InventoryWearable)realItem).WearableType;
             return t.Equals(WearableType.Shape) ||
                    t.Equals(WearableType.Skin) ||
                    t.Equals(WearableType.Eyes) ||
@@ -240,7 +239,7 @@ namespace wasOpenMetaverse
                 {
                     Client.Inventory.CreateLink(outfitFolder.UUID, item.UUID, item.Name,
                         item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(Client, item)
-                            ? $"@{(int) ((InventoryWearable) item).WearableType}{0:00}"
+                            ? $"@{(int)((InventoryWearable)item).WearableType}{0:00}"
                             : string.Empty, AssetType.Link, item.InventoryType, UUID.Random(), (success, newItem) =>
                             {
                                 if (success)
@@ -279,7 +278,6 @@ namespace wasOpenMetaverse
             }
         }
 
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -307,7 +305,7 @@ namespace wasOpenMetaverse
             return selectedPrimitives
                 .AsParallel()
                 .Select(o => new KeyValuePair<Primitive, AttachmentPoint>(o,
-                    (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
+                    (AttachmentPoint)(((o.PrimData.State & 0xF0) >> 4) |
                                        ((o.PrimData.State & ~0xF0) << 4))));
         }
 
@@ -326,7 +324,7 @@ namespace wasOpenMetaverse
                 if (prim.NameValues[i].Name.Equals("AttachItemID")) continue;
                 lock (Locks.ClientInstanceInventoryLock)
                 {
-                    return Client.Inventory.Store[prim.NameValues[i].Value.ToString()] as InventoryItem;
+                    return Client.Inventory.Store[new UUID(prim.NameValues[i].Value.ToString())] as InventoryItem;
                 }
             }
             return null;
@@ -375,7 +373,7 @@ namespace wasOpenMetaverse
             if (string.IsNullOrEmpty(path)) return root;
 
             // Split all paths.
-            var unpack = new List<string>(path.PathSplit(separator, escape));
+            var unpack = new List<string>(path.PathSplit(separator, escape, false));
             // Pop first item to process.
             var first = unpack.First();
 
@@ -405,6 +403,7 @@ namespace wasOpenMetaverse
                         }
                         // If not, the path is phony!
                         return null;
+
                     default: // There is no root and the first of the path is a name, hmm...
                         if (string.Equals(Client.Inventory.Store.RootFolder.Name, first, comparison))
                         {
@@ -433,8 +432,9 @@ namespace wasOpenMetaverse
             {
                 case true:
                     contents.UnionWith(Client.Inventory.FolderContents(root.UUID, root.OwnerID, true, true,
-                        InventorySortOrder.ByDate, (int) millisecondsTimeout));
+                        InventorySortOrder.ByDate, (int)millisecondsTimeout));
                     break;
+
                 default:
                     contents.UnionWith(Client.Inventory.Store.GetContents(root.UUID));
                     break;
@@ -469,7 +469,7 @@ namespace wasOpenMetaverse
                 return null;
             }
 
-            CONTINUE:
+        CONTINUE:
             return directFindInventory(Client,
                 string.Join(separator.ToString(),
                     unpack.Skip(1)
@@ -509,11 +509,11 @@ namespace wasOpenMetaverse
             if (inventoryBase == null)
                 return default(T);
 
-            if (typeof(T) != typeof(InventoryNode)) return (T) (object) inventoryBase;
+            if (typeof(T) != typeof(InventoryNode)) return (T)(object)inventoryBase;
 
             lock (Locks.ClientInstanceInventoryLock)
             {
-                return (T) (object) Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
+                return (T)(object)Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
             }
         }
 
@@ -546,11 +546,11 @@ namespace wasOpenMetaverse
                 {
                     if (typeof(T) == typeof(InventoryNode))
                     {
-                        yield return (T) (object) Client.Inventory.Store.GetNodeFor(item.UUID);
+                        yield return (T)(object)Client.Inventory.Store.GetNodeFor(item.UUID);
                     }
                     if (typeof(T) == typeof(InventoryBase))
                     {
-                        yield return (T) (object) item;
+                        yield return (T)(object)item;
                     }
                 }
                 if (item is InventoryFolder)
@@ -571,7 +571,7 @@ namespace wasOpenMetaverse
                     FolderUpdatedEvent.Reset();
                     Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
                         InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                    FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                 }
                 foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
@@ -612,23 +612,23 @@ namespace wasOpenMetaverse
                 if (typeof(T) == typeof(InventoryBase))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
+                                prefix.Concat(new[] { root.Data.Name })));
                 }
                 if (typeof(T) == typeof(InventoryNode))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
                             new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
+                                prefix.Concat(new[] { root.Data.Name })));
                 }
             }
             foreach (
                 var o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => directFindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] {root.Data.Name})))))
+                            prefix.Concat(new[] { root.Data.Name })))))
             {
                 yield return o;
             }
@@ -663,23 +663,23 @@ namespace wasOpenMetaverse
                 if (typeof(T) == typeof(InventoryBase))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)Client.Inventory.Store[root.Data.UUID],
                             new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
+                                prefix.Concat(new[] { root.Data.Name })));
                 }
                 if (typeof(T) == typeof(InventoryNode))
                 {
                     yield return
-                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
+                        new KeyValuePair<T, LinkedList<string>>((T)(object)root,
                             new LinkedList<string>(
-                                prefix.Concat(new[] {root.Data.Name})));
+                                prefix.Concat(new[] { root.Data.Name })));
                 }
             }
             foreach (
                 var o in
                     root.Nodes.Values.AsParallel()
                         .SelectMany(o => directFindInventoryPath<T>(Client, o, criteria, new LinkedList<string>(
-                            prefix.Concat(new[] {root.Data.Name})))))
+                            prefix.Concat(new[] { root.Data.Name })))))
             {
                 yield return o;
             }
@@ -759,7 +759,7 @@ namespace wasOpenMetaverse
                 lock (Locks.ClientInstanceInventoryLock)
                 {
                     contents.UnionWith(Client.Inventory.FolderContents(queueFolder.UUID, clientUUID, true, true,
-                        InventorySortOrder.ByDate, (int) millisecondsTimeout));
+                        InventorySortOrder.ByDate, (int)millisecondsTimeout));
                 }
                 foreach (var item in contents)
                 {
@@ -808,7 +808,7 @@ namespace wasOpenMetaverse
                 Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                 Client.Inventory.RequestFolderContents(root.Data.UUID, root.Data.OwnerID, true, true,
                     InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             }
 
@@ -838,7 +838,7 @@ namespace wasOpenMetaverse
                     var EventQueueRunningEvent = new AutoResetEvent(false);
                     EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
                     Client.Network.EventQueueRunning += handler;
-                    EventQueueRunningEvent.WaitOne((int) millisecondsTimeout, false);
+                    EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
                     Client.Network.EventQueueRunning -= handler;
                 }
             }
@@ -871,7 +871,7 @@ namespace wasOpenMetaverse
                     var EventQueueRunningEvent = new AutoResetEvent(false);
                     EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
                     Client.Network.EventQueueRunning += handler;
-                    EventQueueRunningEvent.WaitOne((int) millisecondsTimeout, false);
+                    EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
                     Client.Network.EventQueueRunning -= handler;
                 }
             }
@@ -881,7 +881,6 @@ namespace wasOpenMetaverse
                 directUpdateInventoryRecursive(Client, root, millisecondsTimeout, force);
             }
         }
-
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -899,61 +898,67 @@ namespace wasOpenMetaverse
             {
                 var seg = new StringBuilder();
 
-                switch (!((uint) o & (uint) PermissionMask.Copy).Equals(0))
+                switch (!((uint)o & (uint)PermissionMask.Copy).Equals(0))
                 {
                     case true:
                         seg.Append("c");
                         break;
+
                     default:
                         seg.Append("-");
                         break;
                 }
 
-                switch (!((uint) o & (uint) PermissionMask.Damage).Equals(0))
+                switch (!((uint)o & (uint)PermissionMask.Damage).Equals(0))
                 {
                     case true:
                         seg.Append("d");
                         break;
+
                     default:
                         seg.Append("-");
                         break;
                 }
 
-                switch (!((uint) o & (uint) PermissionMask.Export).Equals(0))
+                switch (!((uint)o & (uint)PermissionMask.Export).Equals(0))
                 {
                     case true:
                         seg.Append("e");
                         break;
+
                     default:
                         seg.Append("-");
                         break;
                 }
 
-                switch (!((uint) o & (uint) PermissionMask.Modify).Equals(0))
+                switch (!((uint)o & (uint)PermissionMask.Modify).Equals(0))
                 {
                     case true:
                         seg.Append("m");
                         break;
+
                     default:
                         seg.Append("-");
                         break;
                 }
 
-                switch (!((uint) o & (uint) PermissionMask.Move).Equals(0))
+                switch (!((uint)o & (uint)PermissionMask.Move).Equals(0))
                 {
                     case true:
                         seg.Append("v");
                         break;
+
                     default:
                         seg.Append("-");
                         break;
                 }
 
-                switch (!((uint) o & (uint) PermissionMask.Transfer).Equals(0))
+                switch (!((uint)o & (uint)PermissionMask.Transfer).Equals(0))
                 {
                     case true:
                         seg.Append("t");
                         break;
+
                     default:
                         seg.Append("-");
                         break;
@@ -989,42 +994,42 @@ namespace wasOpenMetaverse
                 switch (!char.ToLower(o[0]).Equals('c'))
                 {
                     case false:
-                        r |= (uint) PermissionMask.Copy;
+                        r |= (uint)PermissionMask.Copy;
                         break;
                 }
 
                 switch (!char.ToLower(o[1]).Equals('d'))
                 {
                     case false:
-                        r |= (uint) PermissionMask.Damage;
+                        r |= (uint)PermissionMask.Damage;
                         break;
                 }
 
                 switch (!char.ToLower(o[2]).Equals('e'))
                 {
                     case false:
-                        r |= (uint) PermissionMask.Export;
+                        r |= (uint)PermissionMask.Export;
                         break;
                 }
 
                 switch (!char.ToLower(o[3]).Equals('m'))
                 {
                     case false:
-                        r |= (uint) PermissionMask.Modify;
+                        r |= (uint)PermissionMask.Modify;
                         break;
                 }
 
                 switch (!char.ToLower(o[4]).Equals('v'))
                 {
                     case false:
-                        r |= (uint) PermissionMask.Move;
+                        r |= (uint)PermissionMask.Move;
                         break;
                 }
 
                 switch (!char.ToLower(o[5]).Equals('t'))
                 {
                     case false:
-                        r |= (uint) PermissionMask.Transfer;
+                        r |= (uint)PermissionMask.Transfer;
                         break;
                 }
 

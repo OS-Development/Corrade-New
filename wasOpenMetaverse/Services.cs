@@ -14,7 +14,6 @@ using wasSharp.Timers;
 using Parallel = System.Threading.Tasks.Parallel;
 using OpenMetaverse.Packets;
 
-
 namespace wasOpenMetaverse
 {
     public static class Services
@@ -37,7 +36,7 @@ namespace wasOpenMetaverse
             {
                 Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
                 Client.Self.RequestBalance();
-                if (!MoneyBalanceEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
                     return false;
@@ -46,7 +45,6 @@ namespace wasOpenMetaverse
             }
             return true;
         }
-
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -67,7 +65,7 @@ namespace wasOpenMetaverse
             {
                 Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                 Client.Self.RequestMuteList();
-                MuteListUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                MuteListUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             }
             mutes = Client.Self.MuteList.Copy().Values;
@@ -129,7 +127,7 @@ namespace wasOpenMetaverse
             {
                 Client.Groups.BannedAgents += BannedAgentsEventHandler;
                 Client.Groups.RequestBannedAgents(groupUUID);
-                if (!BannedAgentsEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!BannedAgentsEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Groups.BannedAgents -= BannedAgentsEventHandler;
                     return false;
@@ -164,7 +162,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!CurrentGroupsReceivedEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
                 return false;
@@ -175,6 +173,7 @@ namespace wasOpenMetaverse
                 case true:
                     groups = currentGroups.Keys;
                     return true;
+
                 default:
                     return false;
             }
@@ -240,7 +239,7 @@ namespace wasOpenMetaverse
             {
                 Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                 Client.Avatars.RequestAvatarProperties(agentUUID);
-                if (!alarm.Signal.WaitOne((int) millisecondsTimeout, false))
+                if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                     return false;
@@ -276,7 +275,7 @@ namespace wasOpenMetaverse
             {
                 Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                 Client.Self.RequestJoinGroupChat(groupUUID);
-                if (!GroupChatJoinedEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!GroupChatJoinedEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                     return false;
@@ -288,7 +287,7 @@ namespace wasOpenMetaverse
 
         public static bool UpdateParcelAccessList(GridClient Client, Simulator simulator, int parcelLocalID, AccessList accessListType, List<ParcelManager.ParcelAccessEntry> accessList)
         {
-            lock(Locks.ClientInstanceNetworkLock)
+            lock (Locks.ClientInstanceNetworkLock)
             {
                 Client.Network.SendPacket(new ParcelAccessListUpdatePacket
                 {
@@ -311,7 +310,6 @@ namespace wasOpenMetaverse
                         Sections = (int)Math.Ceiling(accessList.Count / 48f)
                     },
                     Type = PacketType.ParcelAccessListUpdate
-
                 }, simulator);
             }
 
@@ -343,7 +341,7 @@ namespace wasOpenMetaverse
             {
                 Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                 Client.Groups.RequestGroupMembers(groupUUID);
-                if (!groupMembersReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!groupMembersReceivedEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     return false;
@@ -377,7 +375,7 @@ namespace wasOpenMetaverse
             {
                 Client.Groups.GroupProfile += GroupProfileDelegate;
                 Client.Groups.RequestGroupProfile(groupUUID);
-                if (!GroupProfileEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Groups.GroupProfile -= GroupProfileDelegate;
                     return false;
@@ -415,11 +413,12 @@ namespace wasOpenMetaverse
                     case true:
                         Client.Parcels.RequestAllSimParcels(simulator);
                         break;
+
                     default:
                         RequestAllSimParcelsEvent.Set();
                         break;
                 }
-                if (!RequestAllSimParcelsEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                     return false;
@@ -471,7 +470,7 @@ namespace wasOpenMetaverse
             {
                 Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                 Client.Parcels.RequestParcelInfo(parcelUUID);
-                if (!ParcelInfoEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!ParcelInfoEvent.WaitOne((int)millisecondsTimeout, false))
                 {
                     Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                     return false;
@@ -506,7 +505,7 @@ namespace wasOpenMetaverse
                     .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
                     .ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new {s = o, a = o?.ObjectsPrimitives?.Copy()?.Values})
+                    .Select(o => new { s = o, a = o?.ObjectsPrimitives?.Copy()?.Values })
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
@@ -544,7 +543,7 @@ namespace wasOpenMetaverse
                     .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
                     .ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
@@ -580,7 +579,7 @@ namespace wasOpenMetaverse
                     .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
                     .ToDictionary(o => o.LocalID, p => p);
                 return new HashSet<Avatar>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new {s = o, a = o?.ObjectsAvatars?.Copy()?.Values})
+                    .Select(o => new { s = o, a = o?.ObjectsAvatars?.Copy()?.Values })
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
@@ -632,14 +631,13 @@ namespace wasOpenMetaverse
                                 .Select(p => p.LocalID)
                                 .ToArray(), true);
                     }
-                    ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
+                    ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 }
             });
             primitives = new HashSet<Primitive>(localPrimitives.Where(o => o.Properties != null));
             return true;
         }
-
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -665,7 +663,7 @@ namespace wasOpenMetaverse
                 Client.Objects.SelectObject(
                     Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(regionHandle)),
                     localPrimitive.LocalID, true);
-                ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
+                ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
             }
             primitive = localPrimitive;
@@ -752,7 +750,7 @@ namespace wasOpenMetaverse
                     {
                         avatarAlarm = avatarAlarms[o.ID];
                     }
-                    avatarAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
+                    avatarAlarm.Signal.WaitOne((int)millisecondsTimeout, false);
                     Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
@@ -798,7 +796,7 @@ namespace wasOpenMetaverse
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
             var localPrimitive = Client.Network.Simulators.AsParallel()
-                .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
                 {
                     // find the parent of the primitive
@@ -843,7 +841,7 @@ namespace wasOpenMetaverse
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
             var localPrimitive = Client.Network.Simulators.AsParallel()
-                .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
                 {
                     // find the parent of the primitive
@@ -889,7 +887,7 @@ namespace wasOpenMetaverse
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
             var primitives =
                 new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                     .SelectMany(o => o.a.AsParallel().Where(p =>
                     {
                         // find the parent of the primitive
@@ -938,7 +936,7 @@ namespace wasOpenMetaverse
                 .Select(o => o.Copy().Values)
                 .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
             var primitives = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                .Select(o => new {s = o, a = o.ObjectsPrimitives.Copy().Values})
+                .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
                 {
                     // find the parent of the primitive
@@ -992,7 +990,7 @@ namespace wasOpenMetaverse
             }
 
             assetData = localAssetData;
-            return AssetReceivedEvent.WaitOne((int) dataTimeout, false);
+            return AssetReceivedEvent.WaitOne((int)dataTimeout, false);
         }
 
         ///////////////////////////////////////////////////////////////////////////

@@ -117,6 +117,7 @@ namespace wasOpenMetaverse
             public struct MESSAGES
             {
                 public const string REGION_RESTART_MESSAGE = @"restart";
+                public const string ESTATE_MESSAGE = @"instantmessage";
             }
         }
 
@@ -203,8 +204,10 @@ namespace wasOpenMetaverse
             public static readonly UUID TEXTURE_PLYWOOD = new UUID(@"89556747-24cb-43ed-920b-47caed15465f");
             public static readonly UUID TEXTURE_TRANSPARENT = new UUID(@"8dcd4a48-2d37-4909-9f78-f7a9eb4ef903");
             public static readonly UUID TEXTURE_MEDIA = new UUID(@"8b5fec65-8d8d-9dc5-cda8-8fdf2716e361");
+
             // Default texture in Second Life is the plywood texture.
             public static readonly UUID TEXTURE_DEFAULT = TEXTURE_BLANK;
+
             public static readonly UUID DEFAULT_SCULPT = new UUID(@"be293869-d0d9-0a69-5989-ad27f1946fd4");
             public static readonly int MAX_PIXEL_WIDTH = 1024;
             public static readonly int MAX_PIXEL_HEIGHT = 1024;

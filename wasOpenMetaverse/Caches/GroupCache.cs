@@ -14,8 +14,9 @@ namespace wasOpenMetaverse.Caches
     public class GroupCache : ObservableHashSet<Cache.Group>
     {
         public Dictionary<UUID, Cache.Group> nameCache = new Dictionary<UUID, Cache.Group>();
+        public Dictionary<string, Cache.Group> groupCache = new Dictionary<string, Cache.Group>();
 
-        public MultiKeyDictionary<string, UUID, Cache.Group> nameHandleCache =
+        public MultiKeyDictionary<string, UUID, Cache.Group> nameUUIDHandleCache =
             new MultiKeyDictionary<string, UUID, Cache.Group>();
 
         public Cache.Group this[string name, UUID UUID]
@@ -23,7 +24,7 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                nameHandleCache.TryGetValue(name, UUID, out group);
+                nameUUIDHandleCache.TryGetValue(name, UUID, out group);
                 return group;
             }
         }
@@ -34,6 +35,16 @@ namespace wasOpenMetaverse.Caches
             {
                 Cache.Group group;
                 nameCache.TryGetValue(UUID, out group);
+                return group;
+            }
+        }
+
+        public Cache.Group this[string name]
+        {
+            get
+            {
+                Cache.Group group;
+                groupCache.TryGetValue(name, out group);
                 return group;
             }
         }
@@ -60,7 +71,7 @@ namespace wasOpenMetaverse.Caches
         public new void Clear()
         {
             nameCache.Clear();
-            nameHandleCache.Clear();
+            nameUUIDHandleCache.Clear();
             base.Clear();
         }
 
@@ -68,15 +79,18 @@ namespace wasOpenMetaverse.Caches
         {
             if (!nameCache.ContainsKey(group.UUID))
                 nameCache.Add(group.UUID, group);
-            if (!nameHandleCache.ContainsKey(group.Name, group.UUID))
-                nameHandleCache.Add(group.Name, group.UUID, group);
+            if (!nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
+                nameUUIDHandleCache.Add(group.Name, group.UUID, group);
+            if (!groupCache.ContainsKey(group.Name))
+                groupCache.Add(group.Name, group);
             base.Add(group);
         }
 
         public new bool Remove(Cache.Group group)
         {
             nameCache.Remove(group.UUID);
-            nameHandleCache.Remove(group.Name, group.UUID);
+            nameUUIDHandleCache.Remove(group.Name, group.UUID);
+            groupCache.Remove(group.Name);
             return base.Remove(group);
         }
 
@@ -86,7 +100,8 @@ namespace wasOpenMetaverse.Caches
             enumerable.Except(AsEnumerable()).AsParallel().ForAll(group =>
             {
                 nameCache.Remove(group.UUID);
-                nameHandleCache.Remove(group.Name, group.UUID);
+                nameUUIDHandleCache.Remove(group.Name, group.UUID);
+                groupCache.Remove(group.Name);
             });
 
             base.UnionWith(enumerable);
@@ -94,7 +109,7 @@ namespace wasOpenMetaverse.Caches
 
         public bool Contains(string name)
         {
-            return nameHandleCache.ContainsKey(name);
+            return groupCache.ContainsKey(name);
         }
 
         public bool Contains(UUID UUID)
