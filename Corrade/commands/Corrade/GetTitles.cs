@@ -62,22 +62,22 @@ namespace Corrade
                     var csv = new List<string>();
                     var groupTitles = new Dictionary<UUID, GroupTitle>();
                     var GroupTitlesReplyEvent = new ManualResetEvent(false);
+                    var requestUUID = UUID.Zero;
                     EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                     {
+                        if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
+                            return;
                         groupTitles = args.Titles;
                         GroupTitlesReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
+                    requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
+                    if (!GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
-                        Client.Groups.RequestGroupTitles(groupUUID);
-                        if (!GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
-                        }
                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
                     }
+                    Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                     var LockObject = new object();
                     groupTitles.AsParallel().ForAll(o =>
                     {

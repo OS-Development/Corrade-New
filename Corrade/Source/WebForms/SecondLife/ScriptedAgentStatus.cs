@@ -18,18 +18,18 @@ namespace Corrade.Source.WebForms.SecondLife
 {
     public class ScriptedAgentStatus : IDisposable
     {
-        private static wasHTTPClient HTTPClient = new wasHTTPClient
-            (CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(), CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED,
-                Corrade.corradeConfiguration.ServicesTimeout);
+        private static wasHTTPClient HTTPClient;
 
         public ScriptedAgentStatus()
         {
+            HTTPClient = new wasHTTPClient
+            (CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(), CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED,
+                Corrade.corradeConfiguration.ServicesTimeout);
+            Login();
         }
 
         public void SetScriptedAgentStatus(bool scripted)
         {
-            Authenticate();
-
             // Retrieve the agent status form.
             var postData = HTTPClient.GET(
                 "https://secondlife.com/my/account/sisa.php");
@@ -65,8 +65,6 @@ namespace Corrade.Source.WebForms.SecondLife
 
         public bool IsScriptedAgent()
         {
-            Authenticate();
-
             // Retrieve the agent status.
             var postData = HTTPClient.GET(
                 "https://secondlife.com/my/account/sisa.php");
@@ -92,7 +90,17 @@ namespace Corrade.Source.WebForms.SecondLife
             return botStatusNode.Attributes["value"].Value.Equals("Yes");
         }
 
-        private void Authenticate()
+        private void Logout()
+        {
+            // Logout.
+            var postData = HTTPClient.GET(
+                "https://secondlife.com/my/account/logout.php");
+
+            if (postData.Result == null)
+                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.LOGOUT_FAILED);
+        }
+
+        private void Login()
         {
             var postData = HTTPClient.POST(
                 "https://id.secondlife.com/openid/loginsubmit",
@@ -109,7 +117,7 @@ namespace Corrade.Source.WebForms.SecondLife
                 });
 
             if (postData.Result == null)
-                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.UNABLE_TO_AUTHENTICATE);
+                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.LOGIN_FAILED);
 
             var doc = new HtmlDocument();
             HtmlNode.ElementsFlags.Remove("form");
@@ -117,7 +125,7 @@ namespace Corrade.Source.WebForms.SecondLife
 
             var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
             if (openIDNodes == null || !openIDNodes.Any())
-                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.UNABLE_TO_AUTHENTICATE);
+                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.LOGIN_FAILED);
 
             var openID =
                 openIDNodes.AsParallel()
@@ -129,19 +137,24 @@ namespace Corrade.Source.WebForms.SecondLife
                         o => o.Attributes["value"].Value);
 
             if (!openID.Any())
-                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.UNABLE_TO_AUTHENTICATE);
+                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.LOGIN_FAILED);
 
             postData =
                 HTTPClient.POST(
                     "https://id.secondlife.com/openid/openidserver", openID);
 
             if (postData.Result == null)
-                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.UNABLE_TO_AUTHENTICATE);
+                throw new ScriptedAgentStatusException(ScriptedAgentStatusError.LOGIN_FAILED);
         }
 
         public void Dispose()
         {
+            if (HTTPClient != null)
+            {
+                Logout();
+            }
             HTTPClient?.Dispose();
+            HTTPClient = null;
         }
     }
 }

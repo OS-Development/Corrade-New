@@ -12,12 +12,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Reflection;
 using System.Text;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
+using OpenMetaverse.Packets;
+using Corrade.Source.WebForms.SecondLife;
 
 namespace Corrade
 {
@@ -248,7 +251,7 @@ namespace Corrade
                                     break;
 
                                 default:
-                                    groupUUID = corradeCommandParameters.Group.UUID;
+                                    groupUUID = new UUID(corradeCommandParameters.Group.UUID);
                                     break;
                             }
                             if (
@@ -466,6 +469,9 @@ namespace Corrade
                             break;
 
                         case Enumerations.Entity.ESTATE:
+                            if (!Client.Network.CurrentSim.IsEstateManager)
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
+
                             lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.EstateMessage(data);
@@ -473,6 +479,9 @@ namespace Corrade
                             break;
 
                         case Enumerations.Entity.REGION:
+                            if (!Client.Network.CurrentSim.IsEstateManager)
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
+
                             lock (Locks.ClientInstanceEstateLock)
                             {
                                 Client.Estate.SimulatorMessage(data);

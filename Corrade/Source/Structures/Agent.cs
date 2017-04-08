@@ -7,6 +7,7 @@
 using System;
 
 using System.Xml.Serialization;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade.Structures
@@ -24,7 +25,7 @@ namespace Corrade.Structures
         public string LastName { get; set; }
 
         [XmlElement(ElementName = "UUID")]
-        public string UUID { get; set; }
+        public UUID UUID { get; set; }
 
         public bool Equals(Agent other)
         {

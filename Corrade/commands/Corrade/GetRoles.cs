@@ -61,8 +61,11 @@ namespace Corrade
                     }
                     var GroupRoleDataReplyEvent = new ManualResetEvent(false);
                     var csv = new List<string>();
+                    var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRolesDataEventHandler = (sender, args) =>
                     {
+                        if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
+                            return;
                         csv.AddRange(args.Roles.AsParallel().Select(o => new[]
                         {
                             o.Value.Name,
@@ -72,17 +75,14 @@ namespace Corrade
                         }).SelectMany(o => o));
                         GroupRoleDataReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
+                    requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
+                    if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                        Client.Groups.RequestGroupRoles(groupUUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
-                        }
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
                     }
+                    Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

@@ -76,16 +76,15 @@ namespace Corrade
                                 break;
                         }
                         var data = new List<string>();
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            data.AddRange(
+                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                        data.AddRange(
                                 Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                     (int)corradeConfiguration.ServicesTimeout).AsParallel().Select(o => new[]
                                    {
                                         o.Name,
                                         o.UUID.ToString()
                                     }).SelectMany(o => o));
-                        }
+                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                         if (data.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

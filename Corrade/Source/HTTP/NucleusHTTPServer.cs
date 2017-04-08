@@ -35,7 +35,7 @@ using SHA1 = System.Security.Cryptography.SHA1;
 
 namespace Corrade.HTTP
 {
-    internal class NucleusHTTPServer : HTTPServer
+    internal class NucleusHTTPServer : HTTPServer, IDisposable
     {
         public static readonly Action PurgeNucleus = () =>
         {
@@ -62,6 +62,11 @@ namespace Corrade.HTTP
         public bool SuggestNoCaching { get; set; } = false;
 
         public IEnumerable<string> Prefixes { get; private set; }
+
+        public new void Dispose()
+        {
+            Stop();
+        }
 
         private static Dictionary<string, CoreFile> LoadNucleus()
         {
@@ -137,7 +142,7 @@ namespace Corrade.HTTP
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows) &&
+                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
                     !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
                     var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName);
@@ -175,7 +180,7 @@ namespace Corrade.HTTP
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows) &&
+                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
                     !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
                     var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName);

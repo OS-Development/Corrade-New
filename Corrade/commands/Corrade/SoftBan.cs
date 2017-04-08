@@ -273,21 +273,18 @@ namespace Corrade
                                         .Where(o => bannedAgents.ContainsKey(o))
                                         .ForAll(o =>
                                         {
-                                            lock (Locks.ClientInstanceGroupsLock)
+                                            var GroupBanEvent = new ManualResetEvent(false);
+                                            Client.Groups.RequestBanAction(groupUUID, GroupBanAction.Unban,
+                                                new[] { o }, (sender, args) => { GroupBanEvent.Set(); });
+                                            if (
+                                                !GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                                    false))
                                             {
-                                                var GroupBanEvent = new ManualResetEvent(false);
-                                                Client.Groups.RequestBanAction(groupUUID, GroupBanAction.Unban,
-                                                    new[] { o }, (sender, args) => { GroupBanEvent.Set(); });
-                                                if (
-                                                    !GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                                        false))
+                                                lock (LockObject)
                                                 {
-                                                    lock (LockObject)
+                                                    if (!data.Contains(process[o]))
                                                     {
-                                                        if (!data.Contains(process[o]))
-                                                        {
-                                                            data.Add(process[o]);
-                                                        }
+                                                        data.Add(process[o]);
                                                     }
                                                 }
                                             }
@@ -310,25 +307,23 @@ namespace Corrade
                                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate =
                                         (sender, args) =>
                                         {
-                                            if (!groupMembersRequestUUID.Equals(args.RequestID)) return;
+                                            if (!groupMembersRequestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
+                                                return;
 
                                             groupMembers = args.Members;
                                             groupMembersReceivedEvent.Set();
                                         };
-                                    lock (Locks.ClientInstanceGroupsLock)
+                                    Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                                    groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+                                    if (
+                                        !groupMembersReceivedEvent.WaitOne(
+                                            (int)corradeConfiguration.ServicesTimeout, false))
                                     {
-                                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                                        groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                                        if (
-                                            !groupMembersReceivedEvent.WaitOne(
-                                                (int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
-                                        }
                                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
                                     }
+                                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                     var targetGroup = new Group();
                                     if (
                                         !Services.RequestGroup(Client, groupUUID,
@@ -340,28 +335,26 @@ namespace Corrade
                                     // Get roles members.
                                     var groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
                                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
-                                    var groupRolesMembersRequestUUID = UUID.Zero;
+                                    var requestUUID = UUID.Zero;
                                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
                                         (sender, args) =>
                                         {
-                                            if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
+                                            if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
+                                                return;
                                             groupRolesMembers.UnionWith(args.RolesMembers);
                                             GroupRoleMembersReplyEvent.Set();
                                         };
-                                    lock (Locks.ClientInstanceGroupsLock)
+                                    Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                                    requestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
+                                    if (
+                                        !GroupRoleMembersReplyEvent.WaitOne(
+                                            (int)corradeConfiguration.ServicesTimeout, false))
                                     {
-                                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                                        groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                                        if (
-                                            !GroupRoleMembersReplyEvent.WaitOne(
-                                                (int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
-                                        }
                                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                                     }
+                                    Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                     // Retrieve the soft ban list for the group.
                                     ObservableHashSet<SoftBan> groupSoftBans;
                                     lock (GroupSoftBansLock)
@@ -430,25 +423,22 @@ namespace Corrade
                                                         return;
                                                     }
                                                     // Now ban the agent.
-                                                    lock (Locks.ClientInstanceGroupsLock)
+                                                    var GroupBanEvent = new ManualResetEvent(false);
+                                                    Client.Groups.RequestBanAction(groupUUID,
+                                                        GroupBanAction.Ban, new[] { o.Value.ID },
+                                                        (sender, args) => { GroupBanEvent.Set(); });
+                                                    if (
+                                                        !GroupBanEvent.WaitOne(
+                                                            (int)corradeConfiguration.ServicesTimeout, false))
                                                     {
-                                                        var GroupBanEvent = new ManualResetEvent(false);
-                                                        Client.Groups.RequestBanAction(groupUUID,
-                                                            GroupBanAction.Ban, new[] { o.Value.ID },
-                                                            (sender, args) => { GroupBanEvent.Set(); });
-                                                        if (
-                                                            !GroupBanEvent.WaitOne(
-                                                                (int)corradeConfiguration.ServicesTimeout, false))
+                                                        lock (LockObject)
                                                         {
-                                                            lock (LockObject)
+                                                            if (!data.Contains(process[o.Value.ID]))
                                                             {
-                                                                if (!data.Contains(process[o.Value.ID]))
-                                                                {
-                                                                    data.Add(process[o.Value.ID]);
-                                                                }
+                                                                data.Add(process[o.Value.ID]);
                                                             }
-                                                            return;
                                                         }
+                                                        return;
                                                     }
                                                 }
 
@@ -462,18 +452,19 @@ namespace Corrade
                                                 EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                                                     (sender, args) =>
                                                     {
+                                                        if (!args.GroupID.Equals(groupUUID))
+                                                            return;
                                                         succeeded = args.Success;
                                                         GroupEjectEvent.Set();
                                                     };
-                                                lock (Locks.ClientInstanceGroupsLock)
-                                                {
-                                                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                                                    Client.Groups.EjectUser(groupUUID, o.Value.ID);
-                                                    GroupEjectEvent.WaitOne(
-                                                        (int)corradeConfiguration.ServicesTimeout,
-                                                        false);
-                                                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                                }
+                                                Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                                                Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                                Client.Groups.EjectUser(groupUUID, o.Value.ID);
+                                                GroupEjectEvent.WaitOne(
+                                                    (int)corradeConfiguration.ServicesTimeout,
+                                                    false);
+                                                Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                                Locks.ClientInstanceGroupsLock.ExitWriteLock();
                                                 // If the eject was not successful, add them to the output.
                                                 switch (succeeded)
                                                 {
@@ -819,18 +810,15 @@ namespace Corrade
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH);
                                     // ban the avatars
-                                    lock (Locks.ClientInstanceGroupsLock)
+                                    var GroupBanEvent = new ManualResetEvent(false);
+                                    Client.Groups.RequestBanAction(groupUUID,
+                                        GroupBanAction.Ban,
+                                        groupSoftBans.Select(o => o.Agent).ToArray(),
+                                        (sender, args) => { GroupBanEvent.Set(); });
+                                    if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
-                                        var GroupBanEvent = new ManualResetEvent(false);
-                                        Client.Groups.RequestBanAction(groupUUID,
-                                            GroupBanAction.Ban,
-                                            groupSoftBans.Select(o => o.Agent).ToArray(),
-                                            (sender, args) => { GroupBanEvent.Set(); });
-                                        if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);
-                                        }
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);
                                     }
                                     break;
 

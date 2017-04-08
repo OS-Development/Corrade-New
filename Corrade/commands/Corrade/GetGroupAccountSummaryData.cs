@@ -77,23 +77,27 @@ namespace Corrade
                         EventHandler<GroupAccountSummaryReplyEventArgs> RequestGroupAccountSummaryEventHandler =
                             (sender, args) =>
                             {
+                                if (!args.GroupID.Equals(groupUUID) ||
+                                    !args.Summary.CurrentInterval.Equals(interval) ||
+                                    !args.Summary.IntervalDays.Equals(days))
+                                    return;
                                 summary = args.Summary;
                                 RequestGroupAccountSummaryEvent.Set();
                             };
-                        lock (Locks.ClientInstanceGroupsLock)
+                        Locks.ClientInstanceGroupsLock.EnterReadLock();
+                        Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
+                        Client.Groups.RequestGroupAccountSummary(groupUUID, (int)days, (int)interval);
+                        if (
+                            !RequestGroupAccountSummaryEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                false))
                         {
-                            Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                            Client.Groups.RequestGroupAccountSummary(groupUUID, (int)days, (int)interval);
-                            if (
-                                !RequestGroupAccountSummaryEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
-                            {
-                                Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
-                                throw new Command.ScriptException(
-                                    Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY);
-                            }
                             Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
+                            Locks.ClientInstanceGroupsLock.ExitReadLock();
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY);
                         }
+                        Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
+                        Locks.ClientInstanceGroupsLock.ExitReadLock();
                         var data =
                             summary.GetStructuredData(
                                 wasInput(

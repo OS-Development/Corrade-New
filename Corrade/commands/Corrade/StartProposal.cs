@@ -88,16 +88,13 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PROPOSAL_TEXT);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.StartProposal(corradeCommandParameters.Group.UUID, new GroupProposal
                     {
-                        Client.Groups.StartProposal(corradeCommandParameters.Group.UUID, new GroupProposal
-                        {
-                            Duration = (int)duration,
-                            Majority = majority,
-                            Quorum = (int)quorum,
-                            VoteText = text
-                        });
-                    }
+                        Duration = (int)duration,
+                        Majority = majority,
+                        Quorum = (int)quorum,
+                        VoteText = text
+                    });
                 };
         }
     }

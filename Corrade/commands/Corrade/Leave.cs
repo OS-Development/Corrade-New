@@ -63,20 +63,22 @@ namespace Corrade
                     var succeeded = false;
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                     {
+                        if (!args.GroupID.Equals(groupUUID))
+                            return;
                         succeeded = args.Success;
                         GroupLeaveReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
+                    Client.Groups.LeaveGroup(groupUUID);
+                    if (!GroupLeaveReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
-                        Client.Groups.LeaveGroup(groupUUID);
-                        if (!GroupLeaveReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_LEAVING_GROUP);
-                        }
                         Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_LEAVING_GROUP);
                     }
+                    Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                     if (!succeeded)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_LEAVE_GROUP);

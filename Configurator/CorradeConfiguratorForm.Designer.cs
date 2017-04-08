@@ -33,6 +33,9 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Tabs = new System.Windows.Forms.TabControl();
             this.ClientTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox96 = new System.Windows.Forms.GroupBox();
+            this.pictureBox109 = new System.Windows.Forms.PictureBox();
+            this.EnableMultipleSimulators = new System.Windows.Forms.CheckBox();
             this.groupBox63 = new System.Windows.Forms.GroupBox();
             this.ClientLanguage = new System.Windows.Forms.ComboBox();
             this.pictureBox50 = new System.Windows.Forms.PictureBox();
@@ -242,6 +245,10 @@
             this.pictureBox102 = new System.Windows.Forms.PictureBox();
             this.HordePeerSharedSecret = new System.Windows.Forms.TextBox();
             this.LogsTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox95 = new System.Windows.Forms.GroupBox();
+            this.pictureBox66 = new System.Windows.Forms.PictureBox();
+            this.OpenMetaverseLogFile = new System.Windows.Forms.TextBox();
+            this.OpenMetaverseLogFileEnabled = new System.Windows.Forms.CheckBox();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
             this.pictureBox94 = new System.Windows.Forms.PictureBox();
             this.ConferenceMessageLogFileEnabled = new System.Windows.Forms.CheckBox();
@@ -481,16 +488,11 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.groupBox95 = new System.Windows.Forms.GroupBox();
-            this.pictureBox66 = new System.Windows.Forms.PictureBox();
-            this.OpenMetaverseLogFile = new System.Windows.Forms.TextBox();
-            this.OpenMetaverseLogFileEnabled = new System.Windows.Forms.CheckBox();
-            this.groupBox96 = new System.Windows.Forms.GroupBox();
-            this.pictureBox109 = new System.Windows.Forms.PictureBox();
-            this.EnableMultipleSimulators = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
+            this.groupBox96.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).BeginInit();
             this.groupBox63.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).BeginInit();
@@ -628,6 +630,8 @@
             this.groupBox75.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox102)).BeginInit();
             this.LogsTabPage.SuspendLayout();
+            this.groupBox95.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
             this.groupBox6.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox94)).BeginInit();
             this.groupBox14.SuspendLayout();
@@ -748,10 +752,6 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.groupBox95.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
-            this.groupBox96.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -810,6 +810,41 @@
             this.ClientTabPage.TabIndex = 0;
             this.ClientTabPage.Text = "Client";
             this.ClientTabPage.UseVisualStyleBackColor = true;
+            // 
+            // groupBox96
+            // 
+            this.groupBox96.Controls.Add(this.pictureBox109);
+            this.groupBox96.Controls.Add(this.EnableMultipleSimulators);
+            this.groupBox96.Location = new System.Drawing.Point(12, 188);
+            this.groupBox96.Name = "groupBox96";
+            this.groupBox96.Size = new System.Drawing.Size(126, 58);
+            this.groupBox96.TabIndex = 13;
+            this.groupBox96.TabStop = false;
+            this.groupBox96.Text = "Multiple Simulators";
+            // 
+            // pictureBox109
+            // 
+            this.pictureBox109.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox109.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox109.Image")));
+            this.pictureBox109.Location = new System.Drawing.Point(95, 22);
+            this.pictureBox109.Name = "pictureBox109";
+            this.pictureBox109.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox109.TabIndex = 11;
+            this.pictureBox109.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox109, resources.GetString("pictureBox109.ToolTip"));
+            // 
+            // EnableMultipleSimulators
+            // 
+            this.EnableMultipleSimulators.AutoSize = true;
+            this.EnableMultipleSimulators.Checked = true;
+            this.EnableMultipleSimulators.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.EnableMultipleSimulators.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.EnableMultipleSimulators.Location = new System.Drawing.Point(15, 24);
+            this.EnableMultipleSimulators.Name = "EnableMultipleSimulators";
+            this.EnableMultipleSimulators.Size = new System.Drawing.Size(68, 17);
+            this.EnableMultipleSimulators.TabIndex = 0;
+            this.EnableMultipleSimulators.Text = "Enabled";
+            this.EnableMultipleSimulators.UseVisualStyleBackColor = true;
             // 
             // groupBox63
             // 
@@ -3252,6 +3287,52 @@
             this.LogsTabPage.TabIndex = 1;
             this.LogsTabPage.Text = "Logs";
             this.LogsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // groupBox95
+            // 
+            this.groupBox95.Controls.Add(this.pictureBox66);
+            this.groupBox95.Controls.Add(this.OpenMetaverseLogFile);
+            this.groupBox95.Controls.Add(this.OpenMetaverseLogFileEnabled);
+            this.groupBox95.Location = new System.Drawing.Point(7, 64);
+            this.groupBox95.Name = "groupBox95";
+            this.groupBox95.Size = new System.Drawing.Size(659, 52);
+            this.groupBox95.TabIndex = 5;
+            this.groupBox95.TabStop = false;
+            this.groupBox95.Text = "OpenMetaverse Log File";
+            // 
+            // pictureBox66
+            // 
+            this.pictureBox66.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox66.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox66.Image")));
+            this.pictureBox66.Location = new System.Drawing.Point(633, 21);
+            this.pictureBox66.Name = "pictureBox66";
+            this.pictureBox66.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox66.TabIndex = 4;
+            this.pictureBox66.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox66, "The path to the log file written by the OpenMetaverse\r\nlibrary that Corrade uses " +
+        "for the interraction with the\r\ngrid that Corrade connects to.\r\n");
+            // 
+            // OpenMetaverseLogFile
+            // 
+            this.OpenMetaverseLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OpenMetaverseLogFile.Location = new System.Drawing.Point(6, 19);
+            this.OpenMetaverseLogFile.Name = "OpenMetaverseLogFile";
+            this.OpenMetaverseLogFile.Size = new System.Drawing.Size(553, 20);
+            this.OpenMetaverseLogFile.TabIndex = 1;
+            // 
+            // OpenMetaverseLogFileEnabled
+            // 
+            this.OpenMetaverseLogFileEnabled.AutoSize = true;
+            this.OpenMetaverseLogFileEnabled.Checked = true;
+            this.OpenMetaverseLogFileEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.OpenMetaverseLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OpenMetaverseLogFileEnabled.Location = new System.Drawing.Point(565, 22);
+            this.OpenMetaverseLogFileEnabled.Name = "OpenMetaverseLogFileEnabled";
+            this.OpenMetaverseLogFileEnabled.Size = new System.Drawing.Size(62, 17);
+            this.OpenMetaverseLogFileEnabled.TabIndex = 0;
+            this.OpenMetaverseLogFileEnabled.Text = "Enable";
+            this.toolTip1.SetToolTip(this.OpenMetaverseLogFileEnabled, "Whether to enable the Corrade log file.");
+            this.OpenMetaverseLogFileEnabled.UseVisualStyleBackColor = true;
             // 
             // groupBox6
             // 
@@ -5873,87 +5954,6 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // groupBox95
-            // 
-            this.groupBox95.Controls.Add(this.pictureBox66);
-            this.groupBox95.Controls.Add(this.OpenMetaverseLogFile);
-            this.groupBox95.Controls.Add(this.OpenMetaverseLogFileEnabled);
-            this.groupBox95.Location = new System.Drawing.Point(7, 64);
-            this.groupBox95.Name = "groupBox95";
-            this.groupBox95.Size = new System.Drawing.Size(659, 52);
-            this.groupBox95.TabIndex = 5;
-            this.groupBox95.TabStop = false;
-            this.groupBox95.Text = "OpenMetaverse Log File";
-            // 
-            // pictureBox66
-            // 
-            this.pictureBox66.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox66.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox66.Image")));
-            this.pictureBox66.Location = new System.Drawing.Point(633, 21);
-            this.pictureBox66.Name = "pictureBox66";
-            this.pictureBox66.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox66.TabIndex = 4;
-            this.pictureBox66.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox66, "The path to the log file written by the OpenMetaverse\r\nlibrary that Corrade uses " +
-        "for the interraction with the\r\ngrid that Corrade connects to.\r\n");
-            // 
-            // OpenMetaverseLogFile
-            // 
-            this.OpenMetaverseLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.OpenMetaverseLogFile.Location = new System.Drawing.Point(6, 19);
-            this.OpenMetaverseLogFile.Name = "OpenMetaverseLogFile";
-            this.OpenMetaverseLogFile.Size = new System.Drawing.Size(553, 20);
-            this.OpenMetaverseLogFile.TabIndex = 1;
-            // 
-            // OpenMetaverseLogFileEnabled
-            // 
-            this.OpenMetaverseLogFileEnabled.AutoSize = true;
-            this.OpenMetaverseLogFileEnabled.Checked = true;
-            this.OpenMetaverseLogFileEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.OpenMetaverseLogFileEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.OpenMetaverseLogFileEnabled.Location = new System.Drawing.Point(565, 22);
-            this.OpenMetaverseLogFileEnabled.Name = "OpenMetaverseLogFileEnabled";
-            this.OpenMetaverseLogFileEnabled.Size = new System.Drawing.Size(62, 17);
-            this.OpenMetaverseLogFileEnabled.TabIndex = 0;
-            this.OpenMetaverseLogFileEnabled.Text = "Enable";
-            this.toolTip1.SetToolTip(this.OpenMetaverseLogFileEnabled, "Whether to enable the Corrade log file.");
-            this.OpenMetaverseLogFileEnabled.UseVisualStyleBackColor = true;
-            // 
-            // groupBox96
-            // 
-            this.groupBox96.Controls.Add(this.pictureBox109);
-            this.groupBox96.Controls.Add(this.EnableMultipleSimulators);
-            this.groupBox96.Location = new System.Drawing.Point(12, 188);
-            this.groupBox96.Name = "groupBox96";
-            this.groupBox96.Size = new System.Drawing.Size(126, 58);
-            this.groupBox96.TabIndex = 13;
-            this.groupBox96.TabStop = false;
-            this.groupBox96.Text = "Multiple Simulators";
-            // 
-            // pictureBox109
-            // 
-            this.pictureBox109.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox109.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox109.Image")));
-            this.pictureBox109.Location = new System.Drawing.Point(95, 22);
-            this.pictureBox109.Name = "pictureBox109";
-            this.pictureBox109.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox109.TabIndex = 11;
-            this.pictureBox109.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox109, resources.GetString("pictureBox109.ToolTip"));
-            // 
-            // EnableMultipleSimulators
-            // 
-            this.EnableMultipleSimulators.AutoSize = true;
-            this.EnableMultipleSimulators.Checked = true;
-            this.EnableMultipleSimulators.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.EnableMultipleSimulators.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.EnableMultipleSimulators.Location = new System.Drawing.Point(15, 24);
-            this.EnableMultipleSimulators.Name = "EnableMultipleSimulators";
-            this.EnableMultipleSimulators.Size = new System.Drawing.Size(68, 17);
-            this.EnableMultipleSimulators.TabIndex = 0;
-            this.EnableMultipleSimulators.Text = "Enabled";
-            this.EnableMultipleSimulators.UseVisualStyleBackColor = true;
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -5980,6 +5980,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.Tabs.ResumeLayout(false);
             this.ClientTabPage.ResumeLayout(false);
+            this.groupBox96.ResumeLayout(false);
+            this.groupBox96.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).EndInit();
             this.groupBox63.ResumeLayout(false);
             this.groupBox63.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
@@ -6173,6 +6176,9 @@
             this.groupBox75.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox102)).EndInit();
             this.LogsTabPage.ResumeLayout(false);
+            this.groupBox95.ResumeLayout(false);
+            this.groupBox95.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
             this.groupBox6.ResumeLayout(false);
             this.groupBox6.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox94)).EndInit();
@@ -6336,12 +6342,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.groupBox95.ResumeLayout(false);
-            this.groupBox95.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
-            this.groupBox96.ResumeLayout(false);
-            this.groupBox96.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

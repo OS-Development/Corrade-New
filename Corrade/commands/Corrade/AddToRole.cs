@@ -103,10 +103,7 @@ namespace Corrade
                         throw new Command.ScriptException(
                             Enumerations.ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.AddToRole(groupUUID, roleUUID, agentUUID);
-                    }
+                    Client.Groups.AddToRole(groupUUID, roleUUID, agentUUID);
                 };
         }
     }

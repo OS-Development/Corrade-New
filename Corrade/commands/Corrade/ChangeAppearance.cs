@@ -45,13 +45,12 @@ namespace Corrade
                     switch (UUID.TryParse(folder, out folderUUID))
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                if (Client.Inventory.Store.Contains(folderUUID))
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(folderUUID))
                                 {
                                     inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
                                 }
-                            }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
                         default:
@@ -68,10 +67,9 @@ namespace Corrade
 
                     // Get folder contents.
                     var contents = new List<InventoryBase>();
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        contents.AddRange(Client.Inventory.Store.GetContents(inventoryFolder));
-                    }
+                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                    contents.AddRange(Client.Inventory.Store.GetContents(inventoryFolder));
+                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                     var equipItems = new List<InventoryItem>(contents
                         .AsParallel()
                         .Where(o => o is InventoryItem)
@@ -177,11 +175,10 @@ namespace Corrade
                                 }
                             });
 
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        // Now remove the links.
-                        Client.Inventory.Remove(removeItems, null);
-                    }
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    // Now remove the links.
+                    Client.Inventory.Remove(removeItems, null);
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                     // Add links to new items.
                     foreach (var inventoryItem in equipItems)
@@ -197,10 +194,9 @@ namespace Corrade
                     }
 
                     // Update inventory.
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        Client.Inventory.Store.GetNodeFor(CurrentOutfitFolder.UUID).NeedsUpdate = true;
-                    }
+                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                    Client.Inventory.Store.GetNodeFor(CurrentOutfitFolder.UUID).NeedsUpdate = true;
+                    Locks.ClientInstanceInventoryLock.ExitReadLock();
 
                     attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)

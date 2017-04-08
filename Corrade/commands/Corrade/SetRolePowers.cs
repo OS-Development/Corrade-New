@@ -81,22 +81,22 @@ namespace Corrade
                     }
                     var GroupRoleDataReplyEvent = new ManualResetEvent(false);
                     var groupRole = new GroupRole();
+                    var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRolesDataEventHandler = (sender, args) =>
                     {
+                        if (!args.RequestID.Equals(requestUUID) || !args.GroupID.Equals(groupUUID))
+                            return;
                         args.Roles.TryGetValue(roleUUID, out groupRole);
                         GroupRoleDataReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
+                    requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
+                    if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                        Client.Groups.RequestGroupRoles(groupUUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
-                        }
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
                     }
+                    Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     if (groupRole.Equals(default(GroupRole)))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.ROLE_NOT_FOUND);
@@ -119,10 +119,7 @@ namespace Corrade
                                             BitTwiddling.SetMaskFlag(ref groupRole.Powers,
                                                 (GroupPowers)q.GetValue(null));
                                         }));
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.UpdateRole(groupRole);
-                    }
+                    Client.Groups.UpdateRole(groupRole);
                 };
         }
     }

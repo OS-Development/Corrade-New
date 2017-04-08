@@ -42,13 +42,12 @@ namespace Corrade
                                 switch (UUID.TryParse(item, out itemUUID))
                                 {
                                     case true:
-                                        lock (Locks.ClientInstanceInventoryLock)
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(itemUUID))
                                         {
-                                            if (Client.Inventory.Store.Contains(itemUUID))
-                                            {
-                                                inventoryBase = Client.Inventory.Store[itemUUID];
-                                            }
+                                            inventoryBase = Client.Inventory.Store[itemUUID];
                                         }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 
                                     default:
@@ -82,10 +81,9 @@ namespace Corrade
                                     inventoryitem.wasCSVToStructure(
                                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message)));
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.RequestUpdateItem(inventoryitem);
-                                }
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RequestUpdateItem(inventoryitem);
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             });
                 };
         }

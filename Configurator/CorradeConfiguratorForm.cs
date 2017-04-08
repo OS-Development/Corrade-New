@@ -66,18 +66,14 @@ namespace Configurator
 
             // language
             mainForm.ClientLanguageAdvertise.Checked = corradeConfiguration.AdvertiseClientLanguage;
-            var configuredLanguage = mainForm.ClientLanguage.Items.OfType<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, corradeConfiguration.ClientLanguage));
-            switch (mainForm.ClientLanguage.Items.IndexOf(configuredLanguage))
+            switch (string.IsNullOrEmpty(corradeConfiguration.ClientLanguage))
             {
-                case -1:
-                    var englishLanguage = mainForm.ClientLanguage.Items.OfType<ListViewItem>().FirstOrDefault(o => string.Equals(o.Text, @"en"));
-                    mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(englishLanguage);
-                    mainForm.ClientLanguage.SelectedItem = englishLanguage;
+                case true:
+                    mainForm.ClientLanguage.Text = @"en";
                     break;
 
                 default:
-                    mainForm.ClientLanguage.SelectedItem = configuredLanguage;
-                    mainForm.ClientLanguage.SelectedIndex = mainForm.ClientLanguage.Items.IndexOf(configuredLanguage);
+                    mainForm.ClientLanguage.Text = corradeConfiguration.ClientLanguage;
                     break;
             }
 
@@ -90,7 +86,7 @@ namespace Configurator
                                              corradeConfiguration.ExitCodeAbnormal > 100
                 ? -2
                 : corradeConfiguration.ExitCodeAbnormal;
-            mainForm.ClientIdentificationTag.Text = corradeConfiguration.ClientIdentificationTag;
+            mainForm.ClientIdentificationTag.Text = corradeConfiguration.ClientIdentificationTag.ToString();
 
             // logs
             mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
@@ -459,7 +455,7 @@ namespace Configurator
                     break;
 
                 default:
-                    corradeConfiguration.ClientLanguage = ((CultureInfo)((ListViewItem)mainForm.ClientLanguage.SelectedItem).Tag).TwoLetterISOLanguageName;
+                    corradeConfiguration.ClientLanguage = mainForm.ClientLanguage.Text;
                     break;
             }
 
@@ -1031,7 +1027,7 @@ namespace Configurator
                var group = (Configuration.Group)listViewItem.Tag;
                GroupName.Text = group.Name;
                GroupPassword.Text = group.Password;
-               GroupUUID.Text = group.UUID;
+               GroupUUID.Text = group.UUID.ToString();
                GroupWorkers.Text = group.Workers.ToString();
                GroupSchedules.Text = group.Schedules.ToString();
                GroupDatabaseFile.Text = group.DatabaseFile;
@@ -1062,11 +1058,11 @@ namespace Configurator
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
                                (string)GroupNotifications.Items[i]))
-                                       /*!(group.NotificationMask &
-                                         (ulong)
-                                             Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                 (string) GroupNotifications.Items[i]))
-                                           .Equals(0)*/)
+                                                   /*!(group.NotificationMask &
+                                                     (ulong)
+                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                             (string) GroupNotifications.Items[i]))
+                                                       .Equals(0)*/)
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);
@@ -1723,9 +1719,8 @@ namespace Configurator
 
                foreach (var language in CultureInfo.GetCultures(CultureTypes.AllCultures).Where(o => !(o.CultureTypes & CultureTypes.UserCustomCulture).Equals(CultureTypes.UserCustomCulture)))
                {
-                   mainForm.ClientLanguage.Items.Add(new ListViewItem { Text = language.TwoLetterISOLanguageName, Tag = language });
+                   mainForm.ClientLanguage.Items.Add(language.TwoLetterISOLanguageName);
                }
-               mainForm.ClientLanguage.DisplayMember = "Text";
            }));
 
             switch (File.Exists("Corrade.ini"))

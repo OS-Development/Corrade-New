@@ -91,10 +91,9 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                     {
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            folderUUID = Client.Inventory.Store.RootFolder.UUID;
-                        }
+                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                        folderUUID = Client.Inventory.Store.RootFolder.UUID;
+                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                     }
                     Simulator simulator;
                     lock (Locks.ClientInstanceNetworkLock)

@@ -43,13 +43,12 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                if (Client.Inventory.Store.Contains(itemUUID))
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(itemUUID))
                                 {
                                     inventoryBase = Client.Inventory.Store[itemUUID];
                                 }
-                            }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
                         default:

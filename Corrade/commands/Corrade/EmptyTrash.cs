@@ -24,10 +24,9 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        Client.Inventory.EmptyTrash();
-                    }
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.EmptyTrash();
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                 };
         }
     }

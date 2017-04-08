@@ -63,23 +63,26 @@ namespace Corrade
                                 corradeCommandParameters.Message)));
                     var succeeded = false;
                     var GroupCreatedReplyEvent = new ManualResetEvent(false);
+                    var groupUUID = UUID.Zero;
                     EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>
                     {
+                        groupUUID = args.GroupID;
                         succeeded = args.Success;
                         GroupCreatedReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
+                    Client.Groups.RequestCreateGroup(targetGroup);
+                    if (!GroupCreatedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
-                        Client.Groups.RequestCreateGroup(targetGroup);
-                        if (!GroupCreatedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_GROUP);
-                        }
                         Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_GROUP);
                     }
-                    if (!succeeded)
+                    Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                    string groupName = string.Empty;
+                    if (!succeeded || !Resolvers.GroupUUIDToName(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref groupName) || !groupName.Equals(target))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_CREATE_GROUP);
                     }

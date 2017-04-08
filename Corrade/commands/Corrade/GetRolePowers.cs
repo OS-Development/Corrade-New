@@ -73,8 +73,12 @@ namespace Corrade
                     }
                     var data = new HashSet<string>();
                     var GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                    var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataEventHandler = (sender, args) =>
                     {
+                        if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
+                            return;
+
                         var queryRole =
                             args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
                         data.UnionWith(typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -83,17 +87,14 @@ namespace Corrade
                             .Select(o => o.Name));
                         GroupRoleDataReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
+                    requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
+                    if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
-                        Client.Groups.RequestGroupRoles(groupUUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_ROLE_POWERS);
-                        }
                         Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_ROLE_POWERS);
                     }
+                    Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

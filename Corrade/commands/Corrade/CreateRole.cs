@@ -70,22 +70,22 @@ namespace Corrade
                     }
                     var GroupRoleDataReplyEvent = new ManualResetEvent(false);
                     var roleCount = 0;
+                    var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRolesDataEventHandler = (sender, args) =>
                     {
+                        if (!requestUUID.Equals(args.GroupID) || !args.GroupID.Equals(groupUUID))
+                            return;
                         roleCount = args.Roles.Count;
                         GroupRoleDataReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
+                    requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
+                    if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                        Client.Groups.RequestGroupRoles(groupUUID);
-                        if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
-                        }
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
                     }
+                    Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         roleCount >= wasOpenMetaverse.Constants.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
                     {
@@ -129,22 +129,19 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Client.Groups.CreateRole(groupUUID, new GroupRole
                     {
-                        Client.Groups.CreateRole(groupUUID, new GroupRole
-                        {
-                            Name = role,
-                            Description =
+                        Name = role,
+                        Description =
                                 wasInput(
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
-                            GroupID = groupUUID,
-                            ID = UUID.Random(),
-                            Powers = powers,
-                            Title = title
-                        });
-                    }
+                        GroupID = groupUUID,
+                        ID = UUID.Random(),
+                        Powers = powers,
+                        Title = title
+                    });
                     var roleUUID = UUID.Zero;
                     if (
                         !Resolvers.RoleNameToUUID(Client, role, groupUUID,

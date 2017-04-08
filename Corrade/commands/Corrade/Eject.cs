@@ -78,15 +78,16 @@ namespace Corrade
                     }
                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
-                    var groupRolesMembersRequestUUID = UUID.Zero;
+                    var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
-                        if (!groupRolesMembersRequestUUID.Equals(args.RequestID)) return;
+                        if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                            return;
                         rolesMembers = args.RolesMembers;
                         GroupRoleMembersReplyEvent.Set();
                     };
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                    groupRolesMembersRequestUUID =
+                    requestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
                     if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
@@ -106,42 +107,41 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.EJECT_NEEDS_DEMOTE);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        switch (
+                    switch (
                             !rolesMembers.AsParallel()
                                 .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
-                        {
-                            case true:
-                                rolesMembers.AsParallel().Where(
-                                    o => o.Value.Equals(agentUUID))
-                                    .ForAll(
-                                        o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
-                                            agentUUID));
-                                break;
+                    {
+                        case true:
+                            rolesMembers.AsParallel().Where(
+                                o => o.Value.Equals(agentUUID))
+                                .ForAll(
+                                    o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
+                                        agentUUID));
+                            break;
 
-                            default:
-                                throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_EJECT_OWNERS);
-                        }
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_EJECT_OWNERS);
                     }
                     var GroupEjectEvent = new ManualResetEvent(false);
                     var succeeded = false;
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                     {
+                        if (!args.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                            return;
                         succeeded = args.Success;
                         GroupEjectEvent.Set();
                     };
-                    lock (Locks.ClientInstanceGroupsLock)
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                    Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);
+                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                        Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);
-                        if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT);
-                        }
                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT);
                     }
+                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                     if (!succeeded)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_EJECT_AGENT);

@@ -197,10 +197,7 @@ namespace Corrade
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.Invite(groupUUID, roleUUIDs.ToList(), agentUUID);
-                    }
+                    Client.Groups.Invite(groupUUID, roleUUIDs.ToList(), agentUUID);
                 };
         }
     }

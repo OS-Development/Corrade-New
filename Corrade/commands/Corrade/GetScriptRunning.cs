@@ -115,17 +115,17 @@ namespace Corrade
                         running = args.IsRunning;
                         ScriptRunningReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceInventoryLock)
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
+                    Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
+                    if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
-                        Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
-                        if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_SCRIPT_STATE);
-                        }
                         Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_SCRIPT_STATE);
                     }
+                    Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), running.ToString());
                 };
         }

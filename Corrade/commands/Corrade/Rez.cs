@@ -43,13 +43,12 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(itemUUID))
                             {
-                                if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                }
+                                inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
                             }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
                         default:
@@ -140,11 +139,10 @@ namespace Corrade
                             }
                         }
                     }
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        Client.Inventory.RequestRezFromInventory(simulator, rotation, position, inventoryItem,
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.RequestRezFromInventory(simulator, rotation, position, inventoryItem,
                             corradeCommandParameters.Group.UUID);
-                    }
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                 };
         }
     }

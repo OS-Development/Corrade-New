@@ -41,7 +41,7 @@ namespace Corrade.HTTP
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows) &&
+                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
                     !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
                     var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName);
@@ -61,7 +61,7 @@ namespace Corrade.HTTP
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows) &&
+                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
                     !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
                     var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName);

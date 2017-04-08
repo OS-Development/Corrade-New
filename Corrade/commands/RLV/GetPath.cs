@@ -59,13 +59,12 @@ namespace Corrade
                                 switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                 {
                                     case true:
-                                        lock (Locks.ClientInstanceInventoryLock)
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
                                         {
-                                            if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
-                                            {
-                                                inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
-                                            }
+                                            inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
                                         }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 
                                     default:
@@ -110,13 +109,12 @@ namespace Corrade
                             switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                             {
                                 case true:
-                                    lock (Locks.ClientInstanceInventoryLock)
+                                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                    if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
                                     {
-                                        if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
-                                        {
-                                            inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
-                                        }
+                                        inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
                                     }
+                                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     break;
                             }
                             break;

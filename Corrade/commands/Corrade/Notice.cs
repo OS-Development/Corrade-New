@@ -109,13 +109,12 @@ namespace Corrade
                                 switch (UUID.TryParse(item, out itemUUID))
                                 {
                                     case true:
-                                        lock (Locks.ClientInstanceInventoryLock)
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(itemUUID))
                                         {
-                                            if (Client.Inventory.Store.Contains(itemUUID))
-                                            {
-                                                inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                            }
+                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
                                         }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 
                                     default:
@@ -148,10 +147,7 @@ namespace Corrade
                                 }
                                 notice.AttachmentID = inventoryItem.UUID;
                             }
-                            lock (Locks.ClientInstanceGroupsLock)
-                            {
-                                Client.Groups.SendGroupNotice(groupUUID, notice);
-                            }
+                            Client.Groups.SendGroupNotice(groupUUID, notice);
                             break;
 
                         case Enumerations.Action.LIST:
@@ -160,21 +156,23 @@ namespace Corrade
                             EventHandler<GroupNoticesListReplyEventArgs> GroupNoticesListEventHandler =
                                 (sender, args) =>
                                 {
+                                    if (!args.GroupID.Equals(groupUUID))
+                                        return;
                                     groupNotices.AddRange(args.Notices.OrderBy(o => o.Timestamp));
                                     GroupNoticesReplyEvent.Set();
                                 };
-                            lock (Locks.ClientInstanceGroupsLock)
+                            Locks.ClientInstanceGroupsLock.EnterReadLock();
+                            Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
+                            Client.Groups.RequestGroupNoticesList(groupUUID);
+                            if (!GroupNoticesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
-                                Client.Groups.RequestGroupNoticesList(groupUUID);
-                                if (!GroupNoticesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_GROUP_NOTICES);
-                                }
                                 Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
+                                Locks.ClientInstanceGroupsLock.ExitReadLock();
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_GROUP_NOTICES);
                             }
+                            Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
+                            Locks.ClientInstanceGroupsLock.ExitReadLock();
                             var csv = new List<string>();
                             var LockObject = new object();
                             groupNotices.AsParallel().ForAll(o =>
@@ -243,20 +241,17 @@ namespace Corrade
                                             instantMessage = args.IM;
                                             InstantMessageEvent.Set();
                                         };
-                                    lock (Locks.ClientInstanceGroupsLock)
+                                    Client.Self.IM += InstantMessageEventHandler;
+                                    Client.Groups.RequestGroupNotice(groupNotice);
+                                    if (
+                                        !InstantMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
-                                        Client.Self.IM += InstantMessageEventHandler;
-                                        Client.Groups.RequestGroupNotice(groupNotice);
-                                        if (
-                                            !InstantMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                                false))
-                                        {
-                                            Client.Self.IM -= InstantMessageEventHandler;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_RETRIEVING_NOTICE);
-                                        }
                                         Client.Self.IM -= InstantMessageEventHandler;
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_RETRIEVING_NOTICE);
                                     }
+                                    Client.Self.IM -= InstantMessageEventHandler;
                                     if (instantMessage.Equals(default(InstantMessage)))
                                     {
                                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NOTICE_FOUND);

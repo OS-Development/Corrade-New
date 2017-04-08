@@ -127,13 +127,10 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     targetGroup = targetGroup.wasCSVToStructure(data);
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.SetGroupAcceptNotices(groupUUID,
+                    Client.Groups.SetGroupAcceptNotices(groupUUID,
                             targetGroup.AcceptNotices,
                             targetGroup.ListInProfile);
-                        Client.Groups.UpdateGroup(groupUUID, targetGroup);
-                    }
+                    Client.Groups.UpdateGroup(groupUUID, targetGroup);
                 };
         }
     }

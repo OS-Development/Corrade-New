@@ -41,13 +41,12 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(itemUUID))
                             {
-                                if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    inventoryBase = Client.Inventory.Store[itemUUID];
-                                }
+                                inventoryBase = Client.Inventory.Store[itemUUID];
                             }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
                         default:
@@ -70,17 +69,15 @@ namespace Corrade
                     switch (inventoryBase is InventoryFolder)
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.MoveFolder(inventoryBase.UUID, inventoryBase.ParentUUID, name);
-                            }
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.MoveFolder(inventoryBase.UUID, inventoryBase.ParentUUID, name);
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
 
                         default:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.MoveItem(inventoryBase.UUID, inventoryBase.ParentUUID, name);
-                            }
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.MoveItem(inventoryBase.UUID, inventoryBase.ParentUUID, name);
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
                     }
                 };

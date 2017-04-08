@@ -46,6 +46,37 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [Reflection.NameAttribute("mono")]
+            MONO,
+
+            [CommandInputSyntax(
+                "<command=scriptreset>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask(
+                (ulong)Configuration.Permissions.Inventory
+                )]
+            [CorradeCommand("scriptreset")]
+            [Reflection.NameAttribute("scriptreset")]
+            SCRIPTRESET,
+
+            [CommandInputSyntax(
+                "<command=compilescript>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<STRING>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask(
+                (ulong)Configuration.Permissions.Inventory
+                )]
+            [CorradeCommand("compilescript")]
+            [Reflection.NameAttribute("compilescript")]
+            COMPILESCRIPT,
+
+            [CommandInputSyntax(
+                "<command=getestateinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&<data=<EstateUpdateInfo[,EstateUpdateInfo...]>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("getestateinfodata")]
+            [Reflection.NameAttribute("getestateinfodata")]
+            GETESTATEINFODATA,
+
             [CommandInputSyntax("<command=verify>&<group=<UUID|STRING>>&<password=<STRING>>&<server=<STRING>>&[callback=<STRING>]")]
             [CommandPermissionMask((ulong)Configuration.Permissions.None)]
             [CorradeCommand("verify")]

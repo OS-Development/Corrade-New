@@ -58,13 +58,12 @@ namespace Corrade
                         switch (UUID.TryParse(notecard, out notecardUUID))
                         {
                             case true:
-                                lock (Locks.ClientInstanceInventoryLock)
+                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                if (Client.Inventory.Store.Contains(notecardUUID))
                                 {
-                                    if (Client.Inventory.Store.Contains(notecardUUID))
-                                    {
-                                        inventoryNotecard = Client.Inventory.Store[notecardUUID] as InventoryNotecard;
-                                    }
+                                    inventoryNotecard = Client.Inventory.Store[notecardUUID] as InventoryNotecard;
                                 }
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
                             default:
@@ -92,13 +91,12 @@ namespace Corrade
                         switch (UUID.TryParse(folder, out folderUUID))
                         {
                             case true:
-                                lock (Locks.ClientInstanceInventoryLock)
+                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                if (Client.Inventory.Store.Contains(folderUUID))
                                 {
-                                    if (Client.Inventory.Store.Contains(folderUUID))
-                                    {
-                                        inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                    }
+                                    inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
                                 }
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
                             default:
@@ -114,9 +112,8 @@ namespace Corrade
                         }
 
                         var itemUUID = UUID.Zero;
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            Client.Inventory.RequestCopyItemFromNotecard(UUID.Zero, notecardUUID, folderUUID, assetUUID,
+                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                        Client.Inventory.RequestCopyItemFromNotecard(UUID.Zero, notecardUUID, folderUUID, assetUUID,
                                 o =>
                                 {
                                     // If a name was passed, then rename the item.
@@ -127,12 +124,12 @@ namespace Corrade
                                     }
                                     itemUUID = o.UUID;
                                 });
-                        }
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                         if (!itemUUID.Equals(UUID.Zero))
                         {
                             // Return the item and asset UUID.
-                            result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)), itemUUID);
+                            result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)), itemUUID.ToString());
                         }
                     };
         }

@@ -58,13 +58,12 @@ namespace Corrade
                         if (instantMessageEventArgs.IM.BinaryBucket.Length.Equals(17))
                         {
                             var itemUUID = new UUID(instantMessageEventArgs.IM.BinaryBucket, 1);
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(itemUUID))
                             {
-                                if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    objects.Add(Client.Inventory.Store[itemUUID]);
-                                }
+                                objects.Add(Client.Inventory.Store[itemUUID]);
                             }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                         }
 
                         var LockObject = new object();
@@ -114,13 +113,12 @@ namespace Corrade
                         if (inventoryObjectOfferedEventArgs.Offer.BinaryBucket.Length.Equals(17))
                         {
                             var itemUUID = new UUID(inventoryObjectOfferedEventArgs.Offer.BinaryBucket, 1);
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(itemUUID))
                             {
-                                if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    objects.Add(Client.Inventory.Store[itemUUID]);
-                                }
+                                objects.Add(Client.Inventory.Store[itemUUID]);
                             }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                         }
 
                         var LockObject = new object();

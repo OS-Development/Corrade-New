@@ -54,14 +54,13 @@ namespace Corrade
                                     switch (UUID.TryParse(folder, out folderUUID))
                                     {
                                         case true:
-                                            lock (Locks.ClientInstanceInventoryLock)
-                                            {
-                                                if (Client.Inventory.Store.Contains(folderUUID))
+                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                            if (Client.Inventory.Store.Contains(folderUUID))
                                                 {
                                                     inventoryFolder =
                                                         Client.Inventory.Store[folderUUID] as InventoryFolder;
                                                 }
-                                            }
+                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
                                             break;
 
                                         default:
@@ -131,9 +130,8 @@ namespace Corrade
                                 switch (inventoryOffer.Args.Offer.Dialog)
                                 {
                                     case InstantMessageDialog.InventoryOffered:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Self.InstantMessage(Client.Self.Name,
+                                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                        Client.Self.InstantMessage(Client.Self.Name,
                                                 inventoryOffer.Args.Offer.FromAgentID,
                                                 string.Empty, inventoryOffer.Args.Offer.IMSessionID,
                                                 InstantMessageDialog.InventoryAccepted,
@@ -142,13 +140,12 @@ namespace Corrade
                                                 Client.Network.CurrentSim.RegionID,
                                                 inventoryOffer.Args.FolderID.GetBytes()
                                                 );
-                                        }
+                                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                         break;
 
                                     case InstantMessageDialog.TaskInventoryOffered:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Self.InstantMessage(Client.Self.Name,
+                                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                        Client.Self.InstantMessage(Client.Self.Name,
                                                 inventoryOffer.Args.Offer.FromAgentID,
                                                 string.Empty, inventoryOffer.Args.Offer.IMSessionID,
                                                 InstantMessageDialog.TaskInventoryAccepted,
@@ -157,7 +154,7 @@ namespace Corrade
                                                 Client.Network.CurrentSim.RegionID,
                                                 inventoryOffer.Args.FolderID.GetBytes()
                                                 );
-                                        }
+                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                         break;
                                 }
                                 break;
@@ -173,9 +170,8 @@ namespace Corrade
                                 switch (inventoryOffer.Args.Offer.Dialog)
                                 {
                                     case InstantMessageDialog.InventoryOffered:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Self.InstantMessage(Client.Self.Name,
+                                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                        Client.Self.InstantMessage(Client.Self.Name,
                                                 inventoryOffer.Args.Offer.FromAgentID,
                                                 string.Empty, inventoryOffer.Args.Offer.IMSessionID,
                                                 InstantMessageDialog.InventoryDeclined,
@@ -184,13 +180,12 @@ namespace Corrade
                                                 Client.Network.CurrentSim.RegionID,
                                                 Utils.EmptyBytes
                                                 );
-                                        }
+                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                         break;
 
                                     case InstantMessageDialog.TaskInventoryOffered:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Self.InstantMessage(Client.Self.Name,
+                                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                        Client.Self.InstantMessage(Client.Self.Name,
                                                 inventoryOffer.Args.Offer.FromAgentID,
                                                 string.Empty, inventoryOffer.Args.Offer.IMSessionID,
                                                 InstantMessageDialog.TaskInventoryDeclined,
@@ -199,7 +194,7 @@ namespace Corrade
                                                 Client.Network.CurrentSim.RegionID,
                                                 Utils.EmptyBytes
                                                 );
-                                        }
+                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                         break;
                                 }
                                 break;

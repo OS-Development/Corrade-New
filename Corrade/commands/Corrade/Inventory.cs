@@ -71,13 +71,12 @@ namespace Corrade
                             {
                                 case true:
                                     var dirItems = new List<DirItem>();
-                                    lock (Locks.ClientInstanceInventoryLock)
-                                    {
-                                        dirItems.AddRange(Client.Inventory.Store.GetContents(
+                                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                    dirItems.AddRange(Client.Inventory.Store.GetContents(
                                             item.UUID).AsParallel().Select(o =>
                                                 DirItem.FromInventoryBase(Client, o,
                                                     corradeConfiguration.ServicesTimeout)));
-                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     foreach (var dirItem in dirItems.OrderByDescending(o => o.Time))
                                     {
                                         csv.AddRange(new[]
@@ -253,9 +252,8 @@ namespace Corrade
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    lock (Locks.ClientInstanceInventoryLock)
-                                    {
-                                        Client.Inventory.Store.GetContents(item.UUID)
+                                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                    Client.Inventory.Store.GetContents(item.UUID)
                                             .OfType<InventoryItem>()
                                             .AsParallel()
                                             .ForAll(o =>
@@ -263,7 +261,7 @@ namespace Corrade
                                                 o.Permissions = Inventory.wasStringToPermissions(itemPermissions);
                                                 Client.Inventory.RequestUpdateItem(o);
                                             });
-                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     if (!updateFolders.Contains(item.UUID))
                                     {
                                         updateFolders.Add(item.UUID);
@@ -305,19 +303,17 @@ namespace Corrade
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    lock (Locks.ClientInstanceInventoryLock)
-                                    {
-                                        Client.Inventory.MoveFolder(item.UUID,
+                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                    Client.Inventory.MoveFolder(item.UUID,
                                             Client.Inventory.FindFolderForType(AssetType.TrashFolder));
-                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
 
                                 default:
-                                    lock (Locks.ClientInstanceInventoryLock)
-                                    {
-                                        Client.Inventory.MoveItem(item.UUID,
+                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                    Client.Inventory.MoveItem(item.UUID,
                                             Client.Inventory.FindFolderForType(AssetType.TrashFolder));
-                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
                             }
                             UUID trashFolderUUID;
@@ -387,7 +383,7 @@ namespace Corrade
                             {
                                 var targetSegments =
                                     new List<string>(targetPath.PathSplit(CORRADE_CONSTANTS.PATH_SEPARATOR,
-                                        CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE));
+                                        CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE, false));
 
                                 targetItem = Inventory.FindInventory<InventoryBase>(Client,
                                     string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR.ToString(),
@@ -413,9 +409,8 @@ namespace Corrade
                                     if (sourceInventoryItem == null)
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.EXPECTED_ITEM_AS_SOURCE);
-                                    lock (Locks.ClientInstanceInventoryLock)
-                                    {
-                                        Client.Inventory.CreateLink(targetItem.UUID, sourceItem.UUID, targetName,
+                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                    Client.Inventory.CreateLink(targetItem.UUID, sourceItem.UUID, targetName,
                                             sourceInventoryItem.Description, sourceInventoryItem.AssetType,
                                             sourceInventoryItem.InventoryType, UUID.Random(), (succeeded, newItem) =>
                                             {
@@ -430,85 +425,79 @@ namespace Corrade
                                                     updateFolders.Add(newItem.ParentUUID);
                                                 }
                                             });
-                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
 
                                 case Enumerations.Action.MV:
                                     switch (sourceItem is InventoryFolder)
                                     {
                                         case true:
-                                            lock (Locks.ClientInstanceInventoryLock)
+                                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                            Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID, targetName);
+                                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                            break;
+
+                                        default:
+                                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                            Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID, targetName);
+                                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                            break;
+                                    }
+                                    var rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                                    var libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                                    switch (sourceItem.ParentUUID.Equals(UUID.Zero))
+                                    {
+                                        case true:
+
+                                            if (sourceItem.UUID.Equals(rootFolderUUID) &&
+                                                !updateFolders.Contains(rootFolderUUID))
                                             {
-                                                Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID, targetName);
+                                                updateFolders.Add(rootFolderUUID);
+                                                break;
+                                            }
+                                            if (sourceItem.UUID.Equals(libraryFolderUUID) &&
+                                                !updateFolders.Contains(rootFolderUUID))
+                                            {
+                                                updateFolders.Add(libraryFolderUUID);
                                             }
                                             break;
 
                                         default:
-                                            lock (Locks.ClientInstanceInventoryLock)
+                                            if (!updateFolders.Contains(sourceItem.ParentUUID))
                                             {
-                                                Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID, targetName);
+                                                updateFolders.Add(sourceItem.ParentUUID);
                                             }
                                             break;
                                     }
-                                    lock (Locks.ClientInstanceInventoryLock)
+                                    switch (targetItem.ParentUUID.Equals(UUID.Zero))
                                     {
-                                        var rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                                        var libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
-                                        switch (sourceItem.ParentUUID.Equals(UUID.Zero))
-                                        {
-                                            case true:
+                                        case true:
 
-                                                if (sourceItem.UUID.Equals(rootFolderUUID) &&
-                                                    !updateFolders.Contains(rootFolderUUID))
-                                                {
-                                                    updateFolders.Add(rootFolderUUID);
-                                                    break;
-                                                }
-                                                if (sourceItem.UUID.Equals(libraryFolderUUID) &&
-                                                    !updateFolders.Contains(rootFolderUUID))
-                                                {
-                                                    updateFolders.Add(libraryFolderUUID);
-                                                }
+                                            if (targetItem.UUID.Equals(rootFolderUUID) &&
+                                                !updateFolders.Contains(rootFolderUUID))
+                                            {
+                                                updateFolders.Add(rootFolderUUID);
                                                 break;
+                                            }
+                                            if (targetItem.UUID.Equals(libraryFolderUUID) &&
+                                                !updateFolders.Contains(rootFolderUUID))
+                                            {
+                                                updateFolders.Add(libraryFolderUUID);
+                                            }
+                                            break;
 
-                                            default:
-                                                if (!updateFolders.Contains(sourceItem.ParentUUID))
-                                                {
-                                                    updateFolders.Add(sourceItem.ParentUUID);
-                                                }
-                                                break;
-                                        }
-                                        switch (targetItem.ParentUUID.Equals(UUID.Zero))
-                                        {
-                                            case true:
-
-                                                if (targetItem.UUID.Equals(rootFolderUUID) &&
-                                                    !updateFolders.Contains(rootFolderUUID))
-                                                {
-                                                    updateFolders.Add(rootFolderUUID);
-                                                    break;
-                                                }
-                                                if (targetItem.UUID.Equals(libraryFolderUUID) &&
-                                                    !updateFolders.Contains(rootFolderUUID))
-                                                {
-                                                    updateFolders.Add(libraryFolderUUID);
-                                                }
-                                                break;
-
-                                            default:
-                                                if (!updateFolders.Contains(targetItem.ParentUUID))
-                                                {
-                                                    updateFolders.Add(targetItem.ParentUUID);
-                                                }
-                                                break;
-                                        }
+                                        default:
+                                            if (!updateFolders.Contains(targetItem.ParentUUID))
+                                            {
+                                                updateFolders.Add(targetItem.ParentUUID);
+                                            }
+                                            break;
                                     }
                                     break;
 
                                 case Enumerations.Action.CP:
-                                    lock (Locks.ClientInstanceInventoryLock)
-                                    {
-                                        Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
+                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                    Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
                                             targetName,
                                             newItem =>
                                             {
@@ -523,7 +512,7 @@ namespace Corrade
                                                     updateFolders.Add(newItem.ParentUUID);
                                                 }
                                             });
-                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
                             }
                             break;
@@ -534,13 +523,12 @@ namespace Corrade
                     // Mark all folders to be updated as needing an update.
                     if (updateFolders.Any())
                     {
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            updateFolders.AsParallel()
+                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                        updateFolders.AsParallel()
                                 .Select(o => Client.Inventory.Store.GetNodeFor(o))
                                 .Where(o => o != null)
                                 .ForAll(o => o.NeedsUpdate = true);
-                        }
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     }
                     if (csv.Any())
                     {

@@ -102,10 +102,9 @@ namespace Corrade
                         switch (string.IsNullOrEmpty(rule.Option))
                         {
                             case true:
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    optionNode = Client.Inventory.Store.GetNodeFor(RLVFolder.UUID);
-                                }
+                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                optionNode = Client.Inventory.Store.GetNodeFor(RLVFolder.UUID);
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
                             default:
@@ -123,26 +122,25 @@ namespace Corrade
                             corradeConfiguration.DataTimeout)
                             .Select(o => o.Key.Properties.ItemID));
 
-                        lock (Locks.ClientInstanceInventoryLock)
+                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                        if (optionNode != null)
                         {
-                            if (optionNode != null)
-                            {
-                                response = new string[optionNode.Nodes.Values.Count + 1];
-                                response[0] =
-                                    $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(optionNode)}";
-                                optionNode.Nodes.Values.Select((node, index) => new { node, index = index + 1 })
-                                    .AsParallel()
-                                    .Where(
-                                        o =>
-                                            o.node.Data is InventoryFolder &&
-                                            !o.node.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
-                                    .ForAll(o =>
-                                    {
-                                        response[o.index] =
-                                            $"{o.node.Data.Name}{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o.node)}";
-                                    });
-                            }
+                            response = new string[optionNode.Nodes.Values.Count + 1];
+                            response[0] =
+                                $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(optionNode)}";
+                            optionNode.Nodes.Values.Select((node, index) => new { node, index = index + 1 })
+                                .AsParallel()
+                                .Where(
+                                    o =>
+                                        o.node.Data is InventoryFolder &&
+                                        !o.node.Data.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER))
+                                .ForAll(o =>
+                                {
+                                    response[o.index] =
+                                        $"{o.node.Data.Name}{wasOpenMetaverse.RLV.RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o.node)}";
+                                });
                         }
+                        Locks.ClientInstanceInventoryLock.ExitReadLock();
 
                         lock (Locks.ClientInstanceSelfLock)
                         {

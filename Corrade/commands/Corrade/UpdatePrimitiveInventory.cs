@@ -119,24 +119,22 @@ namespace Corrade
                                         break;
 
                                     default:
-                                        lock (Locks.ClientInstanceInventoryLock)
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(entityUUID))
                                         {
-                                            if (Client.Inventory.Store.Contains(entityUUID))
-                                            {
-                                                inventoryBaseItem = Client.Inventory.Store[itemUUID];
-                                            }
+                                            inventoryBaseItem = Client.Inventory.Store[itemUUID];
                                         }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
                                 }
                                 if (inventoryBaseItem == null)
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                                 }
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.UpdateTaskInventory(primitive.LocalID,
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID,
                                         inventoryBaseItem as InventoryItem);
-                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.REMOVE:
@@ -154,10 +152,9 @@ namespace Corrade
                                     }
                                     entityUUID = inventoryBaseItem.UUID;
                                 }
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID, simulator);
-                                }
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID, simulator);
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.TAKE:
@@ -188,11 +185,10 @@ namespace Corrade
                                             Client.Inventory.FindFolderForType(inventoryItem.AssetType)].Data
                                             .UUID;
                                 }
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
                                         simulator);
-                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 break;
 
                             default:

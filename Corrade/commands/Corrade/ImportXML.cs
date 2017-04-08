@@ -224,9 +224,9 @@ namespace Corrade
                                                 * Use ImageMagick on Windows and the .NET converter otherwise.
                                                 */
                                                 byte[] j2cBytes = null;
-                                                switch (OpenMetaverse.Utils.GetRunningPlatform())
+                                                switch (Utils.GetRunningPlatform())
                                                 {
-                                                    case OpenMetaverse.Utils.Platform.Windows:
+                                                    case Utils.Platform.Windows:
                                                         try
                                                         {
                                                             using (var magickImage = new MagickImage(fileBytes))
@@ -294,9 +294,8 @@ namespace Corrade
                                                 var CreateItemFromAssetEvent = new ManualResetEvent(false);
                                                 var replaceByTextureUUID = UUID.Zero;
                                                 var succeeded = false;
-                                                lock (Locks.ClientInstanceInventoryLock)
-                                                {
-                                                    Client.Inventory.RequestCreateItemFromAsset(j2cBytes, fileBasename,
+                                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                                Client.Inventory.RequestCreateItemFromAsset(j2cBytes, fileBasename,
                                                         string.Empty, AssetType.Texture, InventoryType.Texture,
                                                         Client.Inventory.FindFolderForType(AssetType.Texture),
                                                         delegate (bool completed, string status, UUID itemID,
@@ -306,14 +305,15 @@ namespace Corrade
                                                             replaceByTextureUUID = assetID;
                                                             CreateItemFromAssetEvent.Set();
                                                         });
-                                                    if (
-                                                        !CreateItemFromAssetEvent.WaitOne(
-                                                            (int)corradeConfiguration.ServicesTimeout, false))
-                                                    {
-                                                        scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
-                                                        s.Break();
-                                                    }
+                                                if (
+                                                    !CreateItemFromAssetEvent.WaitOne(
+                                                        (int)corradeConfiguration.ServicesTimeout, false))
+                                                {
+                                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                                    scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
+                                                    s.Break();
                                                 }
+                                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                                 if (!succeeded)
                                                 {
                                                     scriptError = Enumerations.ScriptError.ASSET_UPLOAD_FAILED;

@@ -36,10 +36,7 @@ namespace Corrade
                         currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID));
                     if (!currentGroup.Equals(UUID.Zero))
                     {
-                        lock (Locks.ClientInstanceGroupsLock)
-                        {
-                            Client.Groups.ActivateGroup(groupUUID);
-                        }
+                        Client.Groups.ActivateGroup(groupUUID);
                     }
                 };
         }

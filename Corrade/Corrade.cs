@@ -163,12 +163,9 @@ namespace Corrade
         private static readonly ManualResetEvent TCPNotificationsThreadState = new ManualResetEvent(false);
         private static TcpListener TCPListener;
 
-        private static readonly CorradeHTTPServer CorradeHTTPServer = new CorradeHTTPServer
-        {
-            AuthenticationSchemes = AuthenticationSchemes.Anonymous | AuthenticationSchemes.Basic
-        };
+        private static CorradeHTTPServer CorradeHTTPServer;
 
-        private static readonly NucleusHTTPServer NucleusHTTPServer = new NucleusHTTPServer();
+        private static NucleusHTTPServer NucleusHTTPServer;
 
         private static LoginParams Login;
         private static object CorradeLastExecStatusFileLock = new object();
@@ -504,20 +501,17 @@ namespace Corrade
                     // Unban all the agents with expired soft bans that are also group bans.
                     .ForAll(o =>
                     {
-                        lock (Locks.ClientInstanceGroupsLock)
+                        var GroupBanEvent = new ManualResetEvent(false);
+                        Client.Groups.RequestBanAction(o.Group,
+                            GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
+                            (sender, args) => { GroupBanEvent.Set(); });
+                        if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            var GroupBanEvent = new ManualResetEvent(false);
-                            Client.Groups.RequestBanAction(o.Group,
-                                GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
-                                (sender, args) => { GroupBanEvent.Set(); });
-                            if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Feedback(
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.UNABLE_TO_LIFT_HARD_SOFT_BAN),
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST));
-                            }
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.UNABLE_TO_LIFT_HARD_SOFT_BAN),
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST));
                         }
                     });
             }
@@ -1027,11 +1021,10 @@ namespace Corrade
         private static readonly Action LoadInventoryCache = () =>
         {
             int itemsLoaded;
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                itemsLoaded = Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+            itemsLoaded = Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
-            }
+            Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.INVENTORY_CACHE_ITEMS_LOADED),
@@ -1046,11 +1039,10 @@ namespace Corrade
             var path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
             int itemsSaved;
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                itemsSaved = Client.Inventory.Store.Items.Count;
-                Client.Inventory.Store.SaveToDisk(path);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            itemsSaved = Client.Inventory.Store.Items.Count;
+            Client.Inventory.Store.SaveToDisk(path);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
 
             Feedback(
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.INVENTORY_CACHE_ITEMS_SAVED),
@@ -2150,9 +2142,9 @@ namespace Corrade
         {
             if (Environment.UserInteractive)
                 return;
-            switch (OpenMetaverse.Utils.GetRunningPlatform())
+            switch (Utils.GetRunningPlatform())
             {
-                case OpenMetaverse.Utils.Platform.Windows:
+                case Utils.Platform.Windows:
                     try
                     {
                         InstalledServiceName = (string)
@@ -2851,15 +2843,18 @@ namespace Corrade
                     // Compose prefix.
                     var prefix = string.Format("http://+:{0}/", initialNucleusPort);
                     // Start Nucleus without authentication.
-                    NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Anonymous;
-                    // Disable caching.
-                    NucleusHTTPServer.SuggestNoCaching = true;
+                    NucleusHTTPServer = new NucleusHTTPServer
+                    {
+                        AuthenticationSchemes = AuthenticationSchemes.Anonymous,
+                        // Disable caching.
+                        SuggestNoCaching = true
+                    };
                     NucleusHTTPServer.Start(new[] { prefix });
                     ConsoleCancelEventHandler ConsoleCancelKeyPress = (sender, args) =>
                     {
                         try
                         {
-                            NucleusHTTPServer.Stop();
+                            NucleusHTTPServer?.Stop();
                         }
                         catch (Exception)
                         {
@@ -2870,7 +2865,7 @@ namespace Corrade
                     {
                         try
                         {
-                            NucleusHTTPServer.Stop();
+                            NucleusHTTPServer?.Stop();
                         }
                         catch (Exception)
                         {
@@ -2881,7 +2876,7 @@ namespace Corrade
                     var consoleSpinner = new ConsoleSpin(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                     if (Environment.UserInteractive)
                     {
-                        if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows))
+                        if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows))
                         {
                             // Setup native console handler.
                             ConsoleEventHandler += ConsoleXButton;
@@ -2923,8 +2918,6 @@ namespace Corrade
                     { EnableRaisingEvents = true };
                     // Wait for the Corrade configuration to be created.
                     watchConfiguration.WaitForChanged(WatcherChangeTypes.Created);
-                    // Wait for all transfers to complete.
-                    //NucleusHTTPServer.TransfersCompletedEvent.WaitOne();
                     // Attempt to acquire an exclusive lock on the configuration file.
                     lock (ConfigurationFileLock)
                     {
@@ -2959,7 +2952,7 @@ namespace Corrade
                         consoleSpinner.Stop();
                         consoleSpinner.Dispose();
                         Console.Clear();
-                        if (OpenMetaverse.Utils.GetRunningPlatform().Equals(OpenMetaverse.Utils.Runtime.Windows))
+                        if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows))
                         {
                             ConsoleEventHandler -= ConsoleXButton;
                         }
@@ -2995,9 +2988,9 @@ namespace Corrade
             }
 
             // Branch on platform and set-up termination handlers.
-            switch (OpenMetaverse.Utils.GetRunningPlatform())
+            switch (Utils.GetRunningPlatform())
             {
-                case OpenMetaverse.Utils.Platform.Windows:
+                case Utils.Platform.Windows:
                     if (Environment.UserInteractive)
                     {
                         // Setup console handler.
@@ -3069,9 +3062,9 @@ namespace Corrade
                 rollingFileAppender.ActivateOptions();
                 BasicConfigurator.Configure(rollingFileAppender);
             }
-            switch (OpenMetaverse.Utils.GetRunningPlatform())
+            switch (Utils.GetRunningPlatform())
             {
-                case OpenMetaverse.Utils.Platform.Windows: // only initialize the event logger on Windows in service mode
+                case Utils.Platform.Windows: // only initialize the event logger on Windows in service mode
                     if (!Environment.UserInteractive)
                     {
                         var eventLogAppender = new EventLogAppender();
@@ -3092,8 +3085,8 @@ namespace Corrade
                     }
                     break;
 
-                case OpenMetaverse.Utils.Platform.OSX:
-                case OpenMetaverse.Utils.Platform.Linux:
+                case Utils.Platform.OSX:
+                case Utils.Platform.Linux:
                     var sysLogAppender = new LocalSyslogAppender();
                     var sysLogLayout = new PatternLayout
                     {
@@ -3787,12 +3780,12 @@ namespace Corrade
             }
 
             // Close HTTP server
-            if (HttpListener.IsSupported && CorradeHTTPServer.IsRunning)
+            if (HttpListener.IsSupported && CorradeHTTPServer != null && CorradeHTTPServer.IsRunning)
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
                 try
                 {
-                    CorradeHTTPServer.Stop();
+                    CorradeHTTPServer?.Stop();
                 }
                 catch (Exception ex)
                 {
@@ -3802,12 +3795,12 @@ namespace Corrade
             }
 
             // Close Nucleus server
-            if (HttpListener.IsSupported && NucleusHTTPServer.IsRunning)
+            if (HttpListener.IsSupported && NucleusHTTPServer != null && NucleusHTTPServer.IsRunning)
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                 try
                 {
-                    NucleusHTTPServer.Stop();
+                    NucleusHTTPServer?.Stop();
                 }
                 catch (Exception ex)
                 {
@@ -4359,6 +4352,7 @@ namespace Corrade
             };
 
             // Accept anything from master avatars.
+            InventoryNode node;
             if (
                 corradeConfiguration.Masters.AsParallel().Select(
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
@@ -4369,14 +4363,12 @@ namespace Corrade
             {
                 inventoryOffer.Args.Accept = true;
                 // It is accepted, so update the inventory.
-                InventoryNode node;
                 // Find the node.
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
+                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
                         ? Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)
                         : inventoryOffer.Args.FolderID);
-                }
+                Locks.ClientInstanceInventoryLock.ExitReadLock();
                 if (node != null)
                 {
                     // Set the node to be updated.
@@ -4424,13 +4416,12 @@ namespace Corrade
             }
 
             // It is temporary, so update the inventory.
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
                     ? Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)
                     : inventoryOffer.Args.FolderID).NeedsUpdate =
                     true;
-            }
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
 
             // Update the inventory.
             try
@@ -4448,47 +4439,42 @@ namespace Corrade
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem = null;
-            lock (Locks.ClientInstanceInventoryLock)
+            switch (e.Offer.Dialog)
             {
-                switch (e.Offer.Dialog)
-                {
-                    case InstantMessageDialog.TaskInventoryOffered: // from objects
-                        var groups = CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
-                        inventoryOffer.Name = groups.Count > 0 ? groups[1].Value : e.Offer.Message;
-                        break;
+                case InstantMessageDialog.TaskInventoryOffered: // from objects
+                    var groups = CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
+                    inventoryOffer.Name = groups.Count > 0 ? groups[1].Value : e.Offer.Message;
+                    break;
 
-                    case InstantMessageDialog.InventoryOffered: // from agents
-                        if (e.Offer.BinaryBucket.Length.Equals(17))
+                case InstantMessageDialog.InventoryOffered: // from agents
+                    if (e.Offer.BinaryBucket.Length.Equals(17))
+                    {
+                        var itemUUID = new UUID(e.Offer.BinaryBucket, 1);
+                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                        if (Client.Inventory.Store.Contains(itemUUID))
                         {
-                            var itemUUID = new UUID(e.Offer.BinaryBucket, 1);
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    inventoryBaseItem = Client.Inventory.Store[itemUUID];
-                                    // Set the name.
-                                    inventoryOffer.Name = inventoryBaseItem.Name;
-                                }
-                            }
+                            inventoryBaseItem = Client.Inventory.Store[itemUUID];
+                            // Set the name.
+                            inventoryOffer.Name = inventoryBaseItem.Name;
                         }
-                        break;
-                }
+                        Locks.ClientInstanceInventoryLock.ExitReadLock();
+                    }
+                    break;
             }
 
             if (inventoryBaseItem != null)
             {
                 var parentUUID = inventoryBaseItem.ParentUUID;
                 // Assume we do not want the item.
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    Client.Inventory.Move(
-                        inventoryBaseItem,
-                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
-                            InventoryFolder);
-                    Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
-                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
-                        .NeedsUpdate = true;
-                }
+                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                Client.Inventory.Move(
+                    inventoryBaseItem,
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
+                        InventoryFolder);
+                Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
+                Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
+                    .NeedsUpdate = true;
+                Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                 // Update the inventory.
                 try
@@ -4538,13 +4524,10 @@ namespace Corrade
             switch (inventoryBaseItem.ParentUUID.Equals(UUID.Zero))
             {
                 case true:
-                    UUID rootFolderUUID;
-                    UUID libraryFolderUUID;
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                        libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
-                    }
+                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                    UUID rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                    UUID libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                     if (inventoryBaseItem.UUID.Equals(rootFolderUUID))
                     {
                         sourceParentUUID = rootFolderUUID;
@@ -4564,28 +4547,21 @@ namespace Corrade
             switch (inventoryOffer.Args.Accept)
             {
                 case false: // if the item is to be discarded, then remove the item from inventory
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     switch (inventoryBaseItem is InventoryFolder)
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.RemoveFolder(inventoryBaseItem.UUID);
-                            }
+                            Client.Inventory.RemoveFolder(inventoryBaseItem.UUID);
                             break;
 
                         default:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.RemoveItem(inventoryBaseItem.UUID);
-                            }
+                            Client.Inventory.RemoveItem(inventoryBaseItem.UUID);
                             break;
                     }
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
-                        Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
-                            .NeedsUpdate = true;
-                    }
+                    Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
+                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
+                        .NeedsUpdate = true;
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                     // Update the inventory.
                     try
@@ -4611,39 +4587,34 @@ namespace Corrade
             {
                 case true: // a destination folder was specified
                     InventoryFolder inventoryFolder = null;
-                    lock (Locks.ClientInstanceInventoryLock)
+                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                    node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID);
+                    if (node != null)
                     {
-                        var node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID);
-                        if (node != null)
-                        {
-                            inventoryFolder = node.Data as InventoryFolder;
-                        }
+                        inventoryFolder = node.Data as InventoryFolder;
                     }
+                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                     if (inventoryFolder != null)
                     {
                         // grab the destination parent UUID for updates.
                         destinationParentUUID = inventoryFolder.ParentUUID;
 
+                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
                         switch (inventoryBaseItem is InventoryFolder)
                         {
                             case true: // folders
-                                // if a name was specified, rename the item as well.
+                                       // if a name was specified, rename the item as well.
+
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
                                     case false:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
-                                                inventoryFolder.UUID, inventoryOffer.Name);
-                                        }
+                                        Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
+                                            inventoryFolder.UUID, inventoryOffer.Name);
                                         break;
 
                                     default:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
-                                                inventoryFolder.UUID);
-                                        }
+                                        Client.Inventory.MoveFolder(inventoryBaseItem.UUID,
+                                            inventoryFolder.UUID);
                                         break;
                                 }
                                 break;
@@ -4652,28 +4623,20 @@ namespace Corrade
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
                                     case false:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Inventory.Move(inventoryBaseItem, inventoryFolder,
-                                                inventoryOffer.Name);
-                                            Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
-                                        }
+                                        Client.Inventory.Move(inventoryBaseItem, inventoryFolder,
+                                            inventoryOffer.Name);
+                                        Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
                                         break;
 
                                     default:
-                                        lock (Locks.ClientInstanceInventoryLock)
-                                        {
-                                            Client.Inventory.Move(inventoryBaseItem, inventoryFolder);
-                                        }
+                                        Client.Inventory.Move(inventoryBaseItem, inventoryFolder);
                                         break;
                                 }
                                 break;
                         }
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
-                            Client.Inventory.Store.GetNodeFor(inventoryFolder.UUID).NeedsUpdate = true;
-                        }
+                        Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
+                        Client.Inventory.Store.GetNodeFor(inventoryFolder.UUID).NeedsUpdate = true;
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     }
                     break;
 
@@ -4681,58 +4644,58 @@ namespace Corrade
                     switch (inventoryBaseItem is InventoryFolder)
                     {
                         case true: // move inventory folders into the root
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            destinationParentUUID = Client.Inventory.Store.RootFolder.UUID;
+                            // if a name was specified, rename the item as well.
+                            switch (string.IsNullOrEmpty(inventoryOffer.Name))
                             {
-                                destinationParentUUID = Client.Inventory.Store.RootFolder.UUID;
-                                // if a name was specified, rename the item as well.
-                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
-                                {
-                                    case false:
-                                        Client.Inventory.MoveFolder(
-                                            inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID,
-                                            inventoryOffer.Name);
-                                        break;
+                                case false:
+                                    Client.Inventory.MoveFolder(
+                                        inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID,
+                                        inventoryOffer.Name);
+                                    break;
 
-                                    default:
-                                        Client.Inventory.MoveFolder(
-                                            inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID);
-                                        break;
-                                }
-                                Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
-                                Client.Inventory.Store.GetNodeFor(Client.Inventory.Store.RootFolder.UUID).NeedsUpdate =
-                                    true;
+                                default:
+                                    Client.Inventory.MoveFolder(
+                                        inventoryBaseItem.UUID, Client.Inventory.Store.RootFolder.UUID);
+                                    break;
                             }
+                            Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
+                            Client.Inventory.Store.GetNodeFor(Client.Inventory.Store.RootFolder.UUID).NeedsUpdate =
+                                true;
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
 
                         default: // move items to their respective asset folder type
-                            lock (Locks.ClientInstanceInventoryLock)
+                            InventoryFolder destinationFolder = null;
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            node =
+                                Client.Inventory.Store.GetNodeFor(
+                                    Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType));
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
+                            if (node != null)
                             {
-                                InventoryFolder destinationFolder = null;
-                                var node =
-                                    Client.Inventory.Store.GetNodeFor(
-                                        Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType));
-                                if (node != null)
+                                destinationFolder = node.Data as InventoryFolder;
+                            }
+                            if (destinationFolder != null)
+                            {
+                                destinationParentUUID = destinationFolder.ParentUUID;
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
-                                    destinationFolder = node.Data as InventoryFolder;
-                                }
-                                if (destinationFolder != null)
-                                {
-                                    destinationParentUUID = destinationFolder.ParentUUID;
-                                    switch (string.IsNullOrEmpty(inventoryOffer.Name))
-                                    {
-                                        case false:
-                                            Client.Inventory.Move(inventoryBaseItem, destinationFolder,
-                                                inventoryOffer.Name);
-                                            Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
-                                            break;
+                                    case false:
+                                        Client.Inventory.Move(inventoryBaseItem, destinationFolder,
+                                            inventoryOffer.Name);
+                                        Client.Inventory.RequestUpdateItem(inventoryBaseItem as InventoryItem);
+                                        break;
 
-                                        default:
-                                            Client.Inventory.Move(inventoryBaseItem, destinationFolder);
-                                            break;
-                                    }
-                                    Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
-                                    Client.Inventory.Store.GetNodeFor(destinationFolder.UUID).NeedsUpdate = true;
+                                    default:
+                                        Client.Inventory.Move(inventoryBaseItem, destinationFolder);
+                                        break;
                                 }
+                                Client.Inventory.Store.GetNodeFor(sourceParentUUID).NeedsUpdate = true;
+                                Client.Inventory.Store.GetNodeFor(destinationFolder.UUID).NeedsUpdate = true;
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             }
                             break;
                     }
@@ -4947,14 +4910,13 @@ namespace Corrade
                                     corradeConfiguration.ServicesTimeout);
 
                                 // Get COF.
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    CurrentOutfitFolder =
+                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                CurrentOutfitFolder =
                                         Client.Inventory.Store[
                                             Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
                                             ] as
                                             InventoryFolder;
-                                }
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
                             }
                             catch (Exception)
                             {
@@ -5682,7 +5644,12 @@ namespace Corrade
             // If the group was not set properly, then bail.
             var commandGroup = GetCorradeGroupFromMessage(args.IM.Message, corradeConfiguration);
             if (commandGroup == null || commandGroup.Equals(default(Configuration.Group)))
+            {
+                // Log commands without a valid group.
+                Feedback(args.IM.FromAgentID.ToString(),
+                    Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.UNKNOWN_GROUP));
                 return;
+            }
 
             // Otherwise process the command.
             CorradeThreadPool[Threading.Enumerations.ThreadType.COMMAND].Spawn(
@@ -6638,11 +6605,11 @@ namespace Corrade
                             }
 
                             // Don't start if the HTTP server is already started.
-                            if (NucleusHTTPServer.IsRunning)
+                            if (NucleusHTTPServer != null && NucleusHTTPServer.IsRunning)
                             {
                                 try
                                 {
-                                    NucleusHTTPServer.Stop();
+                                    NucleusHTTPServer?.Stop();
                                 }
                                 catch (Exception ex)
                                 {
@@ -6654,6 +6621,7 @@ namespace Corrade
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER),
                                 corradeConfiguration.NucleusServerPrefix);
+                            NucleusHTTPServer = new NucleusHTTPServer();
                             try
                             {
                                 // Enable basic authentication.
@@ -6672,14 +6640,14 @@ namespace Corrade
                             break;
 
                         default:
-                            if (!NucleusHTTPServer.IsRunning)
+                            if (NucleusHTTPServer == null || !NucleusHTTPServer.IsRunning)
                                 break;
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                             try
                             {
-                                NucleusHTTPServer.Stop();
+                                NucleusHTTPServer?.Stop();
                             }
                             catch (Exception ex)
                             {
@@ -6706,11 +6674,11 @@ namespace Corrade
                     {
                         case true:
                             // Don't start if the HTTP server is already started.
-                            if (CorradeHTTPServer.IsRunning)
+                            if (CorradeHTTPServer != null && CorradeHTTPServer.IsRunning)
                             {
                                 try
                                 {
-                                    CorradeHTTPServer.Stop();
+                                    CorradeHTTPServer?.Stop();
                                 }
                                 catch (Exception ex)
                                 {
@@ -6722,6 +6690,11 @@ namespace Corrade
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STARTING_HTTP_SERVER),
                                 corradeConfiguration.HTTPServerPrefix);
+
+                            CorradeHTTPServer = new CorradeHTTPServer
+                            {
+                                AuthenticationSchemes = AuthenticationSchemes.Anonymous | AuthenticationSchemes.Basic
+                            };
                             try
                             {
                                 CorradeHTTPServer.Start(new[] { corradeConfiguration.HTTPServerPrefix });
@@ -6736,14 +6709,14 @@ namespace Corrade
                             break;
 
                         default:
-                            if (!CorradeHTTPServer.IsRunning)
+                            if (CorradeHTTPServer == null || !CorradeHTTPServer.IsRunning)
                                 break;
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
                             try
                             {
-                                CorradeHTTPServer.Stop();
+                                CorradeHTTPServer?.Stop();
                             }
                             catch (Exception ex)
                             {
@@ -7477,56 +7450,50 @@ namespace Corrade
                                         return;
                                     var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
-                                    var groupRolesMembersRequestUUID = UUID.Zero;
+                                    var requestUUID = UUID.Zero;
                                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
                                         (s, args) =>
                                         {
-                                            if (!groupRolesMembersRequestUUID.Equals(args.RequestID))
+                                            if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(group.Key))
                                                 return;
                                             rolesMembers = args.RolesMembers;
                                             GroupRoleMembersReplyEvent.Set();
                                         };
-                                    lock (Locks.ClientInstanceGroupsLock)
+                                    Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                                    requestUUID = Client.Groups.RequestGroupRolesMembers(group.Key);
+                                    if (
+                                        !GroupRoleMembersReplyEvent.WaitOne(
+                                            (int)corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
-                                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                                        groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(group.Key);
-                                        if (
-                                            !GroupRoleMembersReplyEvent.WaitOne(
-                                                (int)corradeConfiguration.ServicesTimeout,
-                                                false))
-                                        {
-                                            Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                        Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                        Feedback(
+                                            Reflection.GetDescriptionFromEnumValue(
+                                                Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                            Reflection.GetDescriptionFromEnumValue(
+                                                Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
+                                        return;
+                                    }
+                                    Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                    switch (
+                                            !rolesMembers.AsParallel()
+                                                .Any(p => p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(o)))
+                                    {
+                                        case true:
+                                            rolesMembers.AsParallel().Where(
+                                                p => p.Value.Equals(o))
+                                                .ForAll(
+                                                    p => Client.Groups.RemoveFromRole(group.Key, p.Key,
+                                                        o));
+                                            break;
+
+                                        default:
                                             Feedback(
                                                 Reflection.GetDescriptionFromEnumValue(
                                                     Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
                                                 Reflection.GetDescriptionFromEnumValue(
-                                                    Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
+                                                    Enumerations.ScriptError.CANNOT_EJECT_OWNERS));
                                             return;
-                                        }
-                                        Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                    }
-                                    lock (Locks.ClientInstanceGroupsLock)
-                                    {
-                                        switch (
-                                            !rolesMembers.AsParallel()
-                                                .Any(p => p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(o)))
-                                        {
-                                            case true:
-                                                rolesMembers.AsParallel().Where(
-                                                    p => p.Value.Equals(o))
-                                                    .ForAll(
-                                                        p => Client.Groups.RemoveFromRole(group.Key, p.Key,
-                                                            o));
-                                                break;
-
-                                            default:
-                                                Feedback(
-                                                    Reflection.GetDescriptionFromEnumValue(
-                                                        Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
-                                                    Reflection.GetDescriptionFromEnumValue(
-                                                        Enumerations.ScriptError.CANNOT_EJECT_OWNERS));
-                                                return;
-                                        }
                                     }
 
                                     // No hard time requested so no need to ban.
@@ -7591,24 +7558,21 @@ namespace Corrade
                                                 }
 
                                                 // Now ban the agent.
-                                                lock (Locks.ClientInstanceGroupsLock)
+                                                var GroupBanEvent = new ManualResetEvent(false);
+                                                Client.Groups.RequestBanAction(group.Key,
+                                                    GroupBanAction.Ban, new[] { o },
+                                                    (s, a) => { GroupBanEvent.Set(); });
+                                                if (
+                                                    !GroupBanEvent.WaitOne(
+                                                        (int)corradeConfiguration.ServicesTimeout,
+                                                        false))
                                                 {
-                                                    var GroupBanEvent = new ManualResetEvent(false);
-                                                    Client.Groups.RequestBanAction(group.Key,
-                                                        GroupBanAction.Ban, new[] { o },
-                                                        (s, a) => { GroupBanEvent.Set(); });
-                                                    if (
-                                                        !GroupBanEvent.WaitOne(
-                                                            (int)corradeConfiguration.ServicesTimeout,
-                                                            false))
-                                                    {
-                                                        Feedback(
-                                                            Reflection.GetDescriptionFromEnumValue(
-                                                                Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
-                                                            Reflection.GetDescriptionFromEnumValue(
-                                                                Enumerations.ScriptError
-                                                                    .TIMEOUT_MODIFYING_GROUP_BAN_LIST));
-                                                    }
+                                                    Feedback(
+                                                        Reflection.GetDescriptionFromEnumValue(
+                                                            Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                                        Reflection.GetDescriptionFromEnumValue(
+                                                            Enumerations.ScriptError
+                                                                .TIMEOUT_MODIFYING_GROUP_BAN_LIST));
                                                 }
                                             }
                                             break;
@@ -7619,25 +7583,27 @@ namespace Corrade
                                     var succeeded = false;
                                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (s, args) =>
                                     {
+                                        if (!args.GroupID.Equals(group.Key))
+                                            return;
                                         succeeded = args.Success;
                                         GroupEjectEvent.Set();
                                     };
-                                    lock (Locks.ClientInstanceGroupsLock)
+                                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                    Client.Groups.EjectUser(group.Key, o);
+                                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
-                                        Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                                        Client.Groups.EjectUser(group.Key, o);
-                                        if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                            Feedback(
-                                                Reflection.GetDescriptionFromEnumValue(
-                                                    Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
-                                                Reflection.GetDescriptionFromEnumValue(
-                                                    Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT));
-                                            return;
-                                        }
                                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                                        Feedback(
+                                            Reflection.GetDescriptionFromEnumValue(
+                                                Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
+                                            Reflection.GetDescriptionFromEnumValue(
+                                                Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT));
+                                        return;
                                     }
+                                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                                     if (!succeeded)
                                     {
                                         Feedback(

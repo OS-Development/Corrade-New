@@ -59,10 +59,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.ActivateGroup(groupUUID);
-                    }
+                    Client.Groups.ActivateGroup(groupUUID);
                 };
         }
     }

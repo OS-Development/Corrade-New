@@ -45,13 +45,12 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(itemUUID))
                             {
-                                if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    inventoryBase = Client.Inventory.Store[itemUUID];
-                                }
+                                inventoryBase = Client.Inventory.Store[itemUUID];
                             }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
                         default:
@@ -69,13 +68,10 @@ namespace Corrade
                     switch (inventoryBase.ParentUUID.Equals(UUID.Zero))
                     {
                         case true:
-                            UUID rootFolderUUID;
-                            UUID libraryFolderUUID;
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                                libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
-                            }
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            UUID rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                            UUID libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             if (inventoryBase.UUID.Equals(rootFolderUUID))
                             {
                                 parentUUID = rootFolderUUID;
@@ -145,21 +141,21 @@ namespace Corrade
                         {
                             // Dequeue folder.
                             currentFolder = inventoryFolders.Dequeue();
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                                 FolderUpdatedEvent.Reset();
-                                Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
-                                    true,
-                                    InventorySortOrder.ByDate);
-                                if (!FolderUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_FOLDER_CONTENTS);
-                                }
+                            Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
+                                true,
+                                InventorySortOrder.ByDate);
+                            if (!FolderUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            {
                                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_FOLDER_CONTENTS);
                             }
+                            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                         } while (inventoryFolders.Any());
 
                         // Check that if we are in SecondLife we would not transfer more items than SecondLife allows.
@@ -210,20 +206,18 @@ namespace Corrade
                             }
                             if (inventoryBase is InventoryItem)
                             {
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.GiveItem(inventoryBase.UUID, inventoryBase.Name,
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.GiveItem(inventoryBase.UUID, inventoryBase.Name,
                                         (inventoryBase as InventoryItem).AssetType, agentUUID, true);
-                                    break;
-                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                break;
                             }
                             if (inventoryBase is InventoryFolder)
                             {
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.GiveFolder(inventoryBase.UUID, inventoryBase.Name,
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.GiveFolder(inventoryBase.UUID, inventoryBase.Name,
                                         AssetType.Folder, agentUUID, true);
-                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             }
                             break;
 
@@ -275,10 +269,9 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
                             }
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryBase as InventoryItem);
-                            }
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryBase as InventoryItem);
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
 
                         default:
@@ -288,10 +281,9 @@ namespace Corrade
                     // Mark parent folder as needing an update.
                     if (!parentUUID.Equals(UUID.Zero))
                     {
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
-                        }
+                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                        Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
+                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                     }
                 };
         }

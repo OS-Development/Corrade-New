@@ -102,10 +102,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT);
                     }
                     Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.DeleteRole(corradeCommandParameters.Group.UUID, roleUUID);
-                    }
+                    Client.Groups.DeleteRole(corradeCommandParameters.Group.UUID, roleUUID);
                 };
         }
     }

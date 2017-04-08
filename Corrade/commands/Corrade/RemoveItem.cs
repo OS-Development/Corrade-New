@@ -42,13 +42,12 @@ namespace Corrade
                         switch (UUID.TryParse(item, out itemUUID))
                         {
                             case true:
-                                lock (Locks.ClientInstanceInventoryLock)
+                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                if (Client.Inventory.Store.Contains(itemUUID))
                                 {
-                                    if (Client.Inventory.Store.Contains(itemUUID))
-                                    {
-                                        inventoryBase = Client.Inventory.Store[itemUUID];
-                                    }
+                                    inventoryBase = Client.Inventory.Store[itemUUID];
                                 }
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
                             default:
@@ -66,13 +65,10 @@ namespace Corrade
                         switch (inventoryBase.ParentUUID.Equals(UUID.Zero))
                         {
                             case true:
-                                UUID rootFolderUUID;
-                                UUID libraryFolderUUID;
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                                    libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
-                                }
+                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                UUID rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                                UUID libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                                Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 if (inventoryBase.UUID.Equals(rootFolderUUID))
                                 {
                                     parentUUID = rootFolderUUID;
@@ -92,24 +88,21 @@ namespace Corrade
                         switch (inventoryBase is InventoryFolder)
                         {
                             case true:
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.RemoveFolder(inventoryBase.UUID);
-                                }
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RemoveFolder(inventoryBase.UUID);
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 break;
 
                             default:
-                                lock (Locks.ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.RemoveItem(inventoryBase.UUID);
-                                }
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RemoveItem(inventoryBase.UUID);
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 break;
                         }
                         // Mark the parent as needing an update.
-                        lock (Locks.ClientInstanceInventoryLock)
-                        {
-                            Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
-                        }
+                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                        Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     };
         }
     }

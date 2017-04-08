@@ -85,18 +85,23 @@ namespace Corrade
                     }
                     var GroupJoinedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
-                        (sender, args) => GroupJoinedReplyEvent.Set();
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
-                        Client.Groups.RequestJoinGroup(groupUUID);
-                        if (!GroupJoinedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        (sender, args) =>
                         {
-                            Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_JOINING_GROUP);
-                        }
+                            if (!args.GroupID.Equals(groupUUID))
+                                return;
+                            GroupJoinedReplyEvent.Set();
+                        };
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
+                    Client.Groups.RequestJoinGroup(groupUUID);
+                    if (!GroupJoinedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    {
                         Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_JOINING_GROUP);
                     }
+                    Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                     currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,

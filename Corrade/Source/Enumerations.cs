@@ -2312,7 +2312,15 @@ namespace Corrade
 
             [Command.StatusAttribute(02021)]
             [Reflection.DescriptionAttribute("invalid version provided")]
-            INVALID_VERSION_PROVIDED
+            INVALID_VERSION_PROVIDED,
+
+            [Command.StatusAttribute(54956)]
+            [Reflection.DescriptionAttribute("timeout retrieving estate info")]
+            TIMEOUT_RETRIEVING_ESTATE_INFO,
+
+            [Command.StatusAttribute(38271)]
+            [Reflection.DescriptionAttribute("script compilation failed")]
+            SCRIPT_COMPILATION_FAILED
         }
 
         /// <summary>
@@ -2444,7 +2452,13 @@ namespace Corrade
             COULD_NOT_GET_SCRIPTED_AGENT_STATUS,
 
             [Reflection.DescriptionAttribute("could not set scripted agent status")]
-            COULD_NOT_SET_SCRIPTED_AGENT_STATUS
+            COULD_NOT_SET_SCRIPTED_AGENT_STATUS,
+
+            [Reflection.DescriptionAttribute("logout failed")]
+            LOGOUT_FAILED,
+
+            [Reflection.DescriptionAttribute("login failed")]
+            LOGIN_FAILED
         }
     }
 }

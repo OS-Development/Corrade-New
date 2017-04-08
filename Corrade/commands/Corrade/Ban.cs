@@ -179,28 +179,25 @@ namespace Corrade
                                     Enumerations.ScriptError.BAN_WOULD_EXCEED_MAXIMUM_BAN_LIST_LENGTH);
 
                             // ban or unban the avatars
-                            lock (Locks.ClientInstanceGroupsLock)
+                            var GroupBanEvent = new ManualResetEvent(false);
+                            switch (action)
                             {
-                                var GroupBanEvent = new ManualResetEvent(false);
-                                switch (action)
-                                {
-                                    case Enumerations.Action.BAN:
-                                        Client.Groups.RequestBanAction(groupUUID,
-                                            GroupBanAction.Ban,
-                                            avatars.Keys.ToArray(), (sender, args) => { GroupBanEvent.Set(); });
-                                        break;
+                                case Enumerations.Action.BAN:
+                                    Client.Groups.RequestBanAction(groupUUID,
+                                        GroupBanAction.Ban,
+                                        avatars.Keys.ToArray(), (sender, args) => { GroupBanEvent.Set(); });
+                                    break;
 
-                                    case Enumerations.Action.UNBAN:
-                                        Client.Groups.RequestBanAction(groupUUID,
-                                            GroupBanAction.Unban,
-                                            avatars.Keys.ToArray(), (sender, args) => { GroupBanEvent.Set(); });
-                                        break;
-                                }
-                                if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);
-                                }
+                                case Enumerations.Action.UNBAN:
+                                    Client.Groups.RequestBanAction(groupUUID,
+                                        GroupBanAction.Unban,
+                                        avatars.Keys.ToArray(), (sender, args) => { GroupBanEvent.Set(); });
+                                    break;
+                            }
+                            if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            {
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);
                             }
 
                             // also soft ban if requested
@@ -379,19 +376,20 @@ namespace Corrade
                                                 EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                                                     (sender, args) =>
                                                     {
+                                                        if (!args.GroupID.Equals(groupUUID))
+                                                            return;
                                                         succeeded = args.Success;
                                                         GroupEjectEvent.Set();
                                                     };
-                                                lock (Locks.ClientInstanceGroupsLock)
-                                                {
-                                                    Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                                                    Client.Groups.EjectUser(groupUUID,
-                                                        o.Value.ID);
-                                                    GroupEjectEvent.WaitOne(
-                                                        (int)corradeConfiguration.ServicesTimeout,
-                                                        false);
-                                                    Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                                }
+                                                Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                                                Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                                Client.Groups.EjectUser(groupUUID,
+                                                    o.Value.ID);
+                                                GroupEjectEvent.WaitOne(
+                                                    (int)corradeConfiguration.ServicesTimeout,
+                                                    false);
+                                                Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                                Locks.ClientInstanceGroupsLock.ExitWriteLock();
                                                 // If the eject was not successful, add them to the output.
                                                 switch (succeeded)
                                                 {

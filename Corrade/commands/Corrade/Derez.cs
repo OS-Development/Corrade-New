@@ -54,13 +54,12 @@ namespace Corrade
                             switch (UUID.TryParse(folder, out folderUUID))
                             {
                                 case true:
-                                    lock (Locks.ClientInstanceInventoryLock)
+                                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                    if (Client.Inventory.Store.Contains(folderUUID))
                                     {
-                                        if (Client.Inventory.Store.Contains(folderUUID))
-                                        {
-                                            inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                        }
+                                        inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
                                     }
+                                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     break;
 
                                 default:
@@ -77,12 +76,11 @@ namespace Corrade
                             break;
 
                         default:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                inventoryFolder =
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            inventoryFolder =
                                     Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
                                         .Data as InventoryFolder;
-                            }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
                     }
                     var deRezDestionationTypeInfo = typeof(DeRezDestination).GetFields(BindingFlags.Public |
@@ -130,14 +128,13 @@ namespace Corrade
                             }
                             break;
                     }
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
                             ? (DeRezDestination)
                                 deRezDestionationTypeInfo
                                     .GetValue(null)
                             : DeRezDestination.AgentInventoryTake, inventoryFolder.UUID, UUID.Random());
-                    }
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                 };
         }
     }

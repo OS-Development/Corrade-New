@@ -92,15 +92,14 @@ namespace Corrade
                                             attached.AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
                                         if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                         {
-                                            lock (Locks.ClientInstanceInventoryLock)
+                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                            if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
                                             {
-                                                if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
-                                                {
-                                                    inventoryItem =
-                                                        Client.Inventory.Store[attachment.Key.Properties.ItemID] as
-                                                            InventoryItem;
-                                                }
+                                                inventoryItem =
+                                                    Client.Inventory.Store[attachment.Key.Properties.ItemID] as
+                                                        InventoryItem;
                                             }
+                                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         }
                                     }
                                     break;
@@ -116,13 +115,12 @@ namespace Corrade
                                     UUID itemUUID;
                                     if (UUID.TryParse(o, out itemUUID))
                                     {
-                                        lock (Locks.ClientInstanceInventoryLock)
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(itemUUID))
                                         {
-                                            if (Client.Inventory.Store.Contains(itemUUID))
-                                            {
-                                                inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                            }
+                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
                                         }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     }
                                     break;
                             }

@@ -60,6 +60,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
+                    var requestUUID = UUID.Zero;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
@@ -71,23 +72,23 @@ namespace Corrade
                             var roleData = new Dictionary<string, UUID>();
                             EventHandler<GroupRolesDataReplyEventArgs> Groups_GroupRoleDataReply = (sender, args) =>
                             {
+                                if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
+                                    return;
+
                                 roleData = args.Roles.ToDictionary(o => o.Value.Title, o => o.Value.ID);
                                 GroupRoleDataReplyEvent.Set();
                             };
-                            lock (Locks.ClientInstanceGroupsLock)
+                            Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
+                            requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
+                            if (
+                                !GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
-                                Client.Groups.RequestGroupRoles(groupUUID);
-                                if (
-                                    !GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
-                                }
                                 Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
                             }
+                            Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                             var role = roleData.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Key.Equals(
@@ -101,10 +102,7 @@ namespace Corrade
                                 case false:
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_TITLE);
                             }
-                            lock (Locks.ClientInstanceGroupsLock)
-                            {
-                                Client.Groups.ActivateTitle(groupUUID, role.Value);
-                            }
+                            Client.Groups.ActivateTitle(groupUUID, role.Value);
                             break;
 
                         case Enumerations.Action.GET:
@@ -112,6 +110,9 @@ namespace Corrade
                             var GroupTitlesReplyEvent = new ManualResetEvent(false);
                             EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                             {
+                                if (!args.RequestID.Equals(requestUUID) || !args.GroupID.Equals(groupUUID))
+                                    return;
+
                                 var pair =
                                     args.Titles.AsParallel().FirstOrDefault(o => o.Value.Selected);
                                 if (!pair.Equals(default(KeyValuePair<UUID, GroupTitle>)))
@@ -120,19 +121,16 @@ namespace Corrade
                                 }
                                 GroupTitlesReplyEvent.Set();
                             };
-                            lock (Locks.ClientInstanceGroupsLock)
+                            Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
+                            requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
+                            if (
+                                !GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
-                                Client.Groups.RequestGroupTitles(groupUUID);
-                                if (
-                                    !GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
-                                }
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
                             }
+                            Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                             if (!title.Equals(string.Empty))
                             {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), title);

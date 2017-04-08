@@ -25,10 +25,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.ActivateGroup(UUID.Zero);
-                    }
+                    Client.Groups.ActivateGroup(UUID.Zero);
                 };
         }
     }

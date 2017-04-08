@@ -199,9 +199,7 @@ namespace Corrade
                                     return;
                             }
                             // Demote them.
-                            lock (Locks.ClientInstanceGroupsLock)
-                            {
-                                groupRolesMembers.AsParallel().Where(
+                            groupRolesMembers.AsParallel().Where(
                                     p => p.Value.Equals(agentUUID))
                                     .ForAll(
                                         p =>
@@ -209,23 +207,23 @@ namespace Corrade
                                             Client.Groups.RemoveFromRole(groupUUID, p.Key,
                                                 agentUUID);
                                         });
-                            }
                             // And eject them.
                             var GroupEjectEvent = new ManualResetEvent(false);
                             var succeeded = false;
                             EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                                 (sender, args) =>
                                 {
+                                    if (!args.GroupID.Equals(groupUUID))
+                                        return;
                                     succeeded = args.Success;
                                     GroupEjectEvent.Set();
                                 };
-                            lock (Locks.ClientInstanceGroupsLock)
-                            {
-                                Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                                Client.Groups.EjectUser(groupUUID, agentUUID);
-                                GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
-                                Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                            }
+                            Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                            Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                            Client.Groups.EjectUser(groupUUID, agentUUID);
+                            GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                            Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                            Locks.ClientInstanceGroupsLock.ExitWriteLock();
                             // If the eject was not successful, add them to the output.
                             switch (succeeded)
                             {

@@ -96,11 +96,8 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_REMOVE_USER_FROM_OWNER_ROLE);
                     }
-                    lock (Locks.ClientInstanceGroupsLock)
-                    {
-                        Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, roleUUID,
+                    Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, roleUUID,
                             agentUUID);
-                    }
                 };
         }
     }

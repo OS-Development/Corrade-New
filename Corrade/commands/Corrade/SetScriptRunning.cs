@@ -90,12 +90,11 @@ namespace Corrade
                             break;
                     }
                     var inventory = new List<InventoryBase>();
-                    lock (Locks.ClientInstanceInventoryLock)
-                    {
-                        inventory.AddRange(
+                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                    inventory.AddRange(
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                 (int)corradeConfiguration.ServicesTimeout));
-                    }
+                    Locks.ClientInstanceInventoryLock.ExitReadLock();
                     var inventoryItem = !entityUUID.Equals(UUID.Zero)
                         ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                         : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -123,11 +122,10 @@ namespace Corrade
                     {
                         case Enumerations.Action.START:
                         case Enumerations.Action.STOP:
-                            lock (Locks.ClientInstanceInventoryLock)
-                            {
-                                Client.Inventory.RequestSetScriptRunning(primitive.ID, inventoryItem.UUID,
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.RequestSetScriptRunning(primitive.ID, inventoryItem.UUID,
                                     action.Equals(Enumerations.Action.START));
-                            }
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
 
                         default:
@@ -149,17 +147,17 @@ namespace Corrade
                         }
                         ScriptRunningReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceInventoryLock)
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
+                    Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
+                    if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
-                        Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
-                        if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_SCRIPT_STATE);
-                        }
                         Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_SCRIPT_STATE);
                     }
+                    Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     if (!succeeded)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_SCRIPT_STATE);

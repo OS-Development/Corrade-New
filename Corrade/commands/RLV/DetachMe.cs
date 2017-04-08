@@ -34,13 +34,12 @@ namespace Corrade
                     {
                         case true:
                             InventoryBase inventoryBase = null;
-                            lock (Locks.ClientInstanceInventoryLock)
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
                             {
-                                if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
-                                {
-                                    inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
-                                }
+                                inventoryBase = Client.Inventory.Store[attachment.Key.Properties.ItemID];
                             }
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                             {
                                 var inventoryItem = inventoryBase as InventoryItem;
