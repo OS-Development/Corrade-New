@@ -4,13 +4,18 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System.Threading;
+
 namespace wasOpenMetaverse
 {
     public static class Locks
     {
-        public static readonly object ClientInstanceGroupsLock = new object();
-        public static readonly object ClientInstanceInventoryLock = new object();
+        public static readonly ReaderWriterLockSlim ClientInstanceGroupsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceInventoryLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+
+        //public static readonly object ClientInstanceInventoryLock = new object();
         public static readonly object ClientInstanceAvatarsLock = new object();
+
         public static readonly object ClientInstanceSelfLock = new object();
         public static readonly object ClientInstanceConfigurationLock = new object();
         public static readonly object ClientInstanceParcelsLock = new object();

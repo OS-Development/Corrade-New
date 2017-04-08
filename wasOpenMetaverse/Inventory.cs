@@ -36,13 +36,13 @@ namespace wasOpenMetaverse
         /// <returns>the real inventory item</returns>
         public static InventoryItem ResolveItemLink(GridClient Client, InventoryItem item)
         {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
-                       Client.Inventory.Store[item.AssetUUID] is InventoryItem
-                    ? (InventoryItem)Client.Inventory.Store[item.AssetUUID]
-                    : item;
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryItem = item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
+                   Client.Inventory.Store[item.AssetUUID] is InventoryItem
+                ? (InventoryItem)Client.Inventory.Store[item.AssetUUID]
+                : item;
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryItem;
         }
 
         /// <summary>
@@ -56,13 +56,13 @@ namespace wasOpenMetaverse
             InventoryFolder outfitFolder, uint millisecondsTimeout)
         {
             UpdateInventoryRecursive(Client, outfitFolder, millisecondsTimeout, true);
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return Client.Inventory.Store.GetContents(outfitFolder)
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryItems = Client.Inventory.Store.GetContents(outfitFolder)
                     .AsParallel()
                     .Where(o => CanBeWorn(o) && ((InventoryItem)o).AssetType.Equals(AssetType.Link))
                     .Select(o => o as InventoryItem);
-            }
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryItems;
         }
 
         public static void Attach(GridClient Client, InventoryFolder CurrentOutfitFolder, InventoryItem item,
@@ -235,9 +235,8 @@ namespace wasOpenMetaverse
                     .AsParallel()
                     .Any(o => o.AssetUUID.Equals(item.UUID)))
             {
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    Client.Inventory.CreateLink(outfitFolder.UUID, item.UUID, item.Name,
+                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                Client.Inventory.CreateLink(outfitFolder.UUID, item.UUID, item.Name,
                         item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(Client, item)
                             ? $"@{(int)((InventoryWearable)item).WearableType}{0:00}"
                             : string.Empty, AssetType.Link, item.InventoryType, UUID.Random(), (success, newItem) =>
@@ -247,8 +246,8 @@ namespace wasOpenMetaverse
                                     Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
                                 }
                             });
-                    Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
-                }
+                Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
+                Locks.ClientInstanceInventoryLock.ExitWriteLock();
             }
         }
 
@@ -266,16 +265,15 @@ namespace wasOpenMetaverse
 
             var contents =
                 new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder, millisecondsTimeout));
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                Client.Inventory.Remove(
+            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+            Client.Inventory.Remove(
                     contents
                         .AsParallel()
                         .Where(o => o.AssetUUID.Equals(item.UUID))
                         .Select(o => o.UUID)
                         .ToList(), null);
-                Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
-            }
+            Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
+            Locks.ClientInstanceInventoryLock.ExitWriteLock();
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -322,10 +320,10 @@ namespace wasOpenMetaverse
             for (var i = 0; i < prim.NameValues.Length; i++)
             {
                 if (prim.NameValues[i].Name.Equals("AttachItemID")) continue;
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    return Client.Inventory.Store[new UUID(prim.NameValues[i].Value.ToString())] as InventoryItem;
-                }
+                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                var inventoryItem = Client.Inventory.Store[new UUID(prim.NameValues[i].Value.ToString())] as InventoryItem;
+                Locks.ClientInstanceInventoryLock.ExitReadLock();
+                return inventoryItem;
             }
             return null;
         }
@@ -500,21 +498,20 @@ namespace wasOpenMetaverse
             StringComparison comparison = StringComparison.Ordinal)
         {
             InventoryBase inventoryBase;
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                inventoryBase = directFindInventory(Client, path, separator, escape, millisecondsTimeout, root,
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            inventoryBase = directFindInventory(Client, path, separator, escape, millisecondsTimeout, root,
                     comparison);
-            }
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
 
             if (inventoryBase == null)
                 return default(T);
 
             if (typeof(T) != typeof(InventoryNode)) return (T)(object)inventoryBase;
 
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return (T)(object)Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryNode = (T)(object)Client.Inventory.Store.GetNodeFor(inventoryBase.UUID);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryNode;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -584,10 +581,10 @@ namespace wasOpenMetaverse
         public static IEnumerable<T> FindInventory<T>(GridClient Client, InventoryNode root, Regex criteria,
             uint millisecondsTimeout)
         {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryitems = directFindInventory<T>(Client, root, criteria, millisecondsTimeout);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryitems;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -637,10 +634,10 @@ namespace wasOpenMetaverse
         public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
             InventoryNode root, UUID criteria, LinkedList<string> prefix)
         {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return directFindInventoryPath<T>(Client, root, criteria, prefix);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryPaths = directFindInventoryPath<T>(Client, root, criteria, prefix);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryPaths;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -688,10 +685,10 @@ namespace wasOpenMetaverse
         public static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(GridClient Client,
             InventoryNode root, Regex criteria, LinkedList<string> prefix)
         {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return directFindInventoryPath<T>(Client, root, criteria, prefix);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryPaths = directFindInventoryPath<T>(Client, root, criteria, prefix);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryPaths;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -746,21 +743,17 @@ namespace wasOpenMetaverse
             inventoryFolders.Enqueue(root);
 
             UUID clientUUID;
-            lock (Locks.ClientInstanceSelfLock)
-            {
-                clientUUID = Client.Self.AgentID;
-            }
+            clientUUID = Client.Self.AgentID;
 
             do
             {
                 // Dequeue folder.
                 var queueFolder = inventoryFolders.Dequeue();
                 var contents = new HashSet<InventoryBase>();
-                lock (Locks.ClientInstanceInventoryLock)
-                {
-                    contents.UnionWith(Client.Inventory.FolderContents(queueFolder.UUID, clientUUID, true, true,
+                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                contents.UnionWith(Client.Inventory.FolderContents(queueFolder.UUID, clientUUID, true, true,
                         InventorySortOrder.ByDate, (int)millisecondsTimeout));
-                }
+                Locks.ClientInstanceInventoryLock.ExitReadLock();
                 foreach (var item in contents)
                 {
                     if (item is InventoryFolder)
@@ -843,11 +836,10 @@ namespace wasOpenMetaverse
                 }
             }
 
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                directUpdateInventoryRecursive(Client, Client.Inventory.Store.GetNodeFor(root.UUID), millisecondsTimeout,
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            directUpdateInventoryRecursive(Client, Client.Inventory.Store.GetNodeFor(root.UUID), millisecondsTimeout,
                     force);
-            }
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -876,10 +868,9 @@ namespace wasOpenMetaverse
                 }
             }
 
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                directUpdateInventoryRecursive(Client, root, millisecondsTimeout, force);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            directUpdateInventoryRecursive(Client, root, millisecondsTimeout, force);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1143,10 +1134,10 @@ namespace wasOpenMetaverse
             bool items,
             InventorySortOrder sortOrder, int millisecondTimeout)
         {
-            lock (Locks.ClientInstanceInventoryLock)
-            {
-                return Client.Inventory.FolderContents(folder, owner, folders, items, sortOrder, millisecondTimeout);
-            }
+            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            var inventoryItems = Client.Inventory.FolderContents(folder, owner, folders, items, sortOrder, millisecondTimeout);
+            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            return inventoryItems;
         }
     }
 }

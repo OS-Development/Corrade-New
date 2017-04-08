@@ -12,7 +12,6 @@ using OpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 
-
 namespace wasOpenMetaverse
 {
     public static class Resolvers
@@ -53,7 +52,7 @@ namespace wasOpenMetaverse
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
             Client.Directory.StartGroupSearch(GroupName, 0);
-            if (!alarm.Signal.WaitOne((int) millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
                 return false;
@@ -143,7 +142,7 @@ namespace wasOpenMetaverse
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
                 string.Format(Utils.EnUsCulture, "{0} {1}", FirstName, LastName), 0);
-            if (!alarm.Signal.WaitOne((int) millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
                 return false;
@@ -193,7 +192,6 @@ namespace wasOpenMetaverse
             return succeeded;
         }
 
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -218,7 +216,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(GroupUUID);
-            if (!GroupProfileReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!GroupProfileReceivedEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 return false;
@@ -249,11 +247,7 @@ namespace wasOpenMetaverse
                 GroupName = group.Name;
                 return true;
             }
-            bool succeeded;
-            lock (Locks.ClientInstanceGroupsLock)
-            {
-                succeeded = directGroupUUIDToName(Client, GroupUUID, millisecondsTimeout, ref GroupName);
-            }
+            bool succeeded = directGroupUUIDToName(Client, GroupUUID, millisecondsTimeout, ref GroupName);
             if (succeeded)
             {
                 Cache.AddGroup(GroupName, GroupUUID);
@@ -286,7 +280,7 @@ namespace wasOpenMetaverse
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(AgentUUID);
-            if (!UUIDNameReplyEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
@@ -354,25 +348,25 @@ namespace wasOpenMetaverse
             }
             var GroupRoleDataReceivedEvent = new ManualResetEvent(false);
             var roleUUID = UUID.Zero;
+            var requestUUID = UUID.Zero;
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
+                if (!args.RequestID.Equals(requestUUID) || !args.GroupID.Equals(GroupUUID))
+                    return;
                 roleUUID =
                     args.Roles.AsParallel().Where(o => o.Value.Name.Equals(RoleName, StringComparison.Ordinal))
                         .Select(o => o.Key)
                         .FirstOrDefault();
                 GroupRoleDataReceivedEvent.Set();
             };
-            lock (Locks.ClientInstanceGroupsLock)
+            Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
+            requestUUID = Client.Groups.RequestGroupRoles(GroupUUID);
+            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
-                Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-                    return false;
-                }
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+                return false;
             }
+            Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
             if (!roleUUID.Equals(UUID.Zero))
             {
                 RoleUUID = roleUUID;
@@ -403,22 +397,22 @@ namespace wasOpenMetaverse
             }
             var GroupRoleDataReceivedEvent = new ManualResetEvent(false);
             var groupRole = new GroupRole();
+            var requestUUID = UUID.Zero;
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
+                if (!args.RequestID.Equals(requestUUID) || !args.GroupID.Equals(GroupUUID))
+                    return;
                 args.Roles.TryGetValue(RoleUUID, out groupRole);
                 GroupRoleDataReceivedEvent.Set();
             };
-            lock (Locks.ClientInstanceGroupsLock)
+            Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
+            requestUUID = Client.Groups.RequestGroupRoles(GroupUUID);
+            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
-                Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedEvent.WaitOne((int) millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-                    return false;
-                }
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+                return false;
             }
+            Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
             if (!groupRole.Equals(default(GroupRole)))
             {
                 roleName = groupRole.Name;
@@ -455,7 +449,7 @@ namespace wasOpenMetaverse
                 };
             Client.Grid.GridRegion += GridRegionEventHandler;
             Client.Grid.RequestMapRegion(name, GridLayerType.Objects);
-            if (!GridRegionEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Grid.GridRegion -= GridRegionEventHandler;
                 return false;
@@ -504,7 +498,8 @@ namespace wasOpenMetaverse
 
                     if (!resolved || region.Handle.Equals(updateHandle)) return;
                     Cache.UpdateRegion(name, updateHandle);
-                }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                })
+                { IsBackground = true, Priority = ThreadPriority.Lowest }.Start();
                 return true;
             }
 
@@ -546,7 +541,7 @@ namespace wasOpenMetaverse
                 };
             Client.Grid.RegionHandleReply += GridRegionEventHandler;
             Client.Grid.RequestRegionHandle(regionUUID);
-            if (!GridRegionEvent.WaitOne((int) millisecondsTimeout, false))
+            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Grid.RegionHandleReply -= GridRegionEventHandler;
                 return false;
@@ -597,7 +592,7 @@ namespace wasOpenMetaverse
                     if (!resolved || region.Handle.Equals(updateHandle)) return;
                     Cache.UpdateRegion(regionUUID, updateHandle);
                 })
-                {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                { IsBackground = true, Priority = ThreadPriority.Lowest }.Start();
                 return true;
             }
 

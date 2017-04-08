@@ -32,17 +32,14 @@ namespace wasOpenMetaverse
             var MoneyBalanceEvent = new ManualResetEvent(false);
             EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
                 (sender, args) => MoneyBalanceEvent.Set();
-            lock (Locks.ClientInstanceSelfLock)
+            Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
+            Client.Self.RequestBalance();
+            if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
-                Client.Self.RequestBalance();
-                if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
-                    return false;
-                }
                 Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
+                return false;
             }
+            Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
             return true;
         }
 
@@ -69,6 +66,7 @@ namespace wasOpenMetaverse
                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             }
             mutes = Client.Self.MuteList.Copy().Values;
+
             return true;
         }
 
@@ -82,20 +80,20 @@ namespace wasOpenMetaverse
         public static bool GetMutes(GridClient Client, uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
         {
             bool succeeded;
+            if (Cache.MuteCache.Any())
+            {
+                mutes = Cache.MuteCache.OfType<MuteEntry>();
+                return true;
+            }
+
             lock (Locks.ClientInstanceSelfLock)
             {
-                if (Cache.MuteCache.Any())
-                {
-                    mutes = Cache.MuteCache.OfType<MuteEntry>();
-                    return true;
-                }
-
                 succeeded = directGetMutes(Client, millisecondsTimeout, ref mutes);
+            }
 
-                if (succeeded)
-                {
-                    Cache.MuteCache.UnionWith(mutes.OfType<Cache.MuteEntry>());
-                }
+            if (succeeded)
+            {
+                Cache.MuteCache.UnionWith(mutes.OfType<Cache.MuteEntry>());
             }
             return succeeded;
         }
@@ -117,22 +115,15 @@ namespace wasOpenMetaverse
             Dictionary<UUID, DateTime> bannedAgents = null;
             var BannedAgentsEvent = new ManualResetEvent(false);
             var succeeded = false;
-            EventHandler<BannedAgentsEventArgs> BannedAgentsEventHandler = (sender, args) =>
+            Client.Groups.RequestBannedAgents(groupUUID, (sender, args) =>
             {
                 succeeded = args.Success;
                 bannedAgents = args.BannedAgents;
                 BannedAgentsEvent.Set();
-            };
-            lock (Locks.ClientInstanceGroupsLock)
+            });
+            if (!BannedAgentsEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Groups.BannedAgents += BannedAgentsEventHandler;
-                Client.Groups.RequestBannedAgents(groupUUID);
-                if (!BannedAgentsEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Groups.BannedAgents -= BannedAgentsEventHandler;
-                    return false;
-                }
-                Client.Groups.BannedAgents -= BannedAgentsEventHandler;
+                return false;
             }
             if (!succeeded)
                 return false;
@@ -189,20 +180,17 @@ namespace wasOpenMetaverse
         public static bool GetCurrentGroups(GridClient Client, uint millisecondsTimeout, ref IEnumerable<UUID> groups)
         {
             bool succeeded;
-            lock (Locks.ClientInstanceGroupsLock)
+            if (Cache.CurrentGroupsCache.Any())
             {
-                if (Cache.CurrentGroupsCache.Any())
-                {
-                    groups = Cache.CurrentGroupsCache;
-                    return true;
-                }
+                groups = Cache.CurrentGroupsCache;
+                return true;
+            }
 
-                succeeded = directGetCurrentGroups(Client, millisecondsTimeout, ref groups);
+            succeeded = directGetCurrentGroups(Client, millisecondsTimeout, ref groups);
 
-                if (succeeded)
-                {
-                    Cache.CurrentGroupsCache.UnionWith(groups);
-                }
+            if (succeeded)
+            {
+                Cache.CurrentGroupsCache.UnionWith(groups);
             }
             return succeeded;
         }
@@ -332,22 +320,22 @@ namespace wasOpenMetaverse
         {
             var groupMembersReceivedEvent = new ManualResetEvent(false);
             var groupMembers = new HashSet<UUID>();
+            var requestUUID = UUID.Zero;
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
+                if (!args.RequestID.Equals(requestUUID) || !groupUUID.Equals(args.GroupID))
+                    return;
                 groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
                 groupMembersReceivedEvent.Set();
             };
-            lock (Locks.ClientInstanceGroupsLock)
+            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+            requestUUID = Client.Groups.RequestGroupMembers(groupUUID);
+            if (!groupMembersReceivedEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                Client.Groups.RequestGroupMembers(groupUUID);
-                if (!groupMembersReceivedEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                    return false;
-                }
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                return false;
             }
+            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             return groupMembers.Contains(agentUUID);
         }
 
@@ -368,20 +356,19 @@ namespace wasOpenMetaverse
             var GroupProfileEvent = new ManualResetEvent(false);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
             {
+                if (!groupUUID.Equals(args.Group.ID))
+                    return;
                 localGroup = args.Group;
                 GroupProfileEvent.Set();
             };
-            lock (Locks.ClientInstanceGroupsLock)
+            Client.Groups.GroupProfile += GroupProfileDelegate;
+            Client.Groups.RequestGroupProfile(groupUUID);
+            if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Groups.GroupProfile += GroupProfileDelegate;
-                Client.Groups.RequestGroupProfile(groupUUID);
-                if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Groups.GroupProfile -= GroupProfileDelegate;
-                    return false;
-                }
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
+                return false;
             }
+            Client.Groups.GroupProfile -= GroupProfileDelegate;
             group = localGroup;
             return true;
         }

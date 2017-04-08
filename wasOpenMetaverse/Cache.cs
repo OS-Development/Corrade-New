@@ -14,7 +14,6 @@ using wasOpenMetaverse.Caches;
 using wasSharp;
 using wasSharp.Collections.Specialized;
 
-
 namespace wasOpenMetaverse
 {
     public static class Cache
@@ -31,13 +30,14 @@ namespace wasOpenMetaverse
         public static readonly MuteCache ObservableMuteCache =
             new MuteCache();
 
-        private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
+        private static ConcurrentHashSet<UUID> _currentGroupsCache = new ConcurrentHashSet<UUID>();
 
         private static readonly object RegionCacheLock = new object();
         private static readonly object AgentCacheLock = new object();
         private static readonly object GroupCacheLock = new object();
         private static readonly object CurrentGroupsCacheLock = new object();
         private static readonly object MuteCacheLock = new object();
+
         public static ObservableHashSet<Region> RegionCache
         {
             get
@@ -92,7 +92,7 @@ namespace wasOpenMetaverse
             }
         }
 
-        public static HashSet<UUID> CurrentGroupsCache
+        public static ConcurrentHashSet<UUID> CurrentGroupsCache
         {
             get
             {
@@ -448,7 +448,7 @@ namespace wasOpenMetaverse
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
                     var serializer = new XmlSerializer(typeof(T));
-                    return (T) serializer.Deserialize(streamReader);
+                    return (T)serializer.Deserialize(streamReader);
                 }
             }
         }
