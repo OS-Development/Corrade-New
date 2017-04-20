@@ -99,9 +99,15 @@ namespace wasOpenMetaverse.Caches
             var enumerable = list as Cache.Group[] ?? list.ToArray();
             enumerable.Except(AsEnumerable()).AsParallel().ForAll(group =>
             {
-                nameCache.Remove(group.UUID);
-                nameUUIDHandleCache.Remove(group.Name, group.UUID);
-                groupCache.Remove(group.Name);
+                if (nameCache.ContainsKey(group.UUID))
+                    nameCache.Remove(group.UUID);
+                nameCache.Add(group.UUID, group);
+                if (nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
+                    nameUUIDHandleCache.Remove(group.Name, group.UUID);
+                nameUUIDHandleCache.Add(group.Name, group.UUID, group);
+                if (groupCache.ContainsKey(group.Name))
+                    groupCache.Remove(group.Name);
+                groupCache.Add(group.Name, group);
             });
 
             base.UnionWith(enumerable);

@@ -36,22 +36,24 @@ namespace wasOpenMetaverse
             if (string.IsNullOrEmpty(GroupName))
                 return false;
             var groupUUID = UUID.Zero;
+            var requestUUID = UUID.Zero;
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
+                if (!args.QueryID.Equals(requestUUID))
+                    return;
+
                 alarm.Alarm(dataTimeout);
                 var groupSearchData =
                     args.MatchedGroups.AsParallel()
                         .FirstOrDefault(o => o.GroupName.Equals(GroupName, StringComparison.OrdinalIgnoreCase));
-                switch (!groupSearchData.Equals(default(DirectoryManager.GroupSearchData)))
+                if (!groupSearchData.Equals(default(DirectoryManager.GroupSearchData)))
                 {
-                    case true:
-                        groupUUID = groupSearchData.GroupID;
-                        alarm.Signal.Set();
-                        break;
+                    groupUUID = groupSearchData.GroupID;
+                    alarm.Signal.Set();
                 }
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
-            Client.Directory.StartGroupSearch(GroupName, 0);
+            requestUUID = Client.Directory.StartGroupSearch(GroupName, 0, DirectoryManager.DirFindFlags.Groups);
             if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
@@ -86,12 +88,8 @@ namespace wasOpenMetaverse
                 GroupUUID = group.UUID;
                 return true;
             }
-            bool succeeded;
-            lock (Locks.ClientInstanceDirectoryLock)
-            {
-                succeeded = directGroupNameToUUID(Client, GroupName, millisecondsTimeout, dataTimeout, alarm,
-                    ref GroupUUID);
-            }
+            var succeeded = directGroupNameToUUID(Client, GroupName, millisecondsTimeout, dataTimeout, alarm,
+                ref GroupUUID);
             if (succeeded)
             {
                 Cache.AddGroup(GroupName, GroupUUID);
@@ -123,24 +121,26 @@ namespace wasOpenMetaverse
             if (string.IsNullOrEmpty(FirstName) || string.IsNullOrEmpty(LastName))
                 return false;
             var agentUUID = UUID.Zero;
+            var requestUUID = UUID.Zero;
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
+                if (!args.QueryID.Equals(requestUUID))
+                    return;
+
                 alarm.Alarm(dataTimeout);
                 var agentSearchData =
                     args.MatchedPeople.AsParallel().FirstOrDefault(
                         o =>
                             o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
                             o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
-                switch (!agentSearchData.Equals(default(DirectoryManager.AgentSearchData)))
+                if (!agentSearchData.Equals(default(DirectoryManager.AgentSearchData)))
                 {
-                    case true:
-                        agentUUID = agentSearchData.AgentID;
-                        alarm.Signal.Set();
-                        break;
+                    agentUUID = agentSearchData.AgentID;
+                    alarm.Signal.Set();
                 }
             };
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
-            Client.Directory.StartPeopleSearch(
+            requestUUID = Client.Directory.StartPeopleSearch(
                 string.Format(Utils.EnUsCulture, "{0} {1}", FirstName, LastName), 0);
             if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
@@ -179,12 +179,8 @@ namespace wasOpenMetaverse
                 AgentUUID = agent.UUID;
                 return true;
             }
-            bool succeeded;
-            lock (Locks.ClientInstanceDirectoryLock)
-            {
-                succeeded = directAgentNameToUUID(Client, FirstName, LastName, millisecondsTimeout, dataTimeout, alarm,
+            var succeeded = directAgentNameToUUID(Client, FirstName, LastName, millisecondsTimeout, dataTimeout, alarm,
                     ref AgentUUID);
-            }
             if (succeeded)
             {
                 Cache.AddAgent(FirstName, LastName, AgentUUID);
@@ -247,7 +243,9 @@ namespace wasOpenMetaverse
                 GroupName = group.Name;
                 return true;
             }
+            Locks.ClientInstanceGroupsLock.EnterWriteLock();
             bool succeeded = directGroupUUIDToName(Client, GroupUUID, millisecondsTimeout, ref GroupName);
+            Locks.ClientInstanceGroupsLock.ExitWriteLock();
             if (succeeded)
             {
                 Cache.AddGroup(GroupName, GroupUUID);
@@ -311,11 +309,9 @@ namespace wasOpenMetaverse
                 AgentName = string.Join(" ", agent.FirstName, agent.LastName);
                 return true;
             }
-            bool succeeded;
-            lock (Locks.ClientInstanceAvatarsLock)
-            {
-                succeeded = directAgentUUIDToName(Client, AgentUUID, millisecondsTimeout, ref AgentName);
-            }
+            Locks.ClientInstanceAvatarsLock.EnterWriteLock();
+            var succeeded = directAgentUUIDToName(Client, AgentUUID, millisecondsTimeout, ref AgentName);
+            Locks.ClientInstanceAvatarsLock.ExitWriteLock();
             if (succeeded)
             {
                 var fullName = new List<string>(Helpers.GetAvatarNames(AgentName));
@@ -482,19 +478,9 @@ namespace wasOpenMetaverse
                 new Thread(() =>
                 {
                     ulong updateHandle = 0;
-                    // Use fail locks.
-                    var resolved = false;
-                    if (Monitor.TryEnter(Locks.ClientInstanceGridLock, 1000))
-                    {
-                        try
-                        {
-                            resolved = directRegionNameToHandle(Client, name, millisecondsTimeout, ref updateHandle);
-                        }
-                        finally
-                        {
-                            Monitor.Exit(Locks.ClientInstanceGridLock);
-                        }
-                    }
+                    Locks.ClientInstanceGridLock.EnterReadLock();
+                    var resolved = directRegionNameToHandle(Client, name, millisecondsTimeout, ref updateHandle);
+                    Locks.ClientInstanceGridLock.ExitReadLock();
 
                     if (!resolved || region.Handle.Equals(updateHandle)) return;
                     Cache.UpdateRegion(name, updateHandle);
@@ -503,11 +489,9 @@ namespace wasOpenMetaverse
                 return true;
             }
 
-            bool succeeded;
-            lock (Locks.ClientInstanceGridLock)
-            {
-                succeeded = directRegionNameToHandle(Client, name, millisecondsTimeout, ref regionHandle);
-            }
+            Locks.ClientInstanceGridLock.EnterReadLock();
+            var succeeded = directRegionNameToHandle(Client, name, millisecondsTimeout, ref regionHandle);
+            Locks.ClientInstanceGridLock.ExitReadLock();
             if (succeeded)
             {
                 Cache.UpdateRegion(name, regionHandle);
@@ -574,20 +558,10 @@ namespace wasOpenMetaverse
                 new Thread(() =>
                 {
                     ulong updateHandle = 0;
-                    // Use fail locks.
-                    var resolved = false;
-                    if (Monitor.TryEnter(Locks.ClientInstanceGridLock, 1000))
-                    {
-                        try
-                        {
-                            resolved = directRegionUUIDToHandle(Client, regionUUID, millisecondsTimeout,
-                                ref updateHandle);
-                        }
-                        finally
-                        {
-                            Monitor.Exit(Locks.ClientInstanceGridLock);
-                        }
-                    }
+                    Locks.ClientInstanceGridLock.EnterReadLock();
+                    var resolved = directRegionUUIDToHandle(Client, regionUUID, millisecondsTimeout,
+                        ref updateHandle);
+                    Locks.ClientInstanceGridLock.ExitReadLock();
 
                     if (!resolved || region.Handle.Equals(updateHandle)) return;
                     Cache.UpdateRegion(regionUUID, updateHandle);
@@ -596,11 +570,9 @@ namespace wasOpenMetaverse
                 return true;
             }
 
-            bool succeeded;
-            lock (Locks.ClientInstanceGridLock)
-            {
-                succeeded = directRegionUUIDToHandle(Client, regionUUID, millisecondsTimeout, ref regionHandle);
-            }
+            Locks.ClientInstanceGridLock.EnterReadLock();
+            var succeeded = directRegionUUIDToHandle(Client, regionUUID, millisecondsTimeout, ref regionHandle);
+            Locks.ClientInstanceGridLock.ExitReadLock();
             if (succeeded)
             {
                 Cache.UpdateRegion(regionUUID, regionHandle);

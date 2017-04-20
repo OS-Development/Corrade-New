@@ -8,12 +8,13 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
 using wasSharp.Collections.Specialized;
+using wasSharp.Collections.Generic;
 
 namespace wasOpenMetaverse.Caches
 {
     public class AgentCache : ObservableHashSet<Cache.Agent>
     {
-        public Dictionary<UUID, Cache.Agent> nameCache = new Dictionary<UUID, Cache.Agent>();
+        public SerializableDictionary<UUID, Cache.Agent> nameCache = new SerializableDictionary<UUID, Cache.Agent>();
 
         public MultiKeyDictionary<string, string, Cache.Agent> nameHandleCache =
             new MultiKeyDictionary<string, string, Cache.Agent>();
@@ -31,22 +32,22 @@ namespace wasOpenMetaverse.Caches
             }
         }
 
-        public Cache.Agent this[UUID UUID]
+        public Cache.Agent this[UUID @UUID]
         {
             get
             {
                 Cache.Agent agent;
-                nameCache.TryGetValue(UUID, out agent);
+                nameCache.TryGetValue(@UUID, out agent);
                 return agent;
             }
         }
 
-        public Cache.Agent this[string firstname, string lastname, UUID UUID]
+        public Cache.Agent this[string firstname, string lastname, UUID @UUID]
         {
             get
             {
                 Cache.Agent agent;
-                nameUUIDHandleCache.TryGetValue(firstname, lastname, UUID, out agent);
+                nameUUIDHandleCache.TryGetValue(firstname, lastname, @UUID, out agent);
                 return agent;
             }
         }
@@ -102,9 +103,18 @@ namespace wasOpenMetaverse.Caches
             var enumerable = list as Cache.Agent[] ?? list.ToArray();
             enumerable.Except(AsEnumerable()).AsParallel().ForAll(agent =>
             {
-                nameCache.Remove(agent.UUID);
-                nameHandleCache.Remove(agent.FirstName, agent.LastName);
-                nameUUIDHandleCache.Remove(agent.FirstName, agent.LastName, agent.UUID);
+                if (nameCache.ContainsKey(agent.UUID))
+                    nameCache.Remove(agent.UUID);
+                nameCache.Add(agent.UUID, agent);
+
+                if (nameHandleCache.ContainsKey(agent.FirstName, agent.LastName))
+                    nameHandleCache.Remove(agent.FirstName, agent.LastName);
+                nameHandleCache.Add(agent.FirstName, agent.LastName, agent);
+
+                if (nameUUIDHandleCache.ContainsKey(agent.FirstName, agent.LastName, agent.UUID))
+                    nameUUIDHandleCache.Remove(agent.FirstName, agent.LastName, agent.UUID);
+
+                nameUUIDHandleCache.Add(agent.FirstName, agent.LastName, agent.UUID, agent);
             });
 
             base.UnionWith(enumerable);
@@ -115,9 +125,9 @@ namespace wasOpenMetaverse.Caches
             return nameHandleCache.ContainsKey(firstname, lastname);
         }
 
-        public bool Contains(UUID UUID)
+        public bool Contains(UUID @UUID)
         {
-            return nameCache.ContainsKey(UUID);
+            return nameCache.ContainsKey(@UUID);
         }
     }
 }

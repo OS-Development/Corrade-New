@@ -104,6 +104,11 @@ namespace wasOpenMetaverse
             {
                 public const uint SEARCH_RESULTS_COUNT = 100;
             }
+
+            public struct PLACES
+            {
+                public const uint SEARCH_RESULTS_COUNT = 100;
+            }
         }
 
         public struct ESTATE

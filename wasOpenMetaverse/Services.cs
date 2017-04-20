@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
-using wasSharp;
 using wasSharp.Timers;
 using Parallel = System.Threading.Tasks.Parallel;
 using OpenMetaverse.Packets;
@@ -32,14 +31,17 @@ namespace wasOpenMetaverse
             var MoneyBalanceEvent = new ManualResetEvent(false);
             EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
                 (sender, args) => MoneyBalanceEvent.Set();
+            Locks.ClientInstanceSelfLock.EnterReadLock();
             Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
             Client.Self.RequestBalance();
             if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, false))
             {
+                Locks.ClientInstanceSelfLock.ExitReadLock();
                 Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
                 return false;
             }
             Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
+            Locks.ClientInstanceSelfLock.ExitReadLock();
             return true;
         }
 
@@ -58,13 +60,14 @@ namespace wasOpenMetaverse
             var MuteListUpdatedEvent = new ManualResetEvent(false);
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
-            lock (Locks.ClientInstanceSelfLock)
-            {
-                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                Client.Self.RequestMuteList();
-                MuteListUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
-                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-            }
+
+            Locks.ClientInstanceSelfLock.EnterReadLock();
+            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+            Client.Self.RequestMuteList();
+            MuteListUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
+            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+            Locks.ClientInstanceSelfLock.ExitReadLock();
+
             mutes = Client.Self.MuteList.Copy().Values;
 
             return true;
@@ -79,17 +82,15 @@ namespace wasOpenMetaverse
         /// <returns>true if the current groups could be fetched</returns>
         public static bool GetMutes(GridClient Client, uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
         {
-            bool succeeded;
             if (Cache.MuteCache.Any())
             {
                 mutes = Cache.MuteCache.OfType<MuteEntry>();
                 return true;
             }
 
-            lock (Locks.ClientInstanceSelfLock)
-            {
-                succeeded = directGetMutes(Client, millisecondsTimeout, ref mutes);
-            }
+            Locks.ClientInstanceSelfLock.EnterReadLock();
+            var succeeded = directGetMutes(Client, millisecondsTimeout, ref mutes);
+            Locks.ClientInstanceSelfLock.ExitReadLock();
 
             if (succeeded)
             {
@@ -179,14 +180,15 @@ namespace wasOpenMetaverse
         /// <returns>true if the current groups could be fetched</returns>
         public static bool GetCurrentGroups(GridClient Client, uint millisecondsTimeout, ref IEnumerable<UUID> groups)
         {
-            bool succeeded;
             if (Cache.CurrentGroupsCache.Any())
             {
                 groups = Cache.CurrentGroupsCache;
                 return true;
             }
 
-            succeeded = directGetCurrentGroups(Client, millisecondsTimeout, ref groups);
+            Locks.ClientInstanceGroupsLock.EnterReadLock();
+            var succeeded = directGetCurrentGroups(Client, millisecondsTimeout, ref groups);
+            Locks.ClientInstanceGroupsLock.ExitReadLock();
 
             if (succeeded)
             {
@@ -223,17 +225,17 @@ namespace wasOpenMetaverse
                     avatarGroups.AddRange(args.Groups);
                 }
             };
-            lock (Locks.ClientInstanceAvatarsLock)
+            Locks.ClientInstanceAvatarsLock.EnterReadLock();
+            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+            Client.Avatars.RequestAvatarProperties(agentUUID);
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                Client.Avatars.RequestAvatarProperties(agentUUID);
-                if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                    return false;
-                }
                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                return false;
             }
+            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+            Locks.ClientInstanceAvatarsLock.ExitReadLock();
             return
                 avatarGroups.AsParallel()
                     .Any(o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
@@ -259,47 +261,46 @@ namespace wasOpenMetaverse
                     succeeded = args.Success;
                     GroupChatJoinedEvent.Set();
                 };
-            lock (Locks.ClientInstanceSelfLock)
+            Locks.ClientInstanceSelfLock.EnterWriteLock();
+            Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
+            Client.Self.RequestJoinGroupChat(groupUUID);
+            if (!GroupChatJoinedEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
-                Client.Self.RequestJoinGroupChat(groupUUID);
-                if (!GroupChatJoinedEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                    return false;
-                }
                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+                Locks.ClientInstanceSelfLock.ExitWriteLock();
+                return false;
             }
+            Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+            Locks.ClientInstanceSelfLock.ExitWriteLock();
             return succeeded;
         }
 
         public static bool UpdateParcelAccessList(GridClient Client, Simulator simulator, int parcelLocalID, AccessList accessListType, List<ParcelManager.ParcelAccessEntry> accessList)
         {
-            lock (Locks.ClientInstanceNetworkLock)
+            Locks.ClientInstanceNetworkLock.EnterWriteLock();
+            Client.Network.SendPacket(new ParcelAccessListUpdatePacket
             {
-                Client.Network.SendPacket(new ParcelAccessListUpdatePacket
+                List = accessList.AsParallel().Select(o => new ParcelAccessListUpdatePacket.ListBlock
                 {
-                    List = accessList.AsParallel().Select(o => new ParcelAccessListUpdatePacket.ListBlock
-                    {
-                        ID = o.AgentID,
-                        Flags = (uint)o.Flags
-                    }).ToArray(),
-                    AgentData = new ParcelAccessListUpdatePacket.AgentDataBlock
-                    {
-                        AgentID = Client.Self.AgentID,
-                        SessionID = Client.Self.SessionID
-                    },
-                    Data = new ParcelAccessListUpdatePacket.DataBlock
-                    {
-                        Flags = (uint)accessListType,
-                        LocalID = parcelLocalID,
-                        TransactionID = UUID.Random(),
-                        SequenceID = 1,
-                        Sections = (int)Math.Ceiling(accessList.Count / 48f)
-                    },
-                    Type = PacketType.ParcelAccessListUpdate
-                }, simulator);
-            }
+                    ID = o.AgentID,
+                    Flags = (uint)o.Flags
+                }).ToArray(),
+                AgentData = new ParcelAccessListUpdatePacket.AgentDataBlock
+                {
+                    AgentID = Client.Self.AgentID,
+                    SessionID = Client.Self.SessionID
+                },
+                Data = new ParcelAccessListUpdatePacket.DataBlock
+                {
+                    Flags = (uint)accessListType,
+                    LocalID = parcelLocalID,
+                    TransactionID = UUID.Random(),
+                    SequenceID = 1,
+                    Sections = (int)Math.Ceiling(accessList.Count / 48f)
+                },
+                Type = PacketType.ParcelAccessListUpdate
+            }, simulator);
+            Locks.ClientInstanceNetworkLock.ExitWriteLock();
 
             return true;
         }
@@ -319,13 +320,13 @@ namespace wasOpenMetaverse
         public static bool AgentInGroup(GridClient Client, UUID agentUUID, UUID groupUUID, uint millisecondsTimeout)
         {
             var groupMembersReceivedEvent = new ManualResetEvent(false);
-            var groupMembers = new HashSet<UUID>();
             var requestUUID = UUID.Zero;
+            bool isInGroup = false;
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
                 if (!args.RequestID.Equals(requestUUID) || !groupUUID.Equals(args.GroupID))
                     return;
-                groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
+                isInGroup = args.Members.ContainsKey(agentUUID);
                 groupMembersReceivedEvent.Set();
             };
             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
@@ -336,7 +337,7 @@ namespace wasOpenMetaverse
                 return false;
             }
             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-            return groupMembers.Contains(agentUUID);
+            return isInGroup;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -361,14 +362,17 @@ namespace wasOpenMetaverse
                 localGroup = args.Group;
                 GroupProfileEvent.Set();
             };
+            Locks.ClientInstanceGroupsLock.EnterReadLock();
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(groupUUID);
             if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, false))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
+                Locks.ClientInstanceGroupsLock.ExitReadLock();
                 return false;
             }
             Client.Groups.GroupProfile -= GroupProfileDelegate;
+            Locks.ClientInstanceGroupsLock.ExitReadLock();
             group = localGroup;
             return true;
         }
@@ -387,31 +391,32 @@ namespace wasOpenMetaverse
         /// <returns>true if the parcel could be found</returns>
         public static bool GetParcelAtPosition(GridClient Client, Simulator simulator, Vector3 position,
             uint millisecondsTimeout,
+            uint dataTimeout,
             ref Parcel parcel)
         {
             var RequestAllSimParcelsEvent = new ManualResetEvent(false);
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
-            lock (Locks.ClientInstanceParcelsLock)
+            Locks.ClientInstanceParcelsLock.EnterReadLock();
+            Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
+            switch (!simulator.IsParcelMapFull())
             {
-                Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-                switch (!simulator.IsParcelMapFull())
-                {
-                    case true:
-                        Client.Parcels.RequestAllSimParcels(simulator);
-                        break;
+                case true:
+                    Client.Parcels.RequestAllSimParcels(simulator, true, (int)dataTimeout);
+                    break;
 
-                    default:
-                        RequestAllSimParcelsEvent.Set();
-                        break;
-                }
-                if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
-                    return false;
-                }
-                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
+                default:
+                    RequestAllSimParcelsEvent.Set();
+                    break;
             }
+            if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, false))
+            {
+                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
+                Locks.ClientInstanceParcelsLock.ExitReadLock();
+                return false;
+            }
+            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
+            Locks.ClientInstanceParcelsLock.ExitReadLock();
             var localParcel = simulator.Parcels.Copy().Values
                 .AsParallel()
                 .Where(
@@ -453,17 +458,17 @@ namespace wasOpenMetaverse
                     ParcelInfoEvent.Set();
                 }
             };
-            lock (Locks.ClientInstanceParcelsLock)
+            Locks.ClientInstanceParcelsLock.EnterReadLock();
+            Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
+            Client.Parcels.RequestParcelInfo(parcelUUID);
+            if (!ParcelInfoEvent.WaitOne((int)millisecondsTimeout, false))
             {
-                Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
-                Client.Parcels.RequestParcelInfo(parcelUUID);
-                if (!ParcelInfoEvent.WaitOne((int)millisecondsTimeout, false))
-                {
-                    Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                    return false;
-                }
                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                Locks.ClientInstanceParcelsLock.ExitReadLock();
+                return false;
             }
+            Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+            Locks.ClientInstanceParcelsLock.ExitReadLock();
             if (localParcelInfo.Equals(default(ParcelInfo)))
             {
                 return false;
@@ -483,34 +488,34 @@ namespace wasOpenMetaverse
         /// <returns>the primitives in range</returns>
         public static HashSet<Primitive> GetPrimitives(GridClient Client, float range)
         {
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                    .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
-                    .ToDictionary(o => o.LocalID, p => p);
-                var objectsAvatars = Client.Network.Simulators.AsParallel()
-                    .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
-                    .ToDictionary(o => o.LocalID, p => p);
-                return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o?.ObjectsPrimitives?.Copy()?.Values })
-                    .SelectMany(o => o.a.AsParallel().Where(p =>
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var objectsPrimitives = Client.Network.Simulators.AsParallel()
+                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
+                .ToDictionary(o => o.LocalID, p => p);
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
+                .ToDictionary(o => o.LocalID, p => p);
+            var result = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
+                .Select(o => new { s = o, a = o?.ObjectsPrimitives?.Copy()?.Values })
+                .SelectMany(o => o.a.AsParallel().Where(p =>
+                {
+                    // find the parent of the primitive
+                    var parent = p;
+                    Primitive ancestorPrimitive;
+                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
                     {
-                        // find the parent of the primitive
-                        var parent = p;
-                        Primitive ancestorPrimitive;
-                        if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
-                        {
-                            parent = ancestorPrimitive;
-                        }
-                        Avatar ancestorAvatar;
-                        if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
-                        {
-                            parent = ancestorAvatar;
-                        }
-                        return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
-                            Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
-                    })));
-            }
+                        parent = ancestorPrimitive;
+                    }
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
+                    {
+                        parent = ancestorAvatar;
+                    }
+                    return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
+                })));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
+            return result;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -524,27 +529,27 @@ namespace wasOpenMetaverse
         /// <returns>the primitives in range</returns>
         public static HashSet<Primitive> GetObjects(GridClient Client, float range)
         {
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                var objectsAvatars = Client.Network.Simulators.AsParallel()
-                    .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
-                    .ToDictionary(o => o.LocalID, p => p);
-                return new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
-                    .SelectMany(o => o.a.AsParallel().Where(p =>
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
+                .ToDictionary(o => o.LocalID, p => p);
+            var result = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
+                .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
+                .SelectMany(o => o.a.AsParallel().Where(p =>
+                {
+                    // find the parent of the primitive
+                    var parent = p;
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
                     {
-                        // find the parent of the primitive
-                        var parent = p;
-                        Avatar ancestorAvatar;
-                        if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
-                        {
-                            parent = ancestorAvatar;
-                        }
-                        return (p.ParentID.Equals(0) || objectsAvatars.ContainsKey(p.ParentID)) &&
-                               Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
-                                   Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
-                    })));
-            }
+                        parent = ancestorAvatar;
+                    }
+                    return (p.ParentID.Equals(0) || objectsAvatars.ContainsKey(p.ParentID)) &&
+                           Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
+                               Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
+                })));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
+            return result;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -557,34 +562,34 @@ namespace wasOpenMetaverse
         /// <param name="range">the range to search in</param>
         public static HashSet<Avatar> GetAvatars(GridClient Client, float range)
         {
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                    .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
-                    .ToDictionary(o => o.LocalID, p => p);
-                var objectsAvatars = Client.Network.Simulators.AsParallel()
-                    .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
-                    .ToDictionary(o => o.LocalID, p => p);
-                return new HashSet<Avatar>(Client.Network.Simulators.AsParallel()
-                    .Select(o => new { s = o, a = o?.ObjectsAvatars?.Copy()?.Values })
-                    .SelectMany(o => o.a.AsParallel().Where(p =>
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var objectsPrimitives = Client.Network.Simulators.AsParallel()
+                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
+                .ToDictionary(o => o.LocalID, p => p);
+            var objectsAvatars = Client.Network.Simulators.AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
+                .ToDictionary(o => o.LocalID, p => p);
+            var result = new HashSet<Avatar>(Client.Network.Simulators.AsParallel()
+                .Select(o => new { s = o, a = o?.ObjectsAvatars?.Copy()?.Values })
+                .SelectMany(o => o.a.AsParallel().Where(p =>
+                {
+                    // find the parent of the primitive
+                    Primitive parent = p;
+                    Primitive ancestorPrimitive;
+                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
                     {
-                        // find the parent of the primitive
-                        Primitive parent = p;
-                        Primitive ancestorPrimitive;
-                        if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
-                        {
-                            parent = ancestorPrimitive;
-                        }
-                        Avatar ancestorAvatar;
-                        if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
-                        {
-                            parent = ancestorAvatar;
-                        }
-                        return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
-                            Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
-                    })));
-            }
+                        parent = ancestorPrimitive;
+                    }
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
+                    {
+                        parent = ancestorAvatar;
+                    }
+                    return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
+                })));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
+            return result;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -606,21 +611,19 @@ namespace wasOpenMetaverse
             var regionHandles = new HashSet<ulong>(localPrimitives.Select(o => o.RegionHandle));
             Parallel.ForEach(regionHandles, o =>
             {
-                lock (Locks.ClientInstanceObjectsLock)
-                {
-                    Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                    ObjectPropertiesEvent.Reset();
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        Client.Objects.SelectObjects(
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(o)),
-                            localPrimitives.Where(p => p.RegionHandle.Equals(o))
-                                .Select(p => p.LocalID)
-                                .ToArray(), true);
-                    }
-                    ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
-                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                }
+                Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+                ObjectPropertiesEvent.Reset();
+                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                Client.Objects.SelectObjects(
+                    Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(o)),
+                    localPrimitives.Where(p => p.RegionHandle.Equals(o))
+                        .Select(p => p.LocalID)
+                        .ToArray(), true);
+                Locks.ClientInstanceNetworkLock.ExitReadLock();
+                ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
+                Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+                Locks.ClientInstanceObjectsLock.ExitWriteLock();
             });
             primitives = new HashSet<Primitive>(localPrimitives.Where(o => o.Properties != null));
             return true;
@@ -643,16 +646,17 @@ namespace wasOpenMetaverse
                 (sender, args) => { ObjectPropertiesEvent.Set(); };
             var localPrimitive = primitive;
             var regionHandle = localPrimitive.RegionHandle;
-            lock (Locks.ClientInstanceObjectsLock)
-            {
-                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                ObjectPropertiesEvent.Reset();
-                Client.Objects.SelectObject(
-                    Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(regionHandle)),
-                    localPrimitive.LocalID, true);
-                ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
-                Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-            }
+            Locks.ClientInstanceObjectsLock.EnterWriteLock();
+            Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+            ObjectPropertiesEvent.Reset();
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            Client.Objects.SelectObject(
+                Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(regionHandle)),
+                localPrimitive.LocalID, true);
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
+            ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
+            Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+            Locks.ClientInstanceObjectsLock.ExitWriteLock();
             primitive = localPrimitive;
             return true;
         }
@@ -720,9 +724,8 @@ namespace wasOpenMetaverse
                         avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                     }
                 };
-            lock (Locks.ClientInstanceAvatarsLock)
-            {
-                Parallel.ForEach(scansAvatars, o =>
+            Locks.ClientInstanceAvatarsLock.EnterReadLock();
+            Parallel.ForEach(scansAvatars, o =>
                 {
                     Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
@@ -744,7 +747,7 @@ namespace wasOpenMetaverse
                     Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                     Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                 });
-            }
+            Locks.ClientInstanceAvatarsLock.ExitReadLock();
             if (
                 avatarUpdates.Values.AsParallel()
                     .Any(
@@ -963,18 +966,18 @@ namespace wasOpenMetaverse
         {
             var AssetReceivedEvent = new ManualResetEvent(false);
             byte[] localAssetData = null;
-            lock (Locks.ClientInstanceAssetsLock)
+
+            Locks.ClientInstanceAssetsLock.EnterReadLock();
+            Client.Assets.RequestImage(assetUUID, (state, asset) =>
             {
-                Client.Assets.RequestImage(assetUUID, (state, asset) =>
-                {
-                    if (!asset.AssetID.Equals(assetUUID))
-                        return;
-                    if (!state.Equals(TextureRequestState.Finished))
-                        return;
-                    localAssetData = asset.AssetData;
-                    AssetReceivedEvent.Set();
-                });
-            }
+                if (!asset.AssetID.Equals(assetUUID))
+                    return;
+                if (!state.Equals(TextureRequestState.Finished))
+                    return;
+                localAssetData = asset.AssetData;
+                AssetReceivedEvent.Set();
+            });
+            Locks.ClientInstanceAssetsLock.ExitReadLock();
 
             assetData = localAssetData;
             return AssetReceivedEvent.WaitOne((int)dataTimeout, false);
@@ -993,21 +996,20 @@ namespace wasOpenMetaverse
         /// <returns>true of the texture could be downloaded successfully</returns>
         public static bool DownloadTexture(GridClient Client, UUID assetUUID, out byte[] assetData, uint dataTimeout)
         {
-            lock (Locks.ClientInstanceAssetsLock)
+            Locks.ClientInstanceAssetsLock.EnterReadLock();
+            if (Client.Assets.Cache.HasAsset(assetUUID))
             {
-                if (Client.Assets.Cache.HasAsset(assetUUID))
-                {
-                    assetData = Client.Assets.Cache.GetCachedAssetBytes(assetUUID);
-                    return true;
-                }
+                assetData = Client.Assets.Cache.GetCachedAssetBytes(assetUUID);
+                Locks.ClientInstanceAssetsLock.ExitReadLock();
+                return true;
             }
+            Locks.ClientInstanceAssetsLock.ExitReadLock();
             var succeeded = directDownloadTexture(Client, assetUUID, out assetData, dataTimeout);
             if (succeeded)
             {
-                lock (Locks.ClientInstanceAssetsLock)
-                {
-                    Client.Assets.Cache.SaveAssetToCache(assetUUID, assetData);
-                }
+                Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                Client.Assets.Cache.SaveAssetToCache(assetUUID, assetData);
+                Locks.ClientInstanceAssetsLock.ExitWriteLock();
             }
             return succeeded;
         }

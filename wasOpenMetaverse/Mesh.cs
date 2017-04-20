@@ -45,20 +45,23 @@ namespace wasOpenMetaverse
                 switch (!Client.Assets.Cache.HasAsset(primitive.Sculpt.SculptTexture))
                 {
                     case true:
-                        lock (Locks.ClientInstanceAssetsLock)
+                        Locks.ClientInstanceAssetsLock.EnterReadLock();
+                        var ImageDownloadedEvent = new ManualResetEvent(false);
+                        Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
                         {
-                            var ImageDownloadedEvent = new ManualResetEvent(false);
-                            Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
-                            {
-                                if (!state.Equals(TextureRequestState.Finished)) return;
-                                assetData = args.AssetData;
-                                ImageDownloadedEvent.Set();
-                            });
-                            if (!ImageDownloadedEvent.WaitOne((int) millisecondsTimeout, false))
-                                return false;
+                            if (!state.Equals(TextureRequestState.Finished)) return;
+                            assetData = args.AssetData;
+                            ImageDownloadedEvent.Set();
+                        });
+                        if (!ImageDownloadedEvent.WaitOne((int)millisecondsTimeout, false))
+                        {
+                            Locks.ClientInstanceAssetsLock.ExitReadLock();
+                            return false;
                         }
+                        Locks.ClientInstanceAssetsLock.ExitReadLock();
                         Client.Assets.Cache.SaveAssetToCache(primitive.Sculpt.SculptTexture, assetData);
                         break;
+
                     default:
                         assetData = Client.Assets.Cache.GetCachedAssetBytes(primitive.Sculpt.SculptTexture);
                         break;
@@ -69,6 +72,7 @@ namespace wasOpenMetaverse
                 {
                     case true:
                         return false;
+
                     default:
                         if ((managedImage.Channels & ManagedImage.ImageChannels.Alpha) != 0)
                         {
@@ -77,28 +81,31 @@ namespace wasOpenMetaverse
                         image = LoadTGAClass.LoadTGA(new MemoryStream(managedImage.ExportTGA()));
                         break;
                 }
-                facetedMesh = mesher.GenerateFacetedSculptMesh(primitive, (Bitmap) image, DetailLevel.Highest);
+                facetedMesh = mesher.GenerateFacetedSculptMesh(primitive, (Bitmap)image, DetailLevel.Highest);
                 return true;
             }
             FacetedMesh localFacetedMesh = null;
             var MeshDownloadedEvent = new ManualResetEvent(false);
-            lock (Locks.ClientInstanceAssetsLock)
-            {
-                Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
+            Locks.ClientInstanceAssetsLock.EnterReadLock();
+            Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
                 {
                     FacetedMesh.TryDecodeFromAsset(primitive, meshAsset, DetailLevel.Highest, out localFacetedMesh);
                     MeshDownloadedEvent.Set();
                 });
 
-                if (!MeshDownloadedEvent.WaitOne((int) millisecondsTimeout, false))
-                    return false;
+            if (!MeshDownloadedEvent.WaitOne((int)millisecondsTimeout, false))
+            {
+                Locks.ClientInstanceAssetsLock.ExitReadLock();
+                return false;
             }
+            Locks.ClientInstanceAssetsLock.ExitReadLock();
 
             switch (localFacetedMesh != null)
             {
                 case true:
                     facetedMesh = localFacetedMesh;
                     return true;
+
                 default:
                     return false;
             }
@@ -183,7 +190,7 @@ namespace wasOpenMetaverse
                     .AppendChild(Doc.CreateElement("accessor"));
                 acc.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}", src_id,
                     "array");
-                acc.Attributes.Append(Doc.CreateAttribute("count")).InnerText = (vals.Count/param.Length).ToString();
+                acc.Attributes.Append(Doc.CreateAttribute("count")).InnerText = (vals.Count / param.Length).ToString();
                 acc.Attributes.Append(Doc.CreateAttribute("stride")).InnerText = param.Length.ToString();
 
                 foreach (var c in param)
@@ -283,7 +290,7 @@ namespace wasOpenMetaverse
                                 var index = index_offset + face.Indices[i];
                                 pBuilder.Append(index);
                                 pBuilder.Append(" ");
-                                if (i%3 == 0)
+                                if (i % 3 == 0)
                                 {
                                     vcountBuilder.Append("3 ");
                                     num_tris++;
@@ -318,36 +325,36 @@ namespace wasOpenMetaverse
                 var mat = new float[16];
 
                 // Transpose the quaternion (don't ask me why)
-                q.X = q.X*-1f;
-                q.Y = q.Y*-1f;
-                q.Z = q.Z*-1f;
+                q.X = q.X * -1f;
+                q.Y = q.Y * -1f;
+                q.Z = q.Z * -1f;
 
                 var x2 = q.X + q.X;
                 var y2 = q.Y + q.Y;
                 var z2 = q.Z + q.Z;
-                var xx = q.X*x2;
-                var xy = q.X*y2;
-                var xz = q.X*z2;
-                var yy = q.Y*y2;
-                var yz = q.Y*z2;
-                var zz = q.Z*z2;
-                var wx = q.W*x2;
-                var wy = q.W*y2;
-                var wz = q.W*z2;
+                var xx = q.X * x2;
+                var xy = q.X * y2;
+                var xz = q.X * z2;
+                var yy = q.Y * y2;
+                var yz = q.Y * z2;
+                var zz = q.Z * z2;
+                var wx = q.W * x2;
+                var wy = q.W * y2;
+                var wz = q.W * z2;
 
-                mat[0] = (1.0f - (yy + zz))*scale.X;
-                mat[1] = (xy - wz)*scale.X;
-                mat[2] = (xz + wy)*scale.X;
+                mat[0] = (1.0f - (yy + zz)) * scale.X;
+                mat[1] = (xy - wz) * scale.X;
+                mat[2] = (xz + wy) * scale.X;
                 mat[3] = 0.0f;
 
-                mat[4] = (xy + wz)*scale.Y;
-                mat[5] = (1.0f - (xx + zz))*scale.Y;
-                mat[6] = (yz - wx)*scale.Y;
+                mat[4] = (xy + wz) * scale.Y;
+                mat[5] = (1.0f - (xx + zz)) * scale.Y;
+                mat[6] = (yz - wx) * scale.Y;
                 mat[7] = 0.0f;
 
-                mat[8] = (xz - wy)*scale.Z;
-                mat[9] = (yz + wx)*scale.Z;
-                mat[10] = (1.0f - (xx + yy))*scale.Z;
+                mat[8] = (xz - wy) * scale.Z;
+                mat[9] = (yz + wx) * scale.Z;
+                mat[10] = (1.0f - (xx + yy)) * scale.Z;
                 mat[11] = 0.0f;
 
                 //Positional parts
@@ -494,7 +501,7 @@ namespace wasOpenMetaverse
                 {
                     for (var j = 0; j < 4; j++)
                     {
-                        matrixVal += srt[j*4 + i].ToString(Utils.EnUsCulture) + " ";
+                        matrixVal += srt[j * 4 + i].ToString(Utils.EnUsCulture) + " ";
                     }
                 }
                 matrix.InnerText = matrixVal.TrimEnd();

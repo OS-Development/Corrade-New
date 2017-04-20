@@ -137,11 +137,25 @@ namespace wasOpenMetaverse.Caches
             var enumerable = list as Cache.Region[] ?? list.ToArray();
             enumerable.Except(AsEnumerable()).AsParallel().ForAll(region =>
             {
-                nameCache.Remove(region.Name);
-                handleCache.Remove(region.Handle);
-                UUIDCache.Remove(region.UUID);
-                nameHandleCache.Remove(region.Name);
-                UUIDHandleCache.Remove(region.UUID);
+                if (nameCache.ContainsKey(region.Name))
+                    nameCache.Remove(region.Name);
+                nameCache.Add(region.Name, region);
+
+                if (handleCache.ContainsKey(region.Handle))
+                    handleCache.Remove(region.Handle);
+                handleCache.Add(region.Handle, region);
+
+                if (UUIDCache.ContainsKey(region.UUID))
+                    UUIDCache.Remove(region.UUID);
+                UUIDCache.Add(region.UUID, region);
+
+                if (nameHandleCache.ContainsKey(region.Name, region.Handle))
+                    nameHandleCache.Remove(region.Name, region.Handle);
+                nameHandleCache.Add(region.Name, region.Handle, region);
+
+                if (UUIDHandleCache.ContainsKey(region.UUID, region.Handle))
+                    UUIDHandleCache.Remove(region.UUID, region.Handle);
+                UUIDHandleCache.Add(region.UUID, region.Handle, region);
             });
 
             base.UnionWith(enumerable);

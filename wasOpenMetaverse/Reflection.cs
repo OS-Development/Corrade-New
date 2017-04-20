@@ -391,6 +391,11 @@ namespace wasOpenMetaverse
                 var data = wasSharpNET.Reflection.wasGetInfoValue(info, structure);
 
                 // OpenMetaverse particular flags.
+
+                // LL permissions.
+                if (data is Permissions)
+                    wasSharpNET.Reflection.wasSetInfoValue(info, ref structure, Inventory.wasStringToPermissions(d.Value));
+
                 if (data is ParcelFlags)
                 {
                     ParcelFlags parcelFlags;

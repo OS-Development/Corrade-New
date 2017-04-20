@@ -12,21 +12,18 @@ namespace wasOpenMetaverse
     {
         public static readonly ReaderWriterLockSlim ClientInstanceGroupsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         public static readonly ReaderWriterLockSlim ClientInstanceInventoryLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
-
-        //public static readonly object ClientInstanceInventoryLock = new object();
-        public static readonly object ClientInstanceAvatarsLock = new object();
-
-        public static readonly object ClientInstanceSelfLock = new object();
-        public static readonly object ClientInstanceConfigurationLock = new object();
-        public static readonly object ClientInstanceParcelsLock = new object();
-        public static readonly object ClientInstanceNetworkLock = new object();
-        public static readonly object ClientInstanceGridLock = new object();
-        public static readonly object ClientInstanceDirectoryLock = new object();
-        public static readonly object ClientInstanceEstateLock = new object();
-        public static readonly object ClientInstanceObjectsLock = new object();
-        public static readonly object ClientInstanceFriendsLock = new object();
-        public static readonly object ClientInstanceAssetsLock = new object();
-        public static readonly object ClientInstanceAppearanceLock = new object();
-        public static readonly object ClientInstanceSoundLock = new object();
+        public static readonly ReaderWriterLockSlim ClientInstanceAvatarsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceSelfLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceConfigurationLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceParcelsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceNetworkLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceGridLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceDirectoryLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceEstateLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceObjectsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceFriendsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceAssetsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceAppearanceLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        public static readonly ReaderWriterLockSlim ClientInstanceSoundLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
     }
 }

@@ -71,42 +71,40 @@ namespace wasOpenMetaverse
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             var attachmentPoint = AttachmentPoint.Default;
-            lock (Locks.ClientInstanceAppearanceLock)
+            Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+            var objectAttachedEvent = new ManualResetEvent(false);
+            EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
             {
-                var objectAttachedEvent = new ManualResetEvent(false);
-                EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
+                Primitive prim;
+                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                if (!Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.Prim.LocalID, out prim))
                 {
-                    Primitive prim;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        if (
-                            !Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.Prim.LocalID,
-                                out prim))
-                            return;
-                    }
-
-                    if (Client.Self.LocalID.Equals(0) || prim.NameValues == null)
-                        return;
-
-                    if (!prim.NameValues.AsParallel()
-                        .Where(o => string.Equals(o.Name, "AttachItemID"))
-                        .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
-                            StringComparison.OrdinalIgnoreCase))) return;
-
-                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
-                                                         ((prim.PrimData.State & ~0xF0) << 4));
-
-                    objectAttachedEvent.Set();
-                };
-
-                lock (Locks.ClientInstanceObjectsLock)
-                {
-                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                    Client.Appearance.Attach(realItem, point, replace);
-                    objectAttachedEvent.WaitOne((int)millisecondsTimeout, false);
-                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
+                    return;
                 }
-            }
+                Locks.ClientInstanceNetworkLock.ExitReadLock();
+
+                if (Client.Self.LocalID.Equals(0) || prim.NameValues == null)
+                    return;
+
+                if (!prim.NameValues.AsParallel()
+                    .Where(o => string.Equals(o.Name, "AttachItemID"))
+                    .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                        StringComparison.OrdinalIgnoreCase))) return;
+
+                attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
+                                                     ((prim.PrimData.State & ~0xF0) << 4));
+
+                objectAttachedEvent.Set();
+            };
+
+            Locks.ClientInstanceObjectsLock.EnterWriteLock();
+            Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+            Client.Appearance.Attach(realItem, point, replace);
+            objectAttachedEvent.WaitOne((int)millisecondsTimeout, false);
+            Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+            Locks.ClientInstanceObjectsLock.ExitWriteLock();
+            Locks.ClientInstanceAppearanceLock.ExitWriteLock();
             if (realItem is InventoryAttachment)
             {
                 (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
@@ -127,42 +125,40 @@ namespace wasOpenMetaverse
             if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
             RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             var attachmentPoint = AttachmentPoint.Default;
-            lock (Locks.ClientInstanceAppearanceLock)
+            Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+            var objectDetachedEvent = new ManualResetEvent(false);
+            EventHandler<KillObjectEventArgs> KillObjectEventHandler = (sender, args) =>
             {
-                var objectDetachedEvent = new ManualResetEvent(false);
-                EventHandler<KillObjectEventArgs> KillObjectEventHandler = (sender, args) =>
+                Primitive prim;
+                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                if (!Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.ObjectLocalID, out prim))
                 {
-                    Primitive prim;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        if (
-                            !Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.ObjectLocalID,
-                                out prim))
-                            return;
-                    }
-
-                    if (Client.Self.LocalID.Equals(0) || prim.NameValues == null)
-                        return;
-
-                    if (!prim.NameValues.AsParallel()
-                        .Where(o => string.Equals(o.Name, "AttachItemID"))
-                        .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
-                            StringComparison.OrdinalIgnoreCase))) return;
-
-                    attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
-                                                         ((prim.PrimData.State & ~0xF0) << 4));
-
-                    objectDetachedEvent.Set();
-                };
-
-                lock (Locks.ClientInstanceObjectsLock)
-                {
-                    Client.Objects.KillObject += KillObjectEventHandler;
-                    Client.Appearance.Detach(realItem);
-                    objectDetachedEvent.WaitOne((int)millisecondsTimeout, false);
-                    Client.Objects.KillObject -= KillObjectEventHandler;
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
+                    return;
                 }
-            }
+                Locks.ClientInstanceNetworkLock.ExitReadLock();
+
+                if (Client.Self.LocalID.Equals(0) || prim.NameValues == null)
+                    return;
+
+                if (!prim.NameValues.AsParallel()
+                    .Where(o => string.Equals(o.Name, "AttachItemID"))
+                    .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
+                        StringComparison.OrdinalIgnoreCase))) return;
+
+                attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
+                                                     ((prim.PrimData.State & ~0xF0) << 4));
+
+                objectDetachedEvent.Set();
+            };
+
+            Locks.ClientInstanceObjectsLock.EnterWriteLock();
+            Client.Objects.KillObject += KillObjectEventHandler;
+            Client.Appearance.Detach(realItem);
+            objectDetachedEvent.WaitOne((int)millisecondsTimeout, false);
+            Client.Objects.KillObject -= KillObjectEventHandler;
+            Locks.ClientInstanceObjectsLock.ExitWriteLock();
+            Locks.ClientInstanceAppearanceLock.ExitWriteLock();
             if (realItem is InventoryAttachment)
             {
                 (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
@@ -180,10 +176,9 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return;
-            lock (Locks.ClientInstanceAppearanceLock)
-            {
-                Client.Appearance.AddToOutfit(realItem, replace);
-            }
+            Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+            Client.Appearance.AddToOutfit(realItem, replace);
+            Locks.ClientInstanceAppearanceLock.ExitWriteLock();
             AddLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
@@ -193,10 +188,9 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return;
-            lock (Locks.ClientInstanceAppearanceLock)
-            {
-                Client.Appearance.RemoveFromOutfit(realItem);
-            }
+            Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+            Client.Appearance.RemoveFromOutfit(realItem);
+            Locks.ClientInstanceAppearanceLock.ExitWriteLock();
             RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
@@ -288,15 +282,13 @@ namespace wasOpenMetaverse
         public static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(GridClient Client,
             uint dataTimeout)
         {
-            var selectedPrimitives = new HashSet<Primitive>();
-            lock (Locks.ClientInstanceNetworkLock)
-            {
-                selectedPrimitives.UnionWith(Client.Network.Simulators.AsParallel()
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var selectedPrimitives = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                     .Select(o => o.ObjectsPrimitives)
                     .Select(o => o.Copy().Values)
                     .SelectMany(o => o)
                     .Where(o => o.ParentID.Equals(Client.Self.LocalID)));
-            }
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
 
             if (!selectedPrimitives.Any() || !Services.UpdatePrimitives(Client, ref selectedPrimitives, dataTimeout))
                 return Enumerable.Empty<KeyValuePair<Primitive, AttachmentPoint>>();
@@ -823,23 +815,22 @@ namespace wasOpenMetaverse
         public static void UpdateInventoryRecursive(GridClient Client, InventoryFolder root,
             uint millisecondsTimeout, bool force = false)
         {
-            lock (Locks.ClientInstanceNetworkLock)
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            // Wait for CAPs.
+            if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
             {
-                // Wait for CAPs.
-                if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
-                {
-                    var EventQueueRunningEvent = new AutoResetEvent(false);
-                    EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
-                    Client.Network.EventQueueRunning += handler;
-                    EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
-                    Client.Network.EventQueueRunning -= handler;
-                }
+                var EventQueueRunningEvent = new AutoResetEvent(false);
+                EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
+                Client.Network.EventQueueRunning += handler;
+                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
+                Client.Network.EventQueueRunning -= handler;
             }
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
 
-            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            Locks.ClientInstanceInventoryLock.EnterWriteLock();
             directUpdateInventoryRecursive(Client, Client.Inventory.Store.GetNodeFor(root.UUID), millisecondsTimeout,
                     force);
-            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            Locks.ClientInstanceInventoryLock.ExitWriteLock();
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -855,22 +846,21 @@ namespace wasOpenMetaverse
         public static void UpdateInventoryRecursive(GridClient Client, InventoryNode root,
             uint millisecondsTimeout, bool force = false)
         {
-            lock (Locks.ClientInstanceNetworkLock)
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            // Wait for CAPs.
+            if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
             {
-                // Wait for CAPs.
-                if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
-                {
-                    var EventQueueRunningEvent = new AutoResetEvent(false);
-                    EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
-                    Client.Network.EventQueueRunning += handler;
-                    EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
-                    Client.Network.EventQueueRunning -= handler;
-                }
+                var EventQueueRunningEvent = new AutoResetEvent(false);
+                EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
+                Client.Network.EventQueueRunning += handler;
+                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
+                Client.Network.EventQueueRunning -= handler;
             }
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
 
-            Locks.ClientInstanceInventoryLock.EnterReadLock();
+            Locks.ClientInstanceInventoryLock.EnterWriteLock();
             directUpdateInventoryRecursive(Client, root, millisecondsTimeout, force);
-            Locks.ClientInstanceInventoryLock.ExitReadLock();
+            Locks.ClientInstanceInventoryLock.ExitWriteLock();
         }
 
         ///////////////////////////////////////////////////////////////////////////
