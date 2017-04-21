@@ -100,11 +100,10 @@ namespace Corrade
                                 {
                                     GroupInvites.Remove(sessionUUID);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
                                         true);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.DECLINE:
@@ -112,11 +111,10 @@ namespace Corrade
                                 {
                                     GroupInvites.Remove(sessionUUID);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
                                         false);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.PURGE:

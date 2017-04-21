@@ -123,22 +123,21 @@ namespace Corrade
                                     Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
                                 .Where(o => !o.Equals(default(Configuration.Notifications))));
 
-                        lock (Locks.ClientInstanceConfigurationLock)
+                        Locks.ClientInstanceConfigurationLock.EnterWriteLock();
+                        corradeConfiguration.Groups.Add(new Configuration.Group
                         {
-                            corradeConfiguration.Groups.Add(new Configuration.Group
-                            {
-                                Name = groupName,
-                                UUID = groupUUID,
-                                Password = groupSecret,
-                                Workers = groupWorkers,
-                                Schedules = groupSchedules,
-                                DatabaseFile = groupDatabase,
-                                ChatLogEnabled = groupChatLogEnabled,
-                                ChatLog = groupChatLog,
-                                Permissions = groupPermissions,
-                                Notifications = groupNotifications
-                            });
-                        }
+                            Name = groupName,
+                            UUID = groupUUID,
+                            Password = groupSecret,
+                            Workers = groupWorkers,
+                            Schedules = groupSchedules,
+                            DatabaseFile = groupDatabase,
+                            ChatLogEnabled = groupChatLogEnabled,
+                            ChatLog = groupChatLog,
+                            Permissions = groupPermissions,
+                            Notifications = groupNotifications
+                        });
+                        Locks.ClientInstanceConfigurationLock.ExitWriteLock();
 
                         lock (ConfigurationFileLock)
                         {

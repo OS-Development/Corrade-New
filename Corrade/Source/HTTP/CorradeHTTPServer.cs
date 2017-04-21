@@ -446,7 +446,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.HTTP_SERVER_PROCESSING_ABORTED),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
             }
         }
 
@@ -527,7 +527,7 @@ namespace Corrade.HTTP
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                             Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                            ex.Message);
+                            ex.ToString(), ex.InnerException?.ToString());
                     }
                     break;
 
@@ -609,7 +609,7 @@ namespace Corrade.HTTP
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                             Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                            ex.Message);
+                            ex.ToString(), ex.InnerException?.ToString());
                     }
                     break;
 
@@ -653,11 +653,9 @@ namespace Corrade.HTTP
 
             try
             {
-                bool hasAsset;
-                lock (Locks.ClientInstanceAssetsLock)
-                {
-                    hasAsset = Corrade.Client.Assets.Cache.HasAsset(assetUUID);
-                }
+                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                var hasAsset = Corrade.Client.Assets.Cache.HasAsset(assetUUID);
+
                 if (hasAsset)
                 {
                     var fileName = Corrade.Client.Assets.Cache.AssetFileName(assetUUID);
@@ -679,7 +677,11 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
+            }
+            finally
+            {
+                Locks.ClientInstanceAssetsLock.ExitReadLock();
             }
         }
 
@@ -718,17 +720,20 @@ namespace Corrade.HTTP
 
             try
             {
-                lock (Locks.ClientInstanceAssetsLock)
+                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                var hasAsset = Corrade.Client.Assets.Cache.HasAsset(assetUUID);
+
+                if (!hasAsset)
                 {
-                    if (!Corrade.Client.Assets.Cache.HasAsset(assetUUID))
-                    {
-                        dataMemoryStream.Position = 0;
-                        var requestData = dataMemoryStream.ToArray();
-                        Corrade.Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
-                        Corrade.HordeDistributeCacheAsset(assetUUID, requestData,
-                            Configuration.HordeDataSynchronizationOption.Add);
-                    }
+                    dataMemoryStream.Position = 0;
+                    var requestData = dataMemoryStream.ToArray();
+                    Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                    Corrade.Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
+                    Locks.ClientInstanceAssetsLock.ExitWriteLock();
+                    Corrade.HordeDistributeCacheAsset(assetUUID, requestData,
+                        Configuration.HordeDataSynchronizationOption.Add);
                 }
+
                 Corrade.Feedback(
                     CORRADE_CONSTANTS.WEB_REQUEST + "(" + endPoint +
                     ")",
@@ -742,7 +747,11 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
+            }
+            finally
+            {
+                Locks.ClientInstanceAssetsLock.ExitReadLock();
             }
         }
 
@@ -786,7 +795,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
@@ -865,7 +874,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
@@ -900,19 +909,19 @@ namespace Corrade.HTTP
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
 
-            lock (Locks.ClientInstanceSelfLock)
+            Locks.ClientInstanceSelfLock.EnterWriteLock();
+            Corrade.Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+            Corrade.Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
+            if (
+                !MuteListUpdatedEvent.WaitOne((int)Corrade.corradeConfiguration.ServicesTimeout,
+                    false))
             {
-                Corrade.Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                Corrade.Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
-                if (
-                    !MuteListUpdatedEvent.WaitOne((int)Corrade.corradeConfiguration.ServicesTimeout,
-                        false))
-                {
-                    Corrade.Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                    throw new HTTPException((int)HttpStatusCode.InternalServerError);
-                }
                 Corrade.Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                Locks.ClientInstanceSelfLock.ExitWriteLock();
+                throw new HTTPException((int)HttpStatusCode.InternalServerError);
             }
+            Corrade.Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+            Locks.ClientInstanceSelfLock.ExitWriteLock();
 
             // Add the mute to the cache.
             Cache.AddMute(mute.Flags, mute.ID, mute.Name, mute.Type);
@@ -971,7 +980,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1049,7 +1058,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1132,7 +1141,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1226,7 +1235,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1319,7 +1328,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1382,7 +1391,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 

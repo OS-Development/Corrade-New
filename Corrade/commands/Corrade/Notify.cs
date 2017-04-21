@@ -12,6 +12,8 @@ using System.Net;
 using System.Threading.Tasks;
 using wasSharp;
 using wasSharp.Collections.Generic;
+using wasSharp.Linq;
+using wasSharp.Web.Utilities;
 
 namespace Corrade
 {
@@ -28,14 +30,16 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    var tag = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TAG)),
+                            corradeCommandParameters.Message));
                     var url = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.URL)),
                             corradeCommandParameters.Message));
                     var notificationTypes =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                                corradeCommandParameters.Message))
-                        ;
+                                corradeCommandParameters.Message));
                     var action =
                         Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
@@ -44,7 +48,9 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                             );
                     var LockObject = new object();
-                    var groupNotifications = new HashSet<Notification>();
+                    var groupNotifications = new HashSet<Notifications>();
+                    var tags = new HashSet<string>(CSV.ToEnumerable(tag)
+                        .Where(o => !string.IsNullOrEmpty(o)).Distinct());
                     switch (action)
                     {
                         case Enumerations.Action.SET:
@@ -62,7 +68,7 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NOTIFICATION_TYPES);
                             }
-                            Notification notification;
+                            Notifications notification;
                             lock (GroupNotificationsLock)
                             {
                                 notification =
@@ -84,7 +90,6 @@ namespace Corrade
                                 var results = new HashSet<string>(Reflection.GetEnumNames<Command.ResultKeys>());
                                 var scripts = new HashSet<string>(Reflection.GetEnumNames<Command.ScriptKeys>());
                                 CSV.ToKeyValue(afterBurnData)
-                                    .ToArray()
                                     .AsParallel()
                                     .Where(
                                         o =>
@@ -109,7 +114,6 @@ namespace Corrade
                             if (!string.IsNullOrEmpty(fields))
                             {
                                 CSV.ToEnumerable(fields)
-                                    .ToArray()
                                     .AsParallel()
                                     .Where(o => !string.IsNullOrEmpty(o))
                                     .ForAll(
@@ -124,13 +128,13 @@ namespace Corrade
                             switch (notification != null)
                             {
                                 case false:
-                                    notification = new Notification
+                                    notification = new Notifications
                                     {
                                         GroupName = corradeCommandParameters.Group.Name,
                                         GroupUUID = corradeCommandParameters.Group.UUID,
-                                        NotificationURLDestination =
-                                            new SerializableDictionary
-                                                <Configuration.Notifications, HashSet<string>>(),
+                                        HTTPNotifications =
+                                            new SerializableDictionary<Configuration.Notifications,
+                                                SerializableDictionary<string, HashSet<string>>>(),
                                         NotificationTCPDestination =
                                             new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>(),
                                         Data = data,
@@ -144,17 +148,16 @@ namespace Corrade
                                         notification.NotificationTCPDestination =
                                             new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>();
                                     }
-                                    if (notification.NotificationURLDestination == null)
+                                    if (notification.HTTPNotifications == null)
                                     {
-                                        notification.NotificationURLDestination =
-                                            new SerializableDictionary
-                                                <Configuration.Notifications, HashSet<string>>();
+                                        notification.HTTPNotifications =
+                                            new SerializableDictionary<Configuration.Notifications,
+                                                SerializableDictionary<string, HashSet<string>>>();
                                     }
                                     break;
                             }
-                            var succeeded = true;
-                            Parallel.ForEach(CSV.ToEnumerable(
-                                notificationTypes).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                            var scriptError = Enumerations.ScriptError.NONE;
+                            Parallel.ForEach(CSV.ToEnumerable(notificationTypes).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                                 (o, state) =>
                                 {
                                     var notificationValue =
@@ -162,21 +165,25 @@ namespace Corrade
                                     if (!GroupHasNotification(corradeCommandParameters.Group.UUID, notificationValue))
                                     {
                                         // one of the notification was not allowed, so abort
-                                        succeeded = false;
+                                        scriptError = Enumerations.ScriptError.NOTIFICATION_NOT_ALLOWED;
                                         state.Break();
                                     }
                                     notification.Data = data;
                                     notification.Afterburn = afterburn;
-                                    switch (
-                                        !notification.NotificationURLDestination.ContainsKey(
-                                            (Configuration.Notifications)notificationValue))
+                                    SerializableDictionary<string, HashSet<string>> HTTPNotificationData;
+                                    switch (!notification.HTTPNotifications
+                                        .TryGetValue((Configuration.Notifications)notificationValue, out HTTPNotificationData))
                                     {
                                         case true:
                                             lock (LockObject)
                                             {
-                                                notification.NotificationURLDestination.Add(
+                                                notification.HTTPNotifications.Add(
                                                     (Configuration.Notifications)notificationValue,
-                                                    new HashSet<string> { url });
+                                                    new SerializableDictionary<string, HashSet<string>>
+                                                        {
+                                                            { url, tags }
+                                                        }
+                                                    );
                                             }
                                             break;
 
@@ -184,39 +191,31 @@ namespace Corrade
                                             switch (action)
                                             {
                                                 case Enumerations.Action.ADD:
-                                                    // notification destination is already there
-                                                    if (notification.NotificationURLDestination[
-                                                        (Configuration.Notifications)notificationValue].Contains(url))
+                                                    if (HTTPNotificationData.ContainsKey(url))
                                                         break;
-                                                    lock (LockObject)
-                                                    {
-                                                        notification.NotificationURLDestination[
-                                                            (Configuration.Notifications)notificationValue]
-                                                            .Add(url);
-                                                    }
+                                                    HTTPNotificationData.Add(url, tags);
                                                     break;
 
                                                 case Enumerations.Action.SET:
-                                                    lock (LockObject)
+                                                    HTTPNotificationData =
+                                                        new SerializableDictionary<string, HashSet<string>>
                                                     {
-                                                        notification.NotificationURLDestination[
-                                                            (Configuration.Notifications)notificationValue] = new HashSet
-                                                                <string>
-                                                            {
-                                                                url
-                                                            };
-                                                    }
+                                                            { url, tags }
+                                                    };
                                                     break;
                                             }
-
+                                            lock (LockObject)
+                                            {
+                                                notification.HTTPNotifications[
+                                                    (Configuration.Notifications)notificationValue] = HTTPNotificationData;
+                                            }
                                             break;
                                     }
                                 });
-                            switch (succeeded)
-                            {
-                                case false:
-                                    throw new Command.ScriptException(Enumerations.ScriptError.NOTIFICATION_NOT_ALLOWED);
-                            }
+
+                            if (!scriptError.Equals(Enumerations.ScriptError.NONE))
+                                throw new Command.ScriptException(scriptError);
+
                             lock (GroupNotificationsLock)
                             {
                                 // Replace notification.
@@ -234,17 +233,8 @@ namespace Corrade
                             {
                                 GroupNotifications.AsParallel().ForAll(o =>
                                 {
-                                    if ((!CSV.ToEnumerable(notificationTypes)
-                                        .ToArray()
-                                        .AsParallel()
-                                        .Where(p => !string.IsNullOrEmpty(p))
-                                        .Any(
-                                            p =>
-                                                o.NotificationMask.IsMaskFlagSet(Reflection
-                                                    .GetEnumValueFromName<Configuration.Notifications>(
-                                                        p))) &&
-                                         !o.NotificationURLDestination.Values.Any(p => p.Contains(url))) ||
-                                        !o.GroupUUID.Equals(corradeCommandParameters.Group.UUID))
+                                    // Add all notitifcations that do not belong to the current group.
+                                    if (!o.GroupUUID.Equals(corradeCommandParameters.Group.UUID))
                                     {
                                         lock (LockObject)
                                         {
@@ -252,52 +242,58 @@ namespace Corrade
                                         }
                                         return;
                                     }
-                                    var
-                                        notificationDestination =
-                                            new SerializableDictionary
-                                                <Configuration.Notifications, HashSet<string>>();
-                                    var NotficatinDestinationLock = new object();
-                                    o.NotificationURLDestination.AsParallel().ForAll(p =>
+                                    var notificationDestination =
+                                        new SerializableDictionary<Configuration.Notifications,
+                                            SerializableDictionary<string, HashSet<string>>>();
+                                    var NotificationDestinationLock = new object();
+                                    var types = new HashSet<Configuration.Notifications>(CSV.ToEnumerable(notificationTypes)
+                                        .AsParallel()
+                                        .Where(p => !string.IsNullOrEmpty(p))
+                                        .Select(p => Reflection.GetEnumValueFromName<Configuration.Notifications>(p)));
+                                    // For all notifications, for the current group, that do not match the supplied tags...
+                                    o.HTTPNotifications
+                                        .Where(p => !p.Value.Values.Any(q => q.Intersect(tags).Any()) && !types.Contains(p.Key))
+                                        .AsParallel().ForAll(p =>
                                     {
                                         switch (!CSV.ToEnumerable(notificationTypes)
-                                            .ToArray()
                                             .AsParallel()
                                             .Where(q => !string.IsNullOrEmpty(q))
-                                            .Any(
-                                                q =>
-                                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(q)
-                                                        .Equals(p.Key)))
+                                            .Any(q => Reflection.GetEnumValueFromName<Configuration.Notifications>(q).Equals(p.Key)))
                                         {
-                                            case true:
-                                                lock (NotficatinDestinationLock)
+                                            case true: // If the type of the notification is not of the selected type, then add the notification.
+                                                lock (NotificationDestinationLock)
                                                 {
                                                     notificationDestination.Add(p.Key, p.Value);
                                                 }
                                                 break;
 
                                             default:
-                                                var URLs =
-                                                    new HashSet<string>(
-                                                        p.Value.AsParallel()
-                                                            .Where(
-                                                                q =>
-                                                                    !string.Equals(url, q,
-                                                                        StringComparison.Ordinal)));
-                                                if (!URLs.Any()) return;
-                                                lock (NotficatinDestinationLock)
+                                                // Filter the notification destination by the supplied URL.
+                                                var URLs = new HashSet<string>(p.Value.Keys
+                                                    .AsParallel().Where(q => !q.Contains(url)).Select(q => q));
+                                                // If no URL matches then the notification should not be added because it does not exist.
+                                                if (!URLs.Any())
+                                                    return;
+                                                lock (NotificationDestinationLock)
                                                 {
-                                                    notificationDestination.Add(p.Key, URLs);
+                                                    var URLTags = new HashSet<string>(p.Value.Values.SelectMany(q => q));
+                                                    notificationDestination.Add(p.Key,
+                                                        new SerializableDictionary<string, HashSet<string>>());
+                                                    foreach (var URL in URLs)
+                                                    {
+                                                        notificationDestination[p.Key].Add(URL, URLTags);
+                                                    }
                                                 }
                                                 break;
                                         }
                                     });
                                     lock (LockObject)
                                     {
-                                        groupNotifications.Add(new Notification
+                                        groupNotifications.Add(new Notifications
                                         {
                                             GroupName = o.GroupName,
                                             GroupUUID = o.GroupUUID,
-                                            NotificationURLDestination = notificationDestination,
+                                            HTTPNotifications = notificationDestination,
                                             Data = o.Data,
                                             Afterburn = o.Afterburn
                                         });
@@ -314,32 +310,61 @@ namespace Corrade
                             break;
 
                         case Enumerations.Action.LIST:
-                            // If the group has no installed notifications, bail
                             var csv = new List<string>();
+                            var notifications = new HashSet<Configuration.Notifications>(
+                                CSV.ToEnumerable(notificationTypes)
+                                .AsParallel()
+                                .Where(o => !string.IsNullOrEmpty(o))
+                                .Distinct()
+                                .Select(o => Reflection.GetEnumValueFromName<Configuration.Notifications>(o)));
                             lock (GroupNotificationsLock)
                             {
                                 var groupNotification =
                                     GroupNotifications.AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
+                                        o => o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                                 if (groupNotification != null)
                                 {
                                     Reflection.GetEnumNames<Configuration.Notifications>()
-                                        .ToArray()
                                         .AsParallel()
-                                        .Where(
-                                            o =>
-                                                groupNotification.NotificationMask.IsMaskFlagSet(
-                                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o)))
-                                        .ForAll(o =>
+                                        .Select(o => new { Type = Reflection.GetEnumValueFromName<Configuration.Notifications>(o) })
+                                        .Where(o => groupNotification.NotificationMask.IsMaskFlagSet(o.Type))
+                                        .Select(o => new
                                         {
-                                            lock (LockObject)
+                                            Type = o.Type,
+                                            URLs = groupNotification.HTTPNotifications[o.Type].Keys,
+                                            Tags = groupNotification.HTTPNotifications[o.Type].Values.SelectMany(p => p),
+                                        })
+                                        // http://grimore.org/fuss/lambda_calculus/functional_programming/aggreagators/switch
+                                        .Switch(
+                                            o =>
                                             {
-                                                csv.Add(o);
-                                                csv.AddRange(groupNotification.NotificationURLDestination[
-                                                    Reflection.GetEnumValueFromName<Configuration.Notifications>(o)]);
-                                            }
-                                        });
+                                                // No filtering select so just jump everything.
+                                                lock (LockObject)
+                                                {
+                                                    csv.Add(Reflection.GetNameFromEnumValue(o.Type));
+                                                    csv.AddRange(o.URLs);
+                                                    csv.AddRange(o.Tags);
+                                                }
+                                            }, o => notifications.Any() && notifications.Contains(o.Type), o =>
+                                            {
+                                                // Filter by type.
+                                                lock (LockObject)
+                                                {
+                                                    csv.Add(Reflection.GetNameFromEnumValue(o.Type));
+                                                    csv.AddRange(o.URLs);
+                                                }
+                                                return true;
+                                            },
+                                            o => tags.Any() && o.Tags.Intersect(tags).Any(), o =>
+                                            {
+                                                // Filter by tag.
+                                                lock (LockObject)
+                                                {
+                                                    csv.AddRange(o.Tags.Intersect(tags));
+                                                    csv.AddRange(o.URLs);
+                                                }
+                                                return true;
+                                            });
                                 }
                             }
                             if (csv.Any())
@@ -357,14 +382,12 @@ namespace Corrade
                                     switch (!o.GroupUUID.Equals(corradeCommandParameters.Group.UUID))
                                     {
                                         case false: // this is our group
-                                            var
-                                                notificationDestination =
-                                                    new SerializableDictionary
-                                                        <Configuration.Notifications, HashSet<string>>();
-                                            o.NotificationURLDestination.AsParallel().ForAll(p =>
+                                            var notificationDestination = new SerializableDictionary<Configuration.Notifications,
+                                                SerializableDictionary<string, HashSet<string>>>();
+                                            var NotificationDestinationLock = new object();
+                                            o.HTTPNotifications.AsParallel().ForAll(p =>
                                             {
                                                 switch (!CSV.ToEnumerable(notificationTypes)
-                                                    .ToArray()
                                                     .AsParallel()
                                                     .Where(q => !string.IsNullOrEmpty(q))
                                                     .Any(
@@ -374,22 +397,31 @@ namespace Corrade
                                                                 .Equals(p.Key)))
                                                 {
                                                     case true:
-                                                        notificationDestination.Add(p.Key, p.Value);
+                                                        lock (NotificationDestinationLock)
+                                                        {
+                                                            notificationDestination.Add(p.Key, p.Value);
+                                                        }
                                                         break;
                                                 }
                                             });
-                                            groupNotifications.Add(new Notification
+                                            lock (LockObject)
                                             {
-                                                GroupName = o.GroupName,
-                                                GroupUUID = o.GroupUUID,
-                                                NotificationURLDestination = notificationDestination,
-                                                Data = o.Data,
-                                                Afterburn = o.Afterburn
-                                            });
+                                                groupNotifications.Add(new Notifications
+                                                {
+                                                    GroupName = o.GroupName,
+                                                    GroupUUID = o.GroupUUID,
+                                                    HTTPNotifications = notificationDestination,
+                                                    Data = o.Data,
+                                                    Afterburn = o.Afterburn
+                                                });
+                                            }
                                             break;
 
                                         default: // not our group
-                                            groupNotifications.Add(o);
+                                            lock (LockObject)
+                                            {
+                                                groupNotifications.Add(o);
+                                            }
                                             break;
                                     }
                                 });
@@ -430,7 +462,8 @@ namespace Corrade
                                     .AsParallel().ForAll(o =>
                                     {
                                         GroupNotifications.AsParallel()
-                                            .Where(p => p.NotificationMask.IsMaskFlagSet(o)).ForAll(p =>
+                                            .Where(p => p.NotificationMask.IsMaskFlagSet(o))
+                                            .ForAll(p =>
                                             {
                                                 lock (LockObject)
                                                 {
@@ -439,7 +472,7 @@ namespace Corrade
                                                         GroupNotificationsCache[o].Add(p);
                                                         return;
                                                     }
-                                                    GroupNotificationsCache.Add(o, new HashSet<Notification> { p });
+                                                    GroupNotificationsCache.Add(o, new HashSet<Notifications> { p });
                                                 }
                                             });
                                     });

@@ -43,17 +43,17 @@ namespace Corrade
                                 break;
                         }
                     };
-                    lock (Locks.ClientInstanceSelfLock)
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.AlertMessage += AlertMessageEventHandler;
+                    Client.Self.SetHome();
+                    if (!AlertMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Self.AlertMessage += AlertMessageEventHandler;
-                        Client.Self.SetHome();
-                        if (!AlertMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Self.AlertMessage -= AlertMessageEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME);
-                        }
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME);
                     }
+                    Client.Self.AlertMessage -= AlertMessageEventHandler;
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     if (!succeeded)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_SET_HOME);

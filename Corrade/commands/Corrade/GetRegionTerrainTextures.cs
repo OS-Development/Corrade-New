@@ -38,17 +38,16 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(region))
                         {
                             case true:
-                                lock (Locks.ClientInstanceNetworkLock)
-                                {
-                                    simulator =
-                                        Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                            o =>
-                                                o.Name.Equals(
-                                                    string.IsNullOrEmpty(region)
-                                                        ? Client.Network.CurrentSim.Name
-                                                        : region,
-                                                    StringComparison.OrdinalIgnoreCase));
-                                }
+                                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                simulator =
+                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                        o =>
+                                            o.Name.Equals(
+                                                string.IsNullOrEmpty(region)
+                                                    ? Client.Network.CurrentSim.Name
+                                                    : region,
+                                                StringComparison.OrdinalIgnoreCase));
+                                Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 if (simulator == null)
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -59,19 +58,13 @@ namespace Corrade
                                 simulator = Client.Network.CurrentSim;
                                 break;
                         }
-                        List<UUID> data;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            data = new List<UUID>
-                            {
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            CSV.FromEnumerable(new[] {
                                 simulator.TerrainDetail0,
                                 simulator.TerrainDetail1,
                                 simulator.TerrainDetail2,
                                 simulator.TerrainDetail3
-                            };
-                        }
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data.Select(o => o.ToString())));
+                            }.Select(o => o.ToString())));
                     };
         }
     }

@@ -48,13 +48,12 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.SendTeleportLure(agentUUID,
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.SendTeleportLure(agentUUID,
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message)));
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

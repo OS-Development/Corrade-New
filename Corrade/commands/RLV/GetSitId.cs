@@ -23,36 +23,27 @@ namespace Corrade
                     {
                         return;
                     }
-                    Avatar me;
-                    bool isSitting;
-                    lock (Locks.ClientInstanceNetworkLock)
+                    Avatar self;
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var isSitting = Client.Network.CurrentSim.ObjectsAvatars.TryGetValue(Client.Self.LocalID, out self);
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
+                    if (isSitting && !self.ParentID.Equals(0))
                     {
-                        isSitting = Client.Network.CurrentSim.ObjectsAvatars.TryGetValue(Client.Self.LocalID, out me);
-                    }
-                    if (isSitting)
-                    {
-                        if (me.ParentID != 0)
+                        Primitive sit;
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        isSitting = Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(self.ParentID, out sit);
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
+                        if (isSitting)
                         {
-                            Primitive sit;
-                            lock (Locks.ClientInstanceNetworkLock)
-                            {
-                                isSitting = Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(me.ParentID, out sit);
-                            }
-                            if (isSitting)
-                            {
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.Chat(sit.ID.ToString(), channel, ChatType.Normal);
-                                }
-                                return;
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Chat(sit.ID.ToString(), channel, ChatType.Normal);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                            return;
                         }
                     }
-                    var zero = UUID.Zero;
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(zero.ToString(), channel, ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(UUID.Zero.ToString(), channel, ChatType.Normal);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

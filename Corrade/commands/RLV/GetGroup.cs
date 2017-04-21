@@ -38,10 +38,9 @@ namespace Corrade
                     {
                         return;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(groupName, channel, ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(groupName, channel, ChatType.Normal);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

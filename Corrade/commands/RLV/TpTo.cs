@@ -40,10 +40,9 @@ namespace Corrade
                     }
                     float localX, localY;
                     var handle = OpenMetaverse.Helpers.GlobalPosToRegionHandle(globalX, globalY, out localX, out localY);
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

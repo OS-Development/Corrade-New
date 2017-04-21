@@ -34,10 +34,8 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                         }
-                        List<float> simHeights;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simHeights = new List<float>
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simHeights = new List<float>
                             {
                                 Client.Network.CurrentSim.TerrainStartHeight00, // Low SW
                                 Client.Network.CurrentSim.TerrainHeightRange00, // High SW
@@ -48,7 +46,7 @@ namespace Corrade
                                 Client.Network.CurrentSim.TerrainStartHeight11, // Low NE
                                 Client.Network.CurrentSim.TerrainHeightRange11 // High NE
                             };
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var setHeights = new float[8];
                         var data = CSV.ToEnumerable(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
@@ -63,9 +61,8 @@ namespace Corrade
                                     ? outFloat
                                     : simHeights[o];
                             });
-                        lock (Locks.ClientInstanceEstateLock)
-                        {
-                            Client.Estate.SetRegionTerrainHeights(
+                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                        Client.Estate.SetRegionTerrainHeights(
                                 setHeights[0],
                                 setHeights[1],
                                 setHeights[2],
@@ -75,7 +72,7 @@ namespace Corrade
                                 setHeights[6],
                                 setHeights[7]
                                 );
-                        }
+                        Locks.ClientInstanceEstateLock.ExitWriteLock();
                     };
         }
     }

@@ -64,23 +64,20 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
@@ -165,7 +162,6 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
                                 corradeCommandParameters.Message)))
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -177,13 +173,12 @@ namespace Corrade
                                         q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags)q.GetValue(null)); }));
 
                     // Finally, add the primitive to the simulator.
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID,
+                    Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                    Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID,
                             position,
                             scale, rotation,
                             primFlags);
-                    }
+                    Locks.ClientInstanceObjectsLock.ExitWriteLock();
                 };
         }
     }

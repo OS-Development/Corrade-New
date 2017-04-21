@@ -72,17 +72,14 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_OPEN);
                     }
-                    lock (Locks.ClientInstanceNetworkLock)
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    if (!Client.Network.MaxAgentGroups.Equals(-1) && groups.Count >= Client.Network.MaxAgentGroups)
                     {
-                        if (!Client.Network.MaxAgentGroups.Equals(-1))
-                        {
-                            if (groups.Count >= Client.Network.MaxAgentGroups)
-                            {
-                                throw new Command.ScriptException(
-                                    Enumerations.ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
-                            }
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
                     }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     var GroupJoinedReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                         (sender, args) =>

@@ -62,10 +62,9 @@ namespace Corrade
                     {
                         physics = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipPhysics);
                     }
-                    lock (Locks.ClientInstanceEstateLock)
-                    {
-                        Client.Estate.SetRegionDebug(!scripts, !collisions, !physics);
-                    }
+                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                    Client.Estate.SetRegionDebug(!scripts, !collisions, !physics);
+                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                 };
         }
     }

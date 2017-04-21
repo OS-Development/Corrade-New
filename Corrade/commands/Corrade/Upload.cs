@@ -50,7 +50,6 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message)))
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -108,13 +107,13 @@ namespace Corrade
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                             }
-                            lock (Locks.ClientInstanceSelfLock)
+                            Locks.ClientInstanceSelfLock.EnterReadLock();
+                            if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
                             {
-                                if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitReadLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                             }
+                            Locks.ClientInstanceSelfLock.ExitReadLock();
                             switch (assetType)
                             {
                                 case AssetType.Texture:
@@ -240,10 +239,9 @@ namespace Corrade
                         case AssetType.SoundWAV:
                         case AssetType.Sound:
                             UUID soundUUID;
-                            lock (Locks.ClientInstanceAssetsLock)
-                            {
-                                soundUUID = Client.Assets.RequestUpload(assetType, data, false);
-                            }
+                            Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                            soundUUID = Client.Assets.RequestUpload(assetType, data, false);
+                            Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             if (soundUUID.Equals(UUID.Zero))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
@@ -293,15 +291,14 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_WEARABLE_TYPE);
                             }
-                            var wearableUUID = UUID.Zero;
-                            lock (Locks.ClientInstanceAssetsLock)
+                            Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                            var wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
+                            Locks.ClientInstanceAssetsLock.ExitWriteLock();
+                            if (wearableUUID.Equals(UUID.Zero))
                             {
-                                wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
-                                if (wearableUUID.Equals(UUID.Zero))
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
-                                }
+                                throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
                             }
+
                             var CreateWearableEvent = new ManualResetEvent(false);
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
                             Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
@@ -411,9 +408,8 @@ namespace Corrade
                         case AssetType.Notecard:
                             var CreateNotecardEvent = new ManualResetEvent(false);
                             InventoryItem newNotecard = null;
-                            lock (Locks.ClientInstanceNetworkLock)
-                            {
-                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
                                     wasInput(
                                         KeyValue.Get(
@@ -430,11 +426,12 @@ namespace Corrade
                                         newNotecard = createdItem;
                                         CreateNotecardEvent.Set();
                                     });
-                                if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
-                                }
+                            if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            {
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                             }
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             if (!succeeded)
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
@@ -513,10 +510,9 @@ namespace Corrade
                     // Store the any asset in the cache.
                     if (!assetUUID.Equals(UUID.Zero))
                     {
-                        lock (Locks.ClientInstanceAssetsLock)
-                        {
-                            Client.Assets.Cache.SaveAssetToCache(assetUUID, data);
-                        }
+                        Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                        Client.Assets.Cache.SaveAssetToCache(assetUUID, data);
+                        Locks.ClientInstanceAssetsLock.ExitWriteLock();
                         if (corradeConfiguration.EnableHorde)
                             HordeDistributeCacheAsset(itemUUID, data, Configuration.HordeDataSynchronizationOption.Add);
                     }

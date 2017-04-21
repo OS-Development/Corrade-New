@@ -105,10 +105,9 @@ namespace Corrade
                                 default:
                                     if (string.IsNullOrEmpty(region))
                                     {
-                                        lock (Locks.ClientInstanceNetworkLock)
-                                        {
-                                            region = Client.Network.CurrentSim.Name;
-                                        }
+                                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                        region = Client.Network.CurrentSim.Name;
+                                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
                                     break;
                             }
@@ -155,13 +154,12 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_THROTTLED);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                     {
-                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                        {
-                            Client.Self.Stand();
-                        }
+                        Client.Self.Stand();
                     }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
@@ -170,41 +168,43 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.SignaledAnimations.Copy()
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
                                     .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
                     var succeeded = false;
-                    lock (Locks.ClientInstanceSelfLock)
+                    switch (entity)
                     {
-                        switch (entity)
-                        {
-                            case Enumerations.Entity.GLOBAL:
-                                succeeded = Client.Self.Teleport(regionHandle, position);
-                                break;
+                        case Enumerations.Entity.GLOBAL:
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            succeeded = Client.Self.Teleport(regionHandle, position);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                            break;
 
-                            case Enumerations.Entity.REGION:
-                                succeeded = Client.Self.Teleport(regionHandle, position, lookAt);
-                                break;
+                        case Enumerations.Entity.REGION:
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            succeeded = Client.Self.Teleport(regionHandle, position, lookAt);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                            break;
 
-                            case Enumerations.Entity.LANDMARK:
-                                succeeded = Client.Self.Teleport(landmarkAssetUUID);
-                                break;
+                        case Enumerations.Entity.LANDMARK:
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            succeeded = Client.Self.Teleport(landmarkAssetUUID);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                            break;
 
-                            default:
-                                throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
-                        }
-                        if (!succeeded)
-                        {
-                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                                Client.Self.TeleportMessage);
-                            throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
-                        }
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                    }
+                    if (!succeeded)
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            Client.Self.TeleportMessage);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_FAILED);
                     }
 
                     bool fly;
@@ -214,27 +214,24 @@ namespace Corrade
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true: // if fly was specified, set the fly state
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Fly(fly);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Fly(fly);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
 
                     // Turn to look at the given position.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.TurnToward(position, true);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.TurnToward(position, true);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
 
                     // Set the camera on the avatar.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.LookAt(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     SaveMovementState.Invoke();
                 };
         }

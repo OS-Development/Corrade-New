@@ -39,7 +39,7 @@ namespace Corrade
                         }
 
                         var LockObject = new object();
-                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
                             .Where(o => o.Key.Equals(typeof(InventoryObjectAddedEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
@@ -68,7 +68,7 @@ namespace Corrade
                         }
 
                         var LockObject = new object();
-                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
                             .Where(o => o.Key.Equals(typeof(InventoryObjectRemovedEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
@@ -97,7 +97,7 @@ namespace Corrade
                         }
 
                         var LockObject = new object();
-                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
                             .Where(o => o.Key.Equals(typeof(InventoryObjectUpdatedEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>

@@ -48,7 +48,6 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
                                         corradeCommandParameters.Message)))
-                                .ToArray()
                                 .AsParallel()
                                 .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                                 {
@@ -85,18 +84,18 @@ namespace Corrade
                                 succeeded = args.Success;
                                 conferenceStartedEvent.Set();
                             };
-                            lock (Locks.ClientInstanceSelfLock)
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
+                            Client.Self.StartIMConference(conferenceParticipants.ToList(), tmpSessionUUID);
+                            if (!conferenceStartedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
-                                Client.Self.StartIMConference(conferenceParticipants.ToList(), tmpSessionUUID);
-                                if (!conferenceStartedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_STARTING_CONFERENCE);
-                                }
                                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_STARTING_CONFERENCE);
                             }
+                            Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
 
                             if (!succeeded)
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_START_CONFERENCE);
@@ -131,13 +130,14 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                             }
                             // Join the chat if not yet joined
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
-                                    Client.Self.ChatterBoxAcceptInvite(sessionUUID);
-                                if (Services.JoinGroupChat(Client, sessionUUID, corradeConfiguration.ServicesTimeout))
-                                    throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
+                                Client.Self.ChatterBoxAcceptInvite(sessionUUID);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+
+                            if (Services.JoinGroupChat(Client, sessionUUID, corradeConfiguration.ServicesTimeout))
+                                throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
+
                             List<ChatSessionMember> members;
                             if (!Client.Self.GroupChatSessions.TryGetValue(sessionUUID, out members))
                             {

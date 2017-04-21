@@ -121,21 +121,20 @@ namespace Corrade
                                             switch (inventoryItem.AssetType)
                                             {
                                                 case AssetType.Mesh:
-                                                    lock (Locks.ClientInstanceAssetsLock)
-                                                    {
-                                                        Client.Assets.RequestMesh(inventoryItem.AssetUUID,
-                                                            delegate (bool completed, AssetMesh asset)
-                                                            {
-                                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID))
-                                                                    return;
-                                                                succeeded = completed;
-                                                                if (succeeded)
+                                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                                    Client.Assets.RequestMesh(inventoryItem.AssetUUID,
+                                                                delegate (bool completed, AssetMesh asset)
                                                                 {
-                                                                    assetBytes = asset.MeshData.AsBinary();
-                                                                }
-                                                                RequestAssetEvent.Set();
-                                                            });
-                                                    }
+                                                                    if (!asset.AssetID.Equals(inventoryItem.AssetUUID))
+                                                                        return;
+                                                                    succeeded = completed;
+                                                                    if (succeeded)
+                                                                    {
+                                                                        assetBytes = asset.MeshData.AsBinary();
+                                                                    }
+                                                                    RequestAssetEvent.Set();
+                                                                });
+                                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                     break;
 
                                                 case AssetType.Texture:
@@ -146,21 +145,20 @@ namespace Corrade
 
                                                 case AssetType.LSLText:
                                                 case AssetType.Notecard:
-                                                    lock (Locks.ClientInstanceAssetsLock)
-                                                    {
-                                                        Client.Assets.RequestInventoryAsset(inventoryItem.AssetUUID,
-                                                            inventoryItem.UUID, primObject.ID, inventoryItem.OwnerID,
-                                                            inventoryItem.AssetType, true,
-                                                            delegate (AssetDownload transfer, Asset asset)
-                                                            {
-                                                                succeeded = transfer.Success;
-                                                                if (transfer.Success)
+                                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                                    Client.Assets.RequestInventoryAsset(inventoryItem.AssetUUID,
+                                                                inventoryItem.UUID, primObject.ID, inventoryItem.OwnerID,
+                                                                inventoryItem.AssetType, true,
+                                                                delegate (AssetDownload transfer, Asset asset)
                                                                 {
-                                                                    assetBytes = asset.AssetData;
-                                                                }
-                                                                RequestAssetEvent.Set();
-                                                            });
-                                                    }
+                                                                    succeeded = transfer.Success;
+                                                                    if (transfer.Success)
+                                                                    {
+                                                                        assetBytes = asset.AssetData;
+                                                                    }
+                                                                    RequestAssetEvent.Set();
+                                                                });
+                                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                     break;
                                                 // All of these can be fetched directly from the asset server.
                                                 case AssetType.Landmark:
@@ -169,9 +167,8 @@ namespace Corrade
                                                 case AssetType.Sound: // Ogg Vorbis
                                                 case AssetType.Clothing:
                                                 case AssetType.Bodypart:
-                                                    lock (Locks.ClientInstanceAssetsLock)
-                                                    {
-                                                        Client.Assets.RequestAsset(inventoryItem.AssetUUID,
+                                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                                    Client.Assets.RequestAsset(inventoryItem.AssetUUID,
                                                             inventoryItem.AssetType, true,
                                                             delegate (AssetDownload transfer, Asset asset)
                                                             {
@@ -184,7 +181,7 @@ namespace Corrade
                                                                 }
                                                                 RequestAssetEvent.Set();
                                                             });
-                                                    }
+                                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                     break;
                                             }
 

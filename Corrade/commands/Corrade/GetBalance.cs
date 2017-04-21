@@ -30,11 +30,10 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                    Locks.ClientInstanceSelfLock.EnterReadLock();
+                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             Client.Self.Balance.ToString(Utils.EnUsCulture));
-                    }
+                    Locks.ClientInstanceSelfLock.ExitReadLock();
                 };
         }
     }

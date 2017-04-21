@@ -103,42 +103,40 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (Locks.ClientInstanceEstateLock)
+                                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                        Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
+                                        Client.Estate.RequestInfo();
+                                        if (
+                                            !EstateListReceivedAlarm.Signal.WaitOne((int)
+                                                corradeConfiguration.ServicesTimeout,
+                                                false))
                                         {
-                                            Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
-                                            Client.Estate.RequestInfo();
-                                            if (
-                                                !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                    corradeConfiguration.ServicesTimeout,
-                                                    false))
-                                            {
-                                                Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                            }
                                             Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                                            Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                            throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
-                                        lock (Locks.ClientInstanceNetworkLock)
-                                        {
-                                            if (estateList.Count >=
+                                        Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                                        Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                        if (estateList.Count >=
                                                 wasOpenMetaverse.Constants.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
-                                            {
-                                                throw new Command.ScriptException(
+                                        {
+                                            Locks.ClientInstanceNetworkLock.ExitReadLock();
+                                            throw new Command.ScriptException(
                                                     Enumerations.ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED);
-                                            }
                                         }
+                                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.BanUser(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.BanUser(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 case Enumerations.Action.REMOVE:
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.UnbanUser(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.UnbanUser(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 default:
@@ -191,41 +189,39 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (Locks.ClientInstanceEstateLock)
+                                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                        Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
+                                        Client.Estate.RequestInfo();
+                                        if (
+                                            !EstateListReceivedAlarm.Signal.WaitOne((int)
+                                                corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
-                                            Client.Estate.RequestInfo();
-                                            if (
-                                                !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                    corradeConfiguration.ServicesTimeout, false))
-                                            {
-                                                Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                            }
                                             Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                                            Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                            throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
-                                        lock (Locks.ClientInstanceNetworkLock)
-                                        {
-                                            if (estateList.Count >=
+                                        Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                                        Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                        if (estateList.Count >=
                                                 wasOpenMetaverse.Constants.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
-                                            {
-                                                throw new Command.ScriptException(
+                                        {
+                                            Locks.ClientInstanceNetworkLock.ExitReadLock();
+                                            throw new Command.ScriptException(
                                                     Enumerations.ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED);
-                                            }
                                         }
+                                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.AddAllowedGroup(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.AddAllowedGroup(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 case Enumerations.Action.REMOVE:
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 default:
@@ -284,41 +280,39 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (Locks.ClientInstanceEstateLock)
+                                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                        Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
+                                        Client.Estate.RequestInfo();
+                                        if (
+                                            !EstateListReceivedAlarm.Signal.WaitOne((int)
+                                                corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
-                                            Client.Estate.RequestInfo();
-                                            if (
-                                                !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                    corradeConfiguration.ServicesTimeout, false))
-                                            {
-                                                Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                            }
                                             Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                                            Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                            throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
-                                        lock (Locks.ClientInstanceNetworkLock)
-                                        {
-                                            if (estateList.Count >=
+                                        Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                                        Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                        if (estateList.Count >=
                                                 wasOpenMetaverse.Constants.ESTATE.MAXIMUM_USER_LIST_LENGTH)
-                                            {
-                                                throw new Command.ScriptException(
+                                        {
+                                            Locks.ClientInstanceNetworkLock.ExitReadLock();
+                                            throw new Command.ScriptException(
                                                     Enumerations.ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED);
-                                            }
                                         }
+                                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.AddAllowedUser(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.AddAllowedUser(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 case Enumerations.Action.REMOVE:
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 default:
@@ -377,41 +371,39 @@ namespace Corrade
                                                         break;
                                                 }
                                             };
-                                        lock (Locks.ClientInstanceEstateLock)
+                                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                        Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
+                                        Client.Estate.RequestInfo();
+                                        if (
+                                            !EstateListReceivedAlarm.Signal.WaitOne((int)
+                                                corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
-                                            Client.Estate.RequestInfo();
-                                            if (
-                                                !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                    corradeConfiguration.ServicesTimeout, false))
-                                            {
-                                                Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                            }
                                             Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                                            Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                            throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
-                                        lock (Locks.ClientInstanceNetworkLock)
-                                        {
-                                            if (estateList.Count >=
+                                        Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                                        Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                        if (estateList.Count >=
                                                 wasOpenMetaverse.Constants.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
-                                            {
-                                                throw new Command.ScriptException(
+                                        {
+                                            Locks.ClientInstanceNetworkLock.ExitReadLock();
+                                            throw new Command.ScriptException(
                                                     Enumerations.ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED);
-                                            }
                                         }
+                                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.AddEstateManager(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.AddEstateManager(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 case Enumerations.Action.REMOVE:
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.RemoveEstateManager(targetUUID, allEstates);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.RemoveEstateManager(targetUUID, allEstates);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
 
                                 default:

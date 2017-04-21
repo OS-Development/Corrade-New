@@ -22,26 +22,26 @@ namespace Corrade
                     {
                         return;
                     }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
                     if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                     {
                         Client.Self.Stand();
                     }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // stop all non-built-in animations
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.SignaledAnimations.Copy()
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.SignaledAnimations.Copy()
                             .Keys.AsParallel()
                             .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // Set the camera on the avatar.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.LookAt(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

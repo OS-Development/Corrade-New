@@ -51,7 +51,6 @@ namespace Corrade
                         replace = true;
                     }
                     CSV.ToEnumerable(wearables)
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .Select(

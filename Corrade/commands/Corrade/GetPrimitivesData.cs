@@ -81,7 +81,7 @@ namespace Corrade
                                 Parcel parcel = null;
                                 if (
                                     !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
-                                        corradeConfiguration.ServicesTimeout, ref parcel))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref parcel))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                 }
@@ -124,24 +124,24 @@ namespace Corrade
                                 var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                 EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                     (sender, args) => SimParcelsDownloadedEvent.Set();
-                                lock (Locks.ClientInstanceParcelsLock)
+                                Locks.ClientInstanceParcelsLock.EnterReadLock();
+                                Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim, true, (int)corradeConfiguration.DataTimeout);
+                                if (Client.Network.CurrentSim.IsParcelMapFull())
                                 {
-                                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                    Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                                    if (Client.Network.CurrentSim.IsParcelMapFull())
-                                    {
-                                        SimParcelsDownloadedEvent.Set();
-                                    }
-                                    if (
-                                        !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                            false))
-                                    {
-                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                                    }
-                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    SimParcelsDownloadedEvent.Set();
                                 }
+                                if (
+                                    !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                        false))
+                                {
+                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    Locks.ClientInstanceParcelsLock.ExitReadLock();
+                                    throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                                }
+                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                Locks.ClientInstanceParcelsLock.ExitReadLock();
                                 updatePrimitives = Services.GetPrimitives(Client,
                                     Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
                                     {

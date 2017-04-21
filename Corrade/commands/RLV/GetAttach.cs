@@ -33,10 +33,9 @@ namespace Corrade
                     var response = new StringBuilder();
                     if (!attachments.Any())
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                         return;
                     }
                     var attachmentPoints =
@@ -79,13 +78,12 @@ namespace Corrade
                                         break;
                                 }
                             });
-                            response.Append(string.Join("", data.ToArray()));
+                            response.Append(string.Join("", data));
                             break;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

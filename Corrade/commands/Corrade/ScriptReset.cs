@@ -99,23 +99,22 @@ namespace Corrade
                         case true:
                             inventory.AsParallel().WithDegreeOfParallelism(6).ForAll(o =>
                             {
-                                lock (Locks.ClientInstanceNetworkLock)
+                                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                Client.Network.SendPacket(new ScriptResetPacket()
                                 {
-                                    Client.Network.SendPacket(new ScriptResetPacket()
+                                    Type = PacketType.ScriptReset,
+                                    AgentData = new ScriptResetPacket.AgentDataBlock()
                                     {
-                                        Type = PacketType.ScriptReset,
-                                        AgentData = new ScriptResetPacket.AgentDataBlock()
-                                        {
-                                            AgentID = Client.Self.AgentID,
-                                            SessionID = Client.Self.SessionID
-                                        },
-                                        Script = new ScriptResetPacket.ScriptBlock()
-                                        {
-                                            ItemID = o.UUID,
-                                            ObjectID = primitive.ID
-                                        }
-                                    }, simulator);
-                                }
+                                        AgentID = Client.Self.AgentID,
+                                        SessionID = Client.Self.SessionID
+                                    },
+                                    Script = new ScriptResetPacket.ScriptBlock()
+                                    {
+                                        ItemID = o.UUID,
+                                        ObjectID = primitive.ID
+                                    }
+                                }, simulator);
+                                Locks.ClientInstanceNetworkLock.ExitReadLock();
                             });
                             break;
 
@@ -148,23 +147,22 @@ namespace Corrade
                                 default:
                                     throw new Command.ScriptException(Enumerations.ScriptError.ITEM_IS_NOT_A_SCRIPT);
                             }
-                            lock (Locks.ClientInstanceNetworkLock)
+                            Locks.ClientInstanceNetworkLock.EnterReadLock();
+                            Client.Network.SendPacket(new ScriptResetPacket()
                             {
-                                Client.Network.SendPacket(new ScriptResetPacket()
+                                Type = PacketType.ScriptReset,
+                                AgentData = new ScriptResetPacket.AgentDataBlock()
                                 {
-                                    Type = PacketType.ScriptReset,
-                                    AgentData = new ScriptResetPacket.AgentDataBlock()
-                                    {
-                                        AgentID = Client.Self.AgentID,
-                                        SessionID = Client.Self.SessionID
-                                    },
-                                    Script = new ScriptResetPacket.ScriptBlock()
-                                    {
-                                        ItemID = inventoryItem.UUID,
-                                        ObjectID = primitive.ID
-                                    }
-                                }, simulator);
-                            }
+                                    AgentID = Client.Self.AgentID,
+                                    SessionID = Client.Self.SessionID
+                                },
+                                Script = new ScriptResetPacket.ScriptBlock()
+                                {
+                                    ItemID = inventoryItem.UUID,
+                                    ObjectID = primitive.ID
+                                }
+                            }, simulator);
+                            Locks.ClientInstanceNetworkLock.ExitReadLock();
                             break;
                     }
                 };

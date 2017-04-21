@@ -36,7 +36,7 @@ namespace Corrade
                         }
 
                         var LockObject = new object();
-                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
                             .Where(o => o.Key.Equals(typeof(LoginProgressEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
@@ -63,7 +63,7 @@ namespace Corrade
                         }
 
                         var LockObject = new object();
-                        Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                        Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                             .NotificationParameters.AsParallel()
                             .Where(o => o.Key.Equals(typeof(LoggedOutEventArgs).FullName))
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>

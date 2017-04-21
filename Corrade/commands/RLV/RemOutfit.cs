@@ -40,7 +40,6 @@ namespace Corrade
                             }
                             var wearable =
                                 Inventory.GetWearables(Client, CurrentOutfitFolder, corradeConfiguration.ServicesTimeout)
-                                    .ToArray()
                                     .AsParallel()
                                     .FirstOrDefault(
                                         o =>

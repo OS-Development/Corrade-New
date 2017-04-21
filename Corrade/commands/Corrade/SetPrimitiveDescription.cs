@@ -76,12 +76,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         var description =
@@ -99,11 +97,10 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.DESCRIPTION_TOO_LARGE);
                         }
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetDescription(simulator,
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetDescription(simulator,
                                 primitive.LocalID, description);
-                        }
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

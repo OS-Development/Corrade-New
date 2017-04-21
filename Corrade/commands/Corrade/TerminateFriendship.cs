@@ -50,19 +50,19 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                         }
+
                         FriendInfo friend;
-                        lock (Locks.ClientInstanceFriendsLock)
+                        Locks.ClientInstanceFriendsLock.EnterReadLock();
+                        if (!Client.Friends.FriendList.TryGetValue(agentUUID, out friend))
                         {
-                            friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
-                        }
-                        if (friend == null)
-                        {
+                            Locks.ClientInstanceFriendsLock.ExitReadLock();
                             throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_NOT_FOUND);
                         }
-                        lock (Locks.ClientInstanceFriendsLock)
-                        {
-                            Client.Friends.TerminateFriendship(agentUUID);
-                        }
+                        Locks.ClientInstanceFriendsLock.ExitReadLock();
+
+                        Locks.ClientInstanceFriendsLock.EnterWriteLock();
+                        Client.Friends.TerminateFriendship(agentUUID);
+                        Locks.ClientInstanceFriendsLock.ExitWriteLock();
                     };
         }
     }

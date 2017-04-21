@@ -80,7 +80,6 @@ namespace Corrade
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                             corradeCommandParameters.Message)))
-                                    .ToArray()
                                     .AsParallel()
                                     .Where(o => !string.IsNullOrEmpty(o))
                                     .ForAll(
@@ -172,12 +171,10 @@ namespace Corrade
                                 var region = wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                         corradeCommandParameters.Message));
-                                Simulator simulator;
-                                lock (Locks.ClientInstanceNetworkLock)
-                                {
-                                    simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                         o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
-                                }
+                                Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 if (simulator == null)
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -187,11 +184,10 @@ namespace Corrade
                                 {
                                     ScriptPermissionRequests.Remove(scriptPermissionRequest);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
                                         permissionMask);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.PURGE:

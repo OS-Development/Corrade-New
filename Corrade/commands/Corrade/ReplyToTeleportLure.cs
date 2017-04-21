@@ -95,10 +95,9 @@ namespace Corrade
                                 {
                                     TeleportLures.Remove(sessionUUID);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.TeleportLureRespond(agentUUID, sessionUUID, true);
-                                }
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.TeleportLureRespond(agentUUID, sessionUUID, true);
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.DECLINE:
@@ -107,10 +106,9 @@ namespace Corrade
                                 {
                                     TeleportLures.Remove(sessionUUID);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.TeleportLureRespond(agentUUID, sessionUUID, false);
-                                }
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.TeleportLureRespond(agentUUID, sessionUUID, false);
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.PURGE:

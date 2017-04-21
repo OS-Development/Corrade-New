@@ -57,10 +57,9 @@ namespace Corrade
                             itemUUID = inventoryItem.AssetUUID;
                         }
 
-                        lock (Locks.ClientInstanceEstateLock)
-                        {
-                            Client.Estate.EstateOwnerMessage("estatechangecovenantid", itemUUID.ToString());
-                        }
+                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                        Client.Estate.EstateOwnerMessage("estatechangecovenantid", itemUUID.ToString());
+                        Locks.ClientInstanceEstateLock.ExitWriteLock();
                     };
         }
     }

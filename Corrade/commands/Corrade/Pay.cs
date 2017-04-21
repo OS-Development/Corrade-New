@@ -48,13 +48,13 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
+                    Locks.ClientInstanceSelfLock.EnterReadLock();
+                    if (Client.Self.Balance < amount)
                     {
-                        if (Client.Self.Balance < amount)
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
-                        }
+                        Locks.ClientInstanceSelfLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                     }
+                    Locks.ClientInstanceSelfLock.ExitReadLock();
                     UUID targetUUID;
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Entity>(
@@ -64,14 +64,13 @@ namespace Corrade
                                     corradeCommandParameters.Message))))
                     {
                         case Enumerations.Entity.GROUP:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int)amount,
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int)amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)));
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Entity.AVATAR:
@@ -98,14 +97,13 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                             }
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.GiveAvatarMoney(targetUUID, (int)amount,
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.GiveAvatarMoney(targetUUID, (int)amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                             corradeCommandParameters.Message)));
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Entity.OBJECT:
@@ -119,14 +117,13 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PAY_TARGET);
                             }
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.GiveObjectMoney(targetUUID, (int)amount,
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.GiveObjectMoney(targetUUID, (int)amount,
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                             corradeCommandParameters.Message)));
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:

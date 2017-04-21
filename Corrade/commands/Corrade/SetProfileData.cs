@@ -39,30 +39,36 @@ namespace Corrade
                     var interests = new Avatar.Interests();
                     EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(Client.Self.AgentID))
+                            return;
+
                         properties = args.Properties;
                         AvatarProfileDataEvent[0].Set();
                     };
                     EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(Client.Self.AgentID))
+                            return;
+
                         interests = args.Interests;
                         AvatarProfileDataEvent[1].Set();
                     };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarPropertiesReply += AvatarPropertiesEventHandler;
+                    Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
+                    Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
+                    if (
+                        !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle)o).ToArray(),
+                            (int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesEventHandler;
-                        Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
-                        Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
-                        if (
-                            !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle)o).ToArray(),
-                                (int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
-                            Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE);
-                        }
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE);
                     }
+                    Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
+                    Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     var fields =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
@@ -81,11 +87,10 @@ namespace Corrade
                         }
                     }
                     interests = interests.wasCSVToStructure(fields);
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.UpdateProfile(properties);
-                        Client.Self.UpdateInterests(interests);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.UpdateProfile(properties);
+                    Client.Self.UpdateInterests(interests);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

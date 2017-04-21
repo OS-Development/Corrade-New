@@ -86,12 +86,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         var saleTypeInfo = typeof(SaleType).GetFields(BindingFlags.Public |
@@ -103,14 +101,13 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetSaleInfo(simulator,
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetSaleInfo(simulator,
                                 primitive.LocalID, saleTypeInfo != null
                                     ? (SaleType)
                                         saleTypeInfo.GetValue(null)
                                     : SaleType.Copy, (int)price);
-                        }
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

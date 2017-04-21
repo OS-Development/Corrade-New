@@ -53,12 +53,11 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                             break;
                     }
-                    lock (Locks.ClientInstanceConfigurationLock)
-                    {
-                        if (corradeConfiguration.Groups.RemoveWhere(
+                    Locks.ClientInstanceConfigurationLock.EnterWriteLock();
+                    if (corradeConfiguration.Groups.RemoveWhere(
                             o => string.Equals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID)).Equals(0))
-                            throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_CONFIGURED);
-                    }
+                        throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_CONFIGURED);
+                    Locks.ClientInstanceConfigurationLock.ExitWriteLock();
                     lock (ConfigurationFileLock)
                     {
                         try

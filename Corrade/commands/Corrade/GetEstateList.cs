@@ -57,21 +57,21 @@ namespace Corrade
                                         break;
                                 }
                             };
-                            lock (Locks.ClientInstanceEstateLock)
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
+                            Client.Estate.RequestInfo();
+                            if (
+                                !EstateListReceivedAlarm.Signal.WaitOne(
+                                    (int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
-                                Client.Estate.RequestInfo();
-                                if (
-                                    !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                }
                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                                Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
+                            Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Type.GROUP:
@@ -90,21 +90,21 @@ namespace Corrade
                                             break;
                                     }
                                 };
-                            lock (Locks.ClientInstanceEstateLock)
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
+                            Client.Estate.RequestInfo();
+                            if (
+                                !EstateListReceivedAlarm.Signal.WaitOne(
+                                    (int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
-                                Client.Estate.RequestInfo();
-                                if (
-                                    !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                }
                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                                Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
+                            Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Type.MANAGER:
@@ -123,21 +123,21 @@ namespace Corrade
                                             break;
                                     }
                                 };
-                            lock (Locks.ClientInstanceEstateLock)
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
+                            Client.Estate.RequestInfo();
+                            if (
+                                !EstateListReceivedAlarm.Signal.WaitOne(
+                                    (int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
-                                Client.Estate.RequestInfo();
-                                if (
-                                    !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                }
                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                                Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
+                            Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Type.USER:
@@ -156,21 +156,21 @@ namespace Corrade
                                             break;
                                     }
                                 };
-                            lock (Locks.ClientInstanceEstateLock)
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
+                            Client.Estate.RequestInfo();
+                            if (
+                                !EstateListReceivedAlarm.Signal.WaitOne(
+                                    (int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
-                                Client.Estate.RequestInfo();
-                                if (
-                                    !EstateListReceivedAlarm.Signal.WaitOne(
-                                        (int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
-                                }
                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                                Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
+                            Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         default:

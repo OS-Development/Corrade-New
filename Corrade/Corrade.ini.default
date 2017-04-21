@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.26.6265.26143</Version>
+  <Version>1.28.6320.4198</Version>
   <ClientLanguage>en</ClientLanguage>
   <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
@@ -25,6 +25,7 @@
   <EnableNucleusServer>true</EnableNucleusServer>
   <EnableNucleusServerCache>true</EnableNucleusServerCache>
   <NucleusServerCachePurgeInterval>60000</NucleusServerCachePurgeInterval>
+  <NucleusServerNotificationQueueLength>10</NucleusServerNotificationQueueLength>
   <EnableHTTPServerAuthentication>false</EnableHTTPServerAuthentication>
   <HTTPServerUsername />
   <NucleusServerUsername>corrade</NucleusServerUsername>
@@ -78,6 +79,7 @@
   <FeedsUpdateInterval>60000</FeedsUpdateInterval>
   <TOSAccepted>false</TOSAccepted>
   <EnableMultipleSimulators>true</EnableMultipleSimulators>
+  <AutoScriptedAgentStatus>true</AutoScriptedAgentStatus>
   <ClientIdentificationTag>0705230f-cbd0-99bd-040b-28eb348b5255</ClientIdentificationTag>
   <StartLocations>
     <string>last</string>
@@ -101,9 +103,7 @@
   <NetworkCardMAC />
   <DriveIdentifierHash />
   <ClientLogFile>logs/Corrade.log</ClientLogFile>
-  <OpenMetaverseLogFile>logs/OpenMetaverse.log</OpenMetaverseLogFile>
   <ClientLogEnabled>true</ClientLogEnabled>
-  <OpenMetaverseLogEnabled>true</OpenMetaverseLogEnabled>
   <AutoActivateGroup>false</AutoActivateGroup>
   <AutoActivateGroupDelay>5000</AutoActivateGroupDelay>
   <GroupCreateFee>100</GroupCreateFee>

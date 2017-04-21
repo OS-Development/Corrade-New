@@ -34,29 +34,26 @@ namespace Corrade
                         ))
                     {
                         case Enumerations.Action.ENABLE:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.AnimationStart(Animations.AWAY, true);
-                                Client.Self.Movement.Away = true;
-                                Client.Self.Movement.SendUpdate(true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.AnimationStart(Animations.AWAY, true);
+                            Client.Self.Movement.Away = true;
+                            Client.Self.Movement.SendUpdate(true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.DISABLE:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.Away = false;
-                                Client.Self.AnimationStop(Animations.AWAY, true);
-                                Client.Self.Movement.SendUpdate(true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.Away = false;
+                            Client.Self.AnimationStop(Animations.AWAY, true);
+                            Client.Self.Movement.SendUpdate(true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.GET:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            Locks.ClientInstanceSelfLock.EnterReadLock();
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                     Client.Self.Movement.Away.ToString());
-                            }
+                            Locks.ClientInstanceSelfLock.ExitReadLock();
                             break;
 
                         default:

@@ -6,6 +6,7 @@
 
 using Corrade.Events;
 using Corrade.Helpers;
+using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,7 @@ namespace Corrade
                     }
 
                     var LockObject = new object();
-                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                    Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                         .NotificationParameters.AsParallel()
                         .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {

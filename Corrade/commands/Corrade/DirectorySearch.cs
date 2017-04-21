@@ -42,6 +42,7 @@ namespace Corrade
                     var csv = new List<string>();
                     var handledEvents = 0;
                     var counter = 1;
+                    var requestUUID = UUID.Zero;
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(KeyValue.Get(
@@ -58,7 +59,11 @@ namespace Corrade
                             var classifieds =
                                 new Dictionary<DirectoryManager.Classified, int>();
                             EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
-                                (sender, args) => args.Classifieds.AsParallel().ForAll(o =>
+                                (sender, args) =>
+                                {
+                                    if (!args.QueryID.Equals(requestUUID))
+                                        return;
+                                    args.Classifieds.AsParallel().ForAll(o =>
                                 {
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     var score = !string.IsNullOrEmpty(fields)
@@ -83,15 +88,13 @@ namespace Corrade
                                         }
                                     }
                                 });
-                            lock (Locks.ClientInstanceDirectoryLock)
-                            {
-                                Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
-                                Client.Directory.StartClassifiedSearch(name);
-                                DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
-                                    false);
-                                Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
-                            }
+                                };
+                            Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
+                            requestUUID = Client.Directory.StartClassifiedSearch(name);
+                            DirectorySearchResultsAlarm.Signal.WaitOne(
+                                (int)corradeConfiguration.ServicesTimeout,
+                                false);
+                            Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
                             Dictionary<DirectoryManager.Classified, int> safeClassifieds;
                             lock (LockObject)
                             {
@@ -126,6 +129,8 @@ namespace Corrade
                             EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
                                 (sender, args) =>
                                 {
+                                    if (!args.QueryID.Equals(requestUUID))
+                                        return;
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.MatchedEvents.Count;
                                     args.MatchedEvents.AsParallel().ForAll(o =>
@@ -159,19 +164,16 @@ namespace Corrade
                                          wasOpenMetaverse.Constants.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
-                                        Client.Directory.StartEventsSearch(name, (uint)handledEvents);
+                                        requestUUID = Client.Directory.StartEventsSearch(name, (uint)handledEvents);
                                     }
                                 };
-                            lock (Locks.ClientInstanceDirectoryLock)
-                            {
-                                Client.Directory.DirEventsReply += DirEventsEventHandler;
-                                Client.Directory.StartEventsSearch(name,
-                                    (uint)handledEvents);
-                                DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
-                                    false);
-                                Client.Directory.DirEventsReply -= DirEventsEventHandler;
-                            }
+                            Client.Directory.DirEventsReply += DirEventsEventHandler;
+                            requestUUID = Client.Directory.StartEventsSearch(name,
+                                (uint)handledEvents);
+                            DirectorySearchResultsAlarm.Signal.WaitOne(
+                                (int)corradeConfiguration.ServicesTimeout,
+                                false);
+                            Client.Directory.DirEventsReply -= DirEventsEventHandler;
                             Dictionary<DirectoryManager.EventsSearchData, int> safeEvents;
                             lock (LockObject)
                             {
@@ -209,6 +211,9 @@ namespace Corrade
                             EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
                                 (sender, args) =>
                                 {
+                                    if (!args.QueryID.Equals(requestUUID))
+                                        return;
+
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.MatchedGroups.Count;
                                     args.MatchedGroups.AsParallel().ForAll(o =>
@@ -242,18 +247,15 @@ namespace Corrade
                                          wasOpenMetaverse.Constants.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
-                                        Client.Directory.StartGroupSearch(name, handledEvents);
+                                        requestUUID = Client.Directory.StartGroupSearch(name, handledEvents);
                                     }
                                 };
-                            lock (Locks.ClientInstanceDirectoryLock)
-                            {
-                                Client.Directory.DirGroupsReply += DirGroupsEventHandler;
-                                Client.Directory.StartGroupSearch(name, handledEvents);
-                                DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
-                                    false);
-                                Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
-                            }
+                            Client.Directory.DirGroupsReply += DirGroupsEventHandler;
+                            requestUUID = Client.Directory.StartGroupSearch(name, handledEvents);
+                            DirectorySearchResultsAlarm.Signal.WaitOne(
+                                (int)corradeConfiguration.ServicesTimeout,
+                                false);
+                            Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
                             Dictionary<DirectoryManager.GroupSearchData, int> safeGroups;
                             lock (LockObject)
                             {
@@ -287,6 +289,9 @@ namespace Corrade
                             EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                                 (sender, args) =>
                                 {
+                                    if (!args.QueryID.Equals(requestUUID))
+                                        return;
+
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.DirParcels.Count;
                                     args.DirParcels.AsParallel().ForAll(o =>
@@ -319,21 +324,18 @@ namespace Corrade
                                          wasOpenMetaverse.Constants.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
-                                        Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
+                                        requestUUID = Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                             DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue,
                                             handledEvents);
                                     }
                                 };
-                            lock (Locks.ClientInstanceDirectoryLock)
-                            {
-                                Client.Directory.DirLandReply += DirLandReplyEventArgs;
-                                Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
-                                    DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                                DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
-                                    false);
-                                Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                            }
+                            Client.Directory.DirLandReply += DirLandReplyEventArgs;
+                            requestUUID = Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
+                                DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
+                            DirectorySearchResultsAlarm.Signal.WaitOne(
+                                (int)corradeConfiguration.ServicesTimeout,
+                                false);
+                            Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                             Dictionary<DirectoryManager.DirectoryParcel, int> safeLands;
                             lock (LockObject)
                             {
@@ -367,6 +369,9 @@ namespace Corrade
                             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyEventHandler =
                                 (sender, args) =>
                                 {
+                                    if (!args.QueryID.Equals(requestUUID))
+                                        return;
+
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     handledEvents += args.MatchedPeople.Count;
                                     args.MatchedPeople.AsParallel().ForAll(o =>
@@ -400,18 +405,15 @@ namespace Corrade
                                          wasOpenMetaverse.Constants.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
                                     {
                                         ++counter;
-                                        Client.Directory.StartPeopleSearch(name, handledEvents);
+                                        requestUUID = Client.Directory.StartPeopleSearch(name, handledEvents);
                                     }
                                 };
-                            lock (Locks.ClientInstanceDirectoryLock)
-                            {
-                                Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
-                                Client.Directory.StartPeopleSearch(name, handledEvents);
-                                DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
-                                    false);
-                                Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
-                            }
+                            Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
+                            requestUUID = Client.Directory.StartPeopleSearch(name, handledEvents);
+                            DirectorySearchResultsAlarm.Signal.WaitOne(
+                                (int)corradeConfiguration.ServicesTimeout,
+                                false);
+                            Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
                             Dictionary<DirectoryManager.AgentSearchData, int> safeAgents;
                             lock (LockObject)
                             {
@@ -445,10 +447,13 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)));
                             var places =
-                                new Dictionary<DirectoryManager.PlacesSearchData, int>();
-                            EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =
-                                (sender, args) => args.MatchedPlaces.AsParallel().ForAll(o =>
+                                new Dictionary<DirectoryManager.DirectoryParcel, int>();
+                            EventHandler<DirPlacesReplyEventArgs> DirPlacesReplyEventHandler =
+                                (sender, args) => args.MatchedParcels.AsParallel().ForAll(o =>
                                 {
+                                    if (!args.QueryID.Equals(requestUUID))
+                                        return;
+
                                     DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     var score = !string.IsNullOrEmpty(fields)
                                         ? wasSharpNET.Reflection.wasGetFields(searchPlaces, searchPlaces.GetType().Name)
@@ -469,17 +474,21 @@ namespace Corrade
                                             places.Add(o, score);
                                         }
                                     }
+                                    if (handledEvents > wasOpenMetaverse.Constants.DIRECTORY.PLACES.SEARCH_RESULTS_COUNT &&
+                                        ((handledEvents - counter) %
+                                         wasOpenMetaverse.Constants.DIRECTORY.PLACES.SEARCH_RESULTS_COUNT).Equals(0))
+                                    {
+                                        ++counter;
+                                        requestUUID = Client.Directory.StartDirPlacesSearch(name, handledEvents);
+                                    }
                                 });
-                            lock (Locks.ClientInstanceDirectoryLock)
-                            {
-                                Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
-                                Client.Directory.StartPlacesSearch(name);
-                                DirectorySearchResultsAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
-                                    false);
-                                Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
-                            }
-                            Dictionary<DirectoryManager.PlacesSearchData, int> safePlaces;
+                            Client.Directory.DirPlacesReply += DirPlacesReplyEventHandler;
+                            requestUUID = Client.Directory.StartDirPlacesSearch(name, 0);
+                            DirectorySearchResultsAlarm.Signal.WaitOne(
+                                (int)corradeConfiguration.ServicesTimeout,
+                                false);
+                            Client.Directory.DirPlacesReply -= DirPlacesReplyEventHandler;
+                            Dictionary<DirectoryManager.DirectoryParcel, int> safePlaces;
                             lock (LockObject)
                             {
                                 safePlaces = places.OrderByDescending(o => o.Value)

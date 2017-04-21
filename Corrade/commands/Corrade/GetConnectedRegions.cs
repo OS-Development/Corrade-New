@@ -28,11 +28,10 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(Client.Network.Simulators.Select(o => o.Name)));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                     };
         }
     }

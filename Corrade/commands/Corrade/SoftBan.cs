@@ -741,7 +741,6 @@ namespace Corrade
                                             KeyValue.Get(
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
                                                 corradeCommandParameters.Message)))
-                                        .ToArray()
                                         .AsParallel()
                                         .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                                             typeof(MuteFlags).GetFields(BindingFlags.Public |
@@ -772,21 +771,21 @@ namespace Corrade
                                                 corradeConfiguration.ServicesTimeout, ref agentName))
                                             return;
 
-                                        lock (Locks.ClientInstanceSelfLock)
+                                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                        // add mute
+                                        Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                        Client.Self.UpdateMuteListEntry(MuteType.Resident, o.Agent, agentName,
+                                            muteFlags);
+                                        if (
+                                            !MuteListUpdatedEvent.WaitOne(
+                                                (int)corradeConfiguration.ServicesTimeout, false))
                                         {
-                                            // add mute
-                                            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                            Client.Self.UpdateMuteListEntry(MuteType.Resident, o.Agent, agentName,
-                                                muteFlags);
-                                            if (
-                                                !MuteListUpdatedEvent.WaitOne(
-                                                    (int)corradeConfiguration.ServicesTimeout, false))
-                                            {
-                                                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                                return;
-                                            }
                                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                            return;
                                         }
+                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                                         // add the mute to the cache
                                         Cache.AddMute(muteFlags, o.Agent, agentName, MuteType.Resident);
                                     });

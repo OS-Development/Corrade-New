@@ -109,38 +109,37 @@ namespace Corrade
                                 ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                 classifieds = args;
                             };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                        Client.Avatars.RequestAvatarProperties(agentUUID);
+                        Client.Avatars.RequestAvatarPicks(agentUUID);
+                        Client.Avatars.RequestAvatarClassified(agentUUID);
+                        if (
+                            !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                false))
                         {
-                            Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
-                            Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
-                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                            Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                            Client.Avatars.RequestAvatarProperties(agentUUID);
-                            Client.Avatars.RequestAvatarPicks(agentUUID);
-                            Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (
-                                !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
-                            {
-                                Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
-                                Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
-                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                                Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                                // Add all the unrecognized agents to the error list.
-                                if (!error.Contains(o))
-                                {
-                                    error.Add(o);
-                                    continue;
-                                }
-                            }
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                             Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                            // Add all the unrecognized agents to the error list.
+                            if (!error.Contains(o))
+                            {
+                                error.Add(o);
+                                continue;
+                            }
                         }
+                        Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
 
                         csv.AddRange(properties.GetStructuredData(fields));
                         csv.AddRange(interests.GetStructuredData(fields));
@@ -153,18 +152,18 @@ namespace Corrade
                         {
                             csv.AddRange(classifieds.GetStructuredData(fields));
                         }
-                    }
 
-                    if (error.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.ERROR),
-                            CSV.FromEnumerable(error));
-                    }
+                        if (error.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.ERROR),
+                                CSV.FromEnumerable(error));
+                        }
 
-                    if (csv.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(csv));
+                        if (csv.Any())
+                        {
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(csv));
+                        }
                     }
                 };
         }

@@ -119,12 +119,10 @@ namespace Corrade
                         if (!primitives.Skip(1).AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
                             throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
 
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o => o.Handle.Equals(rootPrimitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
 
@@ -158,20 +156,20 @@ namespace Corrade
                                     case true:
                                         // If the links have to be restructured, then delink all the primitivws.
                                         primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
-                                        lock (Locks.ClientInstanceObjectsLock)
+                                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                                        Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                                        Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
+                                        if (
+                                            !PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                                false))
                                         {
-                                            Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                                            Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                            if (
-                                                !PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                                    false))
-                                            {
-                                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
-                                            }
                                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                            Locks.ClientInstanceObjectsLock.ExitWriteLock();
+                                            throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                                         }
+                                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                                         break;
 
                                     default:
@@ -202,19 +200,19 @@ namespace Corrade
                                 // Get a hashset of primitive local IDs.
                                 primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
                                 PrimChangeLinkEvent.Reset();
-                                lock (Locks.ClientInstanceObjectsLock)
+                                Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                                Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                                // Link the primitives.
+                                Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
+                                if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                                    // Link the primitives.
-                                    Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
-                                    if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                    {
-                                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
-                                    }
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                    Locks.ClientInstanceObjectsLock.ExitWriteLock();
+                                    throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                                 }
+                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                Locks.ClientInstanceObjectsLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.DELINK:
@@ -224,18 +222,18 @@ namespace Corrade
                                         Enumerations.ScriptError.PRIMITIVES_ALREADY_DELINKED);
 
                                 primitivesIDs.UnionWith(primitives.Select(o => o.LocalID));
-                                lock (Locks.ClientInstanceObjectsLock)
+                                Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                                Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                                Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
+                                if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                                    Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                    if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                    {
-                                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
-                                    }
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                    Locks.ClientInstanceObjectsLock.ExitWriteLock();
+                                    throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                                 }
+                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                Locks.ClientInstanceObjectsLock.ExitWriteLock();
                                 break;
 
                             default:

@@ -76,12 +76,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         Vector3 position;
@@ -199,9 +197,8 @@ namespace Corrade
                         {
                             gravity = primitive.PhysicsProps.GravityMultiplier;
                         }
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetFlags(simulator,
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetFlags(simulator,
                                 primitive.LocalID,
                                 physics,
                                 temporary,
@@ -210,7 +207,7 @@ namespace Corrade
                                 physicsShapeType, density,
                                 friction, restitution,
                                 gravity);
-                        }
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

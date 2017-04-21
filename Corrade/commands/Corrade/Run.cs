@@ -35,19 +35,17 @@ namespace Corrade
                     {
                         case Enumerations.Action.ENABLE:
                         case Enumerations.Action.DISABLE:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.AlwaysRun = !action.Equals(Enumerations.Action.DISABLE);
-                                Client.Self.Movement.SendUpdate(true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.AlwaysRun = !action.Equals(Enumerations.Action.DISABLE);
+                            Client.Self.Movement.SendUpdate(true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.GET:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            Locks.ClientInstanceSelfLock.EnterReadLock();
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                     Client.Self.Movement.AlwaysRun.ToString());
-                            }
+                            Locks.ClientInstanceSelfLock.ExitReadLock();
                             break;
 
                         default:

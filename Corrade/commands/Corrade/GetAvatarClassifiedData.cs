@@ -66,20 +66,23 @@ namespace Corrade
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedsReplyEventHandler =
                             (sender, args) =>
                             {
+                                if (!args.AvatarID.Equals(agentUUID))
+                                    return;
+
                                 classifieds = args.Classifieds;
                                 AvatarClassifiedsReplyEvent.Set();
                             };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedsReplyEventHandler;
+                        Client.Avatars.RequestAvatarClassified(agentUUID);
+                        if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedsReplyEventHandler;
-                            Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedsReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                            }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedsReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                         }
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedsReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
 
                         if (!classifieds.ContainsKey(classifiedUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.CLASSIFIED_NOT_FOUND);
@@ -89,23 +92,26 @@ namespace Corrade
                         EventHandler<ClassifiedInfoReplyEventArgs> AvatarClassifiedInfoReplyEventHandler =
                             (sender, args) =>
                             {
+                                if (!args.ClassifiedID.Equals(classifiedUUID))
+                                    return;
+
                                 profileClassified = args.Classified;
                                 AvatarClassifiedInfoReplyEvent.Set();
                             };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.ClassifiedInfoReply += AvatarClassifiedInfoReplyEventHandler;
+                        Client.Avatars.RequestClassifiedInfo(agentUUID, classifiedUUID);
+                        if (
+                            !AvatarClassifiedInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                false))
                         {
-                            Client.Avatars.ClassifiedInfoReply += AvatarClassifiedInfoReplyEventHandler;
-                            Client.Avatars.RequestClassifiedInfo(agentUUID, classifiedUUID);
-                            if (
-                                !AvatarClassifiedInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
-                            {
-                                Client.Avatars.ClassifiedInfoReply -= AvatarClassifiedInfoReplyEventHandler;
-                                throw new Command.ScriptException(
-                                    Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_CLASSIFIED);
-                            }
                             Client.Avatars.ClassifiedInfoReply -= AvatarClassifiedInfoReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_CLASSIFIED);
                         }
+                        Client.Avatars.ClassifiedInfoReply -= AvatarClassifiedInfoReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
 
                         if (profileClassified.Equals(default(ClassifiedAd)))
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_CLASSIFIED);

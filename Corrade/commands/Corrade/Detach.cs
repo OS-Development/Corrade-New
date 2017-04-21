@@ -66,13 +66,12 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.SignaledAnimations.Copy()
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
                                     .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
                     var attached =
@@ -130,7 +129,6 @@ namespace Corrade
                             if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
                             {
                                 var attachment = attached
-                                    .ToArray()
                                     .AsParallel()
                                     .FirstOrDefault(
                                         p =>

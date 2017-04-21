@@ -87,7 +87,6 @@ namespace Corrade
                                         var slot = Inventory.GetAttachments(
                                             Client,
                                             corradeConfiguration.DataTimeout)
-                                            .ToArray()
                                             .AsParallel()
                                             .Where(p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID))
                                             .Select(p => p.Value.ToString())

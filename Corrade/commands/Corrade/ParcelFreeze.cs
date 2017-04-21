@@ -42,23 +42,21 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator =
                             Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
@@ -114,10 +112,9 @@ namespace Corrade
                     {
                         freeze = false;
                     }
-                    lock (Locks.ClientInstanceParcelsLock)
-                    {
-                        Client.Parcels.FreezeUser(agentUUID, freeze);
-                    }
+                    Locks.ClientInstanceParcelsLock.EnterWriteLock();
+                    Client.Parcels.FreezeUser(agentUUID, freeze);
+                    Locks.ClientInstanceParcelsLock.ExitWriteLock();
                 };
         }
     }

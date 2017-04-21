@@ -37,17 +37,15 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(region))
                         {
                             case true:
-                                lock (Locks.ClientInstanceNetworkLock)
-                                {
-                                    simulator =
-                                        Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                             o =>
                                                 o.Name.Equals(
                                                     string.IsNullOrEmpty(region)
                                                         ? Client.Network.CurrentSim.Name
                                                         : region,
                                                     StringComparison.OrdinalIgnoreCase));
-                                }
+                                Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 if (simulator == null)
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -58,11 +56,8 @@ namespace Corrade
                                 simulator = Client.Network.CurrentSim;
                                 break;
                         }
-                        List<float> data;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            data = new List<float>
-                            {
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            CSV.FromEnumerable(new[] {
                                 simulator.TerrainStartHeight00, // Low SW
                                 simulator.TerrainHeightRange00, // High SW
                                 simulator.TerrainStartHeight01, // Low NW
@@ -71,10 +66,7 @@ namespace Corrade
                                 simulator.TerrainHeightRange10, // High SE
                                 simulator.TerrainStartHeight11, // Low NE
                                 simulator.TerrainHeightRange11 // High NE
-                            };
-                        }
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data.Select(o => o.ToString(Utils.EnUsCulture))));
+                            }.Select(o => o.ToString(Utils.EnUsCulture))));
                     };
         }
     }

@@ -52,7 +52,7 @@ namespace Corrade.Helpers
             {
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.UNABLE_TO_DESERIALIZE_NOTIFICATION_DATA), ex.Message);
+                        Enumerations.ConsoleMessage.UNABLE_TO_DESERIALIZE_NOTIFICATION_DATA), ex.ToString(), ex.InnerException?.ToString());
                 return null;
             }
 

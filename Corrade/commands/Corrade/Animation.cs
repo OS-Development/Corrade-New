@@ -67,17 +67,15 @@ namespace Corrade
                                     corradeCommandParameters.Message))))
                     {
                         case Enumerations.Action.START:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.AnimationStart(inventoryItem.AssetUUID, true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.AnimationStart(inventoryItem.AssetUUID, true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.STOP:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.AnimationStop(inventoryItem.AssetUUID, true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.AnimationStop(inventoryItem.AssetUUID, true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:

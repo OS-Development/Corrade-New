@@ -27,24 +27,21 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    AgentManager.AgentMovement.AgentCamera camera;
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        camera = Client.Self.Movement.Camera;
-                    }
+                    Locks.ClientInstanceSelfLock.EnterReadLock();
+                    var camera = Client.Self.Movement.Camera;
+                    Locks.ClientInstanceSelfLock.ExitReadLock();
                     camera = camera.wasCSVToStructure(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message)));
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.AtAxis = camera.AtAxis;
-                        Client.Self.Movement.Camera.Far = camera.Far;
-                        Client.Self.Movement.Camera.LeftAxis = camera.LeftAxis;
-                        Client.Self.Movement.Camera.Position = camera.Position;
-                        Client.Self.Movement.Camera.UpAxis = camera.UpAxis;
-                        // Send update.
-                        Client.Self.Movement.SendUpdate(true);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.AtAxis = camera.AtAxis;
+                    Client.Self.Movement.Camera.Far = camera.Far;
+                    Client.Self.Movement.Camera.LeftAxis = camera.LeftAxis;
+                    Client.Self.Movement.Camera.Position = camera.Position;
+                    Client.Self.Movement.Camera.UpAxis = camera.UpAxis;
+                    // Send update.
+                    Client.Self.Movement.SendUpdate(true);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // Save movement state.
                     SaveMovementState.Invoke();
                 };

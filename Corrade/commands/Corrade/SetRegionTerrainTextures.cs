@@ -36,17 +36,15 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                         }
-                        List<UUID> simTextures;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simTextures = new List<UUID>
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simTextures = new List<UUID>
                             {
                                 Client.Network.CurrentSim.TerrainDetail0,
                                 Client.Network.CurrentSim.TerrainDetail1,
                                 Client.Network.CurrentSim.TerrainDetail2,
                                 Client.Network.CurrentSim.TerrainDetail3
                             };
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var setTextures = new UUID[4];
                         var data = CSV.ToEnumerable(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
@@ -91,11 +89,10 @@ namespace Corrade
                                         break;
                                 }
                             });
-                        lock (Locks.ClientInstanceEstateLock)
-                        {
-                            Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2],
+                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                        Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2],
                                 setTextures[3]);
-                        }
+                        Locks.ClientInstanceEstateLock.ExitWriteLock();
                     };
         }
     }

@@ -189,11 +189,10 @@ namespace Corrade
                                                 Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                     }
                                     // Trigger the effect.
-                                    lock (Locks.ClientInstanceSelfLock)
-                                    {
-                                        Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
+                                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                    Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
                                             lookAtType, effectUUID);
-                                    }
+                                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     // Update the list of effects.
                                     lock (LookAtEffectsLock)
                                     {
@@ -248,11 +247,10 @@ namespace Corrade
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                     }
-                                    lock (Locks.ClientInstanceSelfLock)
-                                    {
-                                        Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
+                                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                    Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
                                             pointAtType, effectUUID);
-                                    }
+                                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     lock (PointAtEffectsLock)
                                     {
                                         if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
@@ -334,11 +332,10 @@ namespace Corrade
                                                     throw new Command.ScriptException(
                                                         Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
-                                            lock (Locks.ClientInstanceSelfLock)
-                                            {
-                                                Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
+                                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                            Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
                                                     color, duration, effectUUID);
-                                            }
+                                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                                             lock (BeamEffectsLock)
                                             {
                                                 if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
@@ -379,11 +376,10 @@ namespace Corrade
                                                     throw new Command.ScriptException(
                                                         Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
-                                            lock (Locks.ClientInstanceSelfLock)
-                                            {
-                                                Client.Self.SphereEffect(offset, color, duration,
+                                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                            Client.Self.SphereEffect(offset, color, duration,
                                                     effectUUID);
-                                            }
+                                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                                             lock (SphereEffectsLock)
                                             {
                                                 if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))

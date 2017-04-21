@@ -80,7 +80,7 @@ namespace Corrade
 
                                         // check that the mute list does not already exist
                                         if (
-                                            mutes.ToArray()
+                                            mutes
                                                 .AsParallel()
                                                 .Any(p => p.ID.Equals(targetUUID) && p.Name.Equals(o.Key)))
                                         {
@@ -118,7 +118,6 @@ namespace Corrade
                                                 KeyValue.Get(
                                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
                                                     corradeCommandParameters.Message)))
-                                            .ToArray()
                                             .AsParallel()
                                             .Where(p => !string.IsNullOrEmpty(p)).ForAll(p =>
                                                 typeof(MuteFlags).GetFields(BindingFlags.Public |
@@ -133,22 +132,21 @@ namespace Corrade
                                                                 (MuteFlags)r.GetValue(null));
                                                         }));
                                         succeeded = true;
-                                        lock (Locks.ClientInstanceSelfLock)
+                                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                        Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                        MuteListUpdatedEvent.Reset();
+                                        Client.Self.UpdateMuteListEntry(muteType, targetUUID, o.Key,
+                                            muteFlags);
+                                        if (
+                                            !MuteListUpdatedEvent.WaitOne(
+                                                (int)corradeConfiguration.ServicesTimeout,
+                                                false))
                                         {
-                                            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                            MuteListUpdatedEvent.Reset();
-                                            Client.Self.UpdateMuteListEntry(muteType, targetUUID, o.Key,
-                                                muteFlags);
-                                            if (
-                                                !MuteListUpdatedEvent.WaitOne(
-                                                    (int)corradeConfiguration.ServicesTimeout,
-                                                    false))
-                                            {
-                                                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                                succeeded = false;
-                                            }
                                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                            succeeded = false;
                                         }
+                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                                         switch (succeeded)
                                         {
                                             case true:
@@ -198,22 +196,21 @@ namespace Corrade
                                             return;
                                         }
                                         succeeded = true;
-                                        lock (Locks.ClientInstanceSelfLock)
+                                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                        // remove the mute
+                                        Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                        MuteListUpdatedEvent.Reset();
+                                        Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
+                                        if (
+                                            !MuteListUpdatedEvent.WaitOne(
+                                                (int)corradeConfiguration.ServicesTimeout,
+                                                false))
                                         {
-                                            // remove the mute
-                                            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                            MuteListUpdatedEvent.Reset();
-                                            Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
-                                            if (
-                                                !MuteListUpdatedEvent.WaitOne(
-                                                    (int)corradeConfiguration.ServicesTimeout,
-                                                    false))
-                                            {
-                                                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                                succeeded = false;
-                                            }
                                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                            succeeded = false;
                                         }
+                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                                         switch (succeeded)
                                         {
                                             case true:

@@ -24,13 +24,12 @@ namespace Corrade
                     {
                         return;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(
                             $"{wasOpenMetaverse.RLV.RLV_CONSTANTS.VIEWER} v{wasOpenMetaverse.RLV.RLV_CONSTANTS.SHORT_VERSION} (Corrade Version: {CORRADE_CONSTANTS.CORRADE_VERSION} Compiled: {CORRADE_CONSTANTS.CORRADE_COMPILE_DATE})",
                             channel,
                             ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

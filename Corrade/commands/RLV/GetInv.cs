@@ -32,10 +32,9 @@ namespace Corrade
                         Client.Inventory.Store.RootFolder);
                     if (RLVFolder == null)
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                         return;
                     }
                     InventoryFolder optionFolder;
@@ -53,10 +52,9 @@ namespace Corrade
                                 StringComparison.OrdinalIgnoreCase);
                             if (optionFolder == null)
                             {
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                                }
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 return;
                             }
                             break;
@@ -72,20 +70,18 @@ namespace Corrade
                     switch (csv.Any())
                     {
                         case true:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Chat(
-                                    string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()),
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Chat(
+                                    string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, csv),
                                     channel,
                                     ChatType.Normal);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
                 };

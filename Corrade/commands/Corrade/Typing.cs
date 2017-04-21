@@ -34,25 +34,22 @@ namespace Corrade
                         ))
                     {
                         case Enumerations.Action.ENABLE:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.AnimationStart(Animations.TYPE, true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.AnimationStart(Animations.TYPE, true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.DISABLE:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.AnimationStop(Animations.TYPE, true);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.AnimationStop(Animations.TYPE, true);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.GET:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                            Locks.ClientInstanceSelfLock.EnterReadLock();
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
                                     Client.Self.SignaledAnimations.ContainsKey(Animations.TYPE).ToString());
-                            }
+                            Locks.ClientInstanceSelfLock.ExitReadLock();
                             break;
 
                         default:

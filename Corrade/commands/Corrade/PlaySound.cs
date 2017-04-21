@@ -50,15 +50,14 @@ namespace Corrade
                     switch (!string.IsNullOrEmpty(region))
                     {
                         case true:
-                            lock (Locks.ClientInstanceNetworkLock)
-                            {
-                                simulator =
+                            Locks.ClientInstanceNetworkLock.EnterReadLock();
+                            simulator =
                                     Client.Network.Simulators.AsParallel().FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
                                                 string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                                 StringComparison.OrdinalIgnoreCase));
-                            }
+                            Locks.ClientInstanceNetworkLock.ExitReadLock();
                             if (simulator == null)
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -98,10 +97,9 @@ namespace Corrade
                         }
                         itemUUID = inventoryItem.AssetUUID;
                     }
-                    lock (Locks.ClientInstanceSoundLock)
-                    {
-                        Client.Sound.SendSoundTrigger(itemUUID, simulator, position, gain);
-                    }
+                    Locks.ClientInstanceSoundLock.EnterWriteLock();
+                    Client.Sound.SendSoundTrigger(itemUUID, simulator, position, gain);
+                    Locks.ClientInstanceSoundLock.ExitWriteLock();
                 };
         }
     }

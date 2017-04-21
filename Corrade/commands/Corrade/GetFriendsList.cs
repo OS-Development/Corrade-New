@@ -28,14 +28,13 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var csv = new List<string>();
-                    lock (Locks.ClientInstanceFriendsLock)
-                    {
-                        Client.Friends.FriendList.ForEach(o =>
+                    Locks.ClientInstanceFriendsLock.EnterReadLock();
+                    Client.Friends.FriendList.ForEach(o =>
                         {
                             csv.Add(o.Name);
                             csv.Add(o.UUID.ToString());
                         });
-                    }
+                    Locks.ClientInstanceFriendsLock.ExitReadLock();
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

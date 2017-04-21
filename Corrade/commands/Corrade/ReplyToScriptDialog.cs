@@ -124,11 +124,10 @@ namespace Corrade
                                 }
 
                                 // Reply to the dialog.
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.ReplyToScriptDialog(scriptDialog.Channel, labelIndex, label,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.ReplyToScriptDialog(scriptDialog.Channel, labelIndex, label,
                                         scriptDialog.Item);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             default:

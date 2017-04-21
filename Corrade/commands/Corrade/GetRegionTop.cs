@@ -49,18 +49,18 @@ namespace Corrade
                                         .ToDictionary(o => o.Key, o => o.Value);
                                 TopScriptsReplyEvent.Set();
                             };
-                            lock (Locks.ClientInstanceEstateLock)
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
+                            Client.Estate.RequestTopScripts();
+                            if (!TopScriptsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
-                                Client.Estate.RequestTopScripts();
-                                if (!TopScriptsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
-                                }
                                 Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
+                                Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
                             }
+                            Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Type.COLLIDERS:
@@ -73,20 +73,20 @@ namespace Corrade
                                             .ToDictionary(o => o.Key, o => o.Value);
                                     TopCollidersReplyEvent.Set();
                                 };
-                            lock (Locks.ClientInstanceEstateLock)
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
+                            Client.Estate.RequestTopColliders();
+                            if (
+                                !TopCollidersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
-                                Client.Estate.RequestTopColliders();
-                                if (
-                                    !TopCollidersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_TOP_COLLIDERS);
-                                }
                                 Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
+                                Locks.ClientInstanceEstateLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_TOP_COLLIDERS);
                             }
+                            Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         default:

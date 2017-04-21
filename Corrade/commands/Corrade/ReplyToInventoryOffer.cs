@@ -56,11 +56,11 @@ namespace Corrade
                                         case true:
                                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                                             if (Client.Inventory.Store.Contains(folderUUID))
-                                                {
-                                                    inventoryFolder =
-                                                        Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                                }
-                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                            {
+                                                inventoryFolder =
+                                                    Client.Inventory.Store[folderUUID] as InventoryFolder;
+                                            }
+                                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                                             break;
 
                                         default:

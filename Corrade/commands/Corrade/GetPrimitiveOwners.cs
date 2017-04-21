@@ -36,16 +36,14 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                     corradeCommandParameters.Message));
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator =
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator =
                                 Client.Network.Simulators.AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
                                             string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                             StringComparison.OrdinalIgnoreCase));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -62,7 +60,7 @@ namespace Corrade
                                 Parcel parcel = null;
                                 if (
                                     !Services.GetParcelAtPosition(Client, simulator, position,
-                                        corradeConfiguration.ServicesTimeout, ref parcel))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref parcel))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                 }
@@ -74,24 +72,24 @@ namespace Corrade
                                 var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                 EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                     (sender, args) => SimParcelsDownloadedEvent.Set();
-                                lock (Locks.ClientInstanceParcelsLock)
+                                Locks.ClientInstanceParcelsLock.EnterReadLock();
+                                Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                Client.Parcels.RequestAllSimParcels(simulator, true, (int)corradeConfiguration.DataTimeout);
+                                if (simulator.IsParcelMapFull())
                                 {
-                                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                    Client.Parcels.RequestAllSimParcels(simulator);
-                                    if (simulator.IsParcelMapFull())
-                                    {
-                                        SimParcelsDownloadedEvent.Set();
-                                    }
-                                    if (
-                                        !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                            false))
-                                    {
-                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                                    }
-                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    SimParcelsDownloadedEvent.Set();
                                 }
+                                if (
+                                    !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                        false))
+                                {
+                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    Locks.ClientInstanceParcelsLock.ExitReadLock();
+                                    throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                                }
+                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                Locks.ClientInstanceParcelsLock.ExitReadLock();
                                 simulator.Parcels.ForEach(o => parcels.Add(o));
                                 break;
                         }
@@ -139,23 +137,27 @@ namespace Corrade
                             EventHandler<ParcelObjectOwnersReplyEventArgs> ParcelObjectOwnersEventHandler =
                                 (sender, args) =>
                                 {
+                                    if (!args.Simulator.Handle.Equals(simulator.Handle))
+                                        return;
+
                                     parcelPrimOwners = args.PrimOwners;
                                     ParcelObjectOwnersReplyEvent.Set();
                                 };
-                            lock (Locks.ClientInstanceParcelsLock)
+                            Locks.ClientInstanceParcelsLock.EnterWriteLock();
+                            Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
+                            Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
+                            if (
+                                !ParcelObjectOwnersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
-                                Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
-                                Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
-                                if (
-                                    !ParcelObjectOwnersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_LAND_USERS);
-                                }
                                 Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                                parcelPrimOwners.AsParallel().ForAll(o =>
+                                Locks.ClientInstanceParcelsLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_GETTING_LAND_USERS);
+                            }
+                            Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
+                            Locks.ClientInstanceParcelsLock.ExitWriteLock();
+                            parcelPrimOwners.AsParallel().ForAll(o =>
                                 {
                                     lock (LockObject)
                                     {
@@ -171,7 +173,6 @@ namespace Corrade
                                         }
                                     }
                                 });
-                            }
                         }
                         var csv = new List<string>();
                         primitives.AsParallel().ForAll(o =>

@@ -180,7 +180,6 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
                                         corradeCommandParameters.Message)))
-                                .ToArray()
                                 .AsParallel()
                                 .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                                     typeof(MuteFlags).GetFields(BindingFlags.Public |
@@ -193,19 +192,19 @@ namespace Corrade
                                                 BitTwiddling.SetMaskFlag(ref muteFlags, (MuteFlags)q.GetValue(null));
                                             }));
 
-                            lock (Locks.ClientInstanceSelfLock)
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            // add mute
+                            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                            Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, muteFlags);
+                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                // add mute
-                                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, muteFlags);
-                                if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
-                                }
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
                             }
+                            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             // add the mute to the cache
                             Cache.AddMute(muteFlags, targetUUID, name, muteType);
                             break;
@@ -223,19 +222,19 @@ namespace Corrade
                             if (mute == null || mute.Equals(default(MuteEntry)))
                                 throw new Command.ScriptException(Enumerations.ScriptError.MUTE_ENTRY_NOT_FOUND);
 
-                            lock (Locks.ClientInstanceSelfLock)
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            // remove the mute
+                            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                            Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
+                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                // remove the mute
-                                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
-                                if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
-                                }
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                throw new Command.ScriptException(
+                                        Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
                             }
+                            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             // remove the mute from the cache
                             Cache.RemoveMute(mute.Flags, mute.ID, mute.Name, mute.Type);
                             break;

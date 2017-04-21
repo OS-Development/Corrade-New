@@ -84,6 +84,14 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
+                    {
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
+                    }
+                    if (primitive.Properties.SalePrice > Client.Self.Balance)
+                    {
+                        throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
+                    }
                     UUID folderUUID;
                     var folder =
                         wasInput(
@@ -95,21 +103,18 @@ namespace Corrade
                         folderUUID = Client.Inventory.Store.RootFolder.UUID;
                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                     }
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator = Client.Network.Simulators.AsParallel()
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel()
                             .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.BuyObject(simulator,
+                    Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                    Client.Objects.BuyObject(simulator,
                             primitive.LocalID, primitive.Properties.SaleType,
                             primitive.Properties.SalePrice,
                             corradeCommandParameters.Group.UUID, folderUUID);
-                    }
+                    Locks.ClientInstanceObjectsLock.ExitWriteLock();
                 };
         }
     }

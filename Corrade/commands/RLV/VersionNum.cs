@@ -23,10 +23,9 @@ namespace Corrade
                     {
                         return;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(wasOpenMetaverse.RLV.RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(wasOpenMetaverse.RLV.RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

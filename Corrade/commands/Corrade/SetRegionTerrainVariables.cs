@@ -98,12 +98,11 @@ namespace Corrade
                         {
                             sunPosition = wasOpenMetaverse.Constants.REGION.SUNRISE;
                         }
-                        lock (Locks.ClientInstanceEstateLock)
-                        {
-                            Client.Estate.SetTerrainVariables(waterHeight, terrainRaiseLimit, terrainLowerLimit,
+                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                        Client.Estate.SetTerrainVariables(waterHeight, terrainRaiseLimit, terrainLowerLimit,
                                 useEstateSun,
                                 fixedSun, sunPosition);
-                        }
+                        Locks.ClientInstanceEstateLock.ExitWriteLock();
                     };
         }
     }

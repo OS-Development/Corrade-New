@@ -75,12 +75,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         Quaternion rotation;
@@ -94,11 +92,10 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ROTATION);
                         }
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetRotation(simulator,
-                                primitive.LocalID, rotation, true);
-                        }
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetRotation(simulator,
+                            primitive.LocalID, rotation, true);
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

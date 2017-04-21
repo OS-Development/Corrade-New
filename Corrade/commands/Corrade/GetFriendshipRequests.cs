@@ -29,14 +29,10 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        Dictionary<UUID, UUID> friendshipRequests;
-                        lock (Locks.ClientInstanceFriendsLock)
-                        {
-                            friendshipRequests = Client.Friends.FriendRequests.Copy();
-                        }
                         var csv = new List<string>();
                         var LockObject = new object();
-                        friendshipRequests.AsParallel().ForAll(o =>
+                        Locks.ClientInstanceFriendsLock.EnterReadLock();
+                        Client.Friends.FriendRequests.Copy().AsParallel().ForAll(o =>
                         {
                             var agentName = string.Empty;
                             if (Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout,
@@ -48,6 +44,7 @@ namespace Corrade
                                 }
                             }
                         });
+                        Locks.ClientInstanceFriendsLock.ExitReadLock();
                         if (csv.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

@@ -663,7 +663,13 @@ namespace Corrade
             REGISTERED_AS_SCRIPTED_AGENT,
 
             [Reflection.DescriptionAttribute("unregistered as scripted agent")]
-            UNREGISTERED_AS_SCRIPTED_AGENT
+            UNREGISTERED_AS_SCRIPTED_AGENT,
+
+            [Reflection.DescriptionAttribute("unregistered to retrieve last scripted agent status state")]
+            UNABLE_TO_RETRIEVE_LAST_SCRIPTED_AGENT_STATUS_STATE,
+
+            [Reflection.DescriptionAttribute("unable to store last scripted agent status state")]
+            UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE
         }
 
         /// <summary>

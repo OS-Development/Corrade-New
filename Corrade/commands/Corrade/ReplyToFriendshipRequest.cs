@@ -63,30 +63,28 @@ namespace Corrade
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                                 }
-                                lock (Locks.ClientInstanceFriendsLock)
+                                Locks.ClientInstanceFriendsLock.EnterReadLock();
+                                if (!Client.Friends.FriendRequests.TryGetValue(agentUUID, out session))
                                 {
-                                    if (!Client.Friends.FriendRequests.TryGetValue(agentUUID, out session))
-                                    {
-                                        throw new Command.ScriptException(
+                                    Locks.ClientInstanceFriendsLock.ExitReadLock();
+                                    throw new Command.ScriptException(
                                             Enumerations.ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
-                                    }
                                 }
+                                Locks.ClientInstanceFriendsLock.ExitReadLock();
                                 break;
                         }
                         switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
-                                lock (Locks.ClientInstanceFriendsLock)
-                                {
-                                    Client.Friends.AcceptFriendship(agentUUID, session);
-                                }
+                                Locks.ClientInstanceFriendsLock.EnterWriteLock();
+                                Client.Friends.AcceptFriendship(agentUUID, session);
+                                Locks.ClientInstanceFriendsLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.Action.DECLINE:
-                                lock (Locks.ClientInstanceFriendsLock)
-                                {
-                                    Client.Friends.DeclineFriendship(agentUUID, session);
-                                }
+                                Locks.ClientInstanceFriendsLock.EnterWriteLock();
+                                Client.Friends.DeclineFriendship(agentUUID, session);
+                                Locks.ClientInstanceFriendsLock.ExitWriteLock();
                                 break;
 
                             default:

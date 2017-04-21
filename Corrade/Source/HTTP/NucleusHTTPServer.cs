@@ -11,6 +11,7 @@ using MimeSharp;
 using Newtonsoft.Json;
 using OpenMetaverse;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -47,8 +48,8 @@ namespace Corrade.HTTP
 
         private static readonly Mime mime = new Mime();
 
-        private static readonly System.Lazy<Dictionary<string, CoreFile>> Nucleus =
-            new System.Lazy<Dictionary<string, CoreFile>>();
+        private static readonly System.Lazy<ConcurrentDictionary<string, CoreFile>> Nucleus =
+            new System.Lazy<ConcurrentDictionary<string, CoreFile>>();
 
         private static readonly object NucleusLock = new object();
 
@@ -128,7 +129,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_COMPILE_FAILED),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
                 return new Dictionary<string, CoreFile>();
             }
         }
@@ -489,19 +490,13 @@ namespace Corrade.HTTP
                                         if (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
                                         {
                                             DateTime modified;
-                                            if (
-                                                DateTime.TryParse(httpRequest.Headers["If-Modified-Since"], out modified) &&
-                                                CacheExpiryTimer.ScheduledTime <= modified)
-                                            {
-                                                etagStream.Position = 0;
-                                                if (
-                                                    string.Equals(
+                                            if (DateTime.TryParse(httpRequest.Headers["If-Modified-Since"], out modified) &&
+                                                CacheExpiryTimer.ScheduledTime <= modified || string.Equals(
                                                         httpRequest.Headers["If-None-Match"] ?? string.Empty,
                                                         Encoding.UTF8.GetString(etagStream.ToArray())))
-                                                {
-                                                    NucleusResponse.StatusCode = (int)HttpStatusCode.NotModified;
-                                                    return;
-                                                }
+                                            {
+                                                NucleusResponse.StatusCode = (int)HttpStatusCode.NotModified;
+                                                return;
                                             }
                                         }
 
@@ -733,10 +728,9 @@ namespace Corrade.HTTP
                                                                     .OfType<Configuration.Notifications>()),
                                                         Name = Dns.GetHostEntry(Environment.MachineName).HostName
                                                     };
-                                                    lock (Locks.ClientInstanceConfigurationLock)
-                                                    {
-                                                        Corrade.corradeConfiguration.Groups.Add(commandGroup);
-                                                    }
+                                                    Locks.ClientInstanceConfigurationLock.EnterWriteLock();
+                                                    Corrade.corradeConfiguration.Groups.Add(commandGroup);
+                                                    Locks.ClientInstanceConfigurationLock.ExitWriteLock();
                                                     data =
                                                         Encoding.UTF8.GetBytes(
                                                             JsonConvert.SerializeObject(
@@ -748,10 +742,9 @@ namespace Corrade.HTTP
                                                                     Message = message,
                                                                     Sender = "Nucleus"
                                                                 })));
-                                                    lock (Locks.ClientInstanceConfigurationLock)
-                                                    {
-                                                        Corrade.corradeConfiguration.Groups.Remove(commandGroup);
-                                                    }
+                                                    Locks.ClientInstanceConfigurationLock.EnterWriteLock();
+                                                    Corrade.corradeConfiguration.Groups.Remove(commandGroup);
+                                                    Locks.ClientInstanceConfigurationLock.ExitWriteLock();
                                                     break;
                                             }
                                             break;
@@ -883,7 +876,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_PROCESSING_ABORTED),
-                    ex.Message);
+                    ex.ToString(), ex.InnerException?.ToString());
             }
         }
 
@@ -994,6 +987,35 @@ namespace Corrade.HTTP
 
                     default:
                         throw new HTTPException((int)HttpStatusCode.NotFound);
+                }
+            }
+            catch
+            {
+                throw new HTTPException((int)HttpStatusCode.NotFound);
+            }
+        }
+
+        [HTTPRequestMapping("e", "GET")]
+        private async Task GetNotifications(string type, string group, string password, HttpListenerResponse NucleusResponse, MemoryStream memoryStream)
+        {
+            UUID groupUUID;
+            var configuredGroup = UUID.TryParse(group, out groupUUID)
+                ? Corrade.corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
+                : Corrade.corradeConfiguration.Groups.AsParallel()
+                    .FirstOrDefault(o => string.Equals(group, o.Name, StringComparison.OrdinalIgnoreCase));
+            if (configuredGroup == null ||
+                configuredGroup.Equals(default(Configuration.Group)) ||
+                !Corrade.Authenticate(configuredGroup.UUID, password))
+                throw new HTTPException((int)HttpStatusCode.Forbidden);
+
+            try
+            {
+                NucleusResponse.ContentType = @"application/json";
+                using (var notificationStream =
+                    new MemoryStream(Encoding.UTF8.GetBytes(
+                        JsonConvert.SerializeObject(Corrade.NucleusNotificationQueue[configuredGroup.UUID]))))
+                {
+                    await notificationStream.CopyToAsync(memoryStream);
                 }
             }
             catch

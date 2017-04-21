@@ -38,18 +38,16 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.TurnToward(position, true);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.TurnToward(position, true);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // Set the camera on the avatar.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.LookAt(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

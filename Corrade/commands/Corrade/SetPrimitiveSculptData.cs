@@ -75,12 +75,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         primitive.Sculpt =
@@ -88,11 +86,10 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetSculpt(simulator,
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetSculpt(simulator,
                                 primitive.LocalID, primitive.Sculpt);
-                        }
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

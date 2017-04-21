@@ -51,7 +51,7 @@ namespace Corrade
                     }
 
                     var LockObject = new object();
-                    Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                    Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
                         .NotificationParameters.AsParallel()
                         .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {

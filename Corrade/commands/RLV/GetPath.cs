@@ -33,10 +33,9 @@ namespace Corrade
                         Client.Inventory.Store.RootFolder);
                     if (RLVFolder == null)
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                         return;
                     }
                     // General variables
@@ -121,10 +120,9 @@ namespace Corrade
                     }
                     if (inventoryBase == null)
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                         return;
                     }
                     var path = inventoryBase.GetInventoryPath(Client, RLVFolder,
@@ -132,17 +130,15 @@ namespace Corrade
                     switch (string.IsNullOrEmpty(path))
                     {
                         case true:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Chat(path, channel, ChatType.Normal);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Chat(path, channel, ChatType.Normal);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
                 };

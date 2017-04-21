@@ -28,10 +28,9 @@ namespace Corrade
                     }
                     if (string.IsNullOrEmpty(rule.Option))
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                         return;
                     }
                     var RLVFolder = Inventory.FindInventory<InventoryFolder>(Client,
@@ -47,23 +46,21 @@ namespace Corrade
                         new HashSet<string>(rule.Option.Split(new[] { wasOpenMetaverse.RLV.RLV_CONSTANTS.AND_OPERATOR },
                             StringSplitOptions.RemoveEmptyEntries));
                     var folders = RLVFolder.GetInventoryRecursive(Client, corradeConfiguration.ServicesTimeout)
-                        .ToArray()
                         .AsParallel()
                         .Where(
                             o =>
                                 o is InventoryFolder &&
                                 !o.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.DOT_MARKER) &&
                                 !o.Name.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.TILDE_MARKER) &&
-                                parts.All(p => o.Name.Contains(p))).Select(o => o.Name).ToArray();
+                                parts.All(p => o.Name.Contains(p))).Select(o => o.Name);
                     if (folders.Any())
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(
                                 string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR.ToString(), folders),
                                 channel,
                                 ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                     }
                 };
         }

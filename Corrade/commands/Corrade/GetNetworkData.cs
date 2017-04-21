@@ -27,14 +27,12 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var data = new List<string>();
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        data.AddRange(Client.Network.GetStructuredData(wasInput(
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var data = new List<string>(Client.Network.GetStructuredData(wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message))));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

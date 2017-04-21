@@ -75,12 +75,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         uint face;
@@ -92,35 +90,34 @@ namespace Corrade
                                 out face))
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
                         MediaEntry[] faceMediaEntries = null;
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.RequestObjectMedia(primitive.ID, simulator,
-                                (succeeded, version, faceMedia) =>
+                        Locks.ClientInstanceObjectsLock.EnterReadLock();
+                        Client.Objects.RequestObjectMedia(primitive.ID, simulator,
+                            (succeeded, version, faceMedia) =>
+                            {
+                                switch (succeeded)
                                 {
-                                    switch (succeeded)
-                                    {
-                                        case true:
-                                            if (face >= faceMedia.Length)
-                                                throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
-                                            faceMediaEntries = faceMedia;
-                                            break;
-
-                                        default:
+                                    case true:
+                                        if (face >= faceMedia.Length)
                                             throw new Command.ScriptException(
-                                                Enumerations.ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
-                                    }
-                                });
-                        }
+                                                Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
+                                        faceMediaEntries = faceMedia;
+                                        break;
+
+                                    default:
+                                        Locks.ClientInstanceObjectsLock.ExitReadLock();
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
+                                }
+                            });
+                        Locks.ClientInstanceObjectsLock.ExitReadLock();
                         faceMediaEntries[face] =
                             faceMediaEntries[face].wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)));
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries, simulator);
-                        }
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries, simulator);
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

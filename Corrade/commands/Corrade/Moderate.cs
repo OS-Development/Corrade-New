@@ -108,12 +108,11 @@ namespace Corrade
                     {
                         case Enumerations.Type.TEXT:
                         case Enumerations.Type.VOICE:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.ModerateChatSessions(groupUUID, agentUUID,
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.ModerateChatSessions(groupUUID, agentUUID,
                                     Reflection.GetNameFromEnumValue(type),
                                     silence);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:

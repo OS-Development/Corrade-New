@@ -56,16 +56,13 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -95,24 +92,24 @@ namespace Corrade
                                     var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                         (sender, args) => SimParcelsDownloadedEvent.Set();
-                                    lock (Locks.ClientInstanceParcelsLock)
+                                    Locks.ClientInstanceParcelsLock.EnterReadLock();
+                                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                    Client.Parcels.RequestAllSimParcels(simulator, true, (int)corradeConfiguration.DataTimeout);
+                                    if (simulator.IsParcelMapFull())
                                     {
-                                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                        Client.Parcels.RequestAllSimParcels(simulator);
-                                        if (simulator.IsParcelMapFull())
-                                        {
-                                            SimParcelsDownloadedEvent.Set();
-                                        }
-                                        if (
-                                            !SimParcelsDownloadedEvent.WaitOne(
-                                                (int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                            throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                                        }
-                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                        SimParcelsDownloadedEvent.Set();
                                     }
+                                    if (
+                                        !SimParcelsDownloadedEvent.WaitOne(
+                                            (int)corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                        Locks.ClientInstanceParcelsLock.ExitReadLock();
+                                        throw new Command.ScriptException(
+                                                Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                                    }
+                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    Locks.ClientInstanceParcelsLock.ExitReadLock();
                                     simulator.Parcels.ForEach(o => parcels.Add(o));
                                     break;
 
@@ -120,7 +117,7 @@ namespace Corrade
                                     Parcel parcel = null;
                                     if (
                                         !Services.GetParcelAtPosition(Client, simulator, position,
-                                            corradeConfiguration.ServicesTimeout, ref parcel))
+                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref parcel))
                                     {
                                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                     }
@@ -140,7 +137,7 @@ namespace Corrade
                             if (!simulator.IsEstateManager)
                             {
                                 var gotPermission = true;
-                                Parallel.ForEach(parcels.ToArray()
+                                Parallel.ForEach(parcels
                                     .AsParallel()
                                     .Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), (o, s) =>
                                     {
@@ -181,14 +178,13 @@ namespace Corrade
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
-                            lock (Locks.ClientInstanceParcelsLock)
-                            {
-                                parcels.AsParallel().ForAll(
+                            Locks.ClientInstanceParcelsLock.EnterWriteLock();
+                            parcels.AsParallel().ForAll(
                                     o =>
                                         Client.Parcels.ReturnObjects(simulator, o.LocalID,
                                             returnType
                                             , new List<UUID> { agentUUID }));
-                            }
+                            Locks.ClientInstanceParcelsLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Entity.ESTATE:
@@ -213,14 +209,13 @@ namespace Corrade
                                     o =>
                                         o.Name.Equals(type,
                                             StringComparison.Ordinal));
-                            lock (Locks.ClientInstanceEstateLock)
-                            {
-                                Client.Estate.SimWideReturn(agentUUID, estateReturnFlagsField != null
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.SimWideReturn(agentUUID, estateReturnFlagsField != null
                                     ? (EstateTools.EstateReturnFlags)
                                         estateReturnFlagsField
                                             .GetValue(null)
                                     : EstateTools.EstateReturnFlags.ReturnScriptedAndOnOthers, allEstates);
-                            }
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         default:

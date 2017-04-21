@@ -158,6 +158,7 @@ namespace Corrade
                                 {
                                     if (!args.GroupID.Equals(groupUUID))
                                         return;
+
                                     groupNotices.AddRange(args.Notices.OrderBy(o => o.Timestamp));
                                     GroupNoticesReplyEvent.Set();
                                 };
@@ -318,16 +319,15 @@ namespace Corrade
                                     }
                                     break;
                             }
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.InstantMessage(Client.Self.Name, agentUUID, string.Empty,
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.InstantMessage(Client.Self.Name, agentUUID, string.Empty,
                                     sessionUUID,
                                     action.Equals(Enumerations.Action.ACCEPT)
                                         ? InstantMessageDialog.GroupNoticeInventoryAccepted
                                         : InstantMessageDialog.GroupNoticeInventoryDeclined,
                                     InstantMessageOnline.Offline,
                                     Client.Self.SimPosition, Client.Network.CurrentSim.RegionID, folderUUID.GetBytes());
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:

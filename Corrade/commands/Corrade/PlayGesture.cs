@@ -63,10 +63,9 @@ namespace Corrade
                     {
                         itemUUID = inventoryItem.AssetUUID;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.PlayGesture(itemUUID);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.PlayGesture(itemUUID);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

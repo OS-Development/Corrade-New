@@ -38,13 +38,12 @@ namespace Corrade
                     {
                         case Enumerations.Action.START:
                         case Enumerations.Action.STOP:
-                            lock (Locks.ClientInstanceSelfLock)
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                             {
-                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                                {
-                                    Client.Self.Stand();
-                                }
+                                Client.Self.Stand();
                             }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             // stop non default animations if requested
                             bool deanimate;
                             switch (bool.TryParse(wasInput(
@@ -53,32 +52,29 @@ namespace Corrade
                             {
                                 case true:
                                     // stop all non-built-in animations
-                                    lock (Locks.ClientInstanceSelfLock)
-                                    {
-                                        Client.Self.SignaledAnimations.Copy()
+                                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                    Client.Self.SignaledAnimations.Copy()
                                             .Keys.AsParallel()
                                             .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                                    }
+                                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     break;
                             }
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Fly(action.Equals(Enumerations.Action.START));
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Fly(action.Equals(Enumerations.Action.START));
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.FLY_ACTION_START_OR_STOP);
                     }
                     // Set the camera on the avatar.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.LookAt(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

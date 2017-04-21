@@ -25,10 +25,9 @@ namespace Corrade
                     {
                         return;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.UpdateFromHeading(Math.PI / 2d - rotation, true);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.UpdateFromHeading(Math.PI / 2d - rotation, true);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

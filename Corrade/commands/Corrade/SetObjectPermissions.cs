@@ -76,12 +76,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         var itemPermissions =
@@ -94,24 +92,23 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_PROVIDED);
                         }
                         var permissions = Inventory.wasStringToPermissions(itemPermissions);
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetPermissions(simulator,
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetPermissions(simulator,
                                 new List<uint> { primitive.LocalID },
                                 PermissionWho.Base, permissions.BaseMask, true);
-                            Client.Objects.SetPermissions(simulator,
-                                new List<uint> { primitive.LocalID },
-                                PermissionWho.Owner, permissions.OwnerMask, true);
-                            Client.Objects.SetPermissions(simulator,
-                                new List<uint> { primitive.LocalID },
-                                PermissionWho.Group, permissions.GroupMask, true);
-                            Client.Objects.SetPermissions(simulator,
-                                new List<uint> { primitive.LocalID },
-                                PermissionWho.Everyone, permissions.EveryoneMask, true);
-                            Client.Objects.SetPermissions(simulator,
-                                new List<uint> { primitive.LocalID },
-                                PermissionWho.NextOwner, permissions.NextOwnerMask, true);
-                        }
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> { primitive.LocalID },
+                            PermissionWho.Owner, permissions.OwnerMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> { primitive.LocalID },
+                            PermissionWho.Group, permissions.GroupMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> { primitive.LocalID },
+                            PermissionWho.Everyone, permissions.EveryoneMask, true);
+                        Client.Objects.SetPermissions(simulator,
+                            new List<uint> { primitive.LocalID },
+                            PermissionWho.NextOwner, permissions.NextOwnerMask, true);
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

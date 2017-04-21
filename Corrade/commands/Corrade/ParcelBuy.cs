@@ -43,16 +43,14 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator =
                             Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -88,17 +86,16 @@ namespace Corrade
                     }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     UUID parcelUUID;
-                    lock (Locks.ClientInstanceParcelsLock)
-                    {
-                        parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
+                    Locks.ClientInstanceParcelsLock.EnterReadLock();
+                    parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
                             UUID.Zero);
-                    }
+                    Locks.ClientInstanceParcelsLock.ExitReadLock();
                     if (parcelUUID.Equals(UUID.Zero))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
@@ -106,30 +103,34 @@ namespace Corrade
                     var ParcelInfoEvent = new ManualResetEvent(false);
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                     {
-                        if (args.Parcel.ID.Equals(parcelUUID))
-                        {
-                            ParcelInfoEvent.Set();
-                        }
+                        if (!args.Parcel.ID.Equals(parcelUUID))
+                            return;
+
+                        ParcelInfoEvent.Set();
                     };
-                    lock (Locks.ClientInstanceParcelsLock)
+                    Locks.ClientInstanceParcelsLock.EnterReadLock();
+                    Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
+                    Client.Parcels.RequestParcelInfo(parcelUUID);
+                    if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
-                        Client.Parcels.RequestParcelInfo(parcelUUID);
-                        if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                        }
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                        Locks.ClientInstanceParcelsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                     }
+                    Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                    Locks.ClientInstanceParcelsLock.ExitReadLock();
                     var forSale = false;
                     var handledEvents = 0;
                     var counter = 1;
                     var DirectorySearchResultsAlarm =
                         new DecayingAlarm(corradeConfiguration.DataDecayType);
+                    var requestUUID = UUID.Zero;
                     EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                         (sender, args) =>
                         {
+                            if (!args.QueryID.Equals(requestUUID))
+                                return;
+
                             DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                             handledEvents += args.DirParcels.Count;
                             args.DirParcels.AsParallel().Where(o => o.ID.Equals(parcelUUID)).ForAll(o =>
@@ -147,20 +148,18 @@ namespace Corrade
                                     handledEvents);
                             }
                         };
-                    lock (Locks.ClientInstanceDirectoryLock)
+                    Client.Directory.DirLandReply += DirLandReplyEventArgs;
+                    requestUUID = Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
+                        DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
+                    if (
+                        !DirectorySearchResultsAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                            false))
                     {
-                        Client.Directory.DirLandReply += DirLandReplyEventArgs;
-                        Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
-                            DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                        if (
-                            !DirectorySearchResultsAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                false))
-                        {
-                            Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                        }
                         Client.Directory.DirLandReply -= DirLandReplyEventArgs;
+                        Locks.ClientInstanceDirectoryLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                     }
+                    Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                     if (!forSale && !parcel.AuthBuyerID.Equals(Client.Self.AgentID))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.PARCEL_NOT_FOR_SALE);
@@ -169,24 +168,23 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
+                    Locks.ClientInstanceSelfLock.EnterReadLock();
+                    if (Client.Self.Balance < parcel.SalePrice)
                     {
-                        if (Client.Self.Balance < parcel.SalePrice)
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
-                        }
+                        Locks.ClientInstanceSelfLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
                     }
+                    Locks.ClientInstanceSelfLock.ExitReadLock();
                     if (!parcel.SalePrice.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
                             (int)Configuration.Permissions.Economy))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    lock (Locks.ClientInstanceParcelsLock)
-                    {
-                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, corradeCommandParameters.Group.UUID,
+                    Locks.ClientInstanceParcelsLock.EnterWriteLock();
+                    Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, corradeCommandParameters.Group.UUID,
                             removeContribution, parcel.Area, parcel.SalePrice);
-                    }
+                    Locks.ClientInstanceParcelsLock.ExitWriteLock();
                 };
         }
     }

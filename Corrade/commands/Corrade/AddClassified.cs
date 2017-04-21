@@ -82,6 +82,9 @@ namespace Corrade
                     var classifiedCount = 0;
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(Client.Self.AgentID))
+                            return;
+
                         classifiedCount = args.Classifieds.Count;
                         var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
@@ -90,17 +93,17 @@ namespace Corrade
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
+                    Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
+                    if (!AvatarClassifiedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
-                        Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                        if (!AvatarClassifiedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
-                        }
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
                     }
+                    Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         classifiedUUID.Equals(UUID.Zero) &&
                         classifiedCount >= wasOpenMetaverse.Constants.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
@@ -141,14 +144,13 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                             ? (DirectoryManager.ClassifiedCategories)
                                 classifiedCategoriesField.GetValue(null)
                             : DirectoryManager.ClassifiedCategories.Any, textureUUID, (int)price, position,
                             name, classifiedDescription, renew);
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

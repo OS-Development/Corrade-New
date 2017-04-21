@@ -60,10 +60,9 @@ namespace Corrade
                             default:
                                 if (string.IsNullOrEmpty(region))
                                 {
-                                    lock (Locks.ClientInstanceNetworkLock)
-                                    {
-                                        region = Client.Network.CurrentSim.Name;
-                                    }
+                                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                    region = Client.Network.CurrentSim.Name;
+                                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 }
                                 break;
                         }
@@ -76,17 +75,17 @@ namespace Corrade
                             gridRegion = args.Region;
                             GridRegionEvent.Set();
                         };
-                        lock (Locks.ClientInstanceGridLock)
+                        Locks.ClientInstanceGridLock.EnterReadLock();
+                        Client.Grid.GridRegion += GridRegionEventHandler;
+                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
+                        if (!GridRegionEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Grid.GridRegion += GridRegionEventHandler;
-                            Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Grid.GridRegion -= GridRegionEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_REGION);
-                            }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
+                            Locks.ClientInstanceGridLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_REGION);
                         }
+                        Client.Grid.GridRegion -= GridRegionEventHandler;
+                        Locks.ClientInstanceGridLock.ExitReadLock();
                         switch (!gridRegion.Equals(default(GridRegion)))
                         {
                             case false:

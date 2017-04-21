@@ -124,19 +124,16 @@ namespace Corrade
                                         facebookMediaObject.FileName = itemUUID.ToString();
                                         break;
                                 }
-                                bool cacheHasAsset;
-                                lock (Locks.ClientInstanceAssetsLock)
-                                {
-                                    cacheHasAsset = Client.Assets.Cache.HasAsset(itemUUID);
-                                }
+                                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                var cacheHasAsset = Client.Assets.Cache.HasAsset(itemUUID);
+                                Locks.ClientInstanceAssetsLock.ExitReadLock();
                                 byte[] assetData = null;
                                 switch (!cacheHasAsset)
                                 {
                                     case true:
                                         var RequestAssetEvent = new ManualResetEvent(false);
-                                        lock (Locks.ClientInstanceAssetsLock)
-                                        {
-                                            Client.Assets.RequestImage(itemUUID, ImageType.Normal,
+                                        Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                        Client.Assets.RequestImage(itemUUID, ImageType.Normal,
                                                 delegate (TextureRequestState state, AssetTexture asset)
                                                 {
                                                     if (!asset.AssetID.Equals(itemUUID)) return;
@@ -144,21 +141,21 @@ namespace Corrade
                                                     assetData = asset.AssetData;
                                                     RequestAssetEvent.Set();
                                                 });
-                                            if (
-                                                !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                                    false))
-                                            {
-                                                throw new Command.ScriptException(
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                                false))
+                                        {
+                                            Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                            throw new Command.ScriptException(
                                                     Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
-                                            }
                                         }
+                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         break;
 
                                     default:
-                                        lock (Locks.ClientInstanceAssetsLock)
-                                        {
-                                            assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
-                                        }
+                                        Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                        assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         break;
                                 }
                                 ManagedImage managedImage;

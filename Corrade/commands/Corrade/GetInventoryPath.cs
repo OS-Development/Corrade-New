@@ -36,7 +36,6 @@ namespace Corrade
                     CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                             corradeCommandParameters.Message)))
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(

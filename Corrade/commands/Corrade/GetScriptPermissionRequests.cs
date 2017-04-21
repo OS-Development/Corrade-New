@@ -53,7 +53,7 @@ namespace Corrade
                                                                                     BindingFlags.Static)
                                         .AsParallel().Where(
                                             p => o.Permissions.IsMaskFlagSet((ScriptPermission)p.GetValue(null)))
-                                        .Select(p => p.Name).ToArray());
+                                        .Select(p => p.Name));
                                     csv.AddRange(new[]
                                     {Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION), o.Region});
                                 }

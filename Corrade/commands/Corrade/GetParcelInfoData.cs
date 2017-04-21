@@ -45,16 +45,13 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                     corradeCommandParameters.Message));
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator =
-                                Client.Network.Simulators.AsParallel().FirstOrDefault(
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
                                             string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                             StringComparison.OrdinalIgnoreCase));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -62,17 +59,16 @@ namespace Corrade
                         Parcel parcel = null;
                         if (
                             !Services.GetParcelAtPosition(Client, simulator, position,
-                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref parcel))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                         }
                         UUID parcelUUID;
-                        lock (Locks.ClientInstanceParcelsLock)
-                        {
-                            parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
+                        Locks.ClientInstanceParcelsLock.EnterReadLock();
+                        parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
                                 UUID.Zero);
-                        }
+                        Locks.ClientInstanceParcelsLock.ExitReadLock();
                         if (parcelUUID.Equals(UUID.Zero))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
@@ -81,23 +77,23 @@ namespace Corrade
                         var parcelInfo = new ParcelInfo();
                         EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                         {
-                            if (args.Parcel.ID.Equals(parcelUUID))
-                            {
-                                parcelInfo = args.Parcel;
-                                ParcelInfoEvent.Set();
-                            }
+                            if (!args.Parcel.ID.Equals(parcelUUID))
+                                return;
+
+                            parcelInfo = args.Parcel;
+                            ParcelInfoEvent.Set();
                         };
-                        lock (Locks.ClientInstanceParcelsLock)
+                        Locks.ClientInstanceParcelsLock.EnterReadLock();
+                        Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
+                        Client.Parcels.RequestParcelInfo(parcelUUID);
+                        if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
-                            Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                            }
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                            Locks.ClientInstanceParcelsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
                         }
+                        Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                        Locks.ClientInstanceParcelsLock.ExitReadLock();
                         if (parcelInfo.Equals(default(ParcelInfo)))
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);

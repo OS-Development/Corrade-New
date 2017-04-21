@@ -73,10 +73,9 @@ namespace Corrade
                             }
                             break;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Touch(primitive.LocalID);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Touch(primitive.LocalID);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

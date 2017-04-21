@@ -57,6 +57,9 @@ namespace Corrade
                             new DecayingAlarm(corradeConfiguration.DataDecayType);
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
+                            if (!args.AvatarID.Equals(agentUUID))
+                                return;
+
                             AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
                             args.Groups.AsParallel().ForAll(o =>
                             {
@@ -67,19 +70,19 @@ namespace Corrade
                                 }
                             });
                         };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                        Client.Avatars.RequestAvatarProperties(agentUUID);
+                        if (
+                            !AvatarGroupsReceivedEvent.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                false))
                         {
-                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                            Client.Avatars.RequestAvatarProperties(agentUUID);
-                            if (
-                                !AvatarGroupsReceivedEvent.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
-                            {
-                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                            }
                             Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                         }
+                        Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
                         var data = new List<string>();
                         lock (LockObject)
                         {

@@ -66,20 +66,23 @@ namespace Corrade
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                             (sender, args) =>
                             {
+                                if (!args.AvatarID.Equals(agentUUID))
+                                    return;
+
                                 picks = args.Picks;
                                 AvatarPicksReplyEvent.Set();
                             };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                        Client.Avatars.RequestAvatarPicks(agentUUID);
+                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                            Client.Avatars.RequestAvatarPicks(agentUUID);
-                            if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                            }
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                         }
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
 
                         if (!picks.ContainsKey(pickUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.PICK_NOT_FOUND);
@@ -88,20 +91,23 @@ namespace Corrade
                         var profilePick = new ProfilePick();
                         EventHandler<PickInfoReplyEventArgs> AvatarPickInfoReplyEventHandler = (sender, args) =>
                         {
+                            if (!args.PickID.Equals(pickUUID))
+                                return;
+
                             profilePick = args.Pick;
                             AvatarPickInfoReplyEvent.Set();
                         };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.PickInfoReply += AvatarPickInfoReplyEventHandler;
+                        Client.Avatars.RequestPickInfo(agentUUID, pickUUID);
+                        if (!AvatarPickInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Avatars.PickInfoReply += AvatarPickInfoReplyEventHandler;
-                            Client.Avatars.RequestPickInfo(agentUUID, pickUUID);
-                            if (!AvatarPickInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Avatars.PickInfoReply -= AvatarPickInfoReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_PICK);
-                            }
                             Client.Avatars.PickInfoReply -= AvatarPickInfoReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_PICK);
                         }
+                        Client.Avatars.PickInfoReply -= AvatarPickInfoReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
 
                         if (profilePick.Equals(default(ProfilePick)))
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_PICK);

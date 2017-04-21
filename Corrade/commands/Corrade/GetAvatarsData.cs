@@ -51,7 +51,6 @@ namespace Corrade
                     {
                         case Enumerations.Entity.RANGE:
                             Services.GetAvatars(Client, range)
-                                .ToArray()
                                 .AsParallel()
                                 .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range).ForAll(
                                     o =>
@@ -73,15 +72,14 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     out position))
                             {
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    position = Client.Self.SimPosition;
-                                }
+                                Locks.ClientInstanceSelfLock.EnterReadLock();
+                                position = Client.Self.SimPosition;
+                                Locks.ClientInstanceSelfLock.ExitReadLock();
                             }
                             Parcel parcel = null;
                             if (
                                 !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
-                                    corradeConfiguration.ServicesTimeout, ref parcel))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref parcel))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                             }
@@ -94,7 +92,6 @@ namespace Corrade
                                 Vector3.Distance(Client.Self.SimPosition,
                                     new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
                             }.Max())
-                                .ToArray()
                                 .AsParallel()
                                 .Where(o => wasOpenMetaverse.Helpers.IsVectorInParcel(o.Position, parcel)).ForAll(o =>
                                 {
@@ -110,23 +107,23 @@ namespace Corrade
                             var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                 (sender, args) => SimParcelsDownloadedEvent.Set();
-                            lock (Locks.ClientInstanceParcelsLock)
+                            Locks.ClientInstanceParcelsLock.EnterReadLock();
+                            Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim, true, (int)corradeConfiguration.DataTimeout);
+                            if (Client.Network.CurrentSim.IsParcelMapFull())
                             {
-                                Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                                if (Client.Network.CurrentSim.IsParcelMapFull())
-                                {
-                                    SimParcelsDownloadedEvent.Set();
-                                }
-                                if (
-                                    !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                        false))
-                                {
-                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                                }
-                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                SimParcelsDownloadedEvent.Set();
                             }
+                            if (
+                                !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                    false))
+                            {
+                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                Locks.ClientInstanceParcelsLock.ExitReadLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                            }
+                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                            Locks.ClientInstanceParcelsLock.ExitReadLock();
                             var regionParcels =
                                 new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
                             Services.GetAvatars(Client,
@@ -139,7 +136,6 @@ namespace Corrade
                                     Vector3.Distance(Client.Self.SimPosition,
                                         new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
                                 }.Max()).Max())
-                                .ToArray()
                                 .AsParallel()
                                 .Where(
                                     o =>

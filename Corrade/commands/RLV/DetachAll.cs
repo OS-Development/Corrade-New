@@ -85,7 +85,6 @@ namespace Corrade
                                         inventoryItem is InventoryObject)
                                     {
                                         var attachment = attachments
-                                            .ToArray()
                                             .AsParallel()
                                             .FirstOrDefault(
                                                 p =>
@@ -121,13 +120,12 @@ namespace Corrade
                                 });
 
                         // stop all non-built-in animations
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.SignaledAnimations.Copy()
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.SignaledAnimations.Copy()
                                 .Keys.AsParallel()
                                 .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                 .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                        }
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
 
                         RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     }

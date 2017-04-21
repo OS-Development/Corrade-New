@@ -29,13 +29,12 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        lock (Locks.ClientInstanceConfigurationLock)
-                        {
-                            corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
+                        Locks.ClientInstanceConfigurationLock.EnterReadLock();
+                        corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)));
-                        }
+                        Locks.ClientInstanceConfigurationLock.ExitReadLock();
                         lock (ConfigurationFileLock)
                         {
                             try

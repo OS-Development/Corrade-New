@@ -29,7 +29,6 @@ namespace Corrade
                     }
                     var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
-                        .ToArray()
                         .AsParallel()
                         .Select(o => new[]
                         {

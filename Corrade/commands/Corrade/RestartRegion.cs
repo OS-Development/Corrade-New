@@ -48,19 +48,17 @@ namespace Corrade
                     {
                         case Enumerations.Action.RESTART:
                             // Manually override Client.Estate.RestartRegion();
-                            lock (Locks.ClientInstanceEstateLock)
-                            {
-                                Client.Estate.EstateOwnerMessage(
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.EstateOwnerMessage(
                                     wasOpenMetaverse.Constants.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
                                     delay.ToString(Utils.EnUsCulture));
-                            }
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Action.CANCEL:
-                            lock (Locks.ClientInstanceEstateLock)
-                            {
-                                Client.Estate.CancelRestart();
-                            }
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.CancelRestart();
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         default:

@@ -94,13 +94,12 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.SignaledAnimations.Copy()
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
                                     .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
 
@@ -120,10 +119,10 @@ namespace Corrade
                                                 case true:
                                                     Locks.ClientInstanceInventoryLock.EnterReadLock();
                                                     if (Client.Inventory.Store.Contains(itemUUID))
-                                                        {
-                                                            inventoryItem =
-                                                                Client.Inventory.Store[itemUUID] as InventoryItem;
-                                                        }
+                                                    {
+                                                        inventoryItem =
+                                                            Client.Inventory.Store[itemUUID] as InventoryItem;
+                                                    }
                                                     Locks.ClientInstanceInventoryLock.ExitReadLock();
                                                     break;
 
@@ -144,7 +143,6 @@ namespace Corrade
                                                     (AttachmentPoint)q.GetValue(null),
                                                     replace, corradeConfiguration.ServicesTimeout);
                                                 var slot = currentAttachments
-                                                    .ToArray()
                                                     .AsParallel()
                                                     .Where(
                                                         p =>

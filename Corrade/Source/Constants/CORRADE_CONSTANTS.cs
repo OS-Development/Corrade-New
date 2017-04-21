@@ -69,6 +69,7 @@ namespace Corrade.Constants
         public const string FEEDS_STATE_FILE = @"Feeds.state";
         public const string CONFERENCE_STATE_FILE = @"Conferences.state";
         public const string GROUP_SOFT_BAN_STATE_FILE = @"GroupSoftBans.state";
+        public const string SCRIPTED_AGENT_STATUS_STATE_FILE = @"ScriptedAgentStatus.state";
         public const string LIBS_DIRECTORY = @"libs";
         public const string BAYES_DIRECTORY = @"Bayes";
         public const string LANGUAGE_PROFILE_FILE = @"Core14.profile.xml";

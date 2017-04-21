@@ -316,11 +316,9 @@ namespace Corrade
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
                             }
-                            UUID trashFolderUUID;
-                            lock (Locks.ClientInstanceNetworkLock)
-                            {
-                                trashFolderUUID = Client.Inventory.FindFolderForType(AssetType.TrashFolder);
-                            }
+                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                            var trashFolderUUID = Client.Inventory.FindFolderForType(AssetType.TrashFolder);
+                            Locks.ClientInstanceInventoryLock.ExitReadLock();
                             if (!updateFolders.Contains(trashFolderUUID))
                             {
                                 updateFolders.Add(trashFolderUUID);

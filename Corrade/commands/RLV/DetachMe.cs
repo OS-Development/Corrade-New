@@ -28,7 +28,6 @@ namespace Corrade
                     }
                     var attachment =
                         Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
-                            .ToArray()
                             .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                     switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                     {
@@ -46,7 +45,6 @@ namespace Corrade
                                 var slot = Inventory.GetAttachments(
                                     Client,
                                     corradeConfiguration.DataTimeout)
-                                    .ToArray()
                                     .AsParallel()
                                     .Where(
                                         p =>

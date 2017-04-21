@@ -43,18 +43,18 @@ namespace Corrade
                             });
                             EstateCovenantReceivedEvent.Set();
                         };
-                        lock (Locks.ClientInstanceEstateLock)
+                        Locks.ClientInstanceEstateLock.EnterWriteLock();
+                        Client.Estate.EstateCovenantReply += EstateCovenantReplyEventhandler;
+                        Client.Estate.RequestCovenant();
+                        if (!EstateCovenantReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Estate.EstateCovenantReply += EstateCovenantReplyEventhandler;
-                            Client.Estate.RequestCovenant();
-                            if (!EstateCovenantReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
-                                throw new Command.ScriptException(
-                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_COVENANT);
-                            }
                             Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
+                            throw new Command.ScriptException(
+                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_COVENANT);
                         }
+                        Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
+                        Locks.ClientInstanceEstateLock.ExitWriteLock();
                         if (csv.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

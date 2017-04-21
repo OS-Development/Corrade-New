@@ -76,13 +76,12 @@ namespace Corrade
                                 }
                                 data[o] = wasOpenMetaverse.RLV.RLV_CONSTANTS.TRUE_MARKER;
                             });
-                            response.Append(string.Join("", data.ToArray()));
+                            response.Append(string.Join("", data));
                             break;
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

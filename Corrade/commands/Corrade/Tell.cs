@@ -67,19 +67,22 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
                             }
-                            lock (Locks.ClientInstanceSelfLock)
+
+                            try
                             {
-                                try
-                                {
-                                    if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
-                                        Client.Self.ChatterBoxAcceptInvite(sessionUUID);
-                                    Client.Self.InstantMessageGroup(sessionUUID, data);
-                                }
-                                catch (Exception ex)
-                                {
-                                    result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
-                                    throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SEND_MESSAGE);
-                                }
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
+                                    Client.Self.ChatterBoxAcceptInvite(sessionUUID);
+                                Client.Self.InstantMessageGroup(sessionUUID, data);
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SEND_MESSAGE);
+                            }
+                            finally
+                            {
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                             }
                             break;
 
@@ -167,14 +170,13 @@ namespace Corrade
                                 sessionUUID = UUID.Zero;
                             }
                             // send the message
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                //Client.Self.InstantMessage(agentUUID, data);
-                                Client.Self.InstantMessage(Client.Self.FirstName + @" " + Client.Self.LastName,
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            //Client.Self.InstantMessage(agentUUID, data);
+                            Client.Self.InstantMessage(Client.Self.FirstName + @" " + Client.Self.LastName,
                                     agentUUID, data, sessionUUID, instantMessageDialog,
                                     instantMessageOnline, Client.Self.SimPosition,
                                     Client.Network.CurrentSim.RegionID, new byte[] { });
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             // do not log empty messages
                             if (string.IsNullOrEmpty(data))
                                 break;
@@ -228,7 +230,7 @@ namespace Corrade
                                         Feedback(
                                             Reflection.GetNameFromEnumValue(
                                                 Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                            ex.Message);
+                                            ex.ToString(), ex.InnerException?.ToString());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
@@ -271,12 +273,10 @@ namespace Corrade
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                             }
-                            bool gotChatSession;
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                gotChatSession =
+                            Locks.ClientInstanceSelfLock.EnterReadLock();
+                            var gotChatSession =
                                     Client.Self.GroupChatSessions.ContainsKey(groupUUID);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitReadLock();
                             if (!gotChatSession)
                             {
                                 if (
@@ -297,10 +297,9 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
                                 }
                             }
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.InstantMessageGroup(groupUUID, data);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.InstantMessageGroup(groupUUID, data);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             corradeConfiguration.Groups.AsParallel().Where(
                                 o => o.UUID.Equals(groupUUID) && o.ChatLogEnabled).ForAll(
                                     o =>
@@ -337,7 +336,7 @@ namespace Corrade
                                                     Reflection.GetNameFromEnumValue(
                                                         Enumerations.ConsoleMessage
                                                             .COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                    ex.Message);
+                                                    ex.ToString(), ex.InnerException?.ToString());
                                             }
                                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                     });
@@ -398,10 +397,9 @@ namespace Corrade
                                         }
                                     }
                                     // send the message
-                                    lock (Locks.ClientInstanceSelfLock)
-                                    {
-                                        Client.Self.Chat(data, chatChannel, chatType);
-                                    }
+                                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                    Client.Self.Chat(data, chatChannel, chatType);
+                                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     // do not log empty messages
                                     if (string.IsNullOrEmpty(data))
                                         break;
@@ -452,7 +450,7 @@ namespace Corrade
                                                     Reflection.GetNameFromEnumValue(
                                                         Enumerations.ConsoleMessage
                                                             .COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
-                                                    ex.Message);
+                                                    ex.ToString(), ex.InnerException?.ToString());
                                             }
                                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                     }
@@ -460,10 +458,9 @@ namespace Corrade
 
                                 default:
                                     // that's how the big boys do it
-                                    lock (Locks.ClientInstanceSelfLock)
-                                    {
-                                        Client.Self.ReplyToScriptDialog(chatChannel, 0, data, Client.Self.AgentID);
-                                    }
+                                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                    Client.Self.ReplyToScriptDialog(chatChannel, 0, data, Client.Self.AgentID);
+                                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     break;
                             }
                             break;
@@ -472,20 +469,18 @@ namespace Corrade
                             if (!Client.Network.CurrentSim.IsEstateManager)
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
 
-                            lock (Locks.ClientInstanceEstateLock)
-                            {
-                                Client.Estate.EstateMessage(data);
-                            }
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.EstateMessage(data);
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Entity.REGION:
                             if (!Client.Network.CurrentSim.IsEstateManager)
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
 
-                            lock (Locks.ClientInstanceEstateLock)
-                            {
-                                Client.Estate.SimulatorMessage(data);
-                            }
+                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                            Client.Estate.SimulatorMessage(data);
+                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                             break;
 
                         default:

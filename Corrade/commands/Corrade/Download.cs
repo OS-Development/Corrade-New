@@ -79,11 +79,9 @@ namespace Corrade
                         itemUUID = inventoryItem.AssetUUID;
                     }
                     byte[] assetData = null;
-                    bool cacheHasAsset;
-                    lock (Locks.ClientInstanceAssetsLock)
-                    {
-                        cacheHasAsset = Client.Assets.Cache.HasAsset(itemUUID);
-                    }
+                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                    var cacheHasAsset = Client.Assets.Cache.HasAsset(itemUUID);
+                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                     switch (!cacheHasAsset)
                     {
                         case true:
@@ -92,9 +90,8 @@ namespace Corrade
                             switch (assetType)
                             {
                                 case AssetType.Mesh:
-                                    lock (Locks.ClientInstanceAssetsLock)
-                                    {
-                                        Client.Assets.RequestMesh(itemUUID,
+                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                    Client.Assets.RequestMesh(itemUUID,
                                             delegate (bool completed, AssetMesh asset)
                                             {
                                                 if (!asset.AssetID.Equals(itemUUID)) return;
@@ -105,13 +102,14 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (
-                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            throw new Command.ScriptException(
+                                    if (
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                        throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
-                                        }
                                     }
+                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
                                 // All of these can only be fetched if they exist locally.
                                 case AssetType.LSLText:
@@ -137,9 +135,8 @@ namespace Corrade
                                                 Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                                         }
                                     }
-                                    lock (Locks.ClientInstanceAssetsLock)
-                                    {
-                                        Client.Assets.RequestInventoryAsset(inventoryItem, true,
+                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                    Client.Assets.RequestInventoryAsset(inventoryItem, true,
                                             delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 succeeded = transfer.Success;
@@ -149,19 +146,19 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (
-                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            throw new Command.ScriptException(
+                                    if (
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                        throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
-                                        }
                                     }
+                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
                                 // All images go through RequestImage and can be fetched directly from the asset server.
                                 case AssetType.Texture:
-                                    lock (Locks.ClientInstanceAssetsLock)
-                                    {
-                                        Client.Assets.RequestImage(itemUUID, ImageType.Normal,
+                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                    Client.Assets.RequestImage(itemUUID, ImageType.Normal,
                                             delegate (TextureRequestState state, AssetTexture asset)
                                             {
                                                 if (!asset.AssetID.Equals(itemUUID)) return;
@@ -170,13 +167,14 @@ namespace Corrade
                                                 succeeded = true;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (
-                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            throw new Command.ScriptException(
+                                    if (
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                        throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
-                                        }
                                     }
+                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
                                 // All of these can be fetched directly from the asset server.
                                 case AssetType.Landmark:
@@ -185,9 +183,8 @@ namespace Corrade
                                 case AssetType.Sound: // Ogg Vorbis
                                 case AssetType.Clothing:
                                 case AssetType.Bodypart:
-                                    lock (Locks.ClientInstanceAssetsLock)
-                                    {
-                                        Client.Assets.RequestAsset(itemUUID, assetType, true,
+                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                    Client.Assets.RequestAsset(itemUUID, assetType, true,
                                             delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 if (!transfer.AssetID.Equals(itemUUID)) return;
@@ -198,13 +195,13 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (
-                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                        {
-                                            throw new Command.ScriptException(
+                                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                        throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
-                                        }
                                     }
+                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
 
                                 default:
@@ -214,20 +211,18 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.FAILED_TO_DOWNLOAD_ASSET);
                             }
-                            lock (Locks.ClientInstanceAssetsLock)
-                            {
-                                Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
-                            }
+                            Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                            Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
+                            Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             if (corradeConfiguration.EnableHorde)
                                 HordeDistributeCacheAsset(itemUUID, assetData,
                                     Configuration.HordeDataSynchronizationOption.Add);
                             break;
 
                         default:
-                            lock (Locks.ClientInstanceAssetsLock)
-                            {
-                                assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
-                            }
+                            Locks.ClientInstanceAssetsLock.EnterReadLock();
+                            assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                            Locks.ClientInstanceAssetsLock.ExitReadLock();
                             break;
                     }
                     // If the asset type was a texture, convert it to the desired format.

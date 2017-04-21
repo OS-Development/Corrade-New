@@ -129,7 +129,6 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
                                 corradeCommandParameters.Message)))
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {

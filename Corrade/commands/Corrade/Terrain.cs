@@ -31,16 +31,13 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -70,25 +67,25 @@ namespace Corrade
                                 data = args.Xfer.AssetData;
                                 DownloadTerrainEvents[1].Set();
                             };
-                            lock (Locks.ClientInstanceAssetsLock)
-                            {
-                                Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
-                                Client.Assets.XferReceived += XferReceivedEventHandler;
-                                Client.Estate.EstateOwnerMessage("terrain", new List<string>
+                            Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                            Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
+                            Client.Assets.XferReceived += XferReceivedEventHandler;
+                            Client.Estate.EstateOwnerMessage("terrain", new List<string>
                                 {
                                     "download filename",
                                     simulator.Name
                                 });
-                                if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle)o).ToArray(),
-                                    (int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
-                                    Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_DOWNLOADING_ASSET);
-                                }
+                            if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle)o).ToArray(),
+                                (int)corradeConfiguration.ServicesTimeout, false))
+                            {
                                 Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived -= XferReceivedEventHandler;
+                                Locks.ClientInstanceAssetsLock.ExitWriteLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_DOWNLOADING_ASSET);
                             }
+                            Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
+                            Client.Assets.XferReceived -= XferReceivedEventHandler;
+                            Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             if (data == null || !data.Any())
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
@@ -122,17 +119,17 @@ namespace Corrade
                                     AssetUploadEvent.Set();
                                 }
                             };
-                            lock (Locks.ClientInstanceAssetsLock)
+                            Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                            Client.Assets.UploadProgress += AssetUploadEventHandler;
+                            Client.Estate.UploadTerrain(data, simulator.Name);
+                            if (!AssetUploadEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
-                                Client.Assets.UploadProgress += AssetUploadEventHandler;
-                                Client.Estate.UploadTerrain(data, simulator.Name);
-                                if (!AssetUploadEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Assets.UploadProgress -= AssetUploadEventHandler;
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
-                                }
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
+                                Locks.ClientInstanceAssetsLock.ExitWriteLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
                             }
+                            Client.Assets.UploadProgress -= AssetUploadEventHandler;
+                            Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             break;
 
                         default:

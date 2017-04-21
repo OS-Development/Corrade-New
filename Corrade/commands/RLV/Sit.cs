@@ -39,38 +39,34 @@ namespace Corrade
                         (sender, args) =>
                             SitEvent.Set();
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) => SitEvent.Set();
-                    lock (Locks.ClientInstanceSelfLock)
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                     {
-                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                        {
-                            Client.Self.Stand();
-                        }
+                        Client.Self.Stand();
                     }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // stop all non-built-in animations
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.SignaledAnimations.Copy()
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.SignaledAnimations.Copy()
                             .Keys.AsParallel()
                             .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                             .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                    }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.AvatarSitResponse += AvatarSitEventHandler;
-                        Client.Self.AlertMessage += AlertMessageEventHandler;
-                        Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                        SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
-                        Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
-                        Client.Self.AlertMessage -= AlertMessageEventHandler;
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.AvatarSitResponse += AvatarSitEventHandler;
+                    Client.Self.AlertMessage += AlertMessageEventHandler;
+                    Client.Self.RequestSit(primitive.ID, Vector3.Zero);
+                    SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                    Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
+                    Client.Self.AlertMessage -= AlertMessageEventHandler;
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // Set the camera on the avatar.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.LookAt(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

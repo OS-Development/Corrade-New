@@ -48,7 +48,6 @@ namespace Corrade
                     CSV.ToEnumerable(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                             corradeCommandParameters.Message)))
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -86,16 +85,14 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator =
                             Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -127,7 +124,7 @@ namespace Corrade
                                                                         BindingFlags.Static)
                             .AsParallel().Where(
                                 p => args.Type.IsMaskFlagSet((ScriptSensorTypeFlags)p.GetValue(null)))
-                            .Select(p => p.Name).ToArray());
+                            .Select(p => p.Name));
 
                         ScriptSensorReplyEvent.Set();
                     };

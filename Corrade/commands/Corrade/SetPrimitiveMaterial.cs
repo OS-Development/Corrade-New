@@ -76,12 +76,10 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator = Client.Network.Simulators.AsParallel()
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel()
                                 .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                         var materialFieldInfo = typeof(Material).GetFields(BindingFlags.Public |
@@ -94,11 +92,10 @@ namespace Corrade
                                         StringComparison.OrdinalIgnoreCase));
                         if (materialFieldInfo == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_MATERIAL_TYPE);
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.SetMaterial(simulator,
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.SetMaterial(simulator,
                                 primitive.LocalID, (Material)materialFieldInfo.GetValue(null));
-                        }
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
                     };
         }
     }

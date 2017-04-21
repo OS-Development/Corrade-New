@@ -123,23 +123,22 @@ namespace Corrade
 
                     var succeeded = true;
 
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Objects.TerseObjectUpdate += TerseObjectUpdateEvent;
-                        Client.Self.Movement.AtPos = false;
-                        Client.Self.Movement.AtNeg = false;
-                        Client.Self.Movement.UpNeg = false;
-                        Client.Self.Fly(true);
-                        // Initial thrust.
-                        Client.Self.Movement.UpPos = true;
-                        if (!PositionReachedEvent.WaitOne((int)duration, false))
-                            succeeded = false;
-                        Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
-                        Client.Self.Movement.AtPos = false;
-                        Client.Self.Movement.AtNeg = false;
-                        Client.Self.Movement.UpPos = false;
-                        Client.Self.Movement.UpNeg = false;
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Objects.TerseObjectUpdate += TerseObjectUpdateEvent;
+                    Client.Self.Movement.AtPos = false;
+                    Client.Self.Movement.AtNeg = false;
+                    Client.Self.Movement.UpNeg = false;
+                    Client.Self.Fly(true);
+                    // Initial thrust.
+                    Client.Self.Movement.UpPos = true;
+                    if (!PositionReachedEvent.WaitOne((int)duration, false))
+                        succeeded = false;
+                    Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
+                    Client.Self.Movement.AtPos = false;
+                    Client.Self.Movement.AtNeg = false;
+                    Client.Self.Movement.UpPos = false;
+                    Client.Self.Movement.UpNeg = false;
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
 
                     // in case the flying timed out, then bail
                     if (!succeeded)
@@ -154,10 +153,9 @@ namespace Corrade
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Fly(fly);
-                            }
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Fly(fly);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
 

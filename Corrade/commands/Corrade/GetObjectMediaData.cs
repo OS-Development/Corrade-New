@@ -75,12 +75,14 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        var data = new List<string>();
-                        lock (Locks.ClientInstanceObjectsLock)
-                        {
-                            Client.Objects.RequestObjectMedia(primitive.ID,
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var region =
                                 Client.Network.Simulators.AsParallel()
-                                    .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                                    .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
+                        var data = new List<string>();
+                        Locks.ClientInstanceObjectsLock.EnterReadLock();
+                        Client.Objects.RequestObjectMedia(primitive.ID, region,
                                 (succeeded, version, faceMedia) =>
                                 {
                                     switch (succeeded)
@@ -93,11 +95,12 @@ namespace Corrade
                                             break;
 
                                         default:
+                                            Locks.ClientInstanceObjectsLock.ExitReadLock();
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
                                     }
                                 });
-                        }
+                        Locks.ClientInstanceObjectsLock.ExitReadLock();
                         if (data.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

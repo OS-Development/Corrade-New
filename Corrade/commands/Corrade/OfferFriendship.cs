@@ -50,20 +50,19 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
-                    lock (Locks.ClientInstanceFriendsLock)
+                    Locks.ClientInstanceFriendsLock.EnterReadLock();
+                    if (Client.Friends.FriendList.ContainsKey(agentUUID))
                     {
-                        if (Client.Friends.FriendList.ContainsKey(agentUUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.AGENT_ALREADY_FRIEND);
-                        }
+                        Locks.ClientInstanceFriendsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.AGENT_ALREADY_FRIEND);
                     }
-                    lock (Locks.ClientInstanceFriendsLock)
-                    {
-                        Client.Friends.OfferFriendship(agentUUID,
+                    Locks.ClientInstanceFriendsLock.ExitReadLock();
+                    Locks.ClientInstanceFriendsLock.EnterWriteLock();
+                    Client.Friends.OfferFriendship(agentUUID,
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message)));
-                    }
+                    Locks.ClientInstanceFriendsLock.ExitWriteLock();
                 };
         }
     }

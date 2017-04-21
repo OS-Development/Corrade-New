@@ -30,13 +30,13 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        lock (Locks.ClientInstanceNetworkLock)
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            if (!Client.Network.CurrentSim.IsEstateManager)
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                            }
+                            Locks.ClientInstanceNetworkLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
                         }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var avatars =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
@@ -67,19 +67,17 @@ namespace Corrade
                                             break;
 
                                         default: // the name could be resolved so send them home
-                                            lock (Locks.ClientInstanceEstateLock)
-                                            {
-                                                Client.Estate.TeleportHomeUser(agentUUID);
-                                            }
+                                            Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                            Client.Estate.TeleportHomeUser(agentUUID);
+                                            Locks.ClientInstanceEstateLock.ExitWriteLock();
                                             break;
                                     }
                                     break;
 
                                 default:
-                                    lock (Locks.ClientInstanceEstateLock)
-                                    {
-                                        Client.Estate.TeleportHomeUser(agentUUID);
-                                    }
+                                    Locks.ClientInstanceEstateLock.EnterWriteLock();
+                                    Client.Estate.TeleportHomeUser(agentUUID);
+                                    Locks.ClientInstanceEstateLock.ExitWriteLock();
                                     break;
                             }
                         });

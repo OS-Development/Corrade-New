@@ -80,29 +80,35 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOR_SALE);
                         }
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var region =
+                                Client.Network.Simulators.AsParallel()
+                                    .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var csv = new List<string>();
                         var PayPrceReceivedEvent = new ManualResetEvent(false);
                         EventHandler<PayPriceReplyEventArgs> PayPriceReplyEventHandler = (sender, args) =>
                         {
+                            if (!args.ObjectID.Equals(primitive.ID) || !args.Simulator.Handle.Equals(region.Handle))
+                                return;
+
                             csv.Add(args.DefaultPrice.ToString(Utils.EnUsCulture));
                             csv.AddRange(
                                 args.ButtonPrices.Select(o => o.ToString(Utils.EnUsCulture)));
                             PayPrceReceivedEvent.Set();
                         };
-                        lock (Locks.ClientInstanceObjectsLock)
+                        Locks.ClientInstanceObjectsLock.EnterReadLock();
+                        Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
+                        Client.Objects.RequestPayPrice(region,
+                            primitive.ID);
+                        if (!PayPrceReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
-                            Client.Objects.RequestPayPrice(
-                                Client.Network.Simulators.AsParallel()
-                                    .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                                primitive.ID);
-                            if (!PayPrceReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_PRICE);
-                            }
                             Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
+                            Locks.ClientInstanceObjectsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REQUESTING_PRICE);
                         }
+                        Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
+                        Locks.ClientInstanceObjectsLock.ExitReadLock();
                         if (csv.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

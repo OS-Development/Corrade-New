@@ -59,6 +59,7 @@ namespace Configurator
 
             mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
             mainForm.EnableMultipleSimulators.Checked = corradeConfiguration.EnableMultipleSimulators;
+            mainForm.AutoScriptedAgentStatus.Checked = corradeConfiguration.AutoScriptedAgentStatus;
             mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
             mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.AutoPruneCache.Checked = corradeConfiguration.CacheEnableAutoPrune;
@@ -91,8 +92,6 @@ namespace Configurator
             // logs
             mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
             mainForm.ClientLogFileEnabled.Checked = corradeConfiguration.ClientLogEnabled;
-            mainForm.OpenMetaverseLogFile.Text = corradeConfiguration.OpenMetaverseLogFile;
-            mainForm.OpenMetaverseLogFileEnabled.Checked = corradeConfiguration.OpenMetaverseLogEnabled;
             mainForm.InstantMessageLogFile.Text = corradeConfiguration.InstantMessageLogDirectory;
             mainForm.InstantMessageLogFileEnabled.Checked = corradeConfiguration.InstantMessageLogEnabled;
             mainForm.LocalLogFile.Text = corradeConfiguration.LocalMessageLogDirectory;
@@ -188,6 +187,8 @@ namespace Configurator
             mainForm.NucleusServerPassword.Text = corradeConfiguration.NucleusServerPassword;
             mainForm.NucleusServerCacheEnabled.Checked = corradeConfiguration.EnableNucleusServerCache;
             mainForm.NucleusServerCachePurgeInterval.Text = corradeConfiguration.NucleusServerCachePurgeInterval.ToString();
+            mainForm.NucleusServerNotificationQueueLength.Text = corradeConfiguration.NucleusServerNotificationQueueLength.ToString();
+
             // Nucleus Server Group.
             mainForm.NucleusServerGroup.Items.Clear();
             foreach (var configuredGroup in corradeConfiguration.Groups)
@@ -337,6 +338,7 @@ namespace Configurator
                            mainForm.ClientIdentificationTagBox.Visible = false;
                            mainForm.ExpectedExitCodeBox.Visible = false;
                            mainForm.AbnormalExitCodeBox.Visible = false;
+                           mainForm.AutoSASBox.Visible = false;
                            break;
 
                        case "Intermediary":
@@ -360,6 +362,7 @@ namespace Configurator
                            mainForm.ClientIdentificationTagBox.Visible = false;
                            mainForm.ExpectedExitCodeBox.Visible = false;
                            mainForm.AbnormalExitCodeBox.Visible = false;
+                           mainForm.AutoSASBox.Visible = false;
                            break;
 
                        case "Advanced":
@@ -383,6 +386,7 @@ namespace Configurator
                            mainForm.ClientIdentificationTagBox.Visible = true;
                            mainForm.ExpectedExitCodeBox.Visible = true;
                            mainForm.AbnormalExitCodeBox.Visible = true;
+                           mainForm.AutoSASBox.Visible = true;
                            break;
                    }
                    mainForm.Tabs.Enabled = true;
@@ -421,6 +425,7 @@ namespace Configurator
                 new List<string>(mainForm.StartLocations.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
             corradeConfiguration.EnableMultipleSimulators = mainForm.EnableMultipleSimulators.Checked;
+            corradeConfiguration.AutoScriptedAgentStatus = mainForm.AutoScriptedAgentStatus.Checked;
             UUID outUUID;
             if (UUID.TryParse(mainForm.ClientIdentificationTag.Text, out outUUID))
             {
@@ -462,8 +467,6 @@ namespace Configurator
             // logs
             corradeConfiguration.ClientLogFile = mainForm.ClientLogFile.Text;
             corradeConfiguration.ClientLogEnabled = mainForm.ClientLogFileEnabled.Checked;
-            corradeConfiguration.OpenMetaverseLogFile = mainForm.OpenMetaverseLogFile.Text;
-            corradeConfiguration.OpenMetaverseLogEnabled = mainForm.OpenMetaverseLogFileEnabled.Checked;
             corradeConfiguration.InstantMessageLogDirectory = mainForm.InstantMessageLogFile.Text;
             corradeConfiguration.InstantMessageLogEnabled = mainForm.InstantMessageLogFileEnabled.Checked;
             corradeConfiguration.LocalMessageLogDirectory = mainForm.LocalLogFile.Text;
@@ -600,6 +603,10 @@ namespace Configurator
             if (uint.TryParse(mainForm.NucleusServerCachePurgeInterval.Text, out outUint))
             {
                 corradeConfiguration.NucleusServerCachePurgeInterval = outUint;
+            }
+            if (uint.TryParse(mainForm.NucleusServerNotificationQueueLength.Text, out outUint))
+            {
+                corradeConfiguration.NucleusServerNotificationQueueLength = outUint;
             }
 
             // TCP
@@ -1058,11 +1065,11 @@ namespace Configurator
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
                                (string)GroupNotifications.Items[i]))
-                                                   /*!(group.NotificationMask &
-                                                     (ulong)
-                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                             (string) GroupNotifications.Items[i]))
-                                                       .Equals(0)*/)
+                                                                   /*!(group.NotificationMask &
+                                                                     (ulong)
+                                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                                             (string) GroupNotifications.Items[i]))
+                                                                       .Equals(0)*/)
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);

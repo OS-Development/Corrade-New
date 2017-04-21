@@ -99,33 +99,33 @@ namespace Corrade
                             ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             classifieds = args;
                         };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                    Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                    Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                    Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                    Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                    Client.Avatars.RequestAvatarProperties(agentUUID);
+                    Client.Avatars.RequestAvatarPicks(agentUUID);
+                    Client.Avatars.RequestAvatarClassified(agentUUID);
+                    if (
+                        !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                            false))
                     {
-                        Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
-                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
-                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                        Client.Avatars.RequestAvatarProperties(agentUUID);
-                        Client.Avatars.RequestAvatarPicks(agentUUID);
-                        Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (
-                            !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                false))
-                        {
-                            Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
-                            Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
-                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                            Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                        }
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                         Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                     }
+                    Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                    Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                    Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                    Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                    Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     var fields =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));

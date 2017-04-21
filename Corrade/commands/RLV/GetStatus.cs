@@ -62,12 +62,11 @@ namespace Corrade
                                 }
                             });
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Chat(response.ToString(),
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Chat(response.ToString(),
                             channel,
                             ChatType.Normal);
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

@@ -74,6 +74,9 @@ namespace Corrade
                     var pickCount = 0;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(Client.Self.AgentID))
+                            return;
+
                         pickCount = args.Picks.Count;
                         var pick =
                             args.Picks.AsParallel()
@@ -82,17 +85,17 @@ namespace Corrade
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
+                    Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
+                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
-                        Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PICKS);
-                        }
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PICKS);
                     }
+                    Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     var description =
                         wasInput(
                             KeyValue.Get(
@@ -116,11 +119,10 @@ namespace Corrade
                     {
                         pickUUID = UUID.Random();
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
                             position, textureUUID, description);
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

@@ -84,7 +84,7 @@ namespace Corrade
                     Parcel parcel = null;
                     if (
                         !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
-                            corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
@@ -213,11 +213,13 @@ namespace Corrade
                                                 // been previously cached by Corrade.
                                                 if (useCache)
                                                 {
-                                                    lock (Locks.ClientInstanceAssetsLock)
+                                                    Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                                    if (Client.Assets.Cache.HasAsset(replaceTextureUUID))
                                                     {
-                                                        if (Client.Assets.Cache.HasAsset(replaceTextureUUID))
-                                                            break;
+                                                        Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                                        break;
                                                     }
+                                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                 }
 
                                                 /*
@@ -282,14 +284,14 @@ namespace Corrade
                                                         Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE;
                                                     s.Break();
                                                 }
-                                                lock (Locks.ClientInstanceSelfLock)
+                                                Locks.ClientInstanceSelfLock.EnterReadLock();
+                                                if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
                                                 {
-                                                    if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
-                                                    {
-                                                        scriptError = Enumerations.ScriptError.INSUFFICIENT_FUNDS;
-                                                        s.Break();
-                                                    }
+                                                    scriptError = Enumerations.ScriptError.INSUFFICIENT_FUNDS;
+                                                    Locks.ClientInstanceSelfLock.ExitReadLock();
+                                                    s.Break();
                                                 }
+                                                Locks.ClientInstanceSelfLock.ExitReadLock();
                                                 // now create and upload the texture
                                                 var CreateItemFromAssetEvent = new ManualResetEvent(false);
                                                 var replaceByTextureUUID = UUID.Zero;
@@ -309,8 +311,8 @@ namespace Corrade
                                                     !CreateItemFromAssetEvent.WaitOne(
                                                         (int)corradeConfiguration.ServicesTimeout, false))
                                                 {
-                                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                                     scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
+                                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                                     s.Break();
                                                 }
                                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
@@ -320,11 +322,10 @@ namespace Corrade
                                                     s.Break();
                                                 }
                                                 // add the item to the cache.
-                                                lock (Locks.ClientInstanceAssetsLock)
-                                                {
-                                                    Client.Assets.Cache.SaveAssetToCache(replaceByTextureUUID,
+                                                Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                                                Client.Assets.Cache.SaveAssetToCache(replaceByTextureUUID,
                                                         j2cBytes);
-                                                }
+                                                Locks.ClientInstanceAssetsLock.ExitWriteLock();
                                                 if (corradeConfiguration.EnableHorde)
                                                     HordeDistributeCacheAsset(replaceByTextureUUID, j2cBytes,
                                                         Configuration.HordeDataSynchronizationOption.Add);
@@ -521,111 +522,110 @@ namespace Corrade
                     };
 
                     // Start import.
-                    lock (Locks.ClientInstanceObjectsLock)
+                    Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                    // Import linksets only with a valid root primitive.
+                    foreach (
+                        var linkSet in linkSets.Values.AsParallel().Where(o => !o.RootPrimitive.LocalID.Equals(0)))
                     {
-                        Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-                        // Import linksets only with a valid root primitive.
-                        foreach (
-                            var linkSet in linkSets.Values.AsParallel().Where(o => !o.RootPrimitive.LocalID.Equals(0)))
+                        rezState = ImporterState.RezzingParent;
+                        currentPrim = linkSet.RootPrimitive;
+
+                        // Rez the structure at the designated position.
+                        linkSet.RootPrimitive.Position = position;
+
+                        // Rez the root prim with no rotation
+                        var rootRotation = linkSet.RootPrimitive.Rotation;
+                        linkSet.RootPrimitive.Rotation = Quaternion.Identity;
+
+                        Client.Objects.AddPrim(Client.Network.CurrentSim, linkSet.RootPrimitive.PrimData,
+                            corradeCommandParameters.Group.UUID,
+                            linkSet.RootPrimitive.Position, linkSet.RootPrimitive.Scale,
+                            linkSet.RootPrimitive.Rotation);
+
+                        if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            rezState = ImporterState.RezzingParent;
-                            currentPrim = linkSet.RootPrimitive;
+                            Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                            throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
+                        }
 
-                            // Rez the structure at the designated position.
-                            linkSet.RootPrimitive.Position = position;
+                        Client.Objects.SetPosition(Client.Network.CurrentSim,
+                            createdPrimitives[createdPrimitives.Count - 1].LocalID, linkSet.RootPrimitive.Position);
 
-                            // Rez the root prim with no rotation
-                            var rootRotation = linkSet.RootPrimitive.Rotation;
-                            linkSet.RootPrimitive.Rotation = Quaternion.Identity;
+                        rezState = ImporterState.RezzingChildren;
 
-                            Client.Objects.AddPrim(Client.Network.CurrentSim, linkSet.RootPrimitive.PrimData,
-                                corradeCommandParameters.Group.UUID,
-                                linkSet.RootPrimitive.Position, linkSet.RootPrimitive.Scale,
-                                linkSet.RootPrimitive.Rotation);
+                        // Rez the child prims
+                        foreach (var primitive in linkSet.ChildPrimitives)
+                        {
+                            currentPrim = primitive;
+                            position = primitive.Position + linkSet.RootPrimitive.Position;
+
+                            Client.Objects.AddPrim(Client.Network.CurrentSim, primitive.PrimData,
+                                corradeCommandParameters.Group.UUID, position,
+                                primitive.Scale, primitive.Rotation);
 
                             if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.FAILED_REZZING_CHILD_PRIMITIVE);
                             }
-
                             Client.Objects.SetPosition(Client.Network.CurrentSim,
-                                createdPrimitives[createdPrimitives.Count - 1].LocalID, linkSet.RootPrimitive.Position);
-
-                            rezState = ImporterState.RezzingChildren;
-
-                            // Rez the child prims
-                            foreach (var primitive in linkSet.ChildPrimitives)
-                            {
-                                currentPrim = primitive;
-                                position = primitive.Position + linkSet.RootPrimitive.Position;
-
-                                Client.Objects.AddPrim(Client.Network.CurrentSim, primitive.PrimData,
-                                    corradeCommandParameters.Group.UUID, position,
-                                    primitive.Scale, primitive.Rotation);
-
-                                if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                                {
-                                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.FAILED_REZZING_CHILD_PRIMITIVE);
-                                }
-                                Client.Objects.SetPosition(Client.Network.CurrentSim,
-                                    createdPrimitives[createdPrimitives.Count - 1].LocalID, position);
-                            }
-
-                            // Create a list of the local IDs of the newly created prims
-                            // Root prim is first in list.
-                            var primitiveIDs = new List<uint>(createdPrimitives.Count) { rootLocalID };
-
-                            switch (linkSet.ChildPrimitives.Any())
-                            {
-                                case true:
-                                    // Add the rest of the prims to the list of local IDs
-                                    primitiveIDs.AddRange(
-                                        createdPrimitives.AsParallel().Where(prim => prim.LocalID != rootLocalID)
-                                            .Select(prim => prim.LocalID));
-
-                                    linkQueue = new List<uint>(primitiveIDs);
-
-                                    // Link and set the permissions + rotation
-                                    rezState = ImporterState.Linking;
-                                    Client.Objects.LinkPrims(Client.Network.CurrentSim, linkQueue);
-
-                                    if (
-                                        primDone.WaitOne(
-                                            (int)corradeConfiguration.DataTimeout * linkSet.ChildPrimitives.Count,
-                                            false))
-                                        Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
-                                    //else
-                                    //    Console.WriteLine("Warning: Failed to link {0} prims", linkQueue.Count);
-                                    break;
-
-                                default:
-                                    Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
-                                    break;
-                            }
-
-                            // Set permissions on newly created prims.
-                            //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Base, permissions.BaseMask, true);
-                            //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Owner, permissions.OwnerMask, true);
-                            Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs, PermissionWho.Group,
-                                permissions.GroupMask, true);
-                            Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
-                                PermissionWho.Everyone,
-                                permissions.EveryoneMask, true);
-                            Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
-                                PermissionWho.NextOwner,
-                                permissions.NextOwnerMask, true);
-
-                            rezState = ImporterState.Idle;
-
-                            // Reset everything for the next linkset
-                            createdPrimitives.Clear();
+                                createdPrimitives[createdPrimitives.Count - 1].LocalID, position);
                         }
-                        // Import done.
-                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+
+                        // Create a list of the local IDs of the newly created prims
+                        // Root prim is first in list.
+                        var primitiveIDs = new List<uint>(createdPrimitives.Count) { rootLocalID };
+
+                        switch (linkSet.ChildPrimitives.Any())
+                        {
+                            case true:
+                                // Add the rest of the prims to the list of local IDs
+                                primitiveIDs.AddRange(
+                                    createdPrimitives.AsParallel().Where(prim => prim.LocalID != rootLocalID)
+                                        .Select(prim => prim.LocalID));
+
+                                linkQueue = new List<uint>(primitiveIDs);
+
+                                // Link and set the permissions + rotation
+                                rezState = ImporterState.Linking;
+                                Client.Objects.LinkPrims(Client.Network.CurrentSim, linkQueue);
+
+                                if (
+                                    primDone.WaitOne(
+                                        (int)corradeConfiguration.DataTimeout * linkSet.ChildPrimitives.Count,
+                                        false))
+                                    Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
+                                //else
+                                //    Console.WriteLine("Warning: Failed to link {0} prims", linkQueue.Count);
+                                break;
+
+                            default:
+                                Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
+                                break;
+                        }
+
+                        // Set permissions on newly created prims.
+                        //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Base, permissions.BaseMask, true);
+                        //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Owner, permissions.OwnerMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs, PermissionWho.Group,
+                            permissions.GroupMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
+                            PermissionWho.Everyone,
+                            permissions.EveryoneMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
+                            PermissionWho.NextOwner,
+                            permissions.NextOwnerMask, true);
+
+                        rezState = ImporterState.Idle;
+
+                        // Reset everything for the next linkset
+                        createdPrimitives.Clear();
                     }
+                    // Import done.
+                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                    Locks.ClientInstanceObjectsLock.ExitWriteLock();
                 };
 
             private class Linkset

@@ -40,31 +40,33 @@ namespace Corrade
                     var pickUUID = UUID.Zero;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(Client.Self.AgentID))
+                            return;
+
                         var pick = args.Picks.AsParallel().FirstOrDefault(
                             o => string.Equals(input, o.Value, StringComparison.Ordinal));
                         if (!pick.Equals(default(KeyValuePair<UUID, string>)))
                             pickUUID = pick.Key;
                         AvatarPicksReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
+                    Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
+                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
-                        Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PICKS);
-                        }
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PICKS);
                     }
+                    Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     if (pickUUID.Equals(UUID.Zero))
                     {
                         pickUUID = UUID.Random();
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.PickDelete(pickUUID);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.PickDelete(pickUUID);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

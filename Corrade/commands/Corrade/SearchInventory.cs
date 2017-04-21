@@ -35,7 +35,6 @@ namespace Corrade
                     CSV.ToEnumerable(
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                             corradeCommandParameters.Message)))
-                        .ToArray()
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -70,7 +69,6 @@ namespace Corrade
                     var csv = new List<string>();
                     Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search,
                         corradeConfiguration.ServicesTimeout)
-                        .ToArray()
                         .AsParallel()
                         .ForAll(
                             o =>

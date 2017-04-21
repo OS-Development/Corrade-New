@@ -32,16 +32,14 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator =
                             Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -50,21 +48,21 @@ namespace Corrade
                     var SimParcelsDownloadedEvent = new ManualResetEvent(false);
                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                         (sender, args) => SimParcelsDownloadedEvent.Set();
-                    lock (Locks.ClientInstanceParcelsLock)
+                    Locks.ClientInstanceParcelsLock.EnterReadLock();
+                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                    Client.Parcels.RequestAllSimParcels(simulator, true, (int)corradeConfiguration.DataTimeout);
+                    if (simulator.IsParcelMapFull())
                     {
-                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                        Client.Parcels.RequestAllSimParcels(simulator);
-                        if (simulator.IsParcelMapFull())
-                        {
-                            SimParcelsDownloadedEvent.Set();
-                        }
-                        if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
-                        }
-                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                        SimParcelsDownloadedEvent.Set();
                     }
+                    if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    {
+                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                        Locks.ClientInstanceParcelsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCELS);
+                    }
+                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                    Locks.ClientInstanceParcelsLock.ExitReadLock();
                     Vector3 southwest;
                     if (
                         !Vector3.TryParse(
@@ -107,7 +105,6 @@ namespace Corrade
 
                     var csv = new float[sx * sy];
                     Enumerable.Range(x1, sx)
-                        .ToArray()
                         .AsParallel()
                         .ForAll(x => Enumerable.Range(y1, sy).AsParallel().ForAll(y =>
                         {

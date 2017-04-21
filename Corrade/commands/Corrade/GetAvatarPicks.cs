@@ -56,20 +56,23 @@ namespace Corrade
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                         (sender, args) =>
                         {
+                            if (!args.AvatarID.Equals(agentUUID))
+                                return;
+
                             picks = args.Picks;
                             AvatarPicksReplyEvent.Set();
                         };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                    Client.Avatars.RequestAvatarPicks(agentUUID);
+                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                        Client.Avatars.RequestAvatarPicks(agentUUID);
-                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                        }
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                     }
+                    Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     if (picks.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), CSV.FromDictionary(picks));

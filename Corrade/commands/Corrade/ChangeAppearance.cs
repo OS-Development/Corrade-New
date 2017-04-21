@@ -47,9 +47,9 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(folderUUID))
-                                {
-                                    inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                }
+                            {
+                                inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
+                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
@@ -90,13 +90,12 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.SignaledAnimations.Copy()
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.SignaledAnimations.Copy()
                                     .Keys.AsParallel()
                                     .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
                                     .ForAll(o => { Client.Self.AnimationStop(o, true); });
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
 
@@ -188,10 +187,9 @@ namespace Corrade
                     }
 
                     // And replace the outfit wit hthe new items.
-                    lock (Locks.ClientInstanceAppearanceLock)
-                    {
-                        Client.Appearance.ReplaceOutfit(equipItems, false);
-                    }
+                    Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+                    Client.Appearance.ReplaceOutfit(equipItems, false);
+                    Locks.ClientInstanceAppearanceLock.ExitWriteLock();
 
                     // Update inventory.
                     Locks.ClientInstanceInventoryLock.EnterReadLock();

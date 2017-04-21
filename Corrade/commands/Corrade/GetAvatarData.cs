@@ -62,7 +62,6 @@ namespace Corrade
                         range = corradeConfiguration.Range;
                     }
                     var avatar = Services.GetAvatars(Client, range)
-                        .ToArray()
                         .AsParallel()
                         .FirstOrDefault(o => o.ID.Equals(agentUUID));
                     if (avatar == null)
@@ -72,17 +71,26 @@ namespace Corrade
                     var LockObject = new object();
                     EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(agentUUID))
+                            return;
+
                         ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                         avatar.ProfileInterests = args.Interests;
                     };
                     EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                         (sender, args) =>
                         {
+                            if (!args.AvatarID.Equals(agentUUID))
+                                return;
+
                             ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             avatar.ProfileProperties = args.Properties;
                         };
                     EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(agentUUID))
+                            return;
+
                         ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                         lock (LockObject)
                         {
@@ -93,33 +101,33 @@ namespace Corrade
                         (sender, args) => ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
                         (sender, args) => ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                    Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                    Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                    Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                    Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                    Client.Avatars.RequestAvatarProperties(agentUUID);
+                    Client.Avatars.RequestAvatarPicks(agentUUID);
+                    Client.Avatars.RequestAvatarClassified(agentUUID);
+                    if (
+                        !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                            false))
                     {
-                        Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
-                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
-                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                        Client.Avatars.RequestAvatarProperties(agentUUID);
-                        Client.Avatars.RequestAvatarPicks(agentUUID);
-                        Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (
-                            !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                false))
-                        {
-                            Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
-                            Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
-                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                            Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                        }
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                         Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                     }
+                    Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                    Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                    Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                    Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                    Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     var data =
                         avatar.GetStructuredData(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),

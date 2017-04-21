@@ -41,6 +41,9 @@ namespace Corrade
                     var classifiedUUID = UUID.Zero;
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                     {
+                        if (!args.AvatarID.Equals(Client.Self.AgentID))
+                            return;
+
                         var classified = args.Classifieds.AsParallel().FirstOrDefault(
                             o =>
                                 string.Equals(name, o.Value, StringComparison.Ordinal));
@@ -48,25 +51,24 @@ namespace Corrade
                             classifiedUUID = classified.Key;
                         AvatarClassifiedReplyEvent.Set();
                     };
-                    lock (Locks.ClientInstanceAvatarsLock)
+                    Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                    Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
+                    Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
+                    if (!AvatarClassifiedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
-                        Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                        if (!AvatarClassifiedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
-                        }
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
                     }
+                    Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                    Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     if (classifiedUUID.Equals(UUID.Zero))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_CLASSIFIED);
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.DeleteClassfied(classifiedUUID);
-                    }
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.DeleteClassfied(classifiedUUID);
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

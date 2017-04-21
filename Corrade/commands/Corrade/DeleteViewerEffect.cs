@@ -59,12 +59,11 @@ namespace Corrade
                                     case false:
                                         throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.LookAtEffect(Client.Self.AgentID, Client.Self.AgentID,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.LookAtEffect(Client.Self.AgentID, Client.Self.AgentID,
                                         Vector3d.UnitX,
                                         LookAtType.Idle, effectUUID);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
                             case Enumerations.ViewerEffectType.POINT:
@@ -81,12 +80,11 @@ namespace Corrade
                                     case false:
                                         throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.PointAtEffect(Client.Self.AgentID, UUID.Zero,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.PointAtEffect(Client.Self.AgentID, UUID.Zero,
                                         Vector3.Zero,
                                         PointAtType.None, effectUUID);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 lock (PointAtEffectsLock)
                                 {
                                     PointAtEffects.Remove(pointAtEffect);
@@ -105,13 +103,12 @@ namespace Corrade
                                     case false:
                                         throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.BeamEffect(Client.Self.AgentID, beamEffect.Target, Vector3.Zero,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.BeamEffect(Client.Self.AgentID, beamEffect.Target, Vector3.Zero,
                                         new Color4(beamEffect.Color.X, beamEffect.Color.Y, beamEffect.Color.Z,
                                             beamEffect.Alpha),
                                         0, effectUUID);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 lock (BeamEffectsLock)
                                 {
                                     BeamEffects.Remove(beamEffect);
@@ -132,12 +129,11 @@ namespace Corrade
                                     case false:
                                         throw new Command.ScriptException(Enumerations.ScriptError.EFFECT_NOT_FOUND);
                                 }
-                                lock (Locks.ClientInstanceSelfLock)
-                                {
-                                    Client.Self.SphereEffect(Vector3.Zero,
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.SphereEffect(Vector3.Zero,
                                         new Color4(sphereEffect.Color.X, sphereEffect.Color.Y, sphereEffect.Color.Z,
                                             sphereEffect.Alpha), 0, effectUUID);
-                                }
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 lock (SphereEffectsLock)
                                 {
                                     SphereEffects.Remove(sphereEffect);

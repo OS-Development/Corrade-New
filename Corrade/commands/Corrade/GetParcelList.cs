@@ -42,23 +42,20 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                         StringComparison.OrdinalIgnoreCase));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
@@ -85,23 +82,23 @@ namespace Corrade
                     wasSharp.Timers.DecayingAlarm ParcelAccessListAlarm = new wasSharp.Timers.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        if (!args.LocalID.Equals(parcel.LocalID)) return;
+                        if (!args.LocalID.Equals(parcel.LocalID) || !args.SequenceID.Equals(random)) return;
 
                         ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
                         if (args.AccessList != null && args.AccessList.Any())
                             accessList.AddRange(args.AccessList);
                     };
-                    lock (Locks.ClientInstanceParcelsLock)
+                    Locks.ClientInstanceParcelsLock.EnterReadLock();
+                    Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
+                    Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
+                    if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                     {
-                        Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
-                        Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
-                        if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                        {
-                            Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);
-                        }
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
+                        Locks.ClientInstanceParcelsLock.ExitReadLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);
                     }
+                    Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
+                    Locks.ClientInstanceParcelsLock.ExitReadLock();
 
                     var csv = new List<string>();
                     var LockObject = new object();

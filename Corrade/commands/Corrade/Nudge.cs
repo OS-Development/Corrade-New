@@ -34,9 +34,8 @@ namespace Corrade
                         ))
                     {
                         case Enumerations.Direction.BACK:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.SendManualUpdate(
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG,
                                     Client.Self.Movement.Camera.Position,
@@ -46,13 +45,12 @@ namespace Corrade
                                     Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
                                     Client.Self.Movement.State,
                                     false);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Direction.FORWARD:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.SendManualUpdate(
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_AT_POS,
                                     Client.Self.Movement.Camera.Position,
@@ -61,13 +59,12 @@ namespace Corrade
                                     Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
                                     Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
                                     Client.Self.Movement.State, false);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Direction.LEFT:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.SendManualUpdate(
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
                                         AGENT_CONTROL_LEFT_POS, Client.Self.Movement.Camera.Position,
@@ -76,13 +73,12 @@ namespace Corrade
                                     Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
                                     Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
                                     Client.Self.Movement.State, false);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Direction.RIGHT:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.SendManualUpdate(
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.
                                         AGENT_CONTROL_LEFT_NEG, Client.Self.Movement.Camera.Position,
@@ -91,13 +87,12 @@ namespace Corrade
                                     Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
                                     Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
                                     Client.Self.Movement.State, false);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Direction.UP:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.SendManualUpdate(
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_UP_POS,
                                     Client.Self.Movement.Camera.Position,
@@ -106,13 +101,12 @@ namespace Corrade
                                     Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
                                     Client.Self.Movement.Camera.Far, Client.Self.Movement.Flags,
                                     Client.Self.Movement.State, false);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Direction.DOWN:
-                            lock (Locks.ClientInstanceSelfLock)
-                            {
-                                Client.Self.Movement.SendManualUpdate(
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Client.Self.Movement.SendManualUpdate(
                                     (AgentManager.ControlFlags)Client.Self.Movement.AgentControls |
                                     AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG,
                                     Client.Self.Movement.Camera.Position,
@@ -121,20 +115,19 @@ namespace Corrade
                                     Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
                                     Client.Self.Movement.Camera.Far, AgentFlags.None,
                                     AgentState.None, false);
-                            }
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DIRECTION);
                     }
                     // Set the camera on the avatar.
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        Client.Self.Movement.Camera.LookAt(
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
-                    }
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

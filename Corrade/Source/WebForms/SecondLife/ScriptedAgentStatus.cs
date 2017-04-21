@@ -53,7 +53,9 @@ namespace Corrade.Source.WebForms.SecondLife
             setBotStatus.Add(tokenNode.Attributes["name"].Value, tokenNode.Attributes["value"].Value);
 
             // Set the status.
-            setBotStatus.Add("isbot", scripted ? "Yes" : "No");
+            //var botNode = formNode.SelectSingleNode("//input[@name='isbot' and @value'yes']");
+            //botNode.SetAttributeValue()
+            setBotStatus.Add("isbot", scripted ? @"yes" : @"no");
 
             // Send the form.
             postData = HTTPClient.POST(

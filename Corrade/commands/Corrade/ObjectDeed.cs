@@ -75,19 +75,16 @@ namespace Corrade
                             break;
                     }
 
-                    Simulator simulator;
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        simulator = Client.Network.Simulators.AsParallel()
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel()
                             .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
-                    }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    lock (Locks.ClientInstanceObjectsLock)
-                    {
-                        Client.Objects.DeedObject(simulator,
+                    Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                    Client.Objects.DeedObject(simulator,
                             primitive.LocalID, corradeCommandParameters.Group.UUID);
-                    }
+                    Locks.ClientInstanceObjectsLock.ExitWriteLock();
                 };
         }
     }

@@ -173,45 +173,42 @@ namespace Corrade
                     {
                         byte[] assetData = null;
                         bool cacheHasAsset;
-                        lock (Locks.ClientInstanceAssetsLock)
-                        {
-                            cacheHasAsset = Client.Assets.Cache.HasAsset(o);
-                        }
+                        Locks.ClientInstanceAssetsLock.EnterReadLock();
+                        cacheHasAsset = Client.Assets.Cache.HasAsset(o);
+                        Locks.ClientInstanceAssetsLock.ExitReadLock();
                         switch (!cacheHasAsset)
                         {
                             case true:
-                                lock (Locks.ClientInstanceAssetsLock)
-                                {
-                                    var RequestAssetEvent = new ManualResetEvent(false);
-                                    Client.Assets.RequestImage(o, ImageType.Normal,
-                                        delegate (TextureRequestState state, AssetTexture asset)
-                                        {
-                                            if (!asset.AssetID.Equals(o)) return;
-                                            if (!state.Equals(TextureRequestState.Finished)) return;
-                                            assetData = asset.AssetData;
-                                            RequestAssetEvent.Set();
-                                        });
-                                    if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                var RequestAssetEvent = new ManualResetEvent(false);
+                                Client.Assets.RequestImage(o, ImageType.Normal,
+                                    delegate (TextureRequestState state, AssetTexture asset)
                                     {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
-                                    }
-                                }
-                                lock (Locks.ClientInstanceAssetsLock)
+                                        if (!asset.AssetID.Equals(o)) return;
+                                        if (!state.Equals(TextureRequestState.Finished)) return;
+                                        assetData = asset.AssetData;
+                                        RequestAssetEvent.Set();
+                                    });
+                                if (
+                                    !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                 {
-                                    Client.Assets.Cache.SaveAssetToCache(o, assetData);
+                                    Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                    throw new Command.ScriptException(
+                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                 }
+                                Locks.ClientInstanceAssetsLock.ExitReadLock();
+                                Locks.ClientInstanceAssetsLock.EnterWriteLock();
+                                Client.Assets.Cache.SaveAssetToCache(o, assetData);
+                                Locks.ClientInstanceAssetsLock.ExitWriteLock();
                                 if (corradeConfiguration.EnableHorde)
                                     HordeDistributeCacheAsset(o, assetData,
                                         Configuration.HordeDataSynchronizationOption.Add);
                                 break;
 
                             default:
-                                lock (Locks.ClientInstanceAssetsLock)
-                                {
-                                    assetData = Client.Assets.Cache.GetCachedAssetBytes(o);
-                                }
+                                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                                assetData = Client.Assets.Cache.GetCachedAssetBytes(o);
+                                Locks.ClientInstanceAssetsLock.ExitReadLock();
                                 break;
                         }
                         switch (formatProperty != null)

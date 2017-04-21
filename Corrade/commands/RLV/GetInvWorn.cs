@@ -33,10 +33,9 @@ namespace Corrade
                         Client.Inventory.Store.RootFolder);
                     if (RLVFolder == null)
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                         return;
                     }
 
@@ -142,15 +141,14 @@ namespace Corrade
                         }
                         Locks.ClientInstanceInventoryLock.ExitReadLock();
 
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Chat(
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Chat(
                                 response != null
                                     ? string.Join(wasOpenMetaverse.RLV.RLV_CONSTANTS.CSV_DELIMITER, response)
                                     : string.Empty,
                                 channel,
                                 ChatType.Normal);
-                        }
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                     }
                 };
         }

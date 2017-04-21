@@ -57,20 +57,23 @@ namespace Corrade
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
                             (sender, args) =>
                             {
+                                if (!args.AvatarID.Equals(agentUUID))
+                                    return;
+
                                 classifieds = args.Classifieds;
                                 AvatarClassifiedsReplyEvent.Set();
                             };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                        Client.Avatars.RequestAvatarClassified(agentUUID);
+                        if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                         {
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                            Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
-                            {
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                            }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                         }
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
                         if (classifieds.Any())
                         {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

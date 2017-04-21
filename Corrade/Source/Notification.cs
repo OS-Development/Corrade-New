@@ -20,7 +20,7 @@ namespace Corrade
     ///     A Corrade notification.
     /// </summary>
     [Serializable]
-    public class Notification
+    public class Notifications
     {
         public SerializableDictionary<string, string> Afterburn;
         public HashSet<string> Data;
@@ -34,12 +34,15 @@ namespace Corrade
         [XmlIgnore]
         public Dictionary<Configuration.Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
 
-        public SerializableDictionary<Configuration.Notifications, HashSet<string>>
-            NotificationURLDestination;
+        //public SerializableDictionary<Configuration.Notifications, SerializableDictionary<string, string>>
+        //    NotificationHTTPDestination;
+
+        public SerializableDictionary<Configuration.Notifications,
+            SerializableDictionary<string, HashSet<string>>> HTTPNotifications;
 
         public Configuration.Notifications NotificationMask
-            => (NotificationURLDestination != null && NotificationURLDestination.Any()
-                ? NotificationURLDestination.Keys.CreateMask()
+            => (HTTPNotifications != null && HTTPNotifications.Any()
+                ? HTTPNotifications.Keys.CreateMask()
                 : Configuration.Notifications.NONE) |
                (NotificationTCPDestination != null && NotificationTCPDestination.Any()
                    ? NotificationTCPDestination.Keys.CreateMask()
@@ -55,7 +58,7 @@ namespace Corrade
         public object Event;
 
         [Reflection.NameAttribute("notification")]
-        public Notification Notification;
+        public Notifications Notification;
 
         [Reflection.NameAttribute("type")]
         public Configuration.Notifications Type;

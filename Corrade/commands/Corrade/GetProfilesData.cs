@@ -41,21 +41,20 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                     corradeCommandParameters.Message));
                     List<Simulator> simulators = new List<Simulator>();
-                    lock (Locks.ClientInstanceNetworkLock)
-                    {
-                        Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                 o => string.Equals(o.Name, region, StringComparison.OrdinalIgnoreCase));
-                        switch (simulator != null && !simulators.Equals(default(Simulator)))
-                        {
-                            case true:
-                                simulators.Add(simulator);
-                                break;
+                    switch (simulator != null && !simulators.Equals(default(Simulator)))
+                    {
+                        case true:
+                            simulators.Add(simulator);
+                            break;
 
-                            default:
-                                simulators.AddRange(Client.Network.Simulators);
-                                break;
-                        }
+                        default:
+                            simulators.AddRange(Client.Network.Simulators);
+                            break;
                     }
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
                     List<string> csv = new List<string>();
                     foreach (var agentUUID in simulators.SelectMany(o => o.AvatarPositions.Copy().Keys))
                     {
@@ -107,33 +106,33 @@ namespace Corrade
                                 ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                 classifieds = args;
                             };
-                        lock (Locks.ClientInstanceAvatarsLock)
+                        Locks.ClientInstanceAvatarsLock.EnterReadLock();
+                        Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                        Client.Avatars.RequestAvatarProperties(agentUUID);
+                        Client.Avatars.RequestAvatarPicks(agentUUID);
+                        Client.Avatars.RequestAvatarClassified(agentUUID);
+                        if (
+                            !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                                false))
                         {
-                            Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
-                            Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
-                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                            Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                            Client.Avatars.RequestAvatarProperties(agentUUID);
-                            Client.Avatars.RequestAvatarPicks(agentUUID);
-                            Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (
-                                !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
-                            {
-                                Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
-                                Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
-                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                                Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
-                            }
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                             Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                            Locks.ClientInstanceAvatarsLock.ExitReadLock();
+                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
                         }
+                        Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                        Locks.ClientInstanceAvatarsLock.ExitReadLock();
 
                         csv.AddRange(properties.GetStructuredData(fields));
                         csv.AddRange(interests.GetStructuredData(fields));

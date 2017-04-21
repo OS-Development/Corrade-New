@@ -36,36 +36,34 @@ namespace Corrade
                                 corradeCommandParameters.Message)),
                             out position))
                     {
-                        lock (Locks.ClientInstanceSelfLock)
-                        {
-                            Client.Self.Movement.TurnToward(position);
-                        }
+                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                        Client.Self.Movement.TurnToward(position);
+                        Locks.ClientInstanceSelfLock.ExitWriteLock();
                     }
-                    lock (Locks.ClientInstanceSelfLock)
-                    {
-                        // Go to mouselook and press LMB button.
-                        Client.Self.Movement.Mouselook = true;
-                        Client.Self.Movement.MLButtonDown = true;
-                        Client.Self.Movement.SendUpdate();
+                    Locks.ClientInstanceSelfLock.EnterWriteLock();
+                    // Go to mouselook and press LMB button.
+                    Client.Self.Movement.Mouselook = true;
+                    Client.Self.Movement.MLButtonDown = true;
+                    Client.Self.Movement.SendUpdate();
 
-                        // Release LMB and finish animation.
-                        Client.Self.Movement.MLButtonUp = true;
-                        Client.Self.Movement.MLButtonDown = false;
-                        Client.Self.Movement.FinishAnim = true;
-                        Client.Self.Movement.SendUpdate();
+                    // Release LMB and finish animation.
+                    Client.Self.Movement.MLButtonUp = true;
+                    Client.Self.Movement.MLButtonDown = false;
+                    Client.Self.Movement.FinishAnim = true;
+                    Client.Self.Movement.SendUpdate();
 
-                        // Get out of mouse look.
-                        Client.Self.Movement.Mouselook = false;
-                        Client.Self.Movement.MLButtonUp = false;
-                        Client.Self.Movement.FinishAnim = false;
-                        Client.Self.Movement.SendUpdate();
+                    // Get out of mouse look.
+                    Client.Self.Movement.Mouselook = false;
+                    Client.Self.Movement.MLButtonUp = false;
+                    Client.Self.Movement.FinishAnim = false;
+                    Client.Self.Movement.SendUpdate();
 
-                        // Set the camera on the avatar.
-                        Client.Self.Movement.Camera.LookAt(
-                            Client.Self.SimPosition,
-                            Client.Self.SimPosition
-                            );
-                    }
+                    // Set the camera on the avatar.
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
+                    Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }
     }

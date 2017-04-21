@@ -49,16 +49,13 @@ namespace Corrade
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                     corradeCommandParameters.Message));
-                        Simulator simulator;
-                        lock (Locks.ClientInstanceNetworkLock)
-                        {
-                            simulator =
-                                Client.Network.Simulators.AsParallel().FirstOrDefault(
+                        Locks.ClientInstanceNetworkLock.EnterReadLock();
+                        var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
                                             string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
                                             StringComparison.OrdinalIgnoreCase));
-                        }
+                        Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -72,7 +69,7 @@ namespace Corrade
                             case Enumerations.Entity.PARCEL:
                                 if (
                                     !Services.GetParcelAtPosition(Client, simulator, position,
-                                        corradeConfiguration.ServicesTimeout, ref parcel))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref parcel))
                                 {
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                 }
@@ -82,10 +79,8 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }
                         var csv = new List<string>();
-                        var avatarPositions = new Dictionary<UUID, Vector3>();
-                        simulator.AvatarPositions.ForEach(o => avatarPositions.Add(o.Key, o.Value));
                         var LockObject = new object();
-                        avatarPositions.AsParallel().ForAll(p =>
+                        simulator.AvatarPositions.Copy().AsParallel().ForAll(p =>
                         {
                             var name = string.Empty;
                             if (
@@ -101,7 +96,7 @@ namespace Corrade
                                     Parcel avatarParcel = null;
                                     if (
                                         !Services.GetParcelAtPosition(Client, simulator, p.Value,
-                                            corradeConfiguration.ServicesTimeout, ref avatarParcel))
+                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref avatarParcel))
                                         return;
                                     if (!avatarParcel.LocalID.Equals(parcel.LocalID)) return;
                                     break;
