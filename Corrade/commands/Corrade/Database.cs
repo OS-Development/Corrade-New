@@ -4,8 +4,8 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Community.CsharpSqlite.SQLiteClient;
 using CorradeConfigurationSharp;
-using Mono.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Data;

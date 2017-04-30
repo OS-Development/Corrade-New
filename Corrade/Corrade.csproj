@@ -57,7 +57,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
@@ -69,12 +69,6 @@
     <Reference Include="CommandLine, Version=1.9.71.2, Culture=neutral, PublicKeyToken=de6f01bd326f8c32, processorArchitecture=MSIL">
       <HintPath>..\packages\CommandLineParser.1.9.71\lib\net45\CommandLine.dll</HintPath>
       <Private>True</Private>
-    </Reference>
-    <Reference Include="Community.CsharpSqlite">
-      <HintPath>..\csharpsqlite\Community.CsharpSqlite.SQLiteClient\bin\Release\Community.CsharpSqlite.dll</HintPath>
-    </Reference>
-    <Reference Include="Community.CsharpSqlite.SQLiteClient">
-      <HintPath>..\csharpsqlite\Community.CsharpSqlite.SQLiteClient\bin\Release\Community.CsharpSqlite.SQLiteClient.dll</HintPath>
     </Reference>
     <Reference Include="Facebook, Version=6.0.10.0, Culture=neutral, PublicKeyToken=58cb4f2111d1e6de, processorArchitecture=MSIL">
       <HintPath>..\packages\Facebook.7.0.6\lib\net45\Facebook.dll</HintPath>
@@ -107,10 +101,6 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="MimeSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\MimeSharp.1.0.0\lib\MimeSharp.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Mono.Data.Sqlite, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <HintPath>..\packages\Mono.Data.Sqlite.Portable.1.0.3.5\lib\net4\Mono.Data.Sqlite.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NAudio, Version=1.8.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -1639,34 +1629,6 @@
       <Link>SIML\Corrade\Websites.siml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="..\sqlite\libsqlite3-arm.so">
-      <Link>libs\libsqlite3-arm.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\sqlite\libsqlite3-freebsd.so">
-      <Link>libs\libsqlite3-freebsd.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\sqlite\libsqlite3-x86_64-freebsd.so">
-      <Link>libs\libsqlite3-x86_64-freebsd.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\sqlite\libsqlite3-x86_64.so">
-      <Link>libs\libsqlite3-x86_64.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\sqlite\libsqlite3.dylib">
-      <Link>libs\libsqlite3.dylib</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\sqlite\libsqlite3.so">
-      <Link>libs\libsqlite3.so</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\sqlite\Mono.Data.Sqlite.dll.config">
-      <Link>libs\Mono.Data.Sqlite.dll.config</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="App.config" />
     <EmbeddedResource Include="Corrade.ini.default">
       <SubType>Designer</SubType>
@@ -1713,14 +1675,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\sqlite\sqlite3-x86_64.dll">
-      <Link>libs\sqlite3-x86_64.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\sqlite\sqlite3.dll">
-      <Link>libs\sqlite3.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="templates\notifications\alert.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -1839,10 +1793,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="templates\notifications\url.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\bin\log4net.dll">
-      <Link>libs\log4net.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_skeleton.xml">
@@ -2127,6 +2077,14 @@
     <ProjectReference Include="..\corrade-configuration-sharp\CorradeConfigurationSharp\CorradeConfigurationSharp.csproj">
       <Project>{2ca04070-f3e8-4e39-9f43-4bb7090d7a77}</Project>
       <Name>CorradeConfigurationSharp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasCSharpSQLite\Community.CsharpSqlite.SQLiteClient\Community.CsharpSqlite.SQLiteClient.csproj">
+      <Project>{7bc68e61-c64c-488c-975f-1e2248383b80}</Project>
+      <Name>Community.CsharpSqlite.SQLiteClient</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\wasCSharpSQLite\Community.CsharpSqlite\Community.CsharpSqlite.csproj">
+      <Project>{f1653f20-d47d-4f29-8c55-3c835542af5f}</Project>
+      <Name>Community.CsharpSqlite</Name>
     </ProjectReference>
     <ProjectReference Include="..\wasOpenMetaverse\wasOpenMetaverse.csproj">
       <Project>{b9537c43-94dc-4bd4-b6fb-b7ca77c11824}</Project>
