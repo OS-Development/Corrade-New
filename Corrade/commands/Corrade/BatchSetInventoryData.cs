@@ -85,6 +85,11 @@ namespace Corrade
                                 Client.Inventory.RequestUpdateItem(inventoryitem);
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             });
+                    if (data.Any())
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
+                    }
                 };
         }
     }

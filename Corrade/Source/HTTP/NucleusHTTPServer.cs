@@ -209,7 +209,7 @@ namespace Corrade.HTTP
                 if (!AuthenticationSchemes.Equals(AuthenticationSchemes.Anonymous))
                 {
                     // If authentication is not enabled or the client has not sent any authentication then stop.
-                    if (!httpContext.Request.IsAuthenticated)
+                    if (!httpContext.User.Identity.IsAuthenticated)
                     {
                         throw new HTTPException((int)HttpStatusCode.Forbidden);
                     }
@@ -863,9 +863,14 @@ namespace Corrade.HTTP
                         break;
                 }
             }
-            catch (HTTPException)
+            catch (HTTPException ex)
             {
                 // Do not report HTTP status errors.
+                if (httpContext != null)
+                {
+                    httpContext.Response.StatusCode = ex.StatusCode;
+                    httpContext.Response.Close();
+                }
             }
             catch (HttpListenerException)
             {

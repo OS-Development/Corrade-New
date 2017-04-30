@@ -321,6 +321,91 @@ namespace wasOpenMetaverse
         }
 
         ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2017 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves an agent UUID to an agent name.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="AgentUUIDs">a list of UUIDs to resolve</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <returns>a dictionary of UUIDs to names</returns>
+        private static Dictionary<UUID, string> directAgentUUIDToName(GridClient Client, List<UUID> AgentUUIDs, uint millisecondsTimeout)
+        {
+            var resolvedNames = new Dictionary<UUID, string>();
+            var UUIDNameReplyEvent = new ManualResetEvent(false);
+            EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
+            {
+                resolvedNames = args.Names;
+                UUIDNameReplyEvent.Set();
+            };
+            Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
+            Client.Avatars.RequestAvatarNames(AgentUUIDs);
+            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, false))
+            {
+                Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
+                return new Dictionary<UUID, string>();
+            }
+            Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
+            return resolvedNames;
+        }
+
+        /// <summary>
+        ///     A wrapper for agent to UUID lookups using Corrade's internal cache.
+        /// </summary>
+        /// <param name="Client">the OpenMetaverse grid client</param>
+        /// <param name="AgentUUIDs">a list of UUIDs to resolve</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <returns>a dictionary of UUIDs to names</returns>
+        public static Dictionary<UUID, string> AgentUUIDToName(GridClient Client, List<UUID> AgentUUIDs, uint millisecondsTimeout)
+        {
+            var resolvedNames = new Dictionary<UUID, string>();
+            var LockObject = new object[] {
+                new object(),
+                new object()
+            };
+            var lookupUUIDs = new HashSet<UUID>();
+            AgentUUIDs.AsParallel().ForAll(agentUUID =>
+            {
+                var agent = Cache.GetAgent(agentUUID);
+                switch (!agent.Equals(default(Cache.Agent)))
+                {
+                    case true:
+                        lock (LockObject[0])
+                        {
+                            if (!resolvedNames.ContainsKey(agentUUID))
+                                resolvedNames.Add(agentUUID, string.Join(" ", agent.FirstName, agent.LastName));
+                        }
+                        return;
+
+                    default:
+                        lock (LockObject[1])
+                        {
+                            if (!lookupUUIDs.Contains(agentUUID))
+                                lookupUUIDs.Add(agentUUID);
+                        }
+                        break;
+                }
+            });
+
+            Locks.ClientInstanceAvatarsLock.EnterWriteLock();
+            var resolvedAgents = directAgentUUIDToName(Client, AgentUUIDs, millisecondsTimeout);
+            Locks.ClientInstanceAvatarsLock.ExitWriteLock();
+
+            resolvedAgents.AsParallel().ForAll(o =>
+            {
+                var fullName = new List<string>(Helpers.GetAvatarNames(o.Value));
+                if (fullName != null)
+                {
+                    Cache.AddAgent(fullName.First(), fullName.Last(), o.Key);
+                }
+            });
+
+            return resolvedNames.Union(resolvedAgents)
+                    .ToDictionary(o => o.Key, o => o.Value);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>

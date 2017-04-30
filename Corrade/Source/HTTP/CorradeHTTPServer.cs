@@ -97,7 +97,7 @@ namespace Corrade.HTTP
                                 {
                                     // If authentication is not enabled or the client has not sent any authentication then stop.
                                     if (!Corrade.corradeConfiguration.EnableHTTPServerAuthentication ||
-                                        !httpContext.Request.IsAuthenticated)
+                                        !httpContext.User.Identity.IsAuthenticated)
                                     {
                                         throw new HTTPException((int)HttpStatusCode.Forbidden);
                                     }
@@ -251,6 +251,7 @@ namespace Corrade.HTTP
                                     if (!ContentSent)
                                     {
                                         HTTPServerResponse.StatusCode = ex.StatusCode;
+                                        HTTPServerResponse.Close();
                                     }
                                     throw;
                                 }
@@ -260,6 +261,7 @@ namespace Corrade.HTTP
                                     if (!ContentSent)
                                     {
                                         HTTPServerResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                        HTTPServerResponse.Close();
                                     }
                                     throw;
                                 }

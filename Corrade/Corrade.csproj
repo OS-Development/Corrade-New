@@ -70,6 +70,12 @@
       <HintPath>..\packages\CommandLineParser.1.9.71\lib\net45\CommandLine.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Community.CsharpSqlite">
+      <HintPath>..\csharpsqlite\Community.CsharpSqlite.SQLiteClient\bin\Release\Community.CsharpSqlite.dll</HintPath>
+    </Reference>
+    <Reference Include="Community.CsharpSqlite.SQLiteClient">
+      <HintPath>..\csharpsqlite\Community.CsharpSqlite.SQLiteClient\bin\Release\Community.CsharpSqlite.SQLiteClient.dll</HintPath>
+    </Reference>
     <Reference Include="Facebook, Version=6.0.10.0, Culture=neutral, PublicKeyToken=58cb4f2111d1e6de, processorArchitecture=MSIL">
       <HintPath>..\packages\Facebook.7.0.6\lib\net45\Facebook.dll</HintPath>
       <Private>True</Private>
@@ -211,7 +217,19 @@
     <Compile Include="commands\Corrade\AgentAccess.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\BatchAvatarKeyToName.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\BatchAvatarNameToKey.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\BatchGetProfileData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\BatchGive.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\BatchLure.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\BatchSetInventoryData.cs">

@@ -46,6 +46,38 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=batchlure>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<STRING,...>]&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Movement)]
+            [CorradeCommand("batchlure")]
+            [Reflection.NameAttribute("batchlure")]
+            BATCHLURE,
+
+            [CommandInputSyntax(
+                "<command=batchavatarnametokey>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<STRING,...>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Directory)]
+            [CorradeCommand("batchavatarnametokey")]
+            [Reflection.NameAttribute("batchavatarnametokey")]
+            BATCHAVATARNAMETOKEY,
+
+            [CommandInputSyntax(
+                "<command=batchavatarkeytoname>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID,...>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Directory)]
+            [CorradeCommand("batchavatarkeytoname")]
+            [Reflection.NameAttribute("batchavatarkeytoname")]
+            BATCHAVATARKEYTONAME,
+
+            [CommandInputSyntax(
+                "<command=batchgive>&<group=<UUID|STRING>>&[target=<UUID>]&<password=<STRING>>&<entity=<avatar|object>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=avatar:<item=<UUID|STRING,...>&entity=object:<item=<UUID|STRING,...>&entity=object:[range=<FLOAT>]&entity=object:<target=<UUID|STRING>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("batchgive")]
+            [Reflection.NameAttribute("batchgive")]
+            BATCHGIVE,
+
             [Reflection.NameAttribute("mono")]
             MONO,
 
@@ -70,7 +102,7 @@ namespace Corrade
             COMPILESCRIPT,
 
             [CommandInputSyntax(
-                "<command=getestateinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&<data=<EstateUpdateInfo[,EstateUpdateInfo...]>&[callback=<STRING>]"
+                "<command=getestateinfodata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<EstateUpdateInfo[,EstateUpdateInfo...]>&[callback=<STRING>]"
             )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
             [CorradeCommand("getestateinfodata")]
