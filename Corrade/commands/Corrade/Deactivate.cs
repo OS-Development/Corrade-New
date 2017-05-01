@@ -8,7 +8,6 @@ using CorradeConfigurationSharp;
 using OpenMetaverse;
 using System;
 using System.Collections.Generic;
-using wasOpenMetaverse;
 
 namespace Corrade
 {
