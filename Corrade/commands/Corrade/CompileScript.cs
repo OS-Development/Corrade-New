@@ -59,7 +59,7 @@ namespace Corrade
                                 newScript = createdItem;
                                 CreateScriptEvent.Set();
                             });
-                    if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -90,7 +90,7 @@ namespace Corrade
                                     scriptMessages.AddRange(messages);
                                 UpdateScriptEvent.Set();
                             });
-                        if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);

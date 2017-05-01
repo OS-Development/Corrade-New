@@ -71,7 +71,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!agentInGroupEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!agentInGroupEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);

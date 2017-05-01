@@ -83,7 +83,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -110,7 +110,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -220,7 +220,7 @@ namespace Corrade
                             Locks.ClientInstanceGroupsLock.EnterWriteLock();
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                             Client.Groups.EjectUser(groupUUID, agentUUID);
-                            GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                            GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                             Locks.ClientInstanceGroupsLock.ExitWriteLock();
                             // If the eject was not successful, add them to the output.

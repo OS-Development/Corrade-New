@@ -72,7 +72,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                     requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
-                    if (!GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);

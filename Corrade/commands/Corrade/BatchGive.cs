@@ -152,7 +152,7 @@ namespace Corrade
                                         Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
                                             true,
                                             InventorySortOrder.ByDate);
-                                        if (!FolderUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                        if (!FolderUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                         {
                                             Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                                             Locks.ClientInstanceInventoryLock.ExitReadLock();

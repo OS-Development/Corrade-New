@@ -46,7 +46,7 @@ namespace Corrade
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.SetHome();
-                    if (!AlertMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!AlertMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
                         Locks.ClientInstanceSelfLock.ExitWriteLock();

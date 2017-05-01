@@ -118,7 +118,7 @@ namespace Corrade
                         };
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                         groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                             throw new Command.ScriptException(
@@ -146,7 +146,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);

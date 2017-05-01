@@ -101,7 +101,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceObjectsLock.EnterWriteLock();
             Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
             Client.Appearance.Attach(realItem, point, replace);
-            objectAttachedEvent.WaitOne((int)millisecondsTimeout, false);
+            objectAttachedEvent.WaitOne((int)millisecondsTimeout, true);
             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
             Locks.ClientInstanceObjectsLock.ExitWriteLock();
             Locks.ClientInstanceAppearanceLock.ExitWriteLock();
@@ -155,7 +155,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceObjectsLock.EnterWriteLock();
             Client.Objects.KillObject += KillObjectEventHandler;
             Client.Appearance.Detach(realItem);
-            objectDetachedEvent.WaitOne((int)millisecondsTimeout, false);
+            objectDetachedEvent.WaitOne((int)millisecondsTimeout, true);
             Client.Objects.KillObject -= KillObjectEventHandler;
             Locks.ClientInstanceObjectsLock.ExitWriteLock();
             Locks.ClientInstanceAppearanceLock.ExitWriteLock();
@@ -560,7 +560,7 @@ namespace wasOpenMetaverse
                     FolderUpdatedEvent.Reset();
                     Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
                         InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
+                    FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, true);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                 }
                 foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))
@@ -793,7 +793,7 @@ namespace wasOpenMetaverse
                 Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                 Client.Inventory.RequestFolderContents(root.Data.UUID, root.Data.OwnerID, true, true,
                     InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
+                FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, true);
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             }
 
@@ -822,7 +822,7 @@ namespace wasOpenMetaverse
                 var EventQueueRunningEvent = new AutoResetEvent(false);
                 EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
                 Client.Network.EventQueueRunning += handler;
-                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
+                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, true);
                 Client.Network.EventQueueRunning -= handler;
             }
             Locks.ClientInstanceNetworkLock.ExitReadLock();
@@ -853,7 +853,7 @@ namespace wasOpenMetaverse
                 var EventQueueRunningEvent = new AutoResetEvent(false);
                 EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
                 Client.Network.EventQueueRunning += handler;
-                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, false);
+                EventQueueRunningEvent.WaitOne((int)millisecondsTimeout, true);
                 Client.Network.EventQueueRunning -= handler;
             }
             Locks.ClientInstanceNetworkLock.ExitReadLock();

@@ -65,7 +65,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
                     Client.Avatars.RequestAvatarPicks(agentUUID);
-                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();

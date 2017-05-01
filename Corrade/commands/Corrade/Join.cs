@@ -91,7 +91,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
                     Client.Groups.RequestJoinGroup(groupUUID);
-                    if (!GroupJoinedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupJoinedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

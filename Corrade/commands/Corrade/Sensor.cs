@@ -130,7 +130,7 @@ namespace Corrade
                     };
                     Client.Self.ScriptSensorReply += ScriptSensorReplyDelegate;
                     Client.Self.RequestScriptSensor(name, item, type, range, arc, request, simulator);
-                    if (!ScriptSensorReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!ScriptSensorReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Self.ScriptSensorReply -= ScriptSensorReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_WAITING_FOR_SENSOR);

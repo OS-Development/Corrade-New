@@ -193,7 +193,7 @@ namespace Corrade
                                         avatars.Keys.ToArray(), (sender, args) => { GroupBanEvent.Set(); });
                                     break;
                             }
-                            if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);

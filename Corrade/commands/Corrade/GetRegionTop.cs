@@ -52,7 +52,7 @@ namespace Corrade
                             Locks.ClientInstanceEstateLock.EnterWriteLock();
                             Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
                             Client.Estate.RequestTopScripts();
-                            if (!TopScriptsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!TopScriptsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();

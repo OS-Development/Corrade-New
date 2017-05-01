@@ -115,7 +115,7 @@ namespace Corrade
                                 newItem = createdItem;
                                 CreateNotecardEvent.Set();
                             });
-                    if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -139,7 +139,7 @@ namespace Corrade
                                 succeeded = completed;
                                 UploadBlankNotecardEvent.Set();
                             });
-                    if (!UploadBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!UploadBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM);
@@ -169,7 +169,7 @@ namespace Corrade
                                     inventoryAssetUUID = assetUUID;
                                     UploadNotecardDataEvent.Set();
                                 });
-                        if (!UploadNotecardDataEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!UploadNotecardDataEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);

@@ -8,7 +8,6 @@ using Community.CsharpSqlite.SQLiteClient;
 using CorradeConfigurationSharp;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using wasSharp;
 
@@ -39,25 +38,35 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_SQL_STRING_PROVIDED);
                     }
-                    var data = new List<string>();
-
-                    using (IDbConnection dbcon =
+                    var data = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message));
+                    var csv = new List<string>();
+                    using (var sqliteConnection =
                         new SqliteConnection(@"URI=file:" + corradeCommandParameters.Group.DatabaseFile))
                     {
-                        dbcon.Open();
-                        using (var dbcmd = dbcon.CreateCommand())
+                        sqliteConnection.Open();
+                        using (var command = new SqliteCommand(sql, sqliteConnection))
                         {
-                            dbcmd.CommandText = sql;
-                            using (var dbtransaction = dbcon.BeginTransaction())
+                            if (!string.IsNullOrEmpty(data))
                             {
-                                using (var reader = dbcmd.ExecuteReader())
+                                foreach (var parameter in CSV.ToKeyValue(data))
+                                {
+                                    command
+                                        .Parameters
+                                        .Add(new SqliteParameter(parameter.Key, parameter.Value));
+                                }
+                            }
+                            using (var dbtransaction = sqliteConnection.BeginTransaction())
+                            {
+                                using (var reader = command.ExecuteReader())
                                 {
                                     while (reader.Read())
                                     {
                                         for (var i = 0; i < reader.FieldCount; ++i)
                                         {
-                                            data.Add(reader.GetName(i));
-                                            data.Add(reader.GetValue(i).ToString());
+                                            csv.Add(reader.GetName(i));
+                                            csv.Add(reader.GetValue(i).ToString());
                                         }
                                     }
                                 }
@@ -66,10 +75,10 @@ namespace Corrade
                         }
                     }
 
-                    if (data.Any())
+                    if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

@@ -814,7 +814,7 @@ namespace Corrade
                                         GroupBanAction.Ban,
                                         groupSoftBans.Select(o => o.Agent).ToArray(),
                                         (sender, args) => { GroupBanEvent.Set(); });
-                                    if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                     {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);

@@ -99,7 +99,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);

@@ -75,7 +75,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedsReplyEventHandler;
                         Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedsReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();

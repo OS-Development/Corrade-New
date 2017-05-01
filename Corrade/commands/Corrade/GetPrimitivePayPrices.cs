@@ -101,7 +101,7 @@ namespace Corrade
                         Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
                         Client.Objects.RequestPayPrice(region,
                             primitive.ID);
-                        if (!PayPrceReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!PayPrceReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
                             Locks.ClientInstanceObjectsLock.ExitReadLock();

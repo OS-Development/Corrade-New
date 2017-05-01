@@ -56,7 +56,7 @@ namespace Corrade
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                    SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                    SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
                     Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                     Client.Self.AlertMessage -= AlertMessageEventHandler;
                     Locks.ClientInstanceSelfLock.ExitWriteLock();

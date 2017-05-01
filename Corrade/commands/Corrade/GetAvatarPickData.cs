@@ -75,7 +75,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
                         Client.Avatars.RequestAvatarPicks(agentUUID);
-                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -100,7 +100,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.PickInfoReply += AvatarPickInfoReplyEventHandler;
                         Client.Avatars.RequestPickInfo(agentUUID, pickUUID);
-                        if (!AvatarPickInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!AvatarPickInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Avatars.PickInfoReply -= AvatarPickInfoReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();

@@ -82,7 +82,7 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                             Client.Self.SetDisplayName(previous, name);
-                            if (!SetDisplayNameEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!SetDisplayNameEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();

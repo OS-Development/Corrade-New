@@ -150,7 +150,7 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                     Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
-                    if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();

@@ -89,7 +89,7 @@ namespace Corrade
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     requestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -134,7 +134,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                     Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);
-                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

@@ -365,11 +365,6 @@ namespace wasOpenMetaverse
             yield return @string;
         }
 
-        public static object GetStructuredData(object toInventory, string v)
-        {
-            throw new NotImplementedException();
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////

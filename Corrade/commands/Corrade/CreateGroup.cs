@@ -73,7 +73,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                     Client.Groups.RequestCreateGroup(targetGroup);
-                    if (!GroupCreatedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!GroupCreatedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

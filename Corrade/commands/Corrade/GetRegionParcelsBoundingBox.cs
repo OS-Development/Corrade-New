@@ -56,7 +56,7 @@ namespace Corrade
                         {
                             SimParcelsDownloadedEvent.Set();
                         }
-                        if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             Locks.ClientInstanceParcelsLock.ExitReadLock();

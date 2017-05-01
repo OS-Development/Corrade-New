@@ -20,14 +20,12 @@ namespace Corrade
             public static Action<NotificationParameters, Dictionary<string, string>> sound =
                 (corradeNotificationParameters, notificationData) =>
                 {
-                    var soundTriggerEventArgs =
-                        (SoundTriggerEventArgs)corradeNotificationParameters.Event;
                     // In case we should send specific data then query the structure and return.
                     if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
                         corradeNotificationParameters.Notification.Data.Any())
                     {
                         notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
-                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(soundTriggerEventArgs,
+                            CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(corradeNotificationParameters.Event,
                                 CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
                         return;
                     }
@@ -38,10 +36,45 @@ namespace Corrade
                         .ForAll(o => o.Value.AsParallel().ForAll(p =>
                         {
                             p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                new List<object> { soundTriggerEventArgs },
+                                new List<object> { corradeNotificationParameters.Event },
                                 notificationData, LockObject, languageDetector,
                                 GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));
+
+                    return;
+
+                    /*var soundEventType = corradeNotificationParameters.Event.GetType();
+                    if (soundEventType == typeof(SoundTriggerEventArgs))
+                    {
+                        var soundTriggerEventArgs =
+                        (SoundTriggerEventArgs)corradeNotificationParameters.Event;
+                        // In case we should send specific data then query the structure and return.
+                        if (corradeNotificationParameters.Notification != null && corradeNotificationParameters.Notification.Data != null &&
+                            corradeNotificationParameters.Notification.Data.Any())
+                        {
+                            notificationData.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
+                                CSV.FromEnumerable(wasOpenMetaverse.Reflection.GetStructuredData(soundTriggerEventArgs,
+                                    CSV.FromEnumerable(corradeNotificationParameters.Notification.Data))));
+                            return;
+                        }
+
+                        var LockObject = new object();
+                        Helpers.Notifications.LoadSerializedNotificationParameters(corradeNotificationParameters.Type)
+                            .NotificationParameters.AsParallel()
+                            .ForAll(o => o.Value.AsParallel().ForAll(p =>
+                            {
+                                p.ProcessParameters(Client, corradeConfiguration, o.Key,
+                                    new List<object> { soundTriggerEventArgs },
+                                    notificationData, LockObject, languageDetector,
+                                    GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
+                            }));
+
+                        return;
+                    }
+
+                    if (soundEventType == typeof(AttachedSoundGainChangeEventArgs))
+                    {
+                    }*/
                 };
         }
     }

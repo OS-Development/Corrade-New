@@ -53,7 +53,7 @@ namespace Corrade
                     Locks.ClientInstanceEstateLock.EnterWriteLock();
                     Client.Estate.EstateUpdateInfoReply += EstateUpdateInfoReplyHandler;
                     Client.Estate.RequestInfo();
-                    if (!EstateUpdateInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!EstateUpdateInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Estate.EstateUpdateInfoReply -= EstateUpdateInfoReplyHandler;
                         Locks.ClientInstanceEstateLock.ExitWriteLock();

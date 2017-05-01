@@ -122,7 +122,7 @@ namespace Corrade
                             Locks.ClientInstanceAssetsLock.EnterWriteLock();
                             Client.Assets.UploadProgress += AssetUploadEventHandler;
                             Client.Estate.UploadTerrain(data, simulator.Name);
-                            if (!AssetUploadEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!AssetUploadEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                 Locks.ClientInstanceAssetsLock.ExitWriteLock();

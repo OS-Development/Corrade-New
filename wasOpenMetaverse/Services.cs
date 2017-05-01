@@ -34,7 +34,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceSelfLock.EnterReadLock();
             Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
             Client.Self.RequestBalance();
-            if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Locks.ClientInstanceSelfLock.ExitReadLock();
                 Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
@@ -64,7 +64,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceSelfLock.EnterReadLock();
             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
             Client.Self.RequestMuteList();
-            MuteListUpdatedEvent.WaitOne((int)millisecondsTimeout, false);
+            MuteListUpdatedEvent.WaitOne((int)millisecondsTimeout, true);
             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             Locks.ClientInstanceSelfLock.ExitReadLock();
 
@@ -122,7 +122,7 @@ namespace wasOpenMetaverse
                 bannedAgents = args.BannedAgents;
                 BannedAgentsEvent.Set();
             });
-            if (!BannedAgentsEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!BannedAgentsEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 return false;
             }
@@ -154,7 +154,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!CurrentGroupsReceivedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
                 return false;
@@ -228,7 +228,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceAvatarsLock.EnterReadLock();
             Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
             Client.Avatars.RequestAvatarProperties(agentUUID);
-            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                 Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -264,7 +264,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceSelfLock.EnterWriteLock();
             Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
             Client.Self.RequestJoinGroupChat(groupUUID);
-            if (!GroupChatJoinedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GroupChatJoinedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                 Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -331,7 +331,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
             requestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-            if (!groupMembersReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!groupMembersReceivedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                 return false;
@@ -365,7 +365,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceGroupsLock.EnterReadLock();
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(groupUUID);
-            if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 Locks.ClientInstanceGroupsLock.ExitReadLock();
@@ -409,7 +409,7 @@ namespace wasOpenMetaverse
                     RequestAllSimParcelsEvent.Set();
                     break;
             }
-            if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                 Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -461,7 +461,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceParcelsLock.EnterReadLock();
             Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
             Client.Parcels.RequestParcelInfo(parcelUUID);
-            if (!ParcelInfoEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!ParcelInfoEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                 Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -621,7 +621,7 @@ namespace wasOpenMetaverse
                         .Select(p => p.LocalID)
                         .ToArray(), true);
                 Locks.ClientInstanceNetworkLock.ExitReadLock();
-                ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
+                ObjectPropertiesEvent.WaitOne((int)dataTimeout, true);
                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 Locks.ClientInstanceObjectsLock.ExitWriteLock();
             });
@@ -654,7 +654,7 @@ namespace wasOpenMetaverse
                 Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(regionHandle)),
                 localPrimitive.LocalID, true);
             Locks.ClientInstanceNetworkLock.ExitReadLock();
-            ObjectPropertiesEvent.WaitOne((int)dataTimeout, false);
+            ObjectPropertiesEvent.WaitOne((int)dataTimeout, true);
             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
             Locks.ClientInstanceObjectsLock.ExitWriteLock();
             primitive = localPrimitive;
@@ -740,7 +740,7 @@ namespace wasOpenMetaverse
                     {
                         avatarAlarm = avatarAlarms[o.ID];
                     }
-                    avatarAlarm.Signal.WaitOne((int)millisecondsTimeout, false);
+                    avatarAlarm.Signal.WaitOne((int)millisecondsTimeout, true);
                     Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
@@ -980,7 +980,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceAssetsLock.ExitReadLock();
 
             assetData = localAssetData;
-            return AssetReceivedEvent.WaitOne((int)dataTimeout, false);
+            return AssetReceivedEvent.WaitOne((int)dataTimeout, true);
         }
 
         ///////////////////////////////////////////////////////////////////////////

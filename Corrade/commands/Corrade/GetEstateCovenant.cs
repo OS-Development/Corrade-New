@@ -46,7 +46,7 @@ namespace Corrade
                         Locks.ClientInstanceEstateLock.EnterWriteLock();
                         Client.Estate.EstateCovenantReply += EstateCovenantReplyEventhandler;
                         Client.Estate.RequestCovenant();
-                        if (!EstateCovenantReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!EstateCovenantReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
                             Locks.ClientInstanceEstateLock.ExitWriteLock();

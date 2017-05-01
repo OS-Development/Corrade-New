@@ -85,7 +85,7 @@ namespace Corrade
                     Locks.ClientInstanceFriendsLock.EnterReadLock();
                     Client.Friends.FriendFoundReply += FriendFoundEventHandler;
                     Client.Friends.MapFriend(agentUUID);
-                    if (!FriendFoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!FriendFoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                         Locks.ClientInstanceFriendsLock.ExitReadLock();
@@ -111,7 +111,7 @@ namespace Corrade
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
                     Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                     Client.Parcels.RequestParcelInfo(parcelUUID);
-                    if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();

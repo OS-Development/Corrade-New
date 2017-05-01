@@ -78,7 +78,7 @@ namespace Corrade
                         Locks.ClientInstanceGridLock.EnterReadLock();
                         Client.Grid.GridRegion += GridRegionEventHandler;
                         Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                        if (!GridRegionEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!GridRegionEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Grid.GridRegion -= GridRegionEventHandler;
                             Locks.ClientInstanceGridLock.ExitReadLock();

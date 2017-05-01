@@ -59,7 +59,7 @@ namespace Corrade
                                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                                             AgentAccessSetEvent.Set();
                                         });
-                                    if (!AgentAccessSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    if (!AgentAccessSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                     {
                                         Locks.ClientInstanceSelfLock.ExitWriteLock();
                                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_AGENT_ACCESS);

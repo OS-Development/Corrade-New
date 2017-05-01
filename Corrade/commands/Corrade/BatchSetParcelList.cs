@@ -163,7 +163,7 @@ namespace Corrade
                     };
                     Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                     Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
-                    if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);

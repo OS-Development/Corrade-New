@@ -53,7 +53,7 @@ namespace wasOpenMetaverse
                             assetData = args.AssetData;
                             ImageDownloadedEvent.Set();
                         });
-                        if (!ImageDownloadedEvent.WaitOne((int)millisecondsTimeout, false))
+                        if (!ImageDownloadedEvent.WaitOne((int)millisecondsTimeout, true))
                         {
                             Locks.ClientInstanceAssetsLock.ExitReadLock();
                             return false;
@@ -93,7 +93,7 @@ namespace wasOpenMetaverse
                     MeshDownloadedEvent.Set();
                 });
 
-            if (!MeshDownloadedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!MeshDownloadedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Locks.ClientInstanceAssetsLock.ExitReadLock();
                 return false;

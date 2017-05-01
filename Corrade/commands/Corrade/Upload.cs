@@ -228,7 +228,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateItemFromAssetEvent.Set();
                                     });
-                            if (!CreateItemFromAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateItemFromAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -267,7 +267,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateSoundEvent.Set();
                                     });
-                            if (!CreateSoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateSoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -317,7 +317,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateWearableEvent.Set();
                                     });
-                            if (!CreateWearableEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateWearableEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -348,7 +348,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateLandmarkEvent.Set();
                                     });
-                            if (!CreateLandmarkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateLandmarkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -377,7 +377,7 @@ namespace Corrade
                                         newGesture = createdItem;
                                         CreateGestureEvent.Set();
                                     });
-                            if (!CreateGestureEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateGestureEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -397,7 +397,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UploadGestureAssetEvent.Set();
                                     });
-                            if (!UploadGestureAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!UploadGestureAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -426,7 +426,7 @@ namespace Corrade
                                         newNotecard = createdItem;
                                         CreateNotecardEvent.Set();
                                     });
-                            if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -446,7 +446,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
-                            if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -475,7 +475,7 @@ namespace Corrade
                                         newScript = createdItem;
                                         CreateScriptEvent.Set();
                                     });
-                            if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -492,7 +492,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
-                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);

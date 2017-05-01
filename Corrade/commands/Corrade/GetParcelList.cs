@@ -91,7 +91,7 @@ namespace Corrade
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
                     Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                     Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
-                    if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();

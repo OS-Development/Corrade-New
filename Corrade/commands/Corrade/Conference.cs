@@ -87,7 +87,7 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                             Client.Self.StartIMConference(conferenceParticipants.ToList(), tmpSessionUUID);
-                            if (!conferenceStartedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!conferenceStartedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();

@@ -543,7 +543,7 @@ namespace Corrade
                             linkSet.RootPrimitive.Position, linkSet.RootPrimitive.Scale,
                             linkSet.RootPrimitive.Rotation);
 
-                        if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
@@ -564,7 +564,7 @@ namespace Corrade
                                 corradeCommandParameters.Group.UUID, position,
                                 primitive.Scale, primitive.Rotation);
 
-                            if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 throw new Command.ScriptException(

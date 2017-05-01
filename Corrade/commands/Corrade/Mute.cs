@@ -196,7 +196,7 @@ namespace Corrade
                             // add mute
                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                             Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, muteFlags);
-                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -226,7 +226,7 @@ namespace Corrade
                             // remove the mute
                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                             Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
-                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();

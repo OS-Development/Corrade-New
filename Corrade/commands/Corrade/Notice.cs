@@ -165,7 +165,7 @@ namespace Corrade
                             Locks.ClientInstanceGroupsLock.EnterReadLock();
                             Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
                             Client.Groups.RequestGroupNoticesList(groupUUID);
-                            if (!GroupNoticesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                            if (!GroupNoticesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
                                 Locks.ClientInstanceGroupsLock.ExitReadLock();

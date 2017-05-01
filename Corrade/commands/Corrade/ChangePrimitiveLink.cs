@@ -204,7 +204,7 @@ namespace Corrade
                                 Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                 // Link the primitives.
                                 Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
-                                if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                 {
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
@@ -225,7 +225,7 @@ namespace Corrade
                                 Locks.ClientInstanceObjectsLock.EnterWriteLock();
                                 Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                 Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                if (!PrimChangeLinkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                 {
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                     Locks.ClientInstanceObjectsLock.ExitWriteLock();

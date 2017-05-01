@@ -77,7 +77,7 @@ namespace Corrade
                         var EventQueueRunningEvent = new AutoResetEvent(false);
                         EventHandler<EventQueueRunningEventArgs> handler = (sender, e) => { EventQueueRunningEvent.Set(); };
                         Client.Network.EventQueueRunning += handler;
-                        EventQueueRunningEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                        EventQueueRunningEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
                         Client.Network.EventQueueRunning -= handler;
                     }
 

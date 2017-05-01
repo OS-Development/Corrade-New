@@ -580,7 +580,7 @@ namespace Corrade
                         Client.Groups.RequestBanAction(o.Group,
                             GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
                             (sender, args) => { GroupBanEvent.Set(); });
-                        if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
@@ -681,7 +681,7 @@ namespace Corrade
                 {
                     groupMembersRequestUUIDs.Add(Client.Groups.RequestGroupMembers(o));
                 }
-                GroupMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                GroupMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             });
         }, TimeSpan.Zero, TimeSpan.Zero);
@@ -964,7 +964,7 @@ namespace Corrade
                 (sender, args) => { AppearanceSetEvent.Set(); };
             Client.Appearance.AppearanceSet += HandleAppearanceSet;
             Client.Appearance.RequestSetAppearance(true);
-            AppearanceSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+            AppearanceSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Locks.ClientInstanceAppearanceLock.ExitWriteLock();
         });
@@ -3668,7 +3668,7 @@ namespace Corrade
                     Client.Network.LoggedOut += LoggedOutEventHandler;
                     CorradeLastExecStatus = LastExecStatus.LogoutCrash;
                     Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, false))
+                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, true))
                     {
                         CorradeLastExecStatus = LastExecStatus.LogoutFroze;
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -3904,7 +3904,7 @@ namespace Corrade
                                 assetData = asset.AssetData;
                                 RequestAssetEvent.Set();
                             });
-                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
@@ -4208,6 +4208,20 @@ namespace Corrade
         }
 
         private static void HandleSoundTrigger(object sender, SoundTriggerEventArgs e)
+        {
+            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.Sound, e),
+                corradeConfiguration.MaximumNotificationThreads);
+        }
+
+        private static void HandleAttachedSound(object sender, AttachedSoundEventArgs e)
+        {
+            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Configuration.Notifications.Sound, e),
+                corradeConfiguration.MaximumNotificationThreads);
+        }
+
+        private static void HandleAttachedSoundGain(object sender, AttachedSoundGainChangeEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.Sound, e),
@@ -4955,7 +4969,7 @@ namespace Corrade
                                 EventHandler<EventQueueRunningEventArgs> handler =
                                     (o, p) => { EventQueueRunningEvent.Set(); };
                                 Client.Network.EventQueueRunning += handler;
-                                EventQueueRunningEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false);
+                                EventQueueRunningEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
                                 Client.Network.EventQueueRunning -= handler;
                             }
 
@@ -5608,8 +5622,7 @@ namespace Corrade
                                                     args.IM.FromAgentName), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
                                             using (
                                                 var fileStream =
-                                                    new FileStream(path
-                                                        , FileMode.Append,
+                                                    new FileStream(path, FileMode.Append,
                                                         FileAccess.Write, FileShare.None, 16384, true))
                                             {
                                                 using (
@@ -6010,6 +6023,9 @@ namespace Corrade
             {
                 // we have a generic exception so return the message
                 result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
+                Feedback(Reflection.GetDescriptionFromEnumValue(
+                    Enumerations.ConsoleMessage.CORRADE_COMMAND_ERROR),
+                    ex.ToString(), ex.InnerException?.ToString());
             }
 
             // add the final success status
@@ -6321,10 +6337,14 @@ namespace Corrade
                         {
                             case true:
                                 Client.Sound.SoundTrigger += HandleSoundTrigger;
+                                Client.Sound.AttachedSound += HandleAttachedSound;
+                                Client.Sound.AttachedSoundGainChange += HandleAttachedSoundGain;
                                 break;
 
                             default:
                                 Client.Sound.SoundTrigger -= HandleSoundTrigger;
+                                Client.Sound.AttachedSound -= HandleAttachedSound;
+                                Client.Sound.AttachedSoundGainChange -= HandleAttachedSoundGain;
                                 break;
                         }
                         break;
@@ -7660,7 +7680,7 @@ namespace Corrade
                                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                     Client.Groups.EjectUser(group.Key, o);
-                                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                     {
                                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

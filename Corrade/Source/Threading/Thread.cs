@@ -82,7 +82,7 @@ namespace Corrade.Threading
                 // protect inner thread
                 try
                 {
-                    SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, false);
+                    SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, true);
                     SequentialThreadCompletedEvent.Reset();
                     s();
                     SequentialThreadCompletedEvent.Set();

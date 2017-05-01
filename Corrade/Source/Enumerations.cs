@@ -669,7 +669,10 @@ namespace Corrade
             UNABLE_TO_RETRIEVE_LAST_SCRIPTED_AGENT_STATUS_STATE,
 
             [Reflection.DescriptionAttribute("unable to store last scripted agent status state")]
-            UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE
+            UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE,
+
+            [Reflection.DescriptionAttribute("Corrade command error")]
+            CORRADE_COMMAND_ERROR
         }
 
         /// <summary>

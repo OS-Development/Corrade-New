@@ -127,7 +127,7 @@ namespace Corrade
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.RequestSit(primitive.ID, offset);
-                    if (!SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                    if (!SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;

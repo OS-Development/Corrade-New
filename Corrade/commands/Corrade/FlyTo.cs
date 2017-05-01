@@ -131,7 +131,7 @@ namespace Corrade
                     Client.Self.Fly(true);
                     // Initial thrust.
                     Client.Self.Movement.UpPos = true;
-                    if (!PositionReachedEvent.WaitOne((int)duration, false))
+                    if (!PositionReachedEvent.WaitOne((int)duration, true))
                         succeeded = false;
                     Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
                     Client.Self.Movement.AtPos = false;

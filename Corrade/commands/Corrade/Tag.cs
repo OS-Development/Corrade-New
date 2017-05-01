@@ -124,7 +124,7 @@ namespace Corrade
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                             requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
                             if (
-                                !GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                !GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                 throw new Command.ScriptException(

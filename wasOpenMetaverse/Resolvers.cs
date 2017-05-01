@@ -54,7 +54,7 @@ namespace wasOpenMetaverse
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
             requestUUID = Client.Directory.StartGroupSearch(GroupName, 0, DirectoryManager.DirFindFlags.Groups);
-            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
                 return false;
@@ -142,7 +142,7 @@ namespace wasOpenMetaverse
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             requestUUID = Client.Directory.StartPeopleSearch(
                 string.Format(Utils.EnUsCulture, "{0} {1}", FirstName, LastName), 0);
-            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, false))
+            if (!alarm.Signal.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
                 return false;
@@ -212,7 +212,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(GroupUUID);
-            if (!GroupProfileReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GroupProfileReceivedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 return false;
@@ -278,7 +278,7 @@ namespace wasOpenMetaverse
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(AgentUUID);
-            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
@@ -341,7 +341,7 @@ namespace wasOpenMetaverse
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarNames(AgentUUIDs);
-            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return new Dictionary<UUID, string>();
@@ -442,7 +442,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
             requestUUID = Client.Groups.RequestGroupRoles(GroupUUID);
-            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                 return false;
@@ -488,7 +488,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
             requestUUID = Client.Groups.RequestGroupRoles(GroupUUID);
-            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                 return false;
@@ -530,7 +530,7 @@ namespace wasOpenMetaverse
                 };
             Client.Grid.GridRegion += GridRegionEventHandler;
             Client.Grid.RequestMapRegion(name, GridLayerType.Objects);
-            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Grid.GridRegion -= GridRegionEventHandler;
                 return false;
@@ -610,7 +610,7 @@ namespace wasOpenMetaverse
                 };
             Client.Grid.RegionHandleReply += GridRegionEventHandler;
             Client.Grid.RequestRegionHandle(regionUUID);
-            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, false))
+            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Grid.RegionHandleReply -= GridRegionEventHandler;
                 return false;
