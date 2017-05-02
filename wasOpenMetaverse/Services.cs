@@ -489,12 +489,20 @@ namespace wasOpenMetaverse
         public static HashSet<Primitive> GetPrimitives(GridClient Client, float range)
         {
             Locks.ClientInstanceNetworkLock.EnterReadLock();
-            var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
-                .ToDictionary(o => o.LocalID, p => p);
-            var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
-                .ToDictionary(o => o.LocalID, p => p);
+            var objectsPrimitives = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
+            var objectsAvatars = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var result = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                 .Select(o => new { s = o, a = o?.ObjectsPrimitives?.Copy()?.Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -531,8 +539,11 @@ namespace wasOpenMetaverse
         {
             Locks.ClientInstanceNetworkLock.EnterReadLock();
             var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
-                .ToDictionary(o => o.LocalID, p => p);
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var result = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                 .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -563,12 +574,20 @@ namespace wasOpenMetaverse
         public static HashSet<Avatar> GetAvatars(GridClient Client, float range)
         {
             Locks.ClientInstanceNetworkLock.EnterReadLock();
-            var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values)
-                .ToDictionary(o => o.LocalID, p => p);
-            var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values)
-                .ToDictionary(o => o.LocalID, p => p);
+            var objectsPrimitives = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
+            var objectsAvatars = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var result = new HashSet<Avatar>(Client.Network.Simulators.AsParallel()
                 .Select(o => new { s = o, a = o?.ObjectsAvatars?.Copy()?.Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -777,14 +796,21 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                .Select(o => o.ObjectsPrimitives)
-                .Select(o => o.Copy().Values)
-                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .Select(o => o.ObjectsAvatars)
-                .Select(o => o.Copy().Values)
-                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var objectsPrimitives = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsPrimitives?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
+            var objectsAvatars = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var localPrimitive = Client.Network.Simulators.AsParallel()
                 .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -804,6 +830,7 @@ namespace wasOpenMetaverse
                     return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
                         Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
                 })).FirstOrDefault(o => o.ID.Equals(item));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
             if (localPrimitive == null || !UpdatePrimitive(Client, ref localPrimitive, dataTimeout))
                 return false;
             primitive = localPrimitive;
@@ -826,10 +853,14 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .Select(o => o.ObjectsAvatars)
-                .Select(o => o.Copy().Values)
-                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var objectsAvatars = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var localPrimitive = Client.Network.Simulators.AsParallel()
                 .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -845,6 +876,7 @@ namespace wasOpenMetaverse
                            Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
                                Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
                 })).FirstOrDefault(o => o.ID.Equals(item));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
             if (localPrimitive == null || !UpdatePrimitive(Client, ref localPrimitive, dataTimeout))
                 return false;
             primitive = localPrimitive;
@@ -867,14 +899,21 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
-            var objectsPrimitives = Client.Network.Simulators.AsParallel()
-                .Select(o => o.ObjectsPrimitives)
-                .Select(o => o.Copy().Values)
-                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
-            var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .Select(o => o.ObjectsAvatars)
-                .Select(o => o.Copy().Values)
-                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
+            var objectsPrimitives = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o.ObjectsPrimitives?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
+            var objectsAvatars = Client.Network.Simulators
+                .AsParallel()
+                .SelectMany(o => o?.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var primitives =
                 new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                     .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
@@ -895,6 +934,7 @@ namespace wasOpenMetaverse
                         return Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
                             Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
                     })));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
             if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
             var localPrimitive =
@@ -921,10 +961,13 @@ namespace wasOpenMetaverse
             ref Primitive primitive,
             uint dataTimeout)
         {
+            Locks.ClientInstanceNetworkLock.EnterReadLock();
             var objectsAvatars = Client.Network.Simulators.AsParallel()
-                .Select(o => o.ObjectsAvatars)
-                .Select(o => o.Copy().Values)
-                .SelectMany(o => o).ToDictionary(o => o.LocalID, p => p);
+                .SelectMany(o => o.ObjectsAvatars?.Copy()?.Values?
+                    .OrderBy(p => Vector3d.Distance(Helpers.GlobalPosition(o, p.Position),
+                        Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition))))
+                .GroupBy(o => o.LocalID)
+                .ToDictionary(o => o.Key, p => p.FirstOrDefault());
             var primitives = new HashSet<Primitive>(Client.Network.Simulators.AsParallel()
                 .Select(o => new { s = o, a = o.ObjectsPrimitives.Copy().Values })
                 .SelectMany(o => o.a.AsParallel().Where(p =>
@@ -940,6 +983,7 @@ namespace wasOpenMetaverse
                            Vector3d.Distance(Helpers.GlobalPosition(o.s, parent.Position),
                                Helpers.GlobalPosition(Client.Network.CurrentSim, Client.Self.SimPosition)) <= range;
                 })));
+            Locks.ClientInstanceNetworkLock.ExitReadLock();
             if (!primitives.Any() || !UpdatePrimitives(Client, ref primitives, dataTimeout))
                 return false;
             var localPrimitive =
