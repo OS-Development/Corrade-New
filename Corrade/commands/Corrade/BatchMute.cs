@@ -54,7 +54,10 @@ namespace Corrade
                     CSV.ToKeyValue(
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MUTES)),
-                            corradeCommandParameters.Message))).AsParallel().ForAll(o =>
+                            corradeCommandParameters.Message)))
+                            .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value))
+                            .AsParallel()
+                            .ForAll(o =>
                             {
                                 UUID targetUUID;
                                 bool succeeded;

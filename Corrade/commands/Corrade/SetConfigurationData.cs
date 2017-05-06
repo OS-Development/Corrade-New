@@ -33,7 +33,7 @@ namespace Corrade
                         corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceConfigurationLock.ExitReadLock();
                         lock (ConfigurationFileLock)
                         {

@@ -300,46 +300,6 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.InstantMessageGroup(groupUUID, data);
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
-                            corradeConfiguration.Groups.AsParallel().Where(
-                                o => o.UUID.Equals(groupUUID) && o.ChatLogEnabled).ForAll(
-                                    o =>
-                                    {
-                                        CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
-                                        {
-                                            // Attempt to write to log file,
-                                            try
-                                            {
-                                                lock (GroupLogFileLock)
-                                                {
-                                                    using (var fileStream = new FileStream(o.ChatLog,
-                                                        FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
-                                                    {
-                                                        using (
-                                                            var logWriter = new StreamWriter(fileStream,
-                                                                Encoding.UTF8)
-                                                            )
-                                                        {
-                                                            logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                    Utils.EnUsCulture.DateTimeFormat),
-                                                                myName.First(),
-                                                                myName.Last(),
-                                                                data);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                // or fail and append the fail message.
-                                                Feedback(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        Enumerations.ConsoleMessage
-                                                            .COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                    ex.ToString(), ex.InnerException?.ToString());
-                                            }
-                                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                                    });
                             break;
 
                         case Enumerations.Entity.LOCAL:

@@ -75,7 +75,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                     }
                     var gotPermissions = true;
-                    Parallel.ForEach(CSV.ToKeyValue(data).Select(o => o.Key), (o, s) =>
+                    Parallel.ForEach(CSV.ToKeyValue(data).Select(o => wasInput(o.Key)), (o, s) =>
                     {
                         switch (o)
                         {
@@ -126,7 +126,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    targetGroup = targetGroup.wasCSVToStructure(data);
+                    targetGroup = targetGroup.wasCSVToStructure(data, wasInput);
                     Client.Groups.SetGroupAcceptNotices(groupUUID,
                             targetGroup.AcceptNotices,
                             targetGroup.ListInProfile);

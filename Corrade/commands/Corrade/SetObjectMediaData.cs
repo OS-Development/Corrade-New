@@ -114,7 +114,7 @@ namespace Corrade
                             faceMediaEntries[face].wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                        corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();
                         Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries, simulator);
                         Locks.ClientInstanceObjectsLock.ExitWriteLock();

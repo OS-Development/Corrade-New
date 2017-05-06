@@ -55,7 +55,7 @@ namespace Corrade
                             searchClassified = searchClassified.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message)), wasInput);
                             var classifieds =
                                 new Dictionary<DirectoryManager.Classified, int>();
                             EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
@@ -123,7 +123,7 @@ namespace Corrade
                             searchEvent = searchEvent.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message)), wasInput);
                             var events =
                                 new Dictionary<DirectoryManager.EventsSearchData, int>();
                             EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
@@ -205,7 +205,7 @@ namespace Corrade
                             searchGroup = searchGroup.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message)), wasInput);
                             var groups =
                                 new Dictionary<DirectoryManager.GroupSearchData, int>();
                             EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
@@ -283,7 +283,7 @@ namespace Corrade
                             searchLand = searchLand.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message)), wasInput);
                             var lands =
                                 new Dictionary<DirectoryManager.DirectoryParcel, int>();
                             EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
@@ -445,7 +445,7 @@ namespace Corrade
                             searchPlaces = searchPlaces.wasCSVToStructure(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message)), wasInput);
                             var places =
                                 new Dictionary<DirectoryManager.DirectoryParcel, int>();
                             EventHandler<DirPlacesReplyEventArgs> DirPlacesReplyEventHandler =

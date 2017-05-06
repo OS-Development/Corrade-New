@@ -53,7 +53,7 @@ namespace Corrade
                         replace = true;
                     }
                     var items = CSV.ToKeyValue(attachments)
-                        .ToDictionary(o => o.Key, o => o.Value);
+                        .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value));
                     // if this is SecondLife, check that the additional attachments would not exceed the maximum attachment limit
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {

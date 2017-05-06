@@ -5910,16 +5910,16 @@ namespace Corrade
                     if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
                         !string.IsNullOrEmpty(sift))
                     {
-                        foreach (var kvp in CSV.ToKeyValue(sift))
+                        foreach (var kvp in CSV.ToKeyValue(sift).AsParallel().ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                         {
                             var regex = string.Empty;
-                            switch (Reflection.GetEnumValueFromName<Sift>(wasInput(kvp.Key)))
+                            switch (Reflection.GetEnumValueFromName<Sift>(kvp.Key))
                             {
                                 case Sift.TAKE:
                                     // Take a specified amount from the results if requested.
                                     uint take;
                                     if (!string.IsNullOrEmpty(data) &&
-                                        uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
+                                        uint.TryParse(kvp.Value, NumberStyles.Integer, Utils.EnUsCulture,
                                             out take))
                                     {
                                         data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take((int)take));
@@ -5930,7 +5930,7 @@ namespace Corrade
                                     // Skip a number of elements if requested.
                                     uint skip;
                                     if (!string.IsNullOrEmpty(data) &&
-                                        uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
+                                        uint.TryParse(kvp.Value, NumberStyles.Integer, Utils.EnUsCulture,
                                             out skip))
                                     {
                                         data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip((int)skip));
@@ -5941,7 +5941,7 @@ namespace Corrade
                                     // Return a stride in case it was requested.
                                     uint each;
                                     if (!string.IsNullOrEmpty(data) &&
-                                        uint.TryParse(wasInput(kvp.Value), NumberStyles.Integer, Utils.EnUsCulture,
+                                        uint.TryParse(kvp.Value, NumberStyles.Integer, Utils.EnUsCulture,
                                             out each))
                                     {
                                         data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i % each == 0));
@@ -5950,11 +5950,10 @@ namespace Corrade
 
                                 case Sift.MATCH:
                                     // Match the results if requested.
-                                    regex = wasInput(kvp.Value);
                                     if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
                                     {
                                         data =
-                                            CSV.FromEnumerable(new Regex(regex, RegexOptions.Compiled).Matches(data)
+                                            CSV.FromEnumerable(new Regex(kvp.Value, RegexOptions.Compiled).Matches(data)
                                                 .AsParallel()
                                                 .Cast<Match>()
                                                 .Select(m => m.Groups).SelectMany(
@@ -5971,10 +5970,9 @@ namespace Corrade
                                     break;
 
                                 case Sift.COUNT:
-                                    regex = wasInput(kvp.Value);
                                     if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
                                     {
-                                        var criteria = new Regex(regex, RegexOptions.Compiled);
+                                        var criteria = new Regex(kvp.Value, RegexOptions.Compiled);
                                         data = CSV.ToEnumerable(data).Count(o => criteria.IsMatch(o)).ToString(Utils.EnUsCulture);
                                     }
                                     break;
@@ -5984,7 +5982,7 @@ namespace Corrade
                                     {
                                         data = new Engine()
                                             .SetValue("data", data)
-                                            .Execute(wasInput(kvp.Value))
+                                            .Execute(kvp.Value)
                                             .ToString();
                                     }
                                     break;
@@ -6040,16 +6038,17 @@ namespace Corrade
             var AfterBurnLock = new object();
             // remove keys that are script keys, result keys or invalid key-value pairs
             KeyValue.Decode(corradeCommandParameters.Message)
+                .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value))
                 .AsParallel()
                 .Where(
                     o =>
-                        !string.IsNullOrEmpty(o.Key) && !CorradeResultKeys.Contains(wasInput(o.Key)) &&
-                        !CorradeScriptKeys.Contains(wasInput(o.Key)) && !string.IsNullOrEmpty(o.Value))
+                        !string.IsNullOrEmpty(o.Key) && !CorradeResultKeys.Contains(o.Key) &&
+                        !CorradeScriptKeys.Contains(o.Key) && !string.IsNullOrEmpty(o.Value))
                 .ForAll(o =>
                 {
                     lock (AfterBurnLock)
                     {
-                        result.Add(wasInput(o.Key), wasInput(o.Value));
+                        result.Add(o.Key, o.Value);
                     }
                 });
             return result;

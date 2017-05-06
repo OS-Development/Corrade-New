@@ -32,7 +32,7 @@ namespace Corrade
                     Locks.ClientInstanceSelfLock.ExitReadLock();
                     camera = camera.wasCSVToStructure(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)));
+                            corradeCommandParameters.Message)), wasInput);
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.Camera.AtAxis = camera.AtAxis;
                     Client.Self.Movement.Camera.Far = camera.Far;

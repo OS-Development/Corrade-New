@@ -103,7 +103,7 @@ namespace Corrade
                                                     KeyValue.Get(
                                                         wasOutput(
                                                             Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                                        corradeCommandParameters.Message)));
+                                                        corradeCommandParameters.Message)), wasInput);
                                         });
                                         break;
 
@@ -112,7 +112,7 @@ namespace Corrade
                                             primitive.Textures.DefaultTexture.wasCSVToStructure(wasInput(
                                                 KeyValue.Get(
                                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                                    corradeCommandParameters.Message)));
+                                                    corradeCommandParameters.Message)), wasInput);
                                         break;
 
                                     default:
@@ -132,7 +132,7 @@ namespace Corrade
                                     primitive.Textures.FaceTextures[i].wasCSVToStructure(wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                            corradeCommandParameters.Message)));
+                                            corradeCommandParameters.Message)), wasInput);
                                 break;
                         }
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();

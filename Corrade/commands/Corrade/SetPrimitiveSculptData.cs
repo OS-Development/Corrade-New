@@ -85,7 +85,7 @@ namespace Corrade
                             primitive.Sculpt.wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                        corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();
                         Client.Objects.SetSculpt(simulator,
                                 primitive.LocalID, primitive.Sculpt);

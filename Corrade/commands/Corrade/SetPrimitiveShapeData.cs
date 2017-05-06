@@ -111,7 +111,7 @@ namespace Corrade
                             constructionData.wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                        corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();
                         Client.Objects.SetShape(simulator,
                                 primitive.LocalID, constructionData);

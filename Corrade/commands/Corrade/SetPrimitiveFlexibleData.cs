@@ -86,7 +86,7 @@ namespace Corrade
                             primitive.Flexible.wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                        corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();
                         Client.Objects.SetFlexible(simulator,
                                 primitive.LocalID, primitive.Flexible);

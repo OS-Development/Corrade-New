@@ -155,7 +155,7 @@ namespace Corrade
                     constructionData =
                         constructionData.wasCSVToStructure(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                                corradeCommandParameters.Message)), wasInput);
                     // Get any primitive flags.
                     PrimFlags primFlags = 0;
                     CSV.ToEnumerable(

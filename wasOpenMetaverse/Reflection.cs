@@ -375,9 +375,9 @@ namespace wasOpenMetaverse
         /// <typeparam name="T">the type of the structure</typeparam>
         /// <param name="kvp">a CSV string</param>
         /// <param name="structure">the structure to set the fields and properties for</param>
-        public static T wasCSVToStructure<T>(this T structure, string kvp)
+        public static T wasCSVToStructure<T>(this T structure, string kvp, Func<string, string> escape)
         {
-            CSV.ToKeyValue(kvp).AsParallel().ForAll(d =>
+            CSV.ToKeyValue(kvp).ToDictionary(o => escape.Invoke(o.Key), o => escape.Invoke(o.Value)).AsParallel().ForAll(d =>
             {
                 var info = structure.GetFPInfo(d.Key);
 

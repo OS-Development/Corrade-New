@@ -70,7 +70,7 @@ namespace Corrade
                     parcel =
                         parcel.wasCSVToStructure(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                                corradeCommandParameters.Message)), wasInput);
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
                     {
                         if (parcel.OtherCleanTime > wasOpenMetaverse.Constants.PARCELS.MAXIMUM_AUTO_RETURN_TIME ||

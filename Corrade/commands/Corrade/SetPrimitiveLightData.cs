@@ -85,7 +85,7 @@ namespace Corrade
                             primitive.Light.wasCSVToStructure(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                        corradeCommandParameters.Message)));
+                                        corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();
                         Client.Objects.SetLight(simulator,
                                 primitive.LocalID, primitive.Light);

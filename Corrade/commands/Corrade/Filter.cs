@@ -39,7 +39,7 @@ namespace Corrade
                                         corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(input))
                             {
-                                foreach (var i in CSV.ToKeyValue(input))
+                                foreach (var i in CSV.ToKeyValue(input).AsParallel().ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                                 {
                                     inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
                                     inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));
@@ -56,7 +56,7 @@ namespace Corrade
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(output))
                             {
-                                foreach (var i in CSV.ToKeyValue(output))
+                                foreach (var i in CSV.ToKeyValue(output).AsParallel().ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                                 {
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));

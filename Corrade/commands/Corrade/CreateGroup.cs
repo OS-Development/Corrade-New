@@ -60,7 +60,7 @@ namespace Corrade
                     targetGroup =
                         targetGroup.wasCSVToStructure(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                                corradeCommandParameters.Message)), wasInput);
                     var succeeded = false;
                     var GroupCreatedReplyEvent = new ManualResetEvent(false);
                     var groupUUID = UUID.Zero;

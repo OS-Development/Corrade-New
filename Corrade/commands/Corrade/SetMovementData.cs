@@ -34,7 +34,7 @@ namespace Corrade
                     Locks.ClientInstanceSelfLock.ExitReadLock();
                     movement = movement.wasCSVToStructure(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)));
+                            corradeCommandParameters.Message)), wasInput);
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
                     Client.Self.Movement.AtNeg = movement.AtNeg;

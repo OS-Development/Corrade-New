@@ -68,7 +68,7 @@ namespace Corrade
                     inventoryitem =
                         inventoryitem.wasCSVToStructure(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)));
+                                corradeCommandParameters.Message)), wasInput);
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.RequestUpdateItem(inventoryitem);
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();

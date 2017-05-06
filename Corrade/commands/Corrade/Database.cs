@@ -50,7 +50,7 @@ namespace Corrade
                         {
                             if (!string.IsNullOrEmpty(data))
                             {
-                                foreach (var parameter in CSV.ToKeyValue(data))
+                                foreach (var parameter in CSV.ToKeyValue(data).AsParallel().ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                                 {
                                     command
                                         .Parameters
