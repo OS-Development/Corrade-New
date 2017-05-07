@@ -5912,7 +5912,6 @@ namespace Corrade
                     {
                         foreach (var kvp in CSV.ToKeyValue(sift).AsParallel().ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                         {
-                            var regex = string.Empty;
                             switch (Reflection.GetEnumValueFromName<Sift>(kvp.Key))
                             {
                                 case Sift.TAKE:
@@ -5950,7 +5949,7 @@ namespace Corrade
 
                                 case Sift.MATCH:
                                     // Match the results if requested.
-                                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
+                                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(kvp.Value))
                                     {
                                         data =
                                             CSV.FromEnumerable(new Regex(kvp.Value, RegexOptions.Compiled).Matches(data)
@@ -5970,7 +5969,7 @@ namespace Corrade
                                     break;
 
                                 case Sift.COUNT:
-                                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(regex))
+                                    if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(kvp.Value))
                                     {
                                         var criteria = new Regex(kvp.Value, RegexOptions.Compiled);
                                         data = CSV.ToEnumerable(data).Count(o => criteria.IsMatch(o)).ToString(Utils.EnUsCulture);
