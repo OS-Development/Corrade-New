@@ -350,8 +350,7 @@ namespace Corrade
                                                     wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
                                                 {
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError
-                                                            .TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
+                                                        Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                                                 }
                                                 break;
                                         }
