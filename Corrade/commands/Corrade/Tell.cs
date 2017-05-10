@@ -360,60 +360,6 @@ namespace Corrade
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.Chat(data, chatChannel, chatType);
                                     Locks.ClientInstanceSelfLock.ExitWriteLock();
-                                    // do not log empty messages
-                                    if (string.IsNullOrEmpty(data))
-                                        break;
-                                    // Log local chat,
-                                    if (corradeConfiguration.LocalMessageLogEnabled)
-                                    {
-                                        var fullName =
-                                            new List<string>(
-                                                wasOpenMetaverse.Helpers.GetAvatarNames(string.Join(" ",
-                                                    Client.Self.FirstName,
-                                                    Client.Self.LastName)));
-
-                                        CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
-                                        {
-                                            try
-                                            {
-                                                var path = string.Format("{0}.{1}", Path.Combine(
-                                                    corradeConfiguration.LocalMessageLogDirectory,
-                                                    Client.Network.CurrentSim.Name), CORRADE_CONSTANTS
-                                                        .LOG_FILE_EXTENSION);
-                                                lock (LocalLogFileLock)
-                                                {
-                                                    using (var fileStream = new FileStream(path,
-                                                        FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
-                                                    {
-                                                        using (
-                                                            var logWriter = new StreamWriter(fileStream,
-                                                                Encoding.UTF8)
-                                                            )
-                                                        {
-                                                            logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
-                                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                    Utils.EnUsCulture.DateTimeFormat),
-                                                                fullName.First(),
-                                                                fullName.Last(),
-                                                                Enum.GetName(typeof(ChatType), chatType),
-                                                                data);
-                                                            //logWriter.Flush();
-                                                            //logWriter.Close();
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                // or fail and append the fail message.
-                                                Feedback(
-                                                    Reflection.GetNameFromEnumValue(
-                                                        Enumerations.ConsoleMessage
-                                                            .COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
-                                                    ex.ToString(), ex.InnerException?.ToString());
-                                            }
-                                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                                    }
                                     break;
 
                                 default:
