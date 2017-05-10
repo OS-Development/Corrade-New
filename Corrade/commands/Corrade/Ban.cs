@@ -154,7 +154,8 @@ namespace Corrade
                                         avatars =
                                             avatars.AsParallel()
                                                 .Where(o => !bannedAgents.ContainsKey(o.Key))
-                                                .ToDictionary(o => o.Key, o => o.Value);
+                                                .GroupBy(o => o.Key)
+                                                .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                                     }
                                     break;
 
@@ -165,7 +166,8 @@ namespace Corrade
                                         avatars =
                                             avatars.AsParallel()
                                                 .Where(o => bannedAgents.ContainsKey(o.Key))
-                                                .ToDictionary(o => o.Key, o => o.Value);
+                                                .GroupBy(o => o.Key)
+                                                .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                                     }
                                     break;
                             }

@@ -75,7 +75,10 @@ namespace Corrade
                                 if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(groupUUID))
                                     return;
 
-                                roleData = args.Roles.ToDictionary(o => o.Value.Title, o => o.Value.ID);
+                                roleData = args
+                                    .Roles
+                                    .GroupBy(o => o.Value.Title)
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value.ID);
                                 GroupRoleDataReplyEvent.Set();
                             };
                             Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;

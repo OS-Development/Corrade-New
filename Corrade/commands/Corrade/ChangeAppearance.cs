@@ -104,7 +104,8 @@ namespace Corrade
                     var LockObject = new object();
                     var attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
-                        .ToDictionary(o => o.Key, o => o.Value);
+                        .GroupBy(o => o.Key)
+                        .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                     Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder,
                         corradeConfiguration.ServicesTimeout).AsParallel().ForAll(
                             o =>
@@ -198,7 +199,8 @@ namespace Corrade
 
                     attachments = Inventory.GetAttachments(Client,
                         corradeConfiguration.DataTimeout)
-                        .ToDictionary(o => o.Key, o => o.Value);
+                        .GroupBy(o => o.Key)
+                        .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                     equipItems.AsParallel().Select(o => o).ForAll(o =>
                     {
                         var slot = string.Empty;

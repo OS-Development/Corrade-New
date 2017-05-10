@@ -262,8 +262,9 @@ namespace Corrade
                             if (groupSoftBansModified)
                                 SaveGroupSoftBansState.Invoke();
 
-                            var process =
-                                new Dictionary<UUID, string>(avatars.ToDictionary(o => o.Key, o => o.Value));
+                            var process = avatars
+                                .GroupBy(o => o.Key)
+                                .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
 
                             switch (action)
                             {

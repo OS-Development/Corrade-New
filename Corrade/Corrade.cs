@@ -4093,7 +4093,12 @@ namespace Corrade
                 // Build the afterburn.
                 if (z.Afterburn != null && z.Afterburn.Any())
                 {
-                    notificationData = notificationData.Concat(z.Afterburn).ToDictionary(o => o.Key, o => o.Value);
+                    notificationData = notificationData
+                        .Concat(z.Afterburn)
+                        .AsParallel()
+                        .GroupBy(o => o.Key)
+                        .Select(o => o.FirstOrDefault())
+                        .ToDictionary(o => o.Key, o => o.Value);
                 }
 
                 // Enqueue the notification for the group.
@@ -5910,7 +5915,10 @@ namespace Corrade
                     if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
                         !string.IsNullOrEmpty(sift))
                     {
-                        foreach (var kvp in CSV.ToKeyValue(sift).AsParallel().ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
+                        foreach (var kvp in CSV.ToKeyValue(sift).AsParallel()
+                            .GroupBy(o => o.Key)
+                            .Select(o => o.FirstOrDefault())
+                            .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                         {
                             switch (Reflection.GetEnumValueFromName<Sift>(kvp.Key))
                             {

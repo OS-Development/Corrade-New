@@ -90,6 +90,9 @@ namespace Corrade
                                 var results = new HashSet<string>(Reflection.GetEnumNames<Command.ResultKeys>());
                                 var scripts = new HashSet<string>(Reflection.GetEnumNames<Command.ScriptKeys>());
                                 CSV.ToKeyValue(afterBurnData)
+                                    .AsParallel()
+                                    .GroupBy(o => o.Key)
+                                    .Select(o => o.FirstOrDefault())
                                     .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value))
                                     .AsParallel()
                                     .Where(

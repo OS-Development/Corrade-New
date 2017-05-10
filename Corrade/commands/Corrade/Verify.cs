@@ -68,7 +68,8 @@ namespace Corrade
                     int modified = 0;
                     Tools
                         .GetReleaseFileHashes(server, Assembly.GetEntryAssembly().GetName().Version, (int)corradeConfiguration.ServicesTimeout)
-                        .ToDictionary(o => o.Key, o => o.Value)
+                        .GroupBy(o => o.Key)
+                        .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value)
                         .AsParallel()
                         .ForAll(item =>
                         {

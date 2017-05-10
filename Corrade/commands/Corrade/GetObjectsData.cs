@@ -162,7 +162,8 @@ namespace Corrade
                             if (avatar == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.AVATAR_NOT_IN_RANGE);
                             var objectsPrimitives = Services.GetObjects(Client, range)
-                                .ToDictionary(o => o.LocalID, o => o);
+                                .GroupBy(o => o.LocalID)
+                                .ToDictionary(o => o.Key, o => o.FirstOrDefault());
                             objectsPrimitives.AsParallel().ForAll(
                                 o =>
                                 {

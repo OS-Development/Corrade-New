@@ -46,7 +46,8 @@ namespace Corrade
                             {
                                 topTasks =
                                     args.Tasks.OrderByDescending(o => o.Value.Score)
-                                        .ToDictionary(o => o.Key, o => o.Value);
+                                        .GroupBy(o => o.Key)
+                                        .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                                 TopScriptsReplyEvent.Set();
                             };
                             Locks.ClientInstanceEstateLock.EnterWriteLock();
@@ -70,7 +71,8 @@ namespace Corrade
                                 {
                                     topTasks =
                                         args.Tasks.OrderByDescending(o => o.Value.Score)
-                                            .ToDictionary(o => o.Key, o => o.Value);
+                                            .GroupBy(o => o.Key)
+                                            .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                                     TopCollidersReplyEvent.Set();
                                 };
                             Locks.ClientInstanceEstateLock.EnterWriteLock();

@@ -86,7 +86,8 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                 }
                                 objectsPrimitives = Services.GetPrimitives(Client, range)
-                                    .ToDictionary(o => o.LocalID, o => o);
+                                    .GroupBy(o => o.LocalID)
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault());
                                 Services.GetPrimitives(Client, new[]
                                 {
                                     Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
@@ -185,7 +186,8 @@ namespace Corrade
                                 if (avatar == null)
                                     throw new Command.ScriptException(Enumerations.ScriptError.AVATAR_NOT_IN_RANGE);
                                 objectsPrimitives = Services.GetPrimitives(Client, range)
-                                    .ToDictionary(o => o.LocalID, o => o);
+                                    .GroupBy(o => o.LocalID)
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault());
                                 objectsPrimitives.AsParallel().ForAll(
                                     o =>
                                     {

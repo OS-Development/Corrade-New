@@ -82,7 +82,7 @@ namespace Corrade
                     // First resolve the all the role names to role UUIDs
                     var roleUUIDNames = new Hashtable(groupRolesMembers.Count);
                     var LockObject = new object();
-                    groupRolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key).ForAll(
+                    groupRolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.FirstOrDefault()).Where(o => !o.Equals(default(KeyValuePair<UUID, UUID>))).Select(o => o.Key).ForAll(
                         o =>
                         {
                             var roleName = string.Empty;

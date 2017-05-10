@@ -55,6 +55,9 @@ namespace Corrade
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MUTES)),
                             corradeCommandParameters.Message)))
+                            .AsParallel()
+                            .GroupBy(o => o.Key)
+                            .Select(o => o.FirstOrDefault())
                             .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value))
                             .AsParallel()
                             .ForAll(o =>
