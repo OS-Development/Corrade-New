@@ -41,7 +41,7 @@ namespace Corrade
                             .ForAll(o => o.Value.AsParallel().ForAll(p =>
                             {
                                 p.ProcessParameters(Client, corradeConfiguration, o.Key,
-                                    new List<object> { simChangedEventArgs },
+                                    new List<object> { simChangedEventArgs, Client },
                                     notificationData, LockObject, languageDetector,
                                     GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                             }));
