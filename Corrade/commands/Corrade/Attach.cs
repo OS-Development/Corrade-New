@@ -133,6 +133,7 @@ namespace Corrade
                                                             corradeConfiguration.ServicesTimeout);
                                                         break;
                                                 }
+
                                                 if (inventoryItem == null)
                                                     return;
 

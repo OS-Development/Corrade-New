@@ -98,9 +98,6 @@ namespace Corrade
                                     break;
                             }
 
-                            if (inventoryItem == null)
-                                return;
-
                             if (inventoryItem is InventoryWearable)
                             {
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(

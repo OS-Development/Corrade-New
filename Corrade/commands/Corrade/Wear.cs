@@ -78,15 +78,9 @@ namespace Corrade
                                         break;
                                 }
 
-                                if (inventoryItem == null)
-                                    return null;
-
-                                if (inventoryItem is InventoryWearable)
-                                    return null;
-
                                 return inventoryItem;
                             })
-                        .Where(o => o != null)
+                        .Where(Inventory.CanBeWorn)
                         .ForAll(
                             o =>
                             {
