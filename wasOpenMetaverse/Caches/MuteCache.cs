@@ -10,7 +10,17 @@ namespace wasOpenMetaverse.Caches
 {
     public class MuteCache : ObservableHashSet<Cache.MuteEntry>
     {
+        private readonly object SyncRoot = new object();
+
         public Cache.MuteEntry this[Cache.MuteEntry muteEntry]
-            => Contains(muteEntry) ? muteEntry : default(Cache.MuteEntry);
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return Contains(muteEntry) ? muteEntry : default(Cache.MuteEntry);
+                }
+            }
+        }
     }
 }

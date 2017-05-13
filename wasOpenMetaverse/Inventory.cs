@@ -816,6 +816,12 @@ namespace wasOpenMetaverse
             uint millisecondsTimeout, bool force = false)
         {
             Locks.ClientInstanceNetworkLock.EnterReadLock();
+            // Check if we are connected.
+            if (!Client.Network.Connected)
+            {
+                Locks.ClientInstanceNetworkLock.ExitReadLock();
+                return;
+            }
             // Wait for CAPs.
             if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
             {
@@ -847,6 +853,12 @@ namespace wasOpenMetaverse
             uint millisecondsTimeout, bool force = false)
         {
             Locks.ClientInstanceNetworkLock.EnterReadLock();
+            // Check if we are connected.
+            if (!Client.Network.Connected)
+            {
+                Locks.ClientInstanceNetworkLock.ExitReadLock();
+                return;
+            }
             // Wait for CAPs.
             if (!Client.Network.CurrentSim.Caps.IsEventQueueRunning)
             {

@@ -13,6 +13,8 @@ namespace wasOpenMetaverse.Caches
 {
     public class RegionCache : ObservableHashSet<Cache.Region>
     {
+        private readonly object SyncRoot = new object();
+
         public Dictionary<ulong, Cache.Region> handleCache = new Dictionary<ulong, Cache.Region>();
         public Dictionary<string, Cache.Region> nameCache = new Dictionary<string, Cache.Region>();
 
@@ -29,7 +31,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Region region;
-                nameCache.TryGetValue(name, out region);
+                lock (SyncRoot)
+                {
+                    nameCache.TryGetValue(name, out region);
+                }
                 return region;
             }
         }
@@ -39,7 +44,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Region region;
-                handleCache.TryGetValue(handle, out region);
+                lock (SyncRoot)
+                {
+                    handleCache.TryGetValue(handle, out region);
+                }
                 return region;
             }
         }
@@ -49,7 +57,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Region region;
-                UUIDCache.TryGetValue(UUID, out region);
+                lock (SyncRoot)
+                {
+                    UUIDCache.TryGetValue(UUID, out region);
+                }
                 return region;
             }
         }
@@ -59,7 +70,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Region region;
-                nameHandleCache.TryGetValue(name, handle, out region);
+                lock (SyncRoot)
+                {
+                    nameHandleCache.TryGetValue(name, handle, out region);
+                }
                 return region;
             }
         }
@@ -69,7 +83,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Region region;
-                UUIDHandleCache.TryGetValue(UUID, handle, out region);
+                lock (SyncRoot)
+                {
+                    UUIDHandleCache.TryGetValue(UUID, handle, out region);
+                }
                 return region;
             }
         }
@@ -78,7 +95,11 @@ namespace wasOpenMetaverse.Caches
         {
             get
             {
-                var r = this[region.Name];
+                Cache.Region r;
+                lock (SyncRoot)
+                {
+                    r = this[region.Name];
+                }
                 if (!r.Equals(default(Cache.Region)))
                     return r;
 
@@ -88,7 +109,10 @@ namespace wasOpenMetaverse.Caches
 
                 if (!region.UUID.Equals(UUID.Zero))
                 {
-                    r = this[region.UUID];
+                    lock (SyncRoot)
+                    {
+                        r = this[region.UUID];
+                    }
                     if (!r.Equals(default(Cache.Region)))
                         return r;
                 }
@@ -99,91 +123,118 @@ namespace wasOpenMetaverse.Caches
 
         public new void Clear()
         {
-            nameCache.Clear();
-            handleCache.Clear();
-            UUIDCache.Clear();
-            nameHandleCache.Clear();
-            UUIDHandleCache.Clear();
-            base.Clear();
+            lock (SyncRoot)
+            {
+                nameCache.Clear();
+                handleCache.Clear();
+                UUIDCache.Clear();
+                nameHandleCache.Clear();
+                UUIDHandleCache.Clear();
+                base.Clear();
+            }
         }
 
         public new void Add(Cache.Region region)
         {
-            if (!nameCache.ContainsKey(region.Name))
-                nameCache.Add(region.Name, region);
-            if (!handleCache.ContainsKey(region.Handle))
-                handleCache.Add(region.Handle, region);
-            if (!UUIDCache.ContainsKey(region.UUID))
-                UUIDCache.Add(region.UUID, region);
-            if (!nameHandleCache.ContainsKey(region.Name, region.Handle))
-                nameHandleCache.Add(region.Name, region.Handle, region);
-            if (!UUIDHandleCache.ContainsKey(region.UUID, region.Handle))
-                UUIDHandleCache.Add(region.UUID, region.Handle, region);
-            base.Add(region);
+            lock (SyncRoot)
+            {
+                if (!nameCache.ContainsKey(region.Name))
+                    nameCache.Add(region.Name, region);
+                if (!handleCache.ContainsKey(region.Handle))
+                    handleCache.Add(region.Handle, region);
+                if (!UUIDCache.ContainsKey(region.UUID))
+                    UUIDCache.Add(region.UUID, region);
+                if (!nameHandleCache.ContainsKey(region.Name, region.Handle))
+                    nameHandleCache.Add(region.Name, region.Handle, region);
+                if (!UUIDHandleCache.ContainsKey(region.UUID, region.Handle))
+                    UUIDHandleCache.Add(region.UUID, region.Handle, region);
+                base.Add(region);
+            }
         }
 
         public new bool Remove(Cache.Region region)
         {
-            nameCache.Remove(region.Name);
-            handleCache.Remove(region.Handle);
-            UUIDCache.Remove(region.UUID);
-            nameHandleCache.Remove(region.Name);
-            UUIDHandleCache.Remove(region.UUID);
-            return base.Remove(region);
+            lock (SyncRoot)
+            {
+                nameCache.Remove(region.Name);
+                handleCache.Remove(region.Handle);
+                UUIDCache.Remove(region.UUID);
+                nameHandleCache.Remove(region.Name);
+                UUIDHandleCache.Remove(region.UUID);
+                return base.Remove(region);
+            }
         }
 
         public new void UnionWith(IEnumerable<Cache.Region> list)
         {
-            var enumerable = list as Cache.Region[] ?? list.ToArray();
-            enumerable.Except(AsEnumerable()).AsParallel().ForAll(region =>
+            lock (SyncRoot)
             {
-                if (nameCache.ContainsKey(region.Name))
-                    nameCache.Remove(region.Name);
-                nameCache.Add(region.Name, region);
+                var enumerable = new HashSet<Cache.Region>(list);
+                enumerable.Except(AsEnumerable()).AsParallel().ForAll(region =>
+                {
+                    if (nameCache.ContainsKey(region.Name))
+                        nameCache.Remove(region.Name);
+                    nameCache.Add(region.Name, region);
 
-                if (handleCache.ContainsKey(region.Handle))
-                    handleCache.Remove(region.Handle);
-                handleCache.Add(region.Handle, region);
+                    if (handleCache.ContainsKey(region.Handle))
+                        handleCache.Remove(region.Handle);
+                    handleCache.Add(region.Handle, region);
 
-                if (UUIDCache.ContainsKey(region.UUID))
-                    UUIDCache.Remove(region.UUID);
-                UUIDCache.Add(region.UUID, region);
+                    if (UUIDCache.ContainsKey(region.UUID))
+                        UUIDCache.Remove(region.UUID);
+                    UUIDCache.Add(region.UUID, region);
 
-                if (nameHandleCache.ContainsKey(region.Name, region.Handle))
-                    nameHandleCache.Remove(region.Name, region.Handle);
-                nameHandleCache.Add(region.Name, region.Handle, region);
+                    if (nameHandleCache.ContainsKey(region.Name, region.Handle))
+                        nameHandleCache.Remove(region.Name, region.Handle);
+                    nameHandleCache.Add(region.Name, region.Handle, region);
 
-                if (UUIDHandleCache.ContainsKey(region.UUID, region.Handle))
-                    UUIDHandleCache.Remove(region.UUID, region.Handle);
-                UUIDHandleCache.Add(region.UUID, region.Handle, region);
-            });
+                    if (UUIDHandleCache.ContainsKey(region.UUID, region.Handle))
+                        UUIDHandleCache.Remove(region.UUID, region.Handle);
+                    UUIDHandleCache.Add(region.UUID, region.Handle, region);
+                });
 
-            base.UnionWith(enumerable);
+                base.UnionWith(enumerable);
+            }
         }
 
         public bool Contains(string name)
         {
-            return nameCache.ContainsKey(name);
+            lock (SyncRoot)
+            {
+                return nameCache.ContainsKey(name);
+            }
         }
 
         public bool Contains(ulong handle)
         {
-            return handleCache.ContainsKey(handle);
+            lock (SyncRoot)
+            {
+                return handleCache.ContainsKey(handle);
+            }
         }
 
         public bool Contains(UUID UUID)
         {
-            return UUIDCache.ContainsKey(UUID);
+            lock (SyncRoot)
+            {
+                return UUIDCache.ContainsKey(UUID);
+            }
         }
 
         public bool Contains(string name, ulong handle)
         {
-            return nameHandleCache.ContainsKey(name, handle);
+            lock (SyncRoot)
+            {
+                return nameHandleCache.ContainsKey(name, handle);
+            }
         }
 
         public bool Contains(UUID UUID, ulong handle)
         {
-            return UUIDHandleCache.ContainsKey(UUID, handle);
+            lock (SyncRoot)
+            {
+                return UUIDHandleCache.ContainsKey(UUID, handle);
+            }
         }
     }
 }

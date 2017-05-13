@@ -33,6 +33,9 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Tabs = new System.Windows.Forms.TabControl();
             this.ClientTabPage = new System.Windows.Forms.TabPage();
+            this.AutoSASBox = new System.Windows.Forms.GroupBox();
+            this.pictureBox66 = new System.Windows.Forms.PictureBox();
+            this.AutoScriptedAgentStatus = new System.Windows.Forms.CheckBox();
             this.groupBox96 = new System.Windows.Forms.GroupBox();
             this.pictureBox109 = new System.Windows.Forms.PictureBox();
             this.EnableMultipleSimulators = new System.Windows.Forms.CheckBox();
@@ -46,15 +49,15 @@
             this.AutoPruneCacheInterval = new System.Windows.Forms.TextBox();
             this.pictureBox106 = new System.Windows.Forms.PictureBox();
             this.AutoPruneCache = new System.Windows.Forms.CheckBox();
-            this.ClientIdentificationTagBox = new System.Windows.Forms.GroupBox();
-            this.pictureBox12 = new System.Windows.Forms.PictureBox();
-            this.ClientIdentificationTag = new System.Windows.Forms.TextBox();
-            this.AbnormalExitCodeBox = new System.Windows.Forms.GroupBox();
-            this.pictureBox10 = new System.Windows.Forms.PictureBox();
-            this.AbnomalExitCode = new System.Windows.Forms.NumericUpDown();
             this.ExpectedExitCodeBox = new System.Windows.Forms.GroupBox();
             this.pictureBox11 = new System.Windows.Forms.PictureBox();
             this.ExpectedExitCode = new System.Windows.Forms.NumericUpDown();
+            this.AbnormalExitCodeBox = new System.Windows.Forms.GroupBox();
+            this.pictureBox10 = new System.Windows.Forms.PictureBox();
+            this.AbnomalExitCode = new System.Windows.Forms.NumericUpDown();
+            this.ClientIdentificationTagBox = new System.Windows.Forms.GroupBox();
+            this.pictureBox12 = new System.Windows.Forms.PictureBox();
+            this.ClientIdentificationTag = new System.Windows.Forms.TextBox();
             this.GroupCreateFeeBox = new System.Windows.Forms.GroupBox();
             this.pictureBox9 = new System.Windows.Forms.PictureBox();
             this.GroupCreateFee = new System.Windows.Forms.TextBox();
@@ -384,10 +387,6 @@
             this.label26 = new System.Windows.Forms.Label();
             this.LimitsClientIdle = new System.Windows.Forms.TextBox();
             this.LimitsClientConnections = new System.Windows.Forms.TextBox();
-            this.groupBox70 = new System.Windows.Forms.GroupBox();
-            this.pictureBox43 = new System.Windows.Forms.PictureBox();
-            this.label25 = new System.Windows.Forms.Label();
-            this.LimitsLogoutTimeout = new System.Windows.Forms.TextBox();
             this.groupBox69 = new System.Windows.Forms.GroupBox();
             this.pictureBox42 = new System.Windows.Forms.PictureBox();
             this.LimitsMembershipSweep = new System.Windows.Forms.TextBox();
@@ -491,12 +490,11 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.AutoSASBox = new System.Windows.Forms.GroupBox();
-            this.pictureBox66 = new System.Windows.Forms.PictureBox();
-            this.AutoScriptedAgentStatus = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
+            this.AutoSASBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
             this.groupBox96.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).BeginInit();
             this.groupBox63.SuspendLayout();
@@ -505,14 +503,14 @@
             this.AutoPruneCacheBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox105)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox106)).BeginInit();
-            this.ClientIdentificationTagBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).BeginInit();
-            this.AbnormalExitCodeBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.AbnomalExitCode)).BeginInit();
             this.ExpectedExitCodeBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox11)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ExpectedExitCode)).BeginInit();
+            this.AbnormalExitCodeBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AbnomalExitCode)).BeginInit();
+            this.ClientIdentificationTagBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).BeginInit();
             this.GroupCreateFeeBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox9)).BeginInit();
             this.AutoActivateGroupBox.SuspendLayout();
@@ -713,8 +711,6 @@
             this.groupBox71.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox45)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox44)).BeginInit();
-            this.groupBox70.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).BeginInit();
             this.groupBox69.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox42)).BeginInit();
             this.groupBox68.SuspendLayout();
@@ -762,8 +758,6 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            this.AutoSASBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -823,6 +817,41 @@
             this.ClientTabPage.TabIndex = 0;
             this.ClientTabPage.Text = "Client";
             this.ClientTabPage.UseVisualStyleBackColor = true;
+            // 
+            // AutoSASBox
+            // 
+            this.AutoSASBox.Controls.Add(this.pictureBox66);
+            this.AutoSASBox.Controls.Add(this.AutoScriptedAgentStatus);
+            this.AutoSASBox.Location = new System.Drawing.Point(12, 236);
+            this.AutoSASBox.Name = "AutoSASBox";
+            this.AutoSASBox.Size = new System.Drawing.Size(126, 50);
+            this.AutoSASBox.TabIndex = 14;
+            this.AutoSASBox.TabStop = false;
+            this.AutoSASBox.Text = "Auto - SAS";
+            // 
+            // pictureBox66
+            // 
+            this.pictureBox66.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox66.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox66.Image")));
+            this.pictureBox66.Location = new System.Drawing.Point(100, 21);
+            this.pictureBox66.Name = "pictureBox66";
+            this.pictureBox66.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox66.TabIndex = 11;
+            this.pictureBox66.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox66, resources.GetString("pictureBox66.ToolTip"));
+            // 
+            // AutoScriptedAgentStatus
+            // 
+            this.AutoScriptedAgentStatus.AutoSize = true;
+            this.AutoScriptedAgentStatus.Checked = true;
+            this.AutoScriptedAgentStatus.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.AutoScriptedAgentStatus.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AutoScriptedAgentStatus.Location = new System.Drawing.Point(15, 24);
+            this.AutoScriptedAgentStatus.Name = "AutoScriptedAgentStatus";
+            this.AutoScriptedAgentStatus.Size = new System.Drawing.Size(68, 17);
+            this.AutoScriptedAgentStatus.TabIndex = 0;
+            this.AutoScriptedAgentStatus.Text = "Enabled";
+            this.AutoScriptedAgentStatus.UseVisualStyleBackColor = true;
             // 
             // groupBox96
             // 
@@ -972,40 +1001,41 @@
             this.AutoPruneCache.Text = "Enabled";
             this.AutoPruneCache.UseVisualStyleBackColor = true;
             // 
-            // ClientIdentificationTagBox
+            // ExpectedExitCodeBox
             // 
-            this.ClientIdentificationTagBox.Controls.Add(this.pictureBox12);
-            this.ClientIdentificationTagBox.Controls.Add(this.ClientIdentificationTag);
-            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(12, 306);
-            this.ClientIdentificationTagBox.Name = "ClientIdentificationTagBox";
-            this.ClientIdentificationTagBox.Size = new System.Drawing.Size(267, 55);
-            this.ClientIdentificationTagBox.TabIndex = 10;
-            this.ClientIdentificationTagBox.TabStop = false;
-            this.ClientIdentificationTagBox.Text = "Client Identification Tag";
+            this.ExpectedExitCodeBox.Controls.Add(this.pictureBox11);
+            this.ExpectedExitCodeBox.Controls.Add(this.ExpectedExitCode);
+            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(303, 211);
+            this.ExpectedExitCodeBox.Name = "ExpectedExitCodeBox";
+            this.ExpectedExitCodeBox.Size = new System.Drawing.Size(126, 50);
+            this.ExpectedExitCodeBox.TabIndex = 8;
+            this.ExpectedExitCodeBox.TabStop = false;
+            this.ExpectedExitCodeBox.Text = "Expected Exit Code";
             // 
-            // pictureBox12
+            // pictureBox11
             // 
-            this.pictureBox12.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox12.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox12.Image")));
-            this.pictureBox12.Location = new System.Drawing.Point(237, 21);
-            this.pictureBox12.Name = "pictureBox12";
-            this.pictureBox12.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox12.TabIndex = 11;
-            this.pictureBox12.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox12, "This can be set to a texture UUID on the connecting\r\ngrid that Corrade will use f" +
-        "or identification. By default \r\nthis is set to a texture UUID on the Second Life" +
-        " grid \r\nthat portreys the Corrade logo.");
-            this.pictureBox12.Click += new System.EventHandler(this.ShowToolTip);
+            this.pictureBox11.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox11.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox11.Image")));
+            this.pictureBox11.Location = new System.Drawing.Point(95, 19);
+            this.pictureBox11.Name = "pictureBox11";
+            this.pictureBox11.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox11.TabIndex = 11;
+            this.pictureBox11.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox11, "The error code to return on normal termination.");
+            this.pictureBox11.Click += new System.EventHandler(this.ShowToolTip);
             // 
-            // ClientIdentificationTag
+            // ExpectedExitCode
             // 
-            this.ClientIdentificationTag.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ClientIdentificationTag.Location = new System.Drawing.Point(7, 22);
-            this.ClientIdentificationTag.MaxLength = 36;
-            this.ClientIdentificationTag.Name = "ClientIdentificationTag";
-            this.ClientIdentificationTag.Size = new System.Drawing.Size(224, 20);
-            this.ClientIdentificationTag.TabIndex = 0;
-            this.ClientIdentificationTag.Text = "0705230f-cbd0-99bd-040b-28eb348b5255";
+            this.ExpectedExitCode.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ExpectedExitCode.Location = new System.Drawing.Point(7, 19);
+            this.ExpectedExitCode.Minimum = new decimal(new int[] {
+            100,
+            0,
+            0,
+            -2147483648});
+            this.ExpectedExitCode.Name = "ExpectedExitCode";
+            this.ExpectedExitCode.Size = new System.Drawing.Size(82, 20);
+            this.ExpectedExitCode.TabIndex = 9;
             // 
             // AbnormalExitCodeBox
             // 
@@ -1044,41 +1074,40 @@
             this.AbnomalExitCode.Size = new System.Drawing.Size(85, 20);
             this.AbnomalExitCode.TabIndex = 0;
             // 
-            // ExpectedExitCodeBox
+            // ClientIdentificationTagBox
             // 
-            this.ExpectedExitCodeBox.Controls.Add(this.pictureBox11);
-            this.ExpectedExitCodeBox.Controls.Add(this.ExpectedExitCode);
-            this.ExpectedExitCodeBox.Location = new System.Drawing.Point(303, 211);
-            this.ExpectedExitCodeBox.Name = "ExpectedExitCodeBox";
-            this.ExpectedExitCodeBox.Size = new System.Drawing.Size(126, 50);
-            this.ExpectedExitCodeBox.TabIndex = 8;
-            this.ExpectedExitCodeBox.TabStop = false;
-            this.ExpectedExitCodeBox.Text = "Expected Exit Code";
+            this.ClientIdentificationTagBox.Controls.Add(this.pictureBox12);
+            this.ClientIdentificationTagBox.Controls.Add(this.ClientIdentificationTag);
+            this.ClientIdentificationTagBox.Location = new System.Drawing.Point(12, 306);
+            this.ClientIdentificationTagBox.Name = "ClientIdentificationTagBox";
+            this.ClientIdentificationTagBox.Size = new System.Drawing.Size(267, 55);
+            this.ClientIdentificationTagBox.TabIndex = 10;
+            this.ClientIdentificationTagBox.TabStop = false;
+            this.ClientIdentificationTagBox.Text = "Client Identification Tag";
             // 
-            // pictureBox11
+            // pictureBox12
             // 
-            this.pictureBox11.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox11.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox11.Image")));
-            this.pictureBox11.Location = new System.Drawing.Point(95, 19);
-            this.pictureBox11.Name = "pictureBox11";
-            this.pictureBox11.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox11.TabIndex = 11;
-            this.pictureBox11.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox11, "The error code to return on normal termination.");
-            this.pictureBox11.Click += new System.EventHandler(this.ShowToolTip);
+            this.pictureBox12.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox12.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox12.Image")));
+            this.pictureBox12.Location = new System.Drawing.Point(237, 21);
+            this.pictureBox12.Name = "pictureBox12";
+            this.pictureBox12.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox12.TabIndex = 11;
+            this.pictureBox12.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox12, "This can be set to a texture UUID on the connecting\r\ngrid that Corrade will use f" +
+        "or identification. By default \r\nthis is set to a texture UUID on the Second Life" +
+        " grid \r\nthat portreys the Corrade logo.");
+            this.pictureBox12.Click += new System.EventHandler(this.ShowToolTip);
             // 
-            // ExpectedExitCode
+            // ClientIdentificationTag
             // 
-            this.ExpectedExitCode.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ExpectedExitCode.Location = new System.Drawing.Point(7, 19);
-            this.ExpectedExitCode.Minimum = new decimal(new int[] {
-            100,
-            0,
-            0,
-            -2147483648});
-            this.ExpectedExitCode.Name = "ExpectedExitCode";
-            this.ExpectedExitCode.Size = new System.Drawing.Size(82, 20);
-            this.ExpectedExitCode.TabIndex = 9;
+            this.ClientIdentificationTag.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ClientIdentificationTag.Location = new System.Drawing.Point(7, 22);
+            this.ClientIdentificationTag.MaxLength = 36;
+            this.ClientIdentificationTag.Name = "ClientIdentificationTag";
+            this.ClientIdentificationTag.Size = new System.Drawing.Size(224, 20);
+            this.ClientIdentificationTag.TabIndex = 0;
+            this.ClientIdentificationTag.Text = "0705230f-cbd0-99bd-040b-28eb348b5255";
             // 
             // GroupCreateFeeBox
             // 
@@ -4596,7 +4625,6 @@
             this.LimitsTabPage.Controls.Add(this.groupBox82);
             this.LimitsTabPage.Controls.Add(this.groupBox76);
             this.LimitsTabPage.Controls.Add(this.groupBox71);
-            this.LimitsTabPage.Controls.Add(this.groupBox70);
             this.LimitsTabPage.Controls.Add(this.groupBox69);
             this.LimitsTabPage.Controls.Add(this.groupBox68);
             this.LimitsTabPage.Controls.Add(this.groupBox67);
@@ -4828,7 +4856,7 @@
             this.groupBox71.Controls.Add(this.label26);
             this.groupBox71.Controls.Add(this.LimitsClientIdle);
             this.groupBox71.Controls.Add(this.LimitsClientConnections);
-            this.groupBox71.Location = new System.Drawing.Point(4, 248);
+            this.groupBox71.Location = new System.Drawing.Point(4, 182);
             this.groupBox71.Name = "groupBox71";
             this.groupBox71.Size = new System.Drawing.Size(155, 78);
             this.groupBox71.TabIndex = 14;
@@ -4895,47 +4923,6 @@
             this.LimitsClientConnections.Size = new System.Drawing.Size(39, 20);
             this.LimitsClientConnections.TabIndex = 0;
             // 
-            // groupBox70
-            // 
-            this.groupBox70.Controls.Add(this.pictureBox43);
-            this.groupBox70.Controls.Add(this.label25);
-            this.groupBox70.Controls.Add(this.LimitsLogoutTimeout);
-            this.groupBox70.Location = new System.Drawing.Point(4, 187);
-            this.groupBox70.Name = "groupBox70";
-            this.groupBox70.Size = new System.Drawing.Size(155, 55);
-            this.groupBox70.TabIndex = 13;
-            this.groupBox70.TabStop = false;
-            this.groupBox70.Text = "Logout";
-            // 
-            // pictureBox43
-            // 
-            this.pictureBox43.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox43.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox43.Image")));
-            this.pictureBox43.Location = new System.Drawing.Point(128, 21);
-            this.pictureBox43.Name = "pictureBox43";
-            this.pictureBox43.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox43.TabIndex = 9;
-            this.pictureBox43.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox43, "The amount of time allowed for Corrade to gracefully \r\ndisconnect from the grid.");
-            this.pictureBox43.Click += new System.EventHandler(this.ShowToolTip);
-            // 
-            // label25
-            // 
-            this.label25.AutoSize = true;
-            this.label25.Location = new System.Drawing.Point(6, 22);
-            this.label25.Name = "label25";
-            this.label25.Size = new System.Drawing.Size(49, 16);
-            this.label25.TabIndex = 1;
-            this.label25.Text = "Timeout";
-            // 
-            // LimitsLogoutTimeout
-            // 
-            this.LimitsLogoutTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsLogoutTimeout.Location = new System.Drawing.Point(58, 21);
-            this.LimitsLogoutTimeout.Name = "LimitsLogoutTimeout";
-            this.LimitsLogoutTimeout.Size = new System.Drawing.Size(65, 20);
-            this.LimitsLogoutTimeout.TabIndex = 0;
-            // 
             // groupBox69
             // 
             this.groupBox69.Controls.Add(this.pictureBox42);
@@ -4985,7 +4972,7 @@
             this.groupBox68.Controls.Add(this.label22);
             this.groupBox68.Controls.Add(this.LimitsDataTimeout);
             this.groupBox68.Controls.Add(this.LimitsDataDecay);
-            this.groupBox68.Location = new System.Drawing.Point(327, 282);
+            this.groupBox68.Location = new System.Drawing.Point(4, 266);
             this.groupBox68.Name = "groupBox68";
             this.groupBox68.Size = new System.Drawing.Size(155, 78);
             this.groupBox68.TabIndex = 11;
@@ -5995,41 +5982,6 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // AutoSASBox
-            // 
-            this.AutoSASBox.Controls.Add(this.pictureBox66);
-            this.AutoSASBox.Controls.Add(this.AutoScriptedAgentStatus);
-            this.AutoSASBox.Location = new System.Drawing.Point(12, 236);
-            this.AutoSASBox.Name = "AutoSASBox";
-            this.AutoSASBox.Size = new System.Drawing.Size(126, 50);
-            this.AutoSASBox.TabIndex = 14;
-            this.AutoSASBox.TabStop = false;
-            this.AutoSASBox.Text = "Auto - SAS";
-            // 
-            // pictureBox66
-            // 
-            this.pictureBox66.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox66.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox66.Image")));
-            this.pictureBox66.Location = new System.Drawing.Point(100, 21);
-            this.pictureBox66.Name = "pictureBox66";
-            this.pictureBox66.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox66.TabIndex = 11;
-            this.pictureBox66.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox66, resources.GetString("pictureBox66.ToolTip"));
-            // 
-            // AutoScriptedAgentStatus
-            // 
-            this.AutoScriptedAgentStatus.AutoSize = true;
-            this.AutoScriptedAgentStatus.Checked = true;
-            this.AutoScriptedAgentStatus.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.AutoScriptedAgentStatus.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.AutoScriptedAgentStatus.Location = new System.Drawing.Point(15, 24);
-            this.AutoScriptedAgentStatus.Name = "AutoScriptedAgentStatus";
-            this.AutoScriptedAgentStatus.Size = new System.Drawing.Size(68, 17);
-            this.AutoScriptedAgentStatus.TabIndex = 0;
-            this.AutoScriptedAgentStatus.Text = "Enabled";
-            this.AutoScriptedAgentStatus.UseVisualStyleBackColor = true;
-            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -6056,6 +6008,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.Tabs.ResumeLayout(false);
             this.ClientTabPage.ResumeLayout(false);
+            this.AutoSASBox.ResumeLayout(false);
+            this.AutoSASBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
             this.groupBox96.ResumeLayout(false);
             this.groupBox96.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).EndInit();
@@ -6067,15 +6022,15 @@
             this.AutoPruneCacheBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox105)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox106)).EndInit();
-            this.ClientIdentificationTagBox.ResumeLayout(false);
-            this.ClientIdentificationTagBox.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).EndInit();
-            this.AbnormalExitCodeBox.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.AbnomalExitCode)).EndInit();
             this.ExpectedExitCodeBox.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox11)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.ExpectedExitCode)).EndInit();
+            this.AbnormalExitCodeBox.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AbnomalExitCode)).EndInit();
+            this.ClientIdentificationTagBox.ResumeLayout(false);
+            this.ClientIdentificationTagBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).EndInit();
             this.GroupCreateFeeBox.ResumeLayout(false);
             this.GroupCreateFeeBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox9)).EndInit();
@@ -6355,9 +6310,6 @@
             this.groupBox71.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox45)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox44)).EndInit();
-            this.groupBox70.ResumeLayout(false);
-            this.groupBox70.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).EndInit();
             this.groupBox69.ResumeLayout(false);
             this.groupBox69.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox42)).EndInit();
@@ -6425,9 +6377,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            this.AutoSASBox.ResumeLayout(false);
-            this.AutoSASBox.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6602,9 +6551,6 @@
         private System.Windows.Forms.TextBox LimitsNotificationsTimeout;
         private System.Windows.Forms.GroupBox groupBox68;
         private System.Windows.Forms.TextBox LimitsDataTimeout;
-        private System.Windows.Forms.GroupBox groupBox70;
-        private System.Windows.Forms.Label label25;
-        private System.Windows.Forms.TextBox LimitsLogoutTimeout;
         private System.Windows.Forms.GroupBox groupBox69;
         private System.Windows.Forms.TextBox LimitsMembershipSweep;
         private System.Windows.Forms.Label label24;
@@ -6749,7 +6695,6 @@
         private System.Windows.Forms.PictureBox pictureBox51;
         private System.Windows.Forms.PictureBox pictureBox45;
         private System.Windows.Forms.PictureBox pictureBox44;
-        private System.Windows.Forms.PictureBox pictureBox43;
         private System.Windows.Forms.PictureBox pictureBox42;
         private System.Windows.Forms.PictureBox pictureBox60;
         private System.Windows.Forms.PictureBox pictureBox59;

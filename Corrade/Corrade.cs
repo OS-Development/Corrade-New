@@ -168,6 +168,7 @@ namespace Corrade
         private static NucleusHTTPServer NucleusHTTPServer;
 
         private static LoginParams Login;
+        private static readonly wasSharp.Collections.Generic.CircularQueue<string> StartLocationQueue = new wasSharp.Collections.Generic.CircularQueue<string>();
         private static object CorradeLastExecStatusFileLock = new object();
         private static LastExecStatus _CorradeLastExecStatus = LastExecStatus.Normal;
 
@@ -308,7 +309,6 @@ namespace Corrade
             }
         }
 
-        private static int LoginLocationIndex;
         private static InventoryFolder CurrentOutfitFolder;
         private static readonly SimlBot SynBot = new SimlBot();
         private static readonly BotUser SynBotUser = SynBot.MainUser;
@@ -3447,11 +3447,6 @@ namespace Corrade
                     }
                 }
 
-                // This is libomv we're talking about...
-                Client = null;
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-
                 // Create a new grid client.
                 Client = new GridClient
                 {
@@ -3528,17 +3523,18 @@ namespace Corrade
                 CallbackThreadState.Set();
                 TCPNotificationsThreadState.Set();
 
-                // Get the custom location.
-                var location = corradeConfiguration.StartLocations.ElementAtOrDefault(LoginLocationIndex++);
-                if (string.IsNullOrEmpty(location))
+                if (StartLocationQueue.IsEmpty)
                 {
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
                     break;
                 }
 
-                var startLocation = new
-                    wasOpenMetaverse.Helpers.GridLocation(location);
+                // Get the next location.
+                var location = StartLocationQueue.Dequeue();
+
+                // Generate a grid location.
+                var startLocation = new wasOpenMetaverse.Helpers.GridLocation(location);
 
                 // Proceed to log-in.
                 Login = new LoginParams(
@@ -3558,6 +3554,8 @@ namespace Corrade
                                 startLocation.Z)
                             : location,
                     UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString(),
+                    Version = CORRADE_CONSTANTS.CORRADE_VERSION,
+                    Timeout = (int)corradeConfiguration.ServicesTimeout,
                     LastExecEvent = CorradeLastExecStatus
                 };
 
@@ -3668,7 +3666,7 @@ namespace Corrade
                     Client.Network.LoggedOut += LoggedOutEventHandler;
                     CorradeLastExecStatus = LastExecStatus.LogoutCrash;
                     Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.LogoutGrace, true))
+                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         CorradeLastExecStatus = LastExecStatus.LogoutFroze;
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -4957,9 +4955,6 @@ namespace Corrade
                     // Login succeeded so start all the updates.
                     Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGIN_SUCCEEDED));
 
-                    // Reset the start location cursor.
-                    LoginLocationIndex = 0;
-
                     // Load movement state.
                     LoadMovementState.Invoke();
 
@@ -6113,6 +6108,13 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TOS_NOT_ACCEPTED));
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
+
+            // Replace the start locations queue.
+            StartLocationQueue.Clear();
+            corradeConfiguration.StartLocations.AsParallel().ForAll(o =>
+            {
+                StartLocationQueue.Enqueue(o);
+            });
 
             // Log OpenMetaverse Errors.
             switch (corradeConfiguration.ClientLogEnabled)

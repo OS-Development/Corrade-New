@@ -13,6 +13,8 @@ namespace wasOpenMetaverse.Caches
 {
     public class GroupCache : ObservableHashSet<Cache.Group>
     {
+        private readonly object SyncRoot = new object();
+
         public Dictionary<UUID, Cache.Group> nameCache = new Dictionary<UUID, Cache.Group>();
         public Dictionary<string, Cache.Group> groupCache = new Dictionary<string, Cache.Group>();
 
@@ -24,7 +26,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                nameUUIDHandleCache.TryGetValue(name, UUID, out group);
+                lock (SyncRoot)
+                {
+                    nameUUIDHandleCache.TryGetValue(name, UUID, out group);
+                }
                 return group;
             }
         }
@@ -34,7 +39,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                nameCache.TryGetValue(UUID, out group);
+                lock (SyncRoot)
+                {
+                    nameCache.TryGetValue(UUID, out group);
+                }
                 return group;
             }
         }
@@ -44,7 +52,10 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                groupCache.TryGetValue(name, out group);
+                lock (SyncRoot)
+                {
+                    groupCache.TryGetValue(name, out group);
+                }
                 return group;
             }
         }
@@ -53,13 +64,21 @@ namespace wasOpenMetaverse.Caches
         {
             get
             {
-                var r = this[group.Name];
+                Cache.Group r;
+                lock (SyncRoot)
+                {
+                    r = this[group.Name];
+                }
+
                 if (!r.Equals(default(Cache.Group)))
                     return r;
 
                 if (!group.UUID.Equals(UUID.Zero))
                 {
-                    r = this[group.UUID];
+                    lock (SyncRoot)
+                    {
+                        r = this[group.UUID];
+                    }
                     if (!r.Equals(default(Cache.Group)))
                         return r;
                 }
@@ -70,57 +89,75 @@ namespace wasOpenMetaverse.Caches
 
         public new void Clear()
         {
-            nameCache.Clear();
-            nameUUIDHandleCache.Clear();
-            base.Clear();
+            lock (SyncRoot)
+            {
+                nameCache.Clear();
+                nameUUIDHandleCache.Clear();
+                base.Clear();
+            }
         }
 
         public new void Add(Cache.Group group)
         {
-            if (!nameCache.ContainsKey(group.UUID))
-                nameCache.Add(group.UUID, group);
-            if (!nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
-                nameUUIDHandleCache.Add(group.Name, group.UUID, group);
-            if (!groupCache.ContainsKey(group.Name))
-                groupCache.Add(group.Name, group);
-            base.Add(group);
+            lock (SyncRoot)
+            {
+                if (!nameCache.ContainsKey(group.UUID))
+                    nameCache.Add(group.UUID, group);
+                if (!nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
+                    nameUUIDHandleCache.Add(group.Name, group.UUID, group);
+                if (!groupCache.ContainsKey(group.Name))
+                    groupCache.Add(group.Name, group);
+                base.Add(group);
+            }
         }
 
         public new bool Remove(Cache.Group group)
         {
-            nameCache.Remove(group.UUID);
-            nameUUIDHandleCache.Remove(group.Name, group.UUID);
-            groupCache.Remove(group.Name);
-            return base.Remove(group);
+            lock (SyncRoot)
+            {
+                nameCache.Remove(group.UUID);
+                nameUUIDHandleCache.Remove(group.Name, group.UUID);
+                groupCache.Remove(group.Name);
+                return base.Remove(group);
+            }
         }
 
         public new void UnionWith(IEnumerable<Cache.Group> list)
         {
-            var enumerable = list as Cache.Group[] ?? list.ToArray();
-            enumerable.Except(AsEnumerable()).AsParallel().ForAll(group =>
+            lock (SyncRoot)
             {
-                if (nameCache.ContainsKey(group.UUID))
-                    nameCache.Remove(group.UUID);
-                nameCache.Add(group.UUID, group);
-                if (nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
-                    nameUUIDHandleCache.Remove(group.Name, group.UUID);
-                nameUUIDHandleCache.Add(group.Name, group.UUID, group);
-                if (groupCache.ContainsKey(group.Name))
-                    groupCache.Remove(group.Name);
-                groupCache.Add(group.Name, group);
-            });
+                var enumerable = new HashSet<Cache.Group>(list);
+                enumerable.Except(AsEnumerable()).AsParallel().ForAll(group =>
+                {
+                    if (nameCache.ContainsKey(group.UUID))
+                        nameCache.Remove(group.UUID);
+                    nameCache.Add(group.UUID, group);
+                    if (nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
+                        nameUUIDHandleCache.Remove(group.Name, group.UUID);
+                    nameUUIDHandleCache.Add(group.Name, group.UUID, group);
+                    if (groupCache.ContainsKey(group.Name))
+                        groupCache.Remove(group.Name);
+                    groupCache.Add(group.Name, group);
+                });
 
-            base.UnionWith(enumerable);
+                base.UnionWith(enumerable);
+            }
         }
 
         public bool Contains(string name)
         {
-            return groupCache.ContainsKey(name);
+            lock (SyncRoot)
+            {
+                return groupCache.ContainsKey(name);
+            }
         }
 
         public bool Contains(UUID UUID)
         {
-            return nameCache.ContainsKey(UUID);
+            lock (SyncRoot)
+            {
+                return nameCache.ContainsKey(UUID);
+            }
         }
     }
 }

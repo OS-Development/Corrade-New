@@ -264,7 +264,6 @@ namespace Configurator
             mainForm.LimitsDataDecay.Text = Reflection.GetNameFromEnumValue(corradeConfiguration.DataDecayType);
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
             mainForm.LimitsFeedsUpdate.Text = corradeConfiguration.FeedsUpdateInterval.ToString();
-            mainForm.LimitsLogoutTimeout.Text = corradeConfiguration.LogoutGrace.ToString();
             mainForm.LimitsHeartbeatLogInterval.Text = corradeConfiguration.HeartbeatLogInterval.ToString();
 
             // masters
@@ -736,10 +735,6 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsFeedsUpdate.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
             {
                 corradeConfiguration.FeedsUpdateInterval = outUint;
-            }
-            if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture, out outUint))
-            {
-                corradeConfiguration.LogoutGrace = outUint;
             }
             if (uint.TryParse(mainForm.LimitsHeartbeatLogInterval.Text, NumberStyles.Integer, Utils.EnUsCulture,
                 out outUint))
@@ -2884,31 +2879,6 @@ namespace Configurator
                                             throw new Exception("error in membership limits section");
                                         }
                                         corradeConfiguration.MembershipSweepInterval = membershipSweepInterval;
-                                        break;
-                                }
-                            }
-                            break;
-
-                        case ConfigurationKeys.LOGOUT:
-                            var logoutLimitNodeList = limitsNode.SelectNodes("*");
-                            if (logoutLimitNodeList == null)
-                            {
-                                throw new Exception("error in logout limits section");
-                            }
-                            foreach (XmlNode logoutLimitNode in logoutLimitNodeList)
-                            {
-                                switch (logoutLimitNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.TIMEOUT:
-                                        uint logoutGrace;
-                                        if (
-                                            !uint.TryParse(logoutLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out logoutGrace))
-                                        {
-                                            throw new Exception("error in logout limits section");
-                                        }
-                                        corradeConfiguration.LogoutGrace = logoutGrace;
                                         break;
                                 }
                             }
