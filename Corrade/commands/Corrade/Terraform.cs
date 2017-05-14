@@ -129,36 +129,41 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (!simulator.IsEstateManager)
-                    {
-                        if (!parcel.OwnerID.Equals(Client.Self.AgentID) &&
-                            !parcel.Flags.HasFlag(ParcelFlags.AllowTerraform))
-                        {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                            }
-                            if (
-                                !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                    corradeCommandParameters.Group.UUID,
-                                    GroupPowers.AllowEditLand,
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                    new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                            }
-                        }
-                    }
+                    // Check if Corrade has permissions in the parcel group.
+                    var initialGroup = Client.Self.ActiveGroup;
+                    if (!simulator.IsEstateManager &&
+                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.AllowTerraform) &&
+                        !parcel.OwnerID.Equals(Client.Self.AgentID) &&
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                            parcel.GroupID,
+                            GroupPowers.AllowEditLand,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
                     Locks.ClientInstanceParcelsLock.EnterWriteLock();
-                    if (
-                            !Client.Parcels.Terraform(simulator, -1, position.X - width, position.Y - height,
-                                position.X + width,
-                                position.Y + height, terraformAction, terraformBrush, amount))
+                    if (!Client.Parcels.Terraform(simulator, -1, position.X - width, position.Y - height,
+                            position.X + width,
+                            position.Y + height, terraformAction, terraformBrush, amount))
                     {
                         Locks.ClientInstanceParcelsLock.ExitWriteLock();
+
+                        // Activate the initial group.
+                        Client.Groups.ActivateGroup(initialGroup);
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_TERRAFORM);
                     }
                     Locks.ClientInstanceParcelsLock.ExitWriteLock();
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                 };
         }
     }

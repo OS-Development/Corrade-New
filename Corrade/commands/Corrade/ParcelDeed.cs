@@ -60,27 +60,30 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (!simulator.IsEstateManager)
-                    {
-                        if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                        {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                            }
-                        }
-                    }
-                    if (
-                        !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+
+                    // Check if Corrade has permissions in the parcel group.
+                    var initialGroup = Client.Self.ActiveGroup;
+                    if (!simulator.IsEstateManager &&
+                        !parcel.OwnerID.Equals(Client.Self.AgentID) &&
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                            parcel.GroupID,
                             GroupPowers.LandDeed,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
                     Locks.ClientInstanceParcelsLock.EnterWriteLock();
                     Client.Parcels.DeedToGroup(simulator, parcel.LocalID, corradeCommandParameters.Group.UUID);
                     Locks.ClientInstanceParcelsLock.ExitWriteLock();
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                 };
         }
     }

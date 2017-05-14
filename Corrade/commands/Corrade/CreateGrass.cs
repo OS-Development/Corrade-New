@@ -74,21 +74,16 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                    {
-                        if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                        }
-                        if (
-                            !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
-                                GroupPowers.LandGardening,
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                        }
-                    }
+                    // Check if Corrade has permissions in the parcel group.
+                    var initialGroup = Client.Self.ActiveGroup;
+                    if (!parcel.OwnerID.Equals(Client.Self.AgentID) &&
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                            parcel.GroupID,
+                            GroupPowers.LandGardening,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     Vector3 scale;
                     if (
                         !Vector3.TryParse(
@@ -125,12 +120,21 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_GRASS_TYPE);
                     }
+
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
                     // Finally, add the grass to the simulator.
                     Locks.ClientInstanceObjectsLock.EnterWriteLock();
                     Client.Objects.AddGrass(simulator, scale, rotation, position,
                             (Grass)grassFieldInfo.GetValue(null),
                             corradeCommandParameters.Group.UUID);
                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                 };
         }
     }

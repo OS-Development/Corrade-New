@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
+using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -60,13 +61,6 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                    {
-                        if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                        }
-                    }
                     parcel =
                         parcel.wasCSVToStructure(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
@@ -88,7 +82,21 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.DESCRIPTION_TOO_LARGE);
                         }
                     }
+
+                    // Store the initial group.
+                    var initialGroup = Client.Self.ActiveGroup;
+
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
+                    Locks.ClientInstanceParcelsLock.EnterWriteLock();
                     parcel.Update(simulator, true);
+                    Locks.ClientInstanceParcelsLock.ExitWriteLock();
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                 };
         }
     }

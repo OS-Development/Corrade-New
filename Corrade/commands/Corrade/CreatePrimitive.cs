@@ -82,30 +82,19 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
-                    {
-                        if (!simulator.IsEstateManager)
-                        {
-                            if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                            {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                                {
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
-                                if (
-                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                        corradeCommandParameters.Group.UUID,
-                                        GroupPowers.AllowRez,
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
-                            }
-                        }
-                    }
+                    // Check if Corrade has permissions in the parcel group.
+                    var initialGroup = Client.Self.ActiveGroup;
+                    if (!simulator.IsEstateManager &&
+                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects) &&
+                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateGroupObjects) &&
+                        !parcel.OwnerID.Equals(Client.Self.AgentID) &&
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                            parcel.GroupID,
+                            GroupPowers.AllowRez,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     Vector3 scale;
                     if (
                         !Vector3.TryParse(
@@ -172,6 +161,10 @@ namespace Corrade
                                     .ForAll(
                                         q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags)q.GetValue(null)); }));
 
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
                     // Finally, add the primitive to the simulator.
                     Locks.ClientInstanceObjectsLock.EnterWriteLock();
                     Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID,
@@ -179,6 +172,10 @@ namespace Corrade
                             scale, rotation,
                             primFlags);
                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                 };
         }
     }

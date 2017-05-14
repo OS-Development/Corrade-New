@@ -99,72 +99,66 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
                     }
+                    var initialGroup = Client.Self.ActiveGroup;
                     var accessType = (AccessList)accessField.GetValue(null);
-                    if (!simulator.IsEstateManager)
+                    if (!simulator.IsEstateManager && !parcel.OwnerID.Equals(Client.Self.AgentID))
                     {
-                        if (!parcel.OwnerID.Equals(Client.Self.AgentID))
+                        switch (accessType)
                         {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                            }
-                            switch (accessType)
-                            {
-                                case AccessList.Access:
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    break;
+                            case AccessList.Access:
+                                if (
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        parcel.GroupID,
+                                        GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                }
+                                break;
 
-                                case AccessList.Ban:
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageBanned,
-                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    break;
+                            case AccessList.Ban:
+                                if (
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        parcel.GroupID,
+                                        GroupPowers.LandManageBanned,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                }
+                                break;
 
-                                case AccessList.Both:
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
-                                            corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    if (
-                                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                            corradeCommandParameters.Group.UUID,
-                                            GroupPowers.LandManageBanned,
-                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                    {
-                                        throw new Command.ScriptException(
-                                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                    }
-                                    break;
-                            }
+                            case AccessList.Both:
+                                if (
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        parcel.GroupID,
+                                        GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                }
+                                if (
+                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                                        parcel.GroupID,
+                                        GroupPowers.LandManageBanned,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                                {
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                }
+                                break;
                         }
                     }
 
                     var random = new Random().Next();
                     List<ParcelManager.ParcelAccessEntry> accessList = new List<ParcelManager.ParcelAccessEntry>();
-                    wasSharp.Timers.DecayingAlarm ParcelAccessListAlarm = new wasSharp.Timers.DecayingAlarm(corradeConfiguration.DataDecayType);
+                    DecayingAlarm ParcelAccessListAlarm = new DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
                         if (!args.LocalID.Equals(parcel.LocalID) || !args.SequenceID.Equals(random)) return;
@@ -173,17 +167,32 @@ namespace Corrade
                         if (args.AccessList != null && args.AccessList.Any())
                             accessList.AddRange(args.AccessList);
                     };
+
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
+
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
                     Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                     Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
                     if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();
+
+                        // Activate the initial group.
+                        Client.Groups.ActivateGroup(initialGroup);
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_PARCEL_LIST);
                     }
                     Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                     Locks.ClientInstanceParcelsLock.ExitReadLock();
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
 
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Action>(
@@ -213,11 +222,23 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACTION);
                     }
 
+                    // Activate parcel group.
+                    Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                    Client.Groups.ActivateGroup(parcel.GroupID);
+
                     // Update the parcel list.
                     if (!Services.UpdateParcelAccessList(Client, simulator, parcel.LocalID, accessType, accessList))
                     {
+                        // Activate the initial group.
+                        Client.Groups.ActivateGroup(initialGroup);
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_UPDATE_PARCEL_LIST);
                     }
+
+                    // Activate the initial group.
+                    Client.Groups.ActivateGroup(initialGroup);
+                    Locks.ClientInstanceGroupsLock.ExitWriteLock();
                 };
         }
     }

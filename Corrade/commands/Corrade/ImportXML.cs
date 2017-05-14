@@ -61,6 +61,23 @@ namespace Corrade
                         permissions = Inventory.wasStringToPermissions(itemPermissions);
                     }
 
+                    // Optional region.
+                    var region =
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
+                    Locks.ClientInstanceNetworkLock.EnterReadLock();
+                    var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.OrdinalIgnoreCase));
+                    Locks.ClientInstanceNetworkLock.ExitReadLock();
+                    if (simulator == null)
+                    {
+                        throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                    }
+
                     // Get the position where to import the object.
                     Vector3 position;
                     if (
@@ -83,36 +100,26 @@ namespace Corrade
                     // Check build rights.
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
+                        !Services.GetParcelAtPosition(Client, simulator, position,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    if (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects))
-                    {
-                        if (!Client.Network.CurrentSim.IsEstateManager)
-                        {
-                            if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                            {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
-                                {
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
-                                if (
-                                    !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                                        corradeCommandParameters.Group.UUID,
-                                        GroupPowers.AllowRez,
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
-                            }
-                        }
-                    }
+
+                    // Check if Corrade has permissions in the parcel group.
+                    var initialGroup = Client.Self.ActiveGroup;
+                    if (!simulator.IsEstateManager &&
+                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects) &&
+                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateGroupObjects) &&
+                        !parcel.OwnerID.Equals(Client.Self.AgentID) &&
+                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                            parcel.GroupID,
+                            GroupPowers.AllowRez,
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
 
                     var primitives = new List<Primitive>();
                     var textures = new Dictionary<UUID, UUID>();
@@ -538,10 +545,21 @@ namespace Corrade
                         var rootRotation = linkSet.RootPrimitive.Rotation;
                         linkSet.RootPrimitive.Rotation = Quaternion.Identity;
 
-                        Client.Objects.AddPrim(Client.Network.CurrentSim, linkSet.RootPrimitive.PrimData,
+                        // Activate parcel group.
+                        Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                        Client.Groups.ActivateGroup(parcel.GroupID);
+
+                        // Rez the primitive.
+                        Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                        Client.Objects.AddPrim(simulator, linkSet.RootPrimitive.PrimData,
                             corradeCommandParameters.Group.UUID,
                             linkSet.RootPrimitive.Position, linkSet.RootPrimitive.Scale,
                             linkSet.RootPrimitive.Rotation);
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
+
+                        // Activate the initial group.
+                        Client.Groups.ActivateGroup(initialGroup);
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
 
                         if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                         {
@@ -549,7 +567,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
                         }
 
-                        Client.Objects.SetPosition(Client.Network.CurrentSim,
+                        Client.Objects.SetPosition(simulator,
                             createdPrimitives[createdPrimitives.Count - 1].LocalID, linkSet.RootPrimitive.Position);
 
                         rezState = ImporterState.RezzingChildren;
@@ -560,9 +578,20 @@ namespace Corrade
                             currentPrim = primitive;
                             position = primitive.Position + linkSet.RootPrimitive.Position;
 
-                            Client.Objects.AddPrim(Client.Network.CurrentSim, primitive.PrimData,
+                            // Activate parcel group.
+                            Locks.ClientInstanceGroupsLock.EnterWriteLock();
+                            Client.Groups.ActivateGroup(parcel.GroupID);
+
+                            // Rez the primitive.
+                            Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                            Client.Objects.AddPrim(simulator, primitive.PrimData,
                                 corradeCommandParameters.Group.UUID, position,
                                 primitive.Scale, primitive.Rotation);
+                            Locks.ClientInstanceObjectsLock.ExitWriteLock();
+
+                            // Activate the initial group.
+                            Client.Groups.ActivateGroup(initialGroup);
+                            Locks.ClientInstanceGroupsLock.ExitWriteLock();
 
                             if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
@@ -570,7 +599,7 @@ namespace Corrade
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.FAILED_REZZING_CHILD_PRIMITIVE);
                             }
-                            Client.Objects.SetPosition(Client.Network.CurrentSim,
+                            Client.Objects.SetPosition(simulator,
                                 createdPrimitives[createdPrimitives.Count - 1].LocalID, position);
                         }
 
@@ -590,31 +619,31 @@ namespace Corrade
 
                                 // Link and set the permissions + rotation
                                 rezState = ImporterState.Linking;
-                                Client.Objects.LinkPrims(Client.Network.CurrentSim, linkQueue);
+                                Client.Objects.LinkPrims(simulator, linkQueue);
 
                                 if (
                                     primDone.WaitOne(
                                         (int)corradeConfiguration.DataTimeout * linkSet.ChildPrimitives.Count,
                                         false))
-                                    Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
+                                    Client.Objects.SetRotation(simulator, rootLocalID, rootRotation);
                                 //else
                                 //    Console.WriteLine("Warning: Failed to link {0} prims", linkQueue.Count);
                                 break;
 
                             default:
-                                Client.Objects.SetRotation(Client.Network.CurrentSim, rootLocalID, rootRotation);
+                                Client.Objects.SetRotation(simulator, rootLocalID, rootRotation);
                                 break;
                         }
 
                         // Set permissions on newly created prims.
-                        //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Base, permissions.BaseMask, true);
-                        //Client.Objects.SetPermissions(Client.Network.CurrentSim, primIDs, PermissionWho.Owner, permissions.OwnerMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs, PermissionWho.Group,
+                        //Client.Objects.SetPermissions(simulator, primIDs, PermissionWho.Base, permissions.BaseMask, true);
+                        //Client.Objects.SetPermissions(simulator, primIDs, PermissionWho.Owner, permissions.OwnerMask, true);
+                        Client.Objects.SetPermissions(simulator, primitiveIDs, PermissionWho.Group,
                             permissions.GroupMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
+                        Client.Objects.SetPermissions(simulator, primitiveIDs,
                             PermissionWho.Everyone,
                             permissions.EveryoneMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, primitiveIDs,
+                        Client.Objects.SetPermissions(simulator, primitiveIDs,
                             PermissionWho.NextOwner,
                             permissions.NextOwnerMask, true);
 
