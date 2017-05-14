@@ -88,6 +88,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
                     }
+                    var csv = new List<string>();
                     var succeeded = false;
                     var assetUUID = UUID.Zero;
                     var itemUUID = UUID.Zero;
@@ -455,6 +456,12 @@ namespace Corrade
                             break;
 
                         case AssetType.LSLText:
+                            bool mono;
+                            if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MONO)),
+                                    corradeCommandParameters.Message)), out mono))
+                            {
+                                mono = true;
+                            }
                             var CreateScriptEvent = new ManualResetEvent(false);
                             InventoryItem newScript = null;
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
@@ -483,10 +490,15 @@ namespace Corrade
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             var UpdateScriptEvent = new ManualResetEvent(false);
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,
+                            Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, mono,
                                     delegate (bool completed, string status, bool compiled, List<string> messages,
                                         UUID itemID, UUID assetID)
                                     {
+                                        // Add the compiler output to the return.
+                                        if (!compiled)
+                                            csv.AddRange(new[] {
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
+                                            });
                                         assetUUID = assetID;
                                         itemUUID = itemID;
                                         succeeded = completed;
@@ -516,13 +528,15 @@ namespace Corrade
                         if (corradeConfiguration.EnableHorde)
                             HordeDistributeCacheAsset(itemUUID, data, Configuration.HordeDataSynchronizationOption.Add);
                     }
-                    // Return the item and asset UUID.
-                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                        CSV.FromEnumerable(new[]
+                    // Add the item and assetUUID ot the output.
+                    csv.AddRange(new[]
                         {
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)), itemUUID.ToString(),
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)), assetUUID.ToString()
-                        }));
+                        });
+                    // Return the item and asset UUID.
+                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                        CSV.FromEnumerable(csv));
                 };
         }
     }

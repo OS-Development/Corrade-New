@@ -46,6 +46,9 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [Reflection.NameAttribute("error")]
+            ERROR,
+
             [CommandInputSyntax(
                 "<command=batchlure>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<STRING,...>]&[callback=<STRING>]"
                 )]
