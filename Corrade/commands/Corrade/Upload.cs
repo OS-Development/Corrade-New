@@ -513,12 +513,18 @@ namespace Corrade
                             break;
 
                         default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_INVENTORY_TYPE);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
                     if (!succeeded)
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
                     }
+
+                    // Mark the containing asset folder as needing an update.
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(assetType)).NeedsUpdate = true;
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+
                     // Store the any asset in the cache.
                     if (!assetUUID.Equals(UUID.Zero))
                     {
