@@ -301,6 +301,12 @@
     <Compile Include="commands\Corrade\Shoot.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\UpdateNotecard.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\UpdateScript.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Verify.cs">
       <SubType>Component</SubType>
     </Compile>

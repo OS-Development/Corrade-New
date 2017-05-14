@@ -2329,7 +2329,11 @@ namespace Corrade
 
             [Command.StatusAttribute(38271)]
             [Reflection.DescriptionAttribute("script compilation failed")]
-            SCRIPT_COMPILATION_FAILED
+            SCRIPT_COMPILATION_FAILED,
+
+            [Command.StatusAttribute(01458)]
+            [Reflection.DescriptionAttribute("unknown update type")]
+            UNKNOWN_UPDATE_TYPE
         }
 
         /// <summary>
@@ -2401,7 +2405,13 @@ namespace Corrade
             ZIP,
 
             [Reflection.NameAttribute("path")]
-            PATH
+            PATH,
+
+            [Reflection.NameAttribute("task")]
+            TASK,
+
+            [Reflection.NameAttribute("agent")]
+            AGENT
         }
 
         /// <summary>

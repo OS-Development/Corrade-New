@@ -46,6 +46,25 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=updatenotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&type=task:[range=<FLOAT>]&type=task:<entity=<STRING|UUID>>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("updatenotecard")]
+            [Reflection.NameAttribute("updatenotecard")]
+            UPDATENOTECARD,
+
+            [CommandInputSyntax(
+                "<command=updatescript>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&[mono=<BOOL>]&type=task:[range=<FLOAT>]&type=task:<entity=<STRING|UUID>>&type=task:[run=<BOOL>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("updatescript")]
+            [Reflection.NameAttribute("updatescript")]
+            UPDATESCRIPT,
+
+            [Reflection.NameAttribute("delete")]
+            DELETE,
+
             [Reflection.NameAttribute("error")]
             ERROR,
 
@@ -95,7 +114,7 @@ namespace Corrade
             SCRIPTRESET,
 
             [CommandInputSyntax(
-                "<command=compilescript>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<STRING>>&[callback=<STRING>]"
+                "<command=compilescript>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<STRING>>&[mono=<BOOL>]&[callback=<STRING>]"
                 )]
             [CommandPermissionMask(
                 (ulong)Configuration.Permissions.Inventory
