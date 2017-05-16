@@ -1328,6 +1328,18 @@
       <Link>Configurator.exe.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\corrade-nucleus-nucleons\base\000_base.zip">
+      <Link>Nucleus\000_base.zip</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\corrade-nucleus-nucleons\bootstrap\001_bootstrap.zip">
+      <Link>Nucleus\001_bootstrap.zip</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\corrade-nucleus-nucleons\script-kiddie\002_script_kiddie.zip">
+      <Link>Nucleus\002_script_kiddie.zip</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
       <Link>libs\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -1641,12 +1653,6 @@
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <None Include="Nucleus\000_base.zip">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Nucleus\001_bootstrap.zip">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

@@ -6090,6 +6090,10 @@ namespace Corrade
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
+            // Do not trigger economy for unknown transactions.
+            if (e.TransactionInfo.TransactionType.Equals(MoneyTransactionType.None))
+                return;
+
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.Economy, e),
                 corradeConfiguration.MaximumNotificationThreads);
