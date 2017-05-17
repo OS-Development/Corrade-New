@@ -42,7 +42,7 @@ namespace Corrade
                                     csv.AddRange(new[]
                                     {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), fullName.First()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), fullName.Last()});
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), fullName.Last()});
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),
