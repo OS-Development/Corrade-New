@@ -5,15 +5,24 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using OpenMetaverse;
+using System.Xml.Serialization;
+using wasSharp;
 
 namespace Corrade.Structures
 {
     /// <summary>
     ///     A structure for teleport lures.
     /// </summary>
+    [Reflection.NameAttribute("teleportlure")]
+    [XmlRoot(ElementName = "TeleportLure")]
     public struct TeleportLure
     {
+        [Reflection.NameAttribute("agent")]
+        [XmlElement(ElementName = "Agent")]
         public Agent Agent;
+
+        [Reflection.NameAttribute("session")]
+        [XmlElement(ElementName = "Session")]
         public UUID Session;
     }
 }

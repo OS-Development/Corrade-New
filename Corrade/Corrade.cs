@@ -3447,6 +3447,10 @@ namespace Corrade
                     }
                 }
 
+                Client = null;
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false);
+                GC.WaitForPendingFinalizers();
+
                 // Create a new grid client.
                 Client = new GridClient
                 {

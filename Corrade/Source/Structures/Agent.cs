@@ -15,15 +15,19 @@ namespace Corrade.Structures
     /// <summary>
     ///     Agent Structure.
     /// </summary>
+    [Reflection.NameAttribute("agent")]
     [XmlRoot(ElementName = "Agent")]
     public struct Agent : IEquatable<Agent>
     {
+        [Reflection.NameAttribute("firstname")]
         [XmlElement(ElementName = "FirstName")]
         public string FirstName { get; set; }
 
+        [Reflection.NameAttribute("lastname")]
         [XmlElement(ElementName = "LastName")]
         public string LastName { get; set; }
 
+        [Reflection.NameAttribute("UUID")]
         [XmlElement(ElementName = "UUID")]
         public UUID UUID { get; set; }
 
