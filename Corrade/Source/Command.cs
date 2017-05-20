@@ -47,6 +47,25 @@ namespace Corrade
             NONE = 0,
 
             [CommandInputSyntax(
+                "<command=parceljoin>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("parceljoin")]
+            [Reflection.NameAttribute("parceljoin")]
+            PARCELJOIN,
+
+            [CommandInputSyntax(
+                "<command=parceldivide>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("parceldivide")]
+            [Reflection.NameAttribute("parceldivide")]
+            PARCELDIVIDE,
+
+            [Reflection.NameAttribute("altitude")]
+            ALTITUDE,
+
+            [CommandInputSyntax(
                 "<command=updatenotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&type=task:[range=<FLOAT>]&type=task:<entity=<STRING|UUID>>&[callback=<STRING>]"
             )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.Inventory)]

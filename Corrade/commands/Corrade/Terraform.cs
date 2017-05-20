@@ -38,7 +38,15 @@ namespace Corrade
                             corradeCommandParameters.Message)), NumberStyles.Integer,
                         Utils.EnUsCulture, out amount))
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
+                        amount = 1;
+                    }
+                    float altitude;
+                    if (!float.TryParse(wasInput(
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ALTITUDE)),
+                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture, out altitude))
+                    {
+                        altitude = 0;
                     }
                     float width;
                     if (!float.TryParse(wasInput(
@@ -147,18 +155,9 @@ namespace Corrade
                     Client.Groups.ActivateGroup(parcel.GroupID);
 
                     Locks.ClientInstanceParcelsLock.EnterWriteLock();
-                    if (!Client.Parcels.Terraform(simulator, -1, position.X - width, position.Y - height,
+                    Client.Parcels.Terraform(simulator, -1, position.X - width, position.Y - height,
                             position.X + width,
-                            position.Y + height, terraformAction, terraformBrush, amount))
-                    {
-                        Locks.ClientInstanceParcelsLock.ExitWriteLock();
-
-                        // Activate the initial group.
-                        Client.Groups.ActivateGroup(initialGroup);
-                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
-
-                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_TERRAFORM);
-                    }
+                            position.Y + height, terraformAction, terraformBrush, amount, altitude);
                     Locks.ClientInstanceParcelsLock.ExitWriteLock();
 
                     // Activate the initial group.

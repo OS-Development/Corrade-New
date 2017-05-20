@@ -280,6 +280,12 @@
     <Compile Include="commands\Corrade\Nucleus.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\ParcelDivide.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\ParcelJoin.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\RemoveConfigurationGroup.cs">
       <SubType>Component</SubType>
     </Compile>
