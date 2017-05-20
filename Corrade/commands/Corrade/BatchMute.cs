@@ -58,6 +58,7 @@ namespace Corrade
                             .AsParallel()
                             .GroupBy(o => o.Key)
                             .Select(o => o.FirstOrDefault())
+                            .Where(o => !o.Equals(default(KeyValuePair<string, string>)))
                             .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value))
                             .AsParallel()
                             .ForAll(o =>

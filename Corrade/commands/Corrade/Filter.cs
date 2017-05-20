@@ -62,7 +62,6 @@ namespace Corrade
                                 foreach (var i in CSV.ToKeyValue(output).AsParallel()
                                     .GroupBy(o => o.Key)
                                     .Select(o => o.FirstOrDefault())
-                                    .Where(o => !o.Equals(default(KeyValuePair<string, string>)))
                                     .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                                 {
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));

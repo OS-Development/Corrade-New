@@ -28,22 +28,21 @@ namespace Corrade
                     }
 
                     if (string.IsNullOrEmpty(corradeCommandParameters.Group.DatabaseFile))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DATABASE_FILE_CONFIGURED);
-                    }
+
                     var sql = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SQL)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(sql))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_SQL_STRING_PROVIDED);
-                    }
+
                     var data = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
+
                     var csv = new List<string>();
                     using (var sqliteConnection =
-                        new SqliteConnection(@"URI=file:" + corradeCommandParameters.Group.DatabaseFile))
+                        new SqliteConnection($"URI=file:{corradeCommandParameters.Group.DatabaseFile}"))
                     {
                         sqliteConnection.Open();
                         using (var command = new SqliteCommand(sql, sqliteConnection))
@@ -70,7 +69,7 @@ namespace Corrade
                                         for (var i = 0; i < reader.FieldCount; ++i)
                                         {
                                             csv.Add(reader.GetName(i));
-                                            csv.Add(reader.GetValue(i).ToString());
+                                            csv.Add(reader.GetValue(i)?.ToString() ?? string.Empty);
                                         }
                                     }
                                 }

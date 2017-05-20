@@ -4100,6 +4100,7 @@ namespace Corrade
                         .AsParallel()
                         .GroupBy(o => o.Key)
                         .Select(o => o.FirstOrDefault())
+                        .Where(o => !string.IsNullOrEmpty(o.Key) && !string.IsNullOrEmpty(o.Value))
                         .ToDictionary(o => o.Key, o => o.Value);
                 }
 
@@ -6029,7 +6030,7 @@ namespace Corrade
                 result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
                 Feedback(Reflection.GetDescriptionFromEnumValue(
                     Enumerations.ConsoleMessage.CORRADE_COMMAND_ERROR),
-                    ex.ToString(), ex.InnerException?.ToString());
+                    ex?.ToString(), ex.InnerException?.ToString());
             }
 
             // add the final success status

@@ -101,7 +101,7 @@ namespace Corrade
                                 safeClassifieds =
                                     classifieds.OrderByDescending(o => o.Value)
                                         .GroupBy(o => o.Key)
-                                        .ToDictionary(o => o.Key, p => p.FirstOrDefault().Value);
+                                        .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                             }
                             safeClassifieds.AsParallel().ForAll(
                                 o =>
@@ -180,7 +180,7 @@ namespace Corrade
                             {
                                 safeEvents = events.OrderByDescending(o => o.Value)
                                     .GroupBy(o => o.Key)
-                                    .ToDictionary(o => o.Key, p => p.FirstOrDefault().Value);
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                             }
                             safeEvents.AsParallel().ForAll(
                                 o =>
@@ -263,7 +263,7 @@ namespace Corrade
                             {
                                 safeGroups = groups.OrderByDescending(o => o.Value)
                                     .GroupBy(o => o.Key)
-                                    .ToDictionary(o => o.Key, p => p.FirstOrDefault().Value);
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                             }
                             safeGroups.AsParallel().ForAll(
                                 o =>
@@ -344,7 +344,7 @@ namespace Corrade
                             {
                                 safeLands = lands.OrderByDescending(o => o.Value)
                                     .GroupBy(o => o.Key)
-                                    .ToDictionary(o => o.Key, p => p.FirstOrDefault().Value);
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                             }
                             safeLands.AsParallel().ForAll(
                                 o =>
@@ -423,7 +423,7 @@ namespace Corrade
                             {
                                 safeAgents = agents.OrderByDescending(o => o.Value)
                                     .GroupBy(o => o.Key)
-                                    .ToDictionary(o => o.Key, p => p.FirstOrDefault().Value);
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                             }
                             safeAgents.AsParallel().ForAll(
                                 o =>
@@ -498,7 +498,7 @@ namespace Corrade
                             {
                                 safePlaces = places.OrderByDescending(o => o.Value)
                                     .GroupBy(o => o.Key)
-                                    .ToDictionary(o => o.Key, p => p.FirstOrDefault().Value);
+                                    .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                             }
                             safePlaces.AsParallel().ForAll(
                                 o =>
