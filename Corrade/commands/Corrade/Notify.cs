@@ -93,7 +93,6 @@ namespace Corrade
                                     .AsParallel()
                                     .GroupBy(o => o.Key)
                                     .Select(o => o.FirstOrDefault())
-                                    .Where(o => !string.IsNullOrEmpty(o.Key) && !string.IsNullOrEmpty(o.Value))
                                     .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value))
                                     .AsParallel()
                                     .Where(
