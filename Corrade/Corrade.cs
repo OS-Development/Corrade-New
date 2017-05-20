@@ -6120,10 +6120,8 @@ namespace Corrade
 
             // Replace the start locations queue.
             StartLocationQueue.Clear();
-            corradeConfiguration.StartLocations.AsParallel().ForAll(o =>
-            {
-                StartLocationQueue.Enqueue(o);
-            });
+            foreach(var location in corradeConfiguration.StartLocations)
+                StartLocationQueue.Enqueue(location);
 
             // Log OpenMetaverse Errors.
             switch (corradeConfiguration.ClientLogEnabled)
