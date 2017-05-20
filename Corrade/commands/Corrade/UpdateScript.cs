@@ -8,6 +8,7 @@ using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using System;
+using System.Text;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -17,6 +18,7 @@ using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
+using System.IO;
 
 namespace Corrade
 {
@@ -28,18 +30,12 @@ namespace Corrade
                 =
                 (corradeCommandParameters, result) =>
                 {
-                    byte[] data;
-                    try
-                    {
-                        data = Convert.FromBase64String(
-                            wasInput(
+                    var data = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
-                    }
-                    catch (Exception)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
-                    }
+                                    corradeCommandParameters.Message));
+
+                    if (!string.IsNullOrEmpty(data))
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
 
                     bool mono;
                     if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MONO)),
@@ -208,7 +204,9 @@ namespace Corrade
 
                             // Update the script inside the task inventory.
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            Client.Inventory.RequestUpdateScriptTask(data, inventoryItem.UUID, primitive.ID, mono, run,
+                            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(data)))
+                            {
+                                Client.Inventory.RequestUpdateScriptTask(memoryStream.ToArray(), inventoryItem.UUID, primitive.ID, mono, run,
                                     delegate (bool completed, string status, bool compiled, List<string> messages,
                                         UUID itemID, UUID assetID)
                                     {
@@ -222,10 +220,11 @@ namespace Corrade
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
-                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                            {
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                {
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                }
                             }
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
@@ -260,7 +259,9 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            Client.Inventory.RequestUpdateScriptAgentInventory(data, inventoryItem.UUID, mono,
+                            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(data)))
+                            {
+                                Client.Inventory.RequestUpdateScriptAgentInventory(memoryStream.ToArray(), inventoryItem.UUID, mono,
                                     delegate (bool completed, string status, bool compiled, List<string> messages,
                                         UUID itemID, UUID assetID)
                                     {
@@ -274,10 +275,11 @@ namespace Corrade
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
-                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                            {
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                {
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                }
                             }
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;

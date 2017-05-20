@@ -40,8 +40,6 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
                     }
-
-                    var csv = new List<string>();
                     InventoryItem inventoryItem = null;
                     var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
@@ -259,12 +257,15 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_UPDATE_TYPE);
                     }
 
-                    // Return any script compilation errors.
-                    if (csv.Any())
-                    {
-                        result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                            CSV.FromEnumerable(csv));
-                    }
+                    // Return the item and asset UUID.
+                    result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                        CSV.FromEnumerable(new[]
+                        {
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                            inventoryItem.UUID.ToString(),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)),
+                            inventoryItem.AssetUUID.ToString()
+                        }));
                 };
         }
     }
