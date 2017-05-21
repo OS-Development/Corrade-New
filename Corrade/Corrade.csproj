@@ -238,6 +238,9 @@
     <Compile Include="commands\Corrade\CopyNotecardAsset.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\CreateLandmark.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Deactivate.cs">
       <SubType>Component</SubType>
     </Compile>

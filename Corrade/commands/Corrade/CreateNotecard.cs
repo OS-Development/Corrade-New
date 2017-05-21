@@ -8,6 +8,7 @@ using CorradeConfigurationSharp;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -15,6 +16,8 @@ using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
+using Inventory = wasOpenMetaverse.Inventory;
+using Corrade.Constants;
 
 namespace Corrade
 {
@@ -79,6 +82,8 @@ namespace Corrade
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXT)),
                                         corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(text))
+                                text = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE;
                             break;
 
                         default:
@@ -90,13 +95,46 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE);
                     }
+
                     var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                    }
+
+                    var attachments = new List<InventoryItem>(CSV.ToEnumerable(wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ATTACHMENTS)),
+                            corradeCommandParameters.Message)))
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .Select(
+                            o =>
+                            {
+                                InventoryItem inventoryItem = null;
+                                UUID itemUUID;
+                                switch (UUID.TryParse(o, out itemUUID))
+                                {
+                                    case true:
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(itemUUID))
+                                        {
+                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                        }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                        break;
+
+                                    default:
+                                        inventoryItem =
+                                            Inventory.FindInventory<InventoryItem>(Client, o,
+                                                CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                                corradeConfiguration.ServicesTimeout);
+                                        break;
+                                }
+
+                                return inventoryItem;
+                            }).Where(o => o != null));
+
                     var CreateNotecardEvent = new ManualResetEvent(false);
                     var succeeded = false;
                     InventoryItem newItem = null;
@@ -125,60 +163,35 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                     }
-                    var blank = new AssetNotecard
+                    var notecard = new AssetNotecard
                     {
-                        BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
+                        EmbeddedItems = attachments,
+                        BodyText = text
                     };
-                    blank.Encode();
-                    var UploadBlankNotecardEvent = new ManualResetEvent(false);
+                    notecard.Encode();
+                    var inventoryItemUUID = UUID.Zero;
+                    var inventoryAssetUUID = UUID.Zero;
+                    var UploadNotecardDataEvent = new ManualResetEvent(false);
                     succeeded = false;
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                    Client.Inventory.RequestUploadNotecardAsset(blank.AssetData, newItem.UUID,
+                    Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, newItem.UUID,
                             delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
                             {
                                 succeeded = completed;
-                                UploadBlankNotecardEvent.Set();
+                                inventoryItemUUID = itemUUID;
+                                inventoryAssetUUID = assetUUID;
+                                UploadNotecardDataEvent.Set();
                             });
-                    if (!UploadBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!UploadNotecardDataEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM);
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);
                     }
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
+
                     if (!succeeded)
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM);
-                    }
-                    var inventoryItemUUID = UUID.Zero;
-                    var inventoryAssetUUID = UUID.Zero;
-                    if (!string.IsNullOrEmpty(text))
-                    {
-                        var notecard = new AssetNotecard
-                        {
-                            BodyText = text
-                        };
-                        notecard.Encode();
-                        var UploadNotecardDataEvent = new ManualResetEvent(false);
-                        succeeded = false;
-                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                        Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, newItem.UUID,
-                                delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
-                                {
-                                    succeeded = completed;
-                                    inventoryItemUUID = itemUUID;
-                                    inventoryAssetUUID = assetUUID;
-                                    UploadNotecardDataEvent.Set();
-                                });
-                        if (!UploadNotecardDataEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                        {
-                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                            throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);
-                        }
-                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                        if (!succeeded)
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA);
-                        }
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA);
                     }
 
                     // Return the item and asset UUID.

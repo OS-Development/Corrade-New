@@ -47,6 +47,14 @@ namespace Corrade
             NONE = 0,
 
             [CommandInputSyntax(
+                "<command=createlandmark>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("createlandmark")]
+            [Reflection.NameAttribute("createlandmark")]
+            CREATELANDMARK,
+
+            [CommandInputSyntax(
                 "<command=parceljoin>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
             )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
@@ -1698,7 +1706,7 @@ namespace Corrade
             NUDGE,
 
             [CommandInputSyntax(
-                "<command=createnotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[text=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
+                "<command=createnotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[text=<STRING>]&[description=<STRING>]&<attachments=<STRING[,UUID...]>>&[callback=<STRING>]"
                 )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
             [CorradeCommand("createnotecard")]
