@@ -135,6 +135,7 @@ namespace Corrade
                                 return inventoryItem;
                             }).Where(o => o != null));
 
+                    // Create notecard.
                     var CreateNotecardEvent = new ManualResetEvent(false);
                     var succeeded = false;
                     InventoryItem newItem = null;
@@ -163,14 +164,48 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
                     }
-                    var notecard = new AssetNotecard
+
+                    // Upload blank notecard.
+                    AssetNotecard emptyNotecard = new AssetNotecard
                     {
-                        EmbeddedItems = attachments,
-                        BodyText = text
+                        BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
                     };
+                    emptyNotecard.Encode();
+
+                    var CreateBlankNotecardEvent = new ManualResetEvent(false);
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.RequestUploadNotecardAsset(emptyNotecard.AssetData, newItem.UUID,
+                        delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
+                        {
+                            succeeded = completed;
+                            newItem.UUID = itemUUID;
+                            newItem.AssetUUID = assetUUID;
+                            CreateBlankNotecardEvent.Set();
+                        });
+                    if (!CreateBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    {
+                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                    }
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                    if (!succeeded)
+                    {
+                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                    }
+
+                    // Upload the real content.
+                    var notecard = new AssetNotecard(newItem.AssetUUID, null);
+                    notecard.BodyText = text;
+                    notecard.EmbeddedItems = new List<InventoryItem>();
+                    // Add the attachments.
+                    for (var i = 0; i < attachments.Count; ++i)
+                    {
+                        notecard.EmbeddedItems.Add(attachments[i]);
+                        notecard.BodyText += (char)0xdbc0;
+                        notecard.BodyText += (char)(0xdc00 + i);
+                    }
                     notecard.Encode();
-                    var inventoryItemUUID = UUID.Zero;
-                    var inventoryAssetUUID = UUID.Zero;
+
                     var UploadNotecardDataEvent = new ManualResetEvent(false);
                     succeeded = false;
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
@@ -178,8 +213,8 @@ namespace Corrade
                             delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
                             {
                                 succeeded = completed;
-                                inventoryItemUUID = itemUUID;
-                                inventoryAssetUUID = assetUUID;
+                                newItem.UUID = itemUUID;
+                                newItem.AssetUUID = assetUUID;
                                 UploadNotecardDataEvent.Set();
                             });
                     if (!UploadNotecardDataEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
@@ -199,9 +234,9 @@ namespace Corrade
                         CSV.FromEnumerable(new[]
                         {
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                            inventoryItemUUID.ToString(),
+                            newItem.UUID.ToString(),
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ASSET)),
-                            inventoryAssetUUID.ToString()
+                            newItem.AssetUUID.ToString()
                         }));
                 };
         }

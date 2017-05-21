@@ -4,9 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
 using CorradeConfigurationSharp;
 using ImageMagick;
 using OpenMetaverse;
+using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using System;
 using System.Collections.Generic;
@@ -20,9 +22,8 @@ using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Graphics = wasOpenMetaverse.Graphics;
-using Reflection = wasSharp.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
-using Corrade.Constants;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -455,6 +456,33 @@ namespace Corrade
                                             CreateNotecardEvent.Set();
                                         });
                                 if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                {
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                if (!succeeded)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                }
+
+                                // Upload blank notecard.
+                                AssetNotecard emptyNotecard = new AssetNotecard
+                                {
+                                    BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
+                                };
+                                emptyNotecard.Encode();
+                                var CreateBlankNotecardEvent = new ManualResetEvent(false);
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RequestUploadNotecardAsset(emptyNotecard.AssetData, inventoryItem.UUID,
+                                    delegate (bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    {
+                                        succeeded = completed;
+                                        inventoryItem.UUID = itemUUID;
+                                        inventoryItem.AssetUUID = assetUUID;
+                                        CreateBlankNotecardEvent.Set();
+                                    });
+                                if (!CreateBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                                 {
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);

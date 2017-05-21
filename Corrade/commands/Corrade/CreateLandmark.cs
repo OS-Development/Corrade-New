@@ -6,10 +6,8 @@
 
 using CorradeConfigurationSharp;
 using OpenMetaverse;
-using OpenMetaverse.Assets;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
