@@ -131,8 +131,8 @@ namespace wasOpenMetaverse.Caches
         {
             lock (SyncRoot)
             {
-                var enumerable = new HashSet<Cache.Agent>(list);
-                enumerable.Except(AsEnumerable()).AsParallel().ForAll(agent =>
+                var lazyList = new ConcurrentLazyList<Cache.Agent>(list);
+                lazyList.Except(AsEnumerable()).AsParallel().ForAll(agent =>
                 {
                     if (nameCache.ContainsKey(agent.UUID))
                         nameCache.Remove(agent.UUID);
@@ -148,7 +148,7 @@ namespace wasOpenMetaverse.Caches
                     nameUUIDHandleCache.Add(agent.FirstName, agent.LastName, agent.UUID, agent);
                 });
 
-                base.UnionWith(enumerable);
+                base.UnionWith(lazyList);
             }
         }
 

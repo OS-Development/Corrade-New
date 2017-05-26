@@ -126,8 +126,8 @@ namespace wasOpenMetaverse.Caches
         {
             lock (SyncRoot)
             {
-                var enumerable = new HashSet<Cache.Group>(list);
-                enumerable.Except(AsEnumerable()).AsParallel().ForAll(group =>
+                var lazyList = new ConcurrentLazyList<Cache.Group>(list);
+                lazyList.Except(AsEnumerable()).AsParallel().ForAll(group =>
                 {
                     if (nameCache.ContainsKey(group.UUID))
                         nameCache.Remove(group.UUID);
@@ -140,7 +140,7 @@ namespace wasOpenMetaverse.Caches
                     groupCache.Add(group.Name, group);
                 });
 
-                base.UnionWith(enumerable);
+                base.UnionWith(lazyList);
             }
         }
 

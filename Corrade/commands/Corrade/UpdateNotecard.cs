@@ -12,12 +12,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 using Reflection = wasSharp.Reflection;
+using Parallel = System.Threading.Tasks.Parallel;
+using System.IO;
+using System.Text;
 
 namespace Corrade
 {
@@ -29,31 +31,82 @@ namespace Corrade
                 =
                 (corradeCommandParameters, result) =>
                 {
-                    byte[] data;
-                    try
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int)Configuration.Permissions.Inventory))
                     {
-                        data = Convert.FromBase64String(
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    catch (Exception)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
-                    }
-                    InventoryItem inventoryItem = null;
+
+                    // Check all inventory items.
+                    var LockObject = new object();
+                    var error = Enumerations.ScriptError.NONE;
+                    var attachments = new List<InventoryItem>();
+                    Parallel.ForEach(CSV.ToEnumerable(wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ATTACHMENTS)),
+                                corradeCommandParameters.Message))).Where(o => !string.IsNullOrEmpty(o)), (o, s) =>
+                                {
+                                    InventoryItem attachmentItem = null;
+                                    UUID attachmentUUID;
+                                    switch (UUID.TryParse(o, out attachmentUUID))
+                                    {
+                                        case true:
+                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                            if (Client.Inventory.Store.Contains(attachmentUUID))
+                                            {
+                                                attachmentItem = Client.Inventory.Store[attachmentUUID] as InventoryItem;
+                                            }
+                                            Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                            break;
+
+                                        default:
+                                            attachmentItem =
+                                                Inventory.FindInventory<InventoryItem>(Client, o,
+                                                    CORRADE_CONSTANTS.PATH_SEPARATOR,
+                                                    CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                                    corradeConfiguration.ServicesTimeout);
+                                            break;
+                                    }
+
+                                    if (attachmentItem == null)
+                                    {
+                                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), o);
+                                        error = Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND;
+                                        s.Break();
+                                        return;
+                                    }
+
+                                    if (!attachmentItem.Permissions.NextOwnerMask
+                                        .HasFlag(PermissionMask.Modify | PermissionMask.Copy | PermissionMask.Transfer))
+                                    {
+                                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), o);
+                                        error = Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM;
+                                        s.Break();
+                                        return;
+                                    }
+
+                                    lock (LockObject)
+                                    {
+                                        attachments.Add(attachmentItem);
+                                    }
+                                });
+
+                    if (!error.Equals(Enumerations.ScriptError.NONE))
+                        throw new Command.ScriptException(error);
+
                     var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
-                    var itemUUID = UUID.Zero;
                     var UploadNotecardAssetEvent = new ManualResetEvent(false);
                     bool succeeded = false;
-                    switch (
-                        Reflection.GetEnumValueFromName<Enumerations.Type>(
+                    Primitive primitive = null;
+                    InventoryItem inventoryItem = null;
+                    var type = Reflection.GetEnumValueFromName<Enumerations.Type>(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                                    corradeCommandParameters.Message))))
+                                    corradeCommandParameters.Message)));
+                    UUID itemUUID;
+                    switch (type)
                     {
                         case Enumerations.Type.TASK:
                             if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Interact))
@@ -70,20 +123,19 @@ namespace Corrade
                             {
                                 range = corradeConfiguration.Range;
                             }
-                            var entity =
+                            var target =
                                 wasInput(
-                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                         corradeCommandParameters.Message));
-                            UUID entityUUID;
-                            if (!UUID.TryParse(entity, out entityUUID))
+                            UUID targetUUID;
+                            if (!UUID.TryParse(target, out targetUUID))
                             {
-                                if (string.IsNullOrEmpty(entity))
+                                if (string.IsNullOrEmpty(target))
                                 {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_TARGET_SPECIFIED);
                                 }
-                                entityUUID = UUID.Zero;
+                                targetUUID = UUID.Zero;
                             }
-                            Primitive primitive = null;
                             if (string.IsNullOrEmpty(item))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
@@ -120,113 +172,182 @@ namespace Corrade
                                     Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                         (int)corradeConfiguration.ServicesTimeout));
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
-                            inventoryItem = !entityUUID.Equals(UUID.Zero)
-                                ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
-                                : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
-                            // If task inventory item does not exist create it.
+                            inventoryItem = !targetUUID.Equals(UUID.Zero)
+                                ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(targetUUID)) as InventoryItem
+                                : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(target)) as InventoryItem;
+                            // Stop if task inventory does not exist.
                             succeeded = false;
                             if (inventoryItem == null ||
-                                inventoryItem.AssetType.Equals(AssetType.Notecard))
+                                !inventoryItem.AssetType.Equals(AssetType.Notecard))
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+
+                            break;
+
+                        case Enumerations.Type.AGENT:
+                            if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Inventory))
                             {
-                                var permissions = PermissionMask.None;
-                                CSV.ToEnumerable(
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                            corradeCommandParameters.Message)))
-                                    .AsParallel()
-                                    .Where(o => !string.IsNullOrEmpty(o))
-                                    .ForAll(
-                                        o => typeof(PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                            .AsParallel()
-                                            .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
-                                            .ForAll(
-                                                q =>
-                                                {
-                                                    BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask)q.GetValue(null));
-                                                }));
-
-                                var name = wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(
-                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
-                                        corradeCommandParameters.Message));
-                                if (string.IsNullOrEmpty(name))
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                            }
+                            // If an item was specified then update instead of creating a new item for certain asset types.
+                            if (!string.IsNullOrEmpty(item))
+                            {
+                                switch (UUID.TryParse(item, out itemUUID))
                                 {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                                }
-                                var CreateNotecardEvent = new ManualResetEvent(false);
-                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
-                                        name,
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                                                corradeCommandParameters.Message)),
-                                        AssetType.Notecard,
-                                        UUID.Random(), InventoryType.Notecard,
-                                        permissions == 0 ? PermissionMask.Transfer : permissions,
-                                        delegate (bool completed, InventoryItem createdItem)
+                                    case true:
+                                        Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                        if (Client.Inventory.Store.Contains(itemUUID))
                                         {
-                                            inventoryItem = createdItem;
-                                            succeeded = completed;
-                                            CreateNotecardEvent.Set();
-                                        });
-                                if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                                {
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
-                                }
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                        }
+                                        Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                        break;
 
-                                if (!succeeded)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                    default:
+                                        inventoryItem = Inventory.FindInventory<InventoryBase>(Client, item,
+                                            CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                            corradeConfiguration.ServicesTimeout) as InventoryItem;
+                                        break;
                                 }
 
-                                // Upload blank notecard.
-                                AssetNotecard emptyNotecard = new AssetNotecard
-                                {
-                                    BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
-                                };
-                                emptyNotecard.Encode();
-
-                                var CreateBlankNotecardEvent = new ManualResetEvent(false);
-                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                Client.Inventory.RequestUploadNotecardAsset(emptyNotecard.AssetData, inventoryItem.UUID,
-                                    delegate (bool completed, string status, UUID itemID, UUID assetID)
-                                    {
-                                        succeeded = completed;
-                                        inventoryItem.UUID = itemID;
-                                        inventoryItem.AssetUUID = assetID;
-                                        CreateBlankNotecardEvent.Set();
-                                    });
-                                if (!CreateBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                                {
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
-                                }
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                if (!succeeded)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                                }
-
-                                // Copy the item to the task inventory.
-                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
-                                Client.Inventory.RemoveItem(inventoryItem.UUID);
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                if (inventoryItem == null || !inventoryItem.AssetType.Equals(AssetType.Notecard))
+                                    throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
 
+                            break;
+
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_UPDATE_TYPE);
+                    }
+
+                    bool temporary = false;
+                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEMPORARY)),
+                            corradeCommandParameters.Message)), out temporary))
+                    {
+                        temporary = false;
+                    }
+
+                    AssetNotecard notecard = null;
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                corradeCommandParameters.Message))))
+                    {
+                        case Enumerations.Entity.FILE:
+                            if (
+                                !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                    (int)Configuration.Permissions.System))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                            }
+                            var path =
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
+                                        corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
+                            }
+                            // Read from file.
+                            var data = string.Empty;
+                            try
+                            {
+                                using (
+                                    var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                                        16384, true))
+                                {
+                                    using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                    {
+                                        data = streamReader.ReadToEnd();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_READ_FILE);
+                            }
+                            notecard = new AssetNotecard(inventoryItem.AssetUUID, null)
+                            {
+                                BodyText = data,
+                                EmbeddedItems = attachments,
+                                Temporary = temporary
+                            };
+                            break;
+
+                        case Enumerations.Entity.TEXT:
+                            var text =
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(text))
+                                data = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE;
+
+                            notecard = new AssetNotecard(inventoryItem.AssetUUID, null)
+                            {
+                                BodyText = text,
+                                EmbeddedItems = attachments,
+                                Temporary = temporary
+                            };
+                            break;
+
+                        case Enumerations.Entity.ASSET:
+                            byte[] asset = null;
+                            try
+                            {
+                                asset = Convert.FromBase64String(
+                                    wasInput(
+                                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                            corradeCommandParameters.Message)));
+                            }
+                            catch (Exception)
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
+                            }
+
+                            if (asset == null || asset.Length.Equals(0))
+                                throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
+
+                            var assetNotecard = new AssetNotecard()
+                            {
+                                AssetData = asset
+                            };
+
+                            if (!assetNotecard.Decode())
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
+
+                            notecard = new AssetNotecard(inventoryItem.AssetUUID, null)
+                            {
+                                BodyText = assetNotecard.BodyText,
+                                EmbeddedItems = attachments,
+                                Temporary = temporary
+                            };
+                            break;
+
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                    }
+
+                    notecard.Encode();
+
+                    if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                        Encoding.UTF8.GetByteCount(notecard.BodyText) >
+                        wasOpenMetaverse.Constants.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
+                    {
+                        throw new Command.ScriptException(Enumerations.ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE);
+                    }
+
+                    switch (type)
+                    {
+                        case Enumerations.Type.TASK:
                             // Update the notecard inside the task inventory.
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            Client.Inventory.RequestUpdateNotecardTask(data, inventoryItem.UUID, primitive.ID,
+                            Client.Inventory.RequestUpdateNotecardTask(notecard.AssetData, inventoryItem.UUID, primitive.ID,
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
+                                        succeeded = completed;
                                         inventoryItem.UUID = itemID;
                                         inventoryItem.AssetUUID = assetID;
-                                        succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
                             if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
@@ -238,124 +359,8 @@ namespace Corrade
                             break;
 
                         case Enumerations.Type.AGENT:
-                            if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Inventory))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                            }
-                            // If an item was specified then update instead of creating a new item for certain asset types.
-                            switch (!string.IsNullOrEmpty(item))
-                            {
-                                case true:
-                                    switch (UUID.TryParse(item, out itemUUID))
-                                    {
-                                        case true:
-                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
-                                            if (Client.Inventory.Store.Contains(itemUUID))
-                                            {
-                                                inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                            }
-                                            Locks.ClientInstanceInventoryLock.ExitReadLock();
-                                            break;
-
-                                        default:
-                                            inventoryItem = Inventory.FindInventory<InventoryBase>(Client, item,
-                                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
-                                                corradeConfiguration.ServicesTimeout) as InventoryItem;
-                                            break;
-                                    }
-
-                                    if (inventoryItem == null || !inventoryItem.AssetType.Equals(AssetType.Notecard))
-                                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                    break;
-
-                                default:
-                                    var permissions = PermissionMask.None;
-                                    CSV.ToEnumerable(
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                                corradeCommandParameters.Message)))
-                                        .AsParallel()
-                                        .Where(o => !string.IsNullOrEmpty(o))
-                                        .ForAll(
-                                            o => typeof(PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                                .AsParallel()
-                                                .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
-                                                .ForAll(
-                                                    q =>
-                                                    {
-                                                        BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask)q.GetValue(null));
-                                                    }));
-
-                                    var name = wasInput(KeyValue.Get(
-                                        wasOutput(
-                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
-                                        corradeCommandParameters.Message));
-                                    if (string.IsNullOrEmpty(name))
-                                    {
-                                        throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                                    }
-                                    succeeded = false;
-                                    var CreateNotecardEvent = new ManualResetEvent(false);
-                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                    Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
-                                            name,
-                                            wasInput(
-                                                KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                                                    corradeCommandParameters.Message)),
-                                            AssetType.Notecard,
-                                            UUID.Random(), InventoryType.Notecard,
-                                            permissions == 0 ? PermissionMask.Transfer : permissions,
-                                            delegate (bool completed, InventoryItem createdItem)
-                                            {
-                                                inventoryItem = createdItem;
-                                                succeeded = completed;
-                                                CreateNotecardEvent.Set();
-                                            });
-                                    if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                                    {
-                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
-                                    }
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-
-                                    if (!succeeded)
-                                    {
-                                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                                    }
-
-                                    // Upload blank notecard.
-                                    AssetNotecard emptyNotecard = new AssetNotecard
-                                    {
-                                        BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
-                                    };
-                                    emptyNotecard.Encode();
-
-                                    var CreateBlankNotecardEvent = new ManualResetEvent(false);
-                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                    Client.Inventory.RequestUploadNotecardAsset(emptyNotecard.AssetData, inventoryItem.UUID,
-                                        delegate (bool completed, string status, UUID itemID, UUID assetID)
-                                        {
-                                            succeeded = completed;
-                                            inventoryItem.UUID = itemID;
-                                            inventoryItem.AssetUUID = assetID;
-                                            CreateBlankNotecardEvent.Set();
-                                        });
-                                    if (!CreateBlankNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                                    {
-                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
-                                    }
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                    if (!succeeded)
-                                    {
-                                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                                    }
-                                    break;
-                            }
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            Client.Inventory.RequestUploadNotecardAsset(data, inventoryItem.UUID,
+                            Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, inventoryItem.UUID,
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
                                         succeeded = completed;
@@ -370,9 +375,6 @@ namespace Corrade
                             }
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
-
-                        default:
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_UPDATE_TYPE);
                     }
 
                     // Return the item and asset UUID.

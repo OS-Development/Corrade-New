@@ -873,7 +873,10 @@ namespace Corrade
             URL,
 
             [Reflection.NameAttribute("authentication")]
-            AUTHENTICATION
+            AUTHENTICATION,
+
+            [Reflection.NameAttribute("asset")]
+            ASSET
         }
 
         /// <summary>

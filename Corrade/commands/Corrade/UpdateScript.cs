@@ -129,71 +129,8 @@ namespace Corrade
                             // If task inventory item does not exist create it.
                             bool succeeded = false;
                             if (inventoryItem == null ||
-                                inventoryItem.AssetType.Equals(AssetType.LSLBytecode) ||
-                                inventoryItem.AssetType.Equals(AssetType.LSLText))
-                            {
-                                var permissions = PermissionMask.None;
-                                CSV.ToEnumerable(
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                            corradeCommandParameters.Message)))
-                                    .AsParallel()
-                                    .Where(o => !string.IsNullOrEmpty(o))
-                                    .ForAll(
-                                        o => typeof(PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                            .AsParallel()
-                                            .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
-                                            .ForAll(
-                                                q =>
-                                                {
-                                                    BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask)q.GetValue(null));
-                                                }));
-
-                                var name = wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(
-                                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
-                                        corradeCommandParameters.Message));
-                                if (string.IsNullOrEmpty(name))
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                                }
-                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                var CreateScriptEvent = new ManualResetEvent(false);
-                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.LSLText),
-                                        name,
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                                                corradeCommandParameters.Message)),
-                                        AssetType.LSLText,
-                                        UUID.Random(), InventoryType.LSL,
-                                        permissions == 0 ? PermissionMask.Transfer : permissions,
-                                        delegate (bool completed, InventoryItem createdItem)
-                                        {
-                                            inventoryItem = createdItem;
-                                            succeeded = completed;
-                                            CreateScriptEvent.Set();
-                                        });
-                                if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                                {
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
-                                }
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
-
-                                if (!succeeded)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
-                                }
-
-                                // Copy the item to the task inventory.
-                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
-                                Client.Inventory.RemoveItem(inventoryItem.UUID);
-                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                            }
+                                !inventoryItem.AssetType.Equals(AssetType.LSLText))
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
 
                             bool run;
                             if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RUN)),
