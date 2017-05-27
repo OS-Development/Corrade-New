@@ -43,9 +43,9 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    inventoryBase = Client.Inventory.Store[itemUUID];
-                                }
+                            {
+                                inventoryBase = Client.Inventory.Store[itemUUID];
+                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
@@ -103,8 +103,8 @@ namespace Corrade
                     // Mark the parent as needing an update.
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.Store.GetNodeFor(parentUUID).NeedsUpdate = true;
-                        Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
-                            .NeedsUpdate = true;
+                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.TrashFolder))
+                        .NeedsUpdate = true;
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                 };
         }

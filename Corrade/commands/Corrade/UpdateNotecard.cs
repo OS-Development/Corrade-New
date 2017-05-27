@@ -11,15 +11,15 @@ using OpenMetaverse.Assets;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
-using Reflection = wasSharp.Reflection;
 using Parallel = System.Threading.Tasks.Parallel;
-using System.IO;
-using System.Text;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {

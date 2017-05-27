@@ -12,15 +12,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Reflection;
 using System.Text;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
-using OpenMetaverse.Packets;
-using Corrade.Source.WebForms.SecondLife;
 
 namespace Corrade
 {

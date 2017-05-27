@@ -7,19 +7,19 @@
 using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
+using OpenMetaverse.Assets;
+using OpenMetaverse.Packets;
 using System;
-using System.Text;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
-using Reflection = wasSharp.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
-using System.IO;
-using OpenMetaverse.Packets;
-using OpenMetaverse.Assets;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {

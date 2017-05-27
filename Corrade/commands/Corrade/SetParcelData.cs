@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.Linq;
 using wasOpenMetaverse;
 using wasSharp;
-using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade

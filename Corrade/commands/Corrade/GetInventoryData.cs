@@ -45,9 +45,9 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(itemUUID))
-                                {
-                                    inventoryBase = Client.Inventory.Store[itemUUID];
-                                }
+                            {
+                                inventoryBase = Client.Inventory.Store[itemUUID];
+                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 

@@ -7,16 +7,16 @@
 using OpenMetaverse;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using wasSharp;
 using wasSharp.Linq;
-using Reflection = wasSharp.Reflection;
-using wasStitchNET.Repository;
-using System.IO;
 using wasSharpNET.Cryptography;
+using wasStitchNET.Repository;
+using Reflection = wasSharp.Reflection;
 using SHA1 = System.Security.Cryptography.SHA1;
-using System.Threading;
-using System.Reflection;
 
 namespace Corrade
 {
