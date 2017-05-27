@@ -95,7 +95,7 @@
       <HintPath>..\libopenmetaverse\bin\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.5.502\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.5.800\lib\net40-client\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -143,20 +143,20 @@
       <HintPath>..\packages\Syn.Bot.2.0.5\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Bot.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Log, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Log.1.0.5\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Log.dll</HintPath>
+    <Reference Include="Syn.Log, Version=1.0.7.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Log.1.0.7\lib\net45\Syn.Log.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Neuro, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Neuro.1.0.0\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.Neuro.dll</HintPath>
+    <Reference Include="Syn.Neuro, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Neuro.1.0.2\lib\net45\Syn.Neuro.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.VA, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.VA.1.0.6\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.VA.dll</HintPath>
+    <Reference Include="Syn.VA, Version=1.0.8.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.VA.1.0.8\lib\net45\Syn.VA.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.WordNet, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.WordNet.1.0.1\lib\portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Syn.WordNet.dll</HintPath>
+    <Reference Include="Syn.WordNet, Version=1.0.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.WordNet.1.0.3\lib\net45\Syn.WordNet.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System">
