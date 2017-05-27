@@ -53,19 +53,12 @@ namespace Corrade
             CREATE,
 
             [CommandInputSyntax(
-                "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<AssetData[,AssetData...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]")]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
-            [CorradeCommand("getprimitiveinventoryassetdata")]
-            [Reflection.NameAttribute("getprimitiveinventoryassetdata")]
-            getprimitiveinventoryassetdata,
-
-            [CommandInputSyntax(
-                "<command=getinventoryassetdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING>>&<data=<AssetData[,AssetData...]>&[callback=<STRING>]"
+                "<command=getassetdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&<data=<AssetData[,AssetData...]>&[callback=<STRING>]"
             )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
-            [CorradeCommand("getinventoryassetdata")]
-            [Reflection.NameAttribute("getinventoryassetdata")]
-            getinventoryassetdata,
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getassetdata")]
+            [Reflection.NameAttribute("getassetdata")]
+            getassetdata,
 
             [CommandInputSyntax(
                 "<command=createlandmark>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[callback=<STRING>]"
@@ -1654,10 +1647,9 @@ namespace Corrade
             UPLOAD,
 
             [CommandInputSyntax(
-                "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture,Sound:[format=<STRING>]&[path=<STRING>]&[callback=<STRING>]"
+                "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture,Sound:[format=<STRING>]&[path=<STRING>]&[callback=<STRING>]"
                 )]
-            [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.System
-                    )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.System)]
             [CorradeCommand("download")]
             [Reflection.NameAttribute("download")]
             DOWNLOAD,

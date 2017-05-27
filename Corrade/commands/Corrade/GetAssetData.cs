@@ -4,16 +4,18 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using Corrade.Constants;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
+using Inventory = wasOpenMetaverse.Inventory;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -22,7 +24,7 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprimitiveinventoryassetdata
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getassetdata
                 =
                 (corradeCommandParameters, result) =>
                 {
@@ -32,95 +34,66 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
-                    float range;
                     if (
-                        !float.TryParse(
-                            wasInput(KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
-                                corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
-                            out range))
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int)Configuration.Permissions.Interact))
                     {
-                        range = corradeConfiguration.Range;
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var entity =
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                corradeCommandParameters.Message));
-                    UUID entityUUID;
-                    if (!UUID.TryParse(entity, out entityUUID))
-                    {
-                        if (string.IsNullOrEmpty(entity))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
-                        }
-                        entityUUID = UUID.Zero;
-                    }
-                    var item = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                        corradeCommandParameters.Message));
+                    var item = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
-                    UUID itemUUID;
-                    Primitive primitive = null;
-                    switch (UUID.TryParse(item, out itemUUID))
+                    var assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
+                        .AsParallel().FirstOrDefault(
+                            o =>
+                                o.Name.Equals(
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                            corradeCommandParameters.Message)),
+                                    StringComparison.Ordinal));
+                    switch (assetTypeInfo != null)
                     {
-                        case true:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    itemUUID,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
-
-                        default:
-                            if (
-                                !Services.FindPrimitive(Client,
-                                    item,
-                                    range,
-                                    ref primitive,
-                                    corradeConfiguration.DataTimeout))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
-                            break;
+                        case false:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
+                    var assetType = (AssetType)assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
-                    var inventory = new List<InventoryBase>();
-                    Locks.ClientInstanceInventoryLock.EnterReadLock();
-                    inventory.AddRange(
-                            Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int)corradeConfiguration.ServicesTimeout));
-                    Locks.ClientInstanceInventoryLock.ExitReadLock();
-                    inventoryItem = !entityUUID.Equals(UUID.Zero)
-                        ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
-                        : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
-                    // Stop if task inventory does not exist.
-                    if (inventoryItem == null)
-                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-
+                    UUID itemUUID;
+                    // If the asset is of an asset type that can only be retrieved locally or the item is a string
+                    // then attempt to resolve the item to an inventory item or else the item cannot be found.
+                    if (!UUID.TryParse(item, out itemUUID))
+                    {
+                        inventoryItem =
+                            Inventory.FindInventory<InventoryItem>(Client, item,
+                                CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
+                                corradeConfiguration.ServicesTimeout);
+                        if (inventoryItem == null)
+                        {
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        itemUUID = inventoryItem.AssetUUID;
+                    }
                     byte[] assetData = null;
                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                    var cacheHasAsset = Client.Assets.Cache.HasAsset(inventoryItem.AssetUUID);
+                    var cacheHasAsset = Client.Assets.Cache.HasAsset(itemUUID);
                     Locks.ClientInstanceAssetsLock.ExitReadLock();
-                    bool succeeded = false;
                     switch (!cacheHasAsset)
                     {
                         case true:
                             var RequestAssetEvent = new ManualResetEvent(false);
-                            switch (inventoryItem.AssetType)
+                            var succeeded = false;
+                            switch (assetType)
                             {
                                 case AssetType.Mesh:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                                    Client.Assets.RequestMesh(inventoryItem.AssetUUID,
+                                    Client.Assets.RequestMesh(itemUUID,
                                             delegate (bool completed, AssetMesh asset)
                                             {
-                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
                                                 succeeded = completed;
                                                 if (succeeded)
                                                 {
@@ -129,7 +102,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -150,9 +123,9 @@ namespace Corrade
                                     if (inventoryItem == null)
                                     {
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
-                                        if (Client.Inventory.Store.Contains(inventoryItem.AssetUUID))
+                                        if (Client.Inventory.Store.Contains(itemUUID))
                                         {
-                                            inventoryItem = Client.Inventory.Store[inventoryItem.UUID] as InventoryItem;
+                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
                                         }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         if (inventoryItem == null)
@@ -162,12 +135,7 @@ namespace Corrade
                                         }
                                     }
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                                    Client.Assets.RequestInventoryAsset(
-                                        inventoryItem.AssetUUID,
-                                        inventoryItem.UUID,
-                                        primitive.ID,
-                                        inventoryItem.OwnerID,
-                                        inventoryItem.AssetType, true,
+                                    Client.Assets.RequestInventoryAsset(inventoryItem, true,
                                             delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 succeeded = transfer.Success;
@@ -178,7 +146,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -189,17 +157,17 @@ namespace Corrade
                                 // All images go through RequestImage and can be fetched directly from the asset server.
                                 case AssetType.Texture:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                                    Client.Assets.RequestImage(inventoryItem.AssetUUID, ImageType.Normal,
+                                    Client.Assets.RequestImage(itemUUID, ImageType.Normal,
                                             delegate (TextureRequestState state, AssetTexture asset)
                                             {
-                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
                                                 if (!state.Equals(TextureRequestState.Finished)) return;
                                                 assetData = asset.AssetData;
                                                 succeeded = true;
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -215,10 +183,10 @@ namespace Corrade
                                 case AssetType.Clothing:
                                 case AssetType.Bodypart:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                                    Client.Assets.RequestAsset(inventoryItem.AssetUUID, inventoryItem.AssetType, true,
+                                    Client.Assets.RequestAsset(itemUUID, assetType, true,
                                             delegate (AssetDownload transfer, Asset asset)
                                             {
-                                                if (!transfer.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                if (!transfer.AssetID.Equals(itemUUID)) return;
                                                 succeeded = transfer.Success;
                                                 if (transfer.Success)
                                                 {
@@ -226,7 +194,7 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -243,16 +211,16 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.FAILED_TO_DOWNLOAD_ASSET);
                             }
                             Locks.ClientInstanceAssetsLock.EnterWriteLock();
-                            Client.Assets.Cache.SaveAssetToCache(inventoryItem.AssetUUID, assetData);
+                            Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
                             Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             if (corradeConfiguration.EnableHorde)
-                                HordeDistributeCacheAsset(inventoryItem.AssetUUID, assetData,
+                                HordeDistributeCacheAsset(itemUUID, assetData,
                                     Configuration.HordeDataSynchronizationOption.Add);
                             break;
 
                         default:
                             Locks.ClientInstanceAssetsLock.EnterReadLock();
-                            assetData = Client.Assets.Cache.GetCachedAssetBytes(inventoryItem.AssetUUID);
+                            assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
                             Locks.ClientInstanceAssetsLock.ExitReadLock();
                             break;
                     }

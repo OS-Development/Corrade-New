@@ -268,16 +268,13 @@
     <Compile Include="commands\Corrade\GetHeartbeatData.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="commands\Corrade\GetInventoryAssetData.cs">
+    <Compile Include="commands\Corrade\GetAssetData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetParcelObjectResourceDetailData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetParcelObjectsResourceDetailData.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="commands\Corrade\GetPrimitiveInventoryAssetData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetProfilesData.cs">
@@ -720,9 +717,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetPrimitiveInventory.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="commands\Corrade\GetPrimitiveInventoryData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetPrimitiveLightData.cs">
