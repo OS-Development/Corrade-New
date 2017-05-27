@@ -47,6 +47,21 @@ namespace Corrade
             NONE = 0,
 
             [CommandInputSyntax(
+                "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<AssetData[,AssetData...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]")]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
+            [CorradeCommand("getprimitiveinventoryassetdata")]
+            [Reflection.NameAttribute("getprimitiveinventoryassetdata")]
+            getprimitiveinventoryassetdata,
+
+            [CommandInputSyntax(
+                "<command=getinventoryassetdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING>>&<data=<AssetData[,AssetData...]>&[callback=<STRING>]"
+            )]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]
+            [CorradeCommand("getinventoryassetdata")]
+            [Reflection.NameAttribute("getinventoryassetdata")]
+            getinventoryassetdata,
+
+            [CommandInputSyntax(
                 "<command=createlandmark>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[callback=<STRING>]"
             )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Inventory)]

@@ -30,6 +30,27 @@ namespace Corrade
                 =
                 (corradeCommandParameters, result) =>
                 {
+                    var type = Reflection.GetEnumValueFromName<Enumerations.Type>(
+                        wasInput(KeyValue.Get(wasOutput(
+                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                            corradeCommandParameters.Message)));
+                    switch (type)
+                    {
+                        case Enumerations.Type.TASK:
+                            if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Interact))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                            }
+                            break;
+
+                        case Enumerations.Type.AGENT:
+                            if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Inventory))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                            }
+                            break;
+                    }
+
                     var data = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message));
@@ -51,18 +72,9 @@ namespace Corrade
                         corradeCommandParameters.Message));
                     var itemUUID = UUID.Zero;
                     var UpdateScriptEvent = new ManualResetEvent(false);
-                    switch (
-                        Reflection.GetEnumValueFromName<Enumerations.Type>(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                                    corradeCommandParameters.Message))))
+                    switch (type)
                     {
                         case Enumerations.Type.TASK:
-                            if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Interact))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                            }
                             float range;
                             if (
                                 !float.TryParse(
@@ -167,10 +179,6 @@ namespace Corrade
                             break;
 
                         case Enumerations.Type.AGENT:
-                            if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Inventory))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                            }
                             // If an item was specified then update instead of creating a new item for certain asset types.
                             if (!string.IsNullOrEmpty(item))
                             {
