@@ -46,6 +46,22 @@ namespace Corrade
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
+                    var assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
+                        .AsParallel().FirstOrDefault(
+                            o =>
+                                o.Name.Equals(
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                            corradeCommandParameters.Message)),
+                                    StringComparison.Ordinal));
+                    switch (assetTypeInfo != null)
+                    {
+                        case false:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
+                    }
+                    var assetType = (AssetType)assetTypeInfo.GetValue(null);
                     InventoryItem inventoryItem = null;
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
@@ -71,7 +87,7 @@ namespace Corrade
                         case true:
                             var RequestAssetEvent = new ManualResetEvent(false);
                             var succeeded = false;
-                            switch (inventoryItem.AssetType)
+                            switch (assetType)
                             {
                                 case AssetType.Mesh:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
@@ -87,7 +103,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -131,7 +147,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -152,7 +168,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -168,7 +184,7 @@ namespace Corrade
                                 case AssetType.Clothing:
                                 case AssetType.Bodypart:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                                    Client.Assets.RequestAsset(itemUUID, inventoryItem.AssetType, true,
+                                    Client.Assets.RequestAsset(itemUUID, assetType, true,
                                             delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 if (!transfer.AssetID.Equals(itemUUID)) return;
@@ -179,7 +195,7 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -210,7 +226,7 @@ namespace Corrade
                             break;
                     }
                     // If the asset type was a texture, convert it to the desired format.
-                    switch (inventoryItem.AssetType.Equals(AssetType.Texture))
+                    switch (assetType.Equals(AssetType.Texture))
                     {
                         case true:
                             var format =
@@ -316,7 +332,7 @@ namespace Corrade
                             break;
                     }
                     // If the asset type was a sound, convert it to the desired format.
-                    switch (inventoryItem.AssetType.Equals(AssetType.Sound))
+                    switch (assetType.Equals(AssetType.Sound))
                     {
                         case true:
                             var format =
