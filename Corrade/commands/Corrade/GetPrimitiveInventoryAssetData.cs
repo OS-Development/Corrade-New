@@ -51,7 +51,7 @@ namespace Corrade
                     {
                         if (string.IsNullOrEmpty(entity))
                         {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_TARGET_SPECIFIED);
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                         }
                         entityUUID = UUID.Zero;
                     }
@@ -101,8 +101,7 @@ namespace Corrade
                         ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                         : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                     // Stop if task inventory does not exist.
-                    if (inventoryItem == null ||
-                        !inventoryItem.AssetType.Equals(AssetType.Notecard))
+                    if (inventoryItem == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
 
                     byte[] assetData = null;
@@ -163,7 +162,12 @@ namespace Corrade
                                         }
                                     }
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
-                                    Client.Assets.RequestInventoryAsset(inventoryItem, true,
+                                    Client.Assets.RequestInventoryAsset(
+                                        inventoryItem.AssetUUID,
+                                        inventoryItem.UUID,
+                                        primitive.ID,
+                                        inventoryItem.OwnerID,
+                                        inventoryItem.AssetType, true,
                                             delegate (AssetDownload transfer, Asset asset)
                                             {
                                                 succeeded = transfer.Success;
@@ -252,6 +256,7 @@ namespace Corrade
                             Locks.ClientInstanceAssetsLock.ExitReadLock();
                             break;
                     }
+
                     var data = new List<string>();
                     switch (inventoryItem.AssetType)
                     {
@@ -312,7 +317,7 @@ namespace Corrade
                             break;
 
                         case AssetType.Texture:
-                            var assetTexture = new AssetNotecard
+                            var assetTexture = new AssetTexture
                             {
                                 AssetData = assetData
                             };

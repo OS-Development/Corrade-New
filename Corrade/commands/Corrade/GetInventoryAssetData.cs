@@ -58,7 +58,7 @@ namespace Corrade
                                 break;
                         }
 
-                        if (inventoryItem == null || !inventoryItem.AssetType.Equals(AssetType.Notecard))
+                        if (inventoryItem == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
 
@@ -269,7 +269,7 @@ namespace Corrade
                             break;
 
                         case AssetType.Texture:
-                            var assetTexture = new AssetNotecard
+                            var assetTexture = new AssetTexture
                             {
                                 AssetData = assetData
                             };
