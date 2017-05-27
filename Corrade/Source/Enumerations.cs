@@ -2340,7 +2340,11 @@ namespace Corrade
 
             [Command.StatusAttribute(38504)]
             [Reflection.DescriptionAttribute("invalid permissions")]
-            INVALID_PERMISSIONS
+            INVALID_PERMISSIONS,
+
+            [Command.StatusAttribute(41574)]
+            [Reflection.DescriptionAttribute("timeout rezzing primitive")]
+            TIMEOUT_REZZING_PRIMITIVE
         }
 
         /// <summary>

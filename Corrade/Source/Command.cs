@@ -46,6 +46,9 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [Reflection.NameAttribute("reset")]
+            RESET,
+
             [Reflection.NameAttribute("create")]
             CREATE,
 
@@ -92,7 +95,7 @@ namespace Corrade
             ALTITUDE,
 
             [CommandInputSyntax(
-                "<command=updatenotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&type=task:[range=<FLOAT>]&type=task:<entity=<STRING|UUID>>&[callback=<STRING>]"
+                "<command=updatenotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&[create=<BOOL>]&[temporary=<BOOL>]&type=task:[range=<FLOAT>]&<target=<STRING|UUID>>&[callback=<STRING>]"
             )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.Inventory)]
             [CorradeCommand("updatenotecard")]
@@ -100,7 +103,7 @@ namespace Corrade
             UPDATENOTECARD,
 
             [CommandInputSyntax(
-                "<command=updatescript>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&[mono=<BOOL>]&type=task:[range=<FLOAT>]&type=task:<entity=<STRING|UUID>>&type=task:[run=<BOOL>]&[callback=<STRING>]"
+                "<command=updatescript>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<task|agent>>&[item=<UUID|STRING>]&[description=<STRING>]&[create=<BOOL>]&[temporary=<BOOL>]&[mono=<BOOL>]&type=task:[range=<FLOAT>]&type=task:[run=<BOOL>]&<target=<STRING|UUID>>&[callback=<STRING>]"
             )]
             [CommandPermissionMask((ulong)Configuration.Permissions.Interact | (ulong)Configuration.Permissions.Inventory)]
             [CorradeCommand("updatescript")]

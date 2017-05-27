@@ -11,10 +11,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
 using Reflection = wasSharp.Reflection;
+using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
 {
@@ -32,6 +34,17 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+
+                    var name = wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
+                        corradeCommandParameters.Message));
+                    var description = wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                        corradeCommandParameters.Message));
+                    var permissions = wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
+                        corradeCommandParameters.Message));
+
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -146,7 +159,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)), wasInput);
                     // Get any primitive flags.
-                    PrimFlags primFlags = 0;
+                    PrimFlags primFlags = PrimFlags.None;
                     CSV.ToEnumerable(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
@@ -161,16 +174,81 @@ namespace Corrade
                                     .ForAll(
                                         q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags)q.GetValue(null)); }));
 
+                    // Listen for newly created primitives.
+                    var PrimitiveCreatedEvent = new ManualResetEvent(false);
+                    EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
+                    {
+                        // Skip updates for objects we did not create.
+                        if (!args.Prim.Flags.IsMaskFlagSet(PrimFlags.CreateSelected))
+                            return;
+
+                        // Return the new object UUID.
+                        result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)), args.Prim.ID.ToString());
+
+                        // Move primitive to final destination to be precise.
+                        Client.Objects.SetPosition(simulator,
+                                args.Prim.LocalID, position);
+
+                        // Set the primitive name.
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            Client.Objects.SetName(simulator,
+                                    args.Prim.LocalID, name);
+                        }
+
+                        // Set the primitive description.
+                        if (!string.IsNullOrEmpty(description))
+                        {
+                            Client.Objects.SetDescription(simulator,
+                                    args.Prim.LocalID, description);
+                        }
+
+                        // Set permissions if requested.
+                        if (!string.IsNullOrEmpty(permissions))
+                        {
+                            var objectPermissions = Permissions.NoPermissions;
+                            Inventory.wasStringToPermissions(permissions, out objectPermissions);
+                            var primitiveList = new List<uint>() { args.Prim.LocalID };
+
+                            // Set primitive permissions.
+                            Client.Objects.SetPermissions(simulator, primitiveList, PermissionWho.Group,
+                                objectPermissions.GroupMask, true);
+                            Client.Objects.SetPermissions(simulator, primitiveList,
+                                PermissionWho.Everyone,
+                                objectPermissions.EveryoneMask, true);
+                            Client.Objects.SetPermissions(simulator, primitiveList,
+                                PermissionWho.NextOwner,
+                                objectPermissions.NextOwnerMask, true);
+                        }
+
+                        PrimitiveCreatedEvent.Set();
+                    };
+
                     // Activate parcel group.
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.ActivateGroup(parcel.GroupID);
 
                     // Finally, add the primitive to the simulator.
                     Locks.ClientInstanceObjectsLock.EnterWriteLock();
-                    Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID,
+                    Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                    Client.Objects.AddPrim(simulator,
+                            constructionData,
+                            corradeCommandParameters.Group.UUID,
                             position,
-                            scale, rotation,
-                            primFlags);
+                            scale,
+                            rotation,
+                            // Create the primitive selected in order to be able to change parameters.
+                            primFlags | PrimFlags.CreateSelected);
+                    if (!PrimitiveCreatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout))
+                    {
+                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                        Locks.ClientInstanceObjectsLock.ExitWriteLock();
+                        // Activate the initial group.
+                        Client.Groups.ActivateGroup(initialGroup);
+                        Locks.ClientInstanceGroupsLock.ExitWriteLock();
+                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REZZING_PRIMITIVE);
+                    }
+                    Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
 
                     // Activate the initial group.

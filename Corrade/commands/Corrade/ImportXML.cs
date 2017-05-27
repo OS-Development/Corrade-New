@@ -562,7 +562,7 @@ namespace Corrade
                         Client.Groups.ActivateGroup(initialGroup);
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
 
-                        if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);

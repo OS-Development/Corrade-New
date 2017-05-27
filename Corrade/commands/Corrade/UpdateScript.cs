@@ -12,13 +12,14 @@ using System.Text;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
 using System.IO;
+using OpenMetaverse.Packets;
+using OpenMetaverse.Assets;
 
 namespace Corrade
 {
@@ -54,18 +55,18 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_UPDATE_TYPE);
                     }
 
-                    var data = wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message));
-
-                    if (!string.IsNullOrEmpty(data))
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-
-                    bool mono;
+                    bool mono = true;
                     if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MONO)),
                             corradeCommandParameters.Message)), out mono))
                     {
                         mono = true;
+                    }
+
+                    bool run = true;
+                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RUN)),
+                            corradeCommandParameters.Message)), out run))
+                    {
+                        run = true;
                     }
 
                     var csv = new List<string>();
@@ -79,6 +80,7 @@ namespace Corrade
                     var target = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                         corradeCommandParameters.Message));
+                    Primitive primitive = null;
                     switch (type)
                     {
                         case Enumerations.Type.TASK:
@@ -101,7 +103,6 @@ namespace Corrade
                                 }
                                 targetUUID = UUID.Zero;
                             }
-                            Primitive primitive = null;
                             if (string.IsNullOrEmpty(item))
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
@@ -132,6 +133,7 @@ namespace Corrade
                                     }
                                     break;
                             }
+
                             var inventory = new List<InventoryBase>();
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             inventory.AddRange(
@@ -141,6 +143,7 @@ namespace Corrade
                             inventoryItem = !targetUUID.Equals(UUID.Zero)
                                 ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(targetUUID)) as InventoryItem
                                 : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(target)) as InventoryItem;
+
                             // If task inventory item does not exist create it.
                             if (inventoryItem == null ||
                                 !inventoryItem.AssetType.Equals(AssetType.LSLText))
@@ -167,7 +170,8 @@ namespace Corrade
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                                 corradeCommandParameters.Message)),
                                         AssetType.LSLText,
-                                        UUID.Random(), InventoryType.LSL,
+                                        UUID.Random(),
+                                        InventoryType.LSL,
                                         permissions.Equals(Permissions.NoPermissions) ? PermissionMask.Transfer : permissions.NextOwnerMask,
                                         delegate (bool completed, InventoryItem createdItem)
                                         {
@@ -189,43 +193,10 @@ namespace Corrade
 
                                 // Copy the item to the task inventory.
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
+                                Client.Inventory.CopyScriptToTask(primitive.LocalID, inventoryItem, run);
                                 Client.Inventory.RemoveItem(inventoryItem.UUID);
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             }
-
-                            bool run;
-                            if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RUN)),
-                                    corradeCommandParameters.Message)), out run))
-                            {
-                                run = true;
-                            }
-
-                            // Update the script inside the task inventory.
-                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(data)))
-                            {
-                                Client.Inventory.RequestUpdateScriptTask(memoryStream.ToArray(), inventoryItem.UUID, primitive.ID, mono, run,
-                                    delegate (bool completed, string status, bool compiled, List<string> messages,
-                                        UUID itemID, UUID assetID)
-                                    {
-                                        // Add the compiler output to the return.
-                                        if (!compiled)
-                                            csv.AddRange(new[] {
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
-                                            });
-                                        inventoryItem.UUID = itemID;
-                                        inventoryItem.AssetUUID = assetID;
-                                        succeeded = completed;
-                                        UpdateScriptEvent.Set();
-                                    });
-                                if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
-                                {
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
-                                }
-                            }
-                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
 
                         case Enumerations.Type.AGENT:
@@ -295,30 +266,214 @@ namespace Corrade
                                     }
                                 }
                             }
-                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(data)))
+                            break;
+
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_UPDATE_TYPE);
+                    }
+
+                    bool temporary = false;
+                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEMPORARY)),
+                            corradeCommandParameters.Message)), out temporary))
+                    {
+                        temporary = false;
+                    }
+
+                    AssetScriptText script = null;
+                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                corradeCommandParameters.Message))))
+                    {
+                        case Enumerations.Entity.FILE:
+                            if (
+                                !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                    (int)Configuration.Permissions.System))
                             {
-                                Client.Inventory.RequestUpdateScriptAgentInventory(memoryStream.ToArray(), inventoryItem.UUID, mono,
-                                    delegate (bool completed, string status, bool compiled, List<string> messages,
-                                        UUID itemID, UUID assetID)
-                                    {
-                                        // Add the compiler output to the return.
-                                        if (!compiled)
-                                            csv.AddRange(new[] {
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
-                                            });
-                                        inventoryItem.UUID = itemID;
-                                        inventoryItem.AssetUUID = assetID;
-                                        succeeded = completed;
-                                        UpdateScriptEvent.Set();
-                                    });
-                                if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                            }
+                            var path =
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
+                                        corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
+                            }
+                            // Read from file.
+                            var data = string.Empty;
+                            try
+                            {
+                                using (
+                                    var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                                        16384, true))
                                 {
-                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
-                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                                    using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                    {
+                                        data = streamReader.ReadToEnd();
+                                    }
                                 }
                             }
+                            catch (Exception ex)
+                            {
+                                result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_READ_FILE);
+                            }
+                            script = new AssetScriptText(inventoryItem.AssetUUID, null)
+                            {
+                                Source = data,
+                                Temporary = temporary
+                            };
+                            break;
+
+                        case Enumerations.Entity.TEXT:
+                            var text =
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message));
+                            if (string.IsNullOrEmpty(text))
+                                data = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE;
+
+                            script = new AssetScriptText(inventoryItem.AssetUUID, null)
+                            {
+                                Source = text,
+                                Temporary = temporary
+                            };
+                            break;
+
+                        case Enumerations.Entity.ASSET:
+                            byte[] asset = null;
+                            try
+                            {
+                                asset = Convert.FromBase64String(
+                                    wasInput(
+                                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                            corradeCommandParameters.Message)));
+                            }
+                            catch (Exception)
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
+                            }
+
+                            if (asset == null || asset.Length.Equals(0))
+                                throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
+
+                            var assetScriptText = new AssetScriptText()
+                            {
+                                AssetData = asset
+                            };
+
+                            if (!assetScriptText.Decode())
+                                throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
+
+                            script = new AssetScriptText(inventoryItem.AssetUUID, null)
+                            {
+                                Source = assetScriptText.Source,
+                                Temporary = temporary
+                            };
+                            break;
+
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
+                    }
+
+                    script.Encode();
+
+                    switch (type)
+                    {
+                        case Enumerations.Type.TASK:
+                            bool reset = true;
+                            if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RESET)),
+                                    corradeCommandParameters.Message)), out reset))
+                            {
+                                reset = true;
+                            }
+
+                            // Update the script inside the task inventory.
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.RequestUpdateScriptTask(script.AssetData, inventoryItem.UUID, primitive.ID, mono, run,
+                                delegate (bool completed, string status, bool compiled, List<string> messages,
+                                    UUID itemID, UUID assetID)
+                                {
+                                    // Add the compiler output to the return.
+                                    if (!compiled && messages.Any())
+                                        csv.AddRange(new[] {
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
+                                        });
+                                    inventoryItem.UUID = itemID;
+                                    inventoryItem.AssetUUID = assetID;
+                                    succeeded = completed;
+                                    UpdateScriptEvent.Set();
+                                });
+                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            {
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                            }
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
+
+                            if (!succeeded)
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM);
+                            }
+
+                            var simulator = Client.Network.Simulators.FirstOrDefault(
+                                o => o.Handle.Equals(primitive.RegionHandle));
+                            if (simulator == null || simulator.Equals(default(Simulator)))
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
+                            }
+
+                            // Reset script if requested.
+                            if (reset)
+                            {
+                                Locks.ClientInstanceNetworkLock.EnterReadLock();
+                                Client.Network.SendPacket(new ScriptResetPacket()
+                                {
+                                    Type = PacketType.ScriptReset,
+                                    AgentData = new ScriptResetPacket.AgentDataBlock()
+                                    {
+                                        AgentID = Client.Self.AgentID,
+                                        SessionID = Client.Self.SessionID
+                                    },
+                                    Script = new ScriptResetPacket.ScriptBlock()
+                                    {
+                                        ItemID = inventoryItem.UUID,
+                                        ObjectID = primitive.ID
+                                    }
+                                }, simulator);
+                                Locks.ClientInstanceNetworkLock.ExitReadLock();
+                            }
+                            break;
+
+                        case Enumerations.Type.AGENT:
+                            Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                            Client.Inventory.RequestUpdateScriptAgentInventory(script.AssetData, inventoryItem.UUID, mono,
+                                delegate (bool completed, string status, bool compiled, List<string> messages,
+                                    UUID itemID, UUID assetID)
+                                {
+                                    // Add the compiler output to the return.
+                                    if (!compiled && messages.Any())
+                                        csv.AddRange(new[] {
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
+                                        });
+                                    inventoryItem.UUID = itemID;
+                                    inventoryItem.AssetUUID = assetID;
+                                    succeeded = completed;
+                                    UpdateScriptEvent.Set();
+                                });
+                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            {
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
+                            }
+                            Locks.ClientInstanceInventoryLock.ExitWriteLock();
+
+                            if (!succeeded)
+                            {
+                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM);
+                            }
                             break;
 
                         default:
