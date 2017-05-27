@@ -33,13 +33,6 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
