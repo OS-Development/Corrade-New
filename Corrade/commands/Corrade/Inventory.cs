@@ -258,7 +258,7 @@ namespace Corrade
                                             .AsParallel()
                                             .ForAll(o =>
                                             {
-                                                o.Permissions = Inventory.wasStringToPermissions(itemPermissions);
+                                                Inventory.wasStringToPermissions(itemPermissions, out o.Permissions);
                                                 Client.Inventory.RequestUpdateItem(o);
                                             });
                                     Locks.ClientInstanceInventoryLock.ExitReadLock();
@@ -270,8 +270,7 @@ namespace Corrade
 
                                 default:
                                     var inventoryItem = item as InventoryItem;
-                                    inventoryItem.Permissions =
-                                        Inventory.wasStringToPermissions(itemPermissions);
+                                    Inventory.wasStringToPermissions(itemPermissions, out inventoryItem.Permissions);
                                     Client.Inventory.RequestUpdateItem(item as InventoryItem);
                                     if (!updateFolders.Contains(inventoryItem.ParentUUID))
                                     {

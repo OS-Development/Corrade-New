@@ -981,6 +981,9 @@ namespace wasOpenMetaverse
         /// <returns>the permissions for an item</returns>
         public static Permissions wasStringToPermissions(string permissions)
         {
+            if (string.IsNullOrEmpty(permissions) || !permissions.Length.Equals(30))
+                return Permissions.NoPermissions;
+
             Func<string, uint> segment = o =>
             {
                 uint r = 0;
@@ -1032,6 +1035,79 @@ namespace wasOpenMetaverse
             return new Permissions(segment(permissions.Substring(0, 6)),
                 segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
                 segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a formatted string to item permissions:
+        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
+        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
+        /// </summary>
+        /// <param name="permissions">the item permissions</param>
+        /// <returns>the permissions for an item</returns>
+        public static bool wasStringToPermissions(string permissions, out Permissions p)
+        {
+            if (string.IsNullOrEmpty(permissions) || !permissions.Length.Equals(30))
+            {
+                p = Permissions.NoPermissions;
+                return false;
+            }
+
+            Func<string, uint> segment = o =>
+            {
+                uint r = 0;
+                switch (!char.ToLower(o[0]).Equals('c'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Copy;
+                        break;
+                }
+
+                switch (!char.ToLower(o[1]).Equals('d'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Damage;
+                        break;
+                }
+
+                switch (!char.ToLower(o[2]).Equals('e'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Export;
+                        break;
+                }
+
+                switch (!char.ToLower(o[3]).Equals('m'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Modify;
+                        break;
+                }
+
+                switch (!char.ToLower(o[4]).Equals('v'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Move;
+                        break;
+                }
+
+                switch (!char.ToLower(o[5]).Equals('t'))
+                {
+                    case false:
+                        r |= (uint)PermissionMask.Transfer;
+                        break;
+                }
+
+                return r;
+            };
+
+            p = new Permissions(segment(permissions.Substring(0, 6)),
+                segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
+                segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
+
+            return true;
         }
 
         ///////////////////////////////////////////////////////////////////////////

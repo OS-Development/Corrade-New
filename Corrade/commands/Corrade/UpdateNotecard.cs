@@ -50,6 +50,9 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                             }
                             break;
+
+                        default:
+                            throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_UPDATE_TYPE);
                     }
 
                     // Check all inventory items.
@@ -111,11 +114,13 @@ namespace Corrade
                     var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
-                    var UploadNotecardAssetEvent = new ManualResetEvent(false);
                     bool succeeded = false;
                     Primitive primitive = null;
                     InventoryItem inventoryItem = null;
                     UUID itemUUID;
+                    var target = wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
+                        corradeCommandParameters.Message));
                     switch (type)
                     {
                         case Enumerations.Type.TASK:
@@ -129,10 +134,6 @@ namespace Corrade
                             {
                                 range = corradeConfiguration.Range;
                             }
-                            var target =
-                                wasInput(
-                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
-                                        corradeCommandParameters.Message));
                             UUID targetUUID;
                             if (!UUID.TryParse(target, out targetUUID))
                             {
@@ -182,10 +183,73 @@ namespace Corrade
                                 ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(targetUUID)) as InventoryItem
                                 : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(target)) as InventoryItem;
                             // Stop if task inventory does not exist.
-                            succeeded = false;
                             if (inventoryItem == null ||
                                 !inventoryItem.AssetType.Equals(AssetType.Notecard))
-                                throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                            {
+                                bool create = false;
+                                if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CREATE)),
+                                        corradeCommandParameters.Message)), out create) || !create)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                }
+
+                                // Create notecard.
+                                var CreateNotecardEvent = new ManualResetEvent(false);
+                                InventoryItem newItem = null;
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
+                                        target,
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                                                corradeCommandParameters.Message)),
+                                        AssetType.Notecard,
+                                        UUID.Random(), InventoryType.Notecard, PermissionMask.All,
+                                        delegate (bool completed, InventoryItem createdItem)
+                                        {
+                                            succeeded = completed;
+                                            newItem = createdItem;
+                                            CreateNotecardEvent.Set();
+                                        });
+                                if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                {
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                if (!succeeded)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                }
+
+                                // Upload blank notecard.
+                                AssetNotecard emptyNotecard = new AssetNotecard
+                                {
+                                    BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
+                                };
+                                emptyNotecard.Encode();
+
+                                var UploadNotecardAssetEvent = new ManualResetEvent(false);
+                                Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                Client.Inventory.RequestUploadNotecardAsset(emptyNotecard.AssetData, newItem.UUID,
+                                    delegate (bool completed, string status, UUID itemID, UUID assetID)
+                                    {
+                                        succeeded = completed;
+                                        newItem.UUID = itemID;
+                                        newItem.AssetUUID = assetID;
+                                        UploadNotecardAssetEvent.Set();
+                                    });
+                                if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                {
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                                }
+                                Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                if (!succeeded)
+                                {
+                                    throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                }
+                            }
 
                             break;
 
@@ -212,7 +276,71 @@ namespace Corrade
                                 }
 
                                 if (inventoryItem == null || !inventoryItem.AssetType.Equals(AssetType.Notecard))
-                                    throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                {
+                                    bool create = false;
+                                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CREATE)),
+                                            corradeCommandParameters.Message)), out create) || !create)
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                                    }
+
+                                    // Create notecard.
+                                    var CreateNotecardEvent = new ManualResetEvent(false);
+                                    InventoryItem newItem = null;
+                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                    Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
+                                            target,
+                                            wasInput(
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                                                    corradeCommandParameters.Message)),
+                                            AssetType.Notecard,
+                                            UUID.Random(), InventoryType.Notecard, PermissionMask.All,
+                                            delegate (bool completed, InventoryItem createdItem)
+                                            {
+                                                succeeded = completed;
+                                                newItem = createdItem;
+                                                CreateNotecardEvent.Set();
+                                            });
+                                    if (!CreateNotecardEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    {
+                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    if (!succeeded)
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                    }
+
+                                    // Upload blank notecard.
+                                    AssetNotecard emptyNotecard = new AssetNotecard
+                                    {
+                                        BodyText = wasOpenMetaverse.Constants.ASSETS.NOTECARD.NEWLINE
+                                    };
+                                    emptyNotecard.Encode();
+
+                                    var UploadNotecardAssetEvent = new ManualResetEvent(false);
+                                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                    Client.Inventory.RequestUploadNotecardAsset(emptyNotecard.AssetData, newItem.UUID,
+                                        delegate (bool completed, string status, UUID itemID, UUID assetID)
+                                        {
+                                            succeeded = completed;
+                                            newItem.UUID = itemID;
+                                            newItem.AssetUUID = assetID;
+                                            UploadNotecardAssetEvent.Set();
+                                        });
+                                    if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    {
+                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                        throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
+                                    }
+                                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
+                                    if (!succeeded)
+                                    {
+                                        throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                    }
+                                }
                             }
 
                             break;
@@ -343,6 +471,7 @@ namespace Corrade
                     {
                         case Enumerations.Type.TASK:
                             // Update the notecard inside the task inventory.
+                            var UpdateNotecardTaskEvent = new ManualResetEvent(false);
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
                             Client.Inventory.RequestUpdateNotecardTask(notecard.AssetData, inventoryItem.UUID, primitive.ID,
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
@@ -350,9 +479,9 @@ namespace Corrade
                                         succeeded = completed;
                                         inventoryItem.UUID = itemID;
                                         inventoryItem.AssetUUID = assetID;
-                                        UploadNotecardAssetEvent.Set();
+                                        UpdateNotecardTaskEvent.Set();
                                     });
-                            if (!UploadNotecardAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!UpdateNotecardTaskEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -361,6 +490,7 @@ namespace Corrade
                             break;
 
                         case Enumerations.Type.AGENT:
+                            var UploadNotecardAssetEvent = new ManualResetEvent(false);
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
                             Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, inventoryItem.UUID,
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)

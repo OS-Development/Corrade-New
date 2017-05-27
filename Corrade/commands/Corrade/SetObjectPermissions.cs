@@ -82,16 +82,13 @@ namespace Corrade
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        var itemPermissions =
-                            wasInput(
+                        var permissions = Permissions.NoPermissions;
+                        if (!Inventory.wasStringToPermissions(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                    corradeCommandParameters.Message));
-                        if (string.IsNullOrEmpty(itemPermissions))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_PROVIDED);
-                        }
-                        var permissions = Inventory.wasStringToPermissions(itemPermissions);
+                                    corradeCommandParameters.Message)), out permissions))
+                            throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PERMISSIONS);
+
                         Locks.ClientInstanceObjectsLock.EnterWriteLock();
                         Client.Objects.SetPermissions(simulator,
                                 new List<uint> { primitive.LocalID },

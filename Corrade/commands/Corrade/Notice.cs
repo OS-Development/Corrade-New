@@ -142,7 +142,7 @@ namespace Corrade
                                         corradeCommandParameters.Message));
                                 if (!string.IsNullOrEmpty(permissions))
                                 {
-                                    inventoryItem.Permissions = Inventory.wasStringToPermissions(permissions);
+                                    Inventory.wasStringToPermissions(permissions, out inventoryItem.Permissions);
                                     Client.Inventory.RequestUpdateItem(inventoryItem);
                                 }
                                 notice.AttachmentID = inventoryItem.UUID;

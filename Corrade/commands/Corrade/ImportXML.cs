@@ -56,10 +56,11 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                     var permissions = new Permissions((uint)PermissionMask.All, (uint)PermissionMask.All,
                         (uint)PermissionMask.All, (uint)PermissionMask.All, (uint)PermissionMask.All);
-                    if (!string.IsNullOrEmpty(itemPermissions))
-                    {
-                        permissions = Inventory.wasStringToPermissions(itemPermissions);
-                    }
+                    if (string.IsNullOrEmpty(itemPermissions))
+                        throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_PROVIDED);
+
+                    if (!Inventory.wasStringToPermissions(itemPermissions, out permissions))
+                        throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PERMISSIONS);
 
                     // Optional region.
                     var region =

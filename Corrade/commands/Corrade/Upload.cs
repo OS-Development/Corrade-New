@@ -47,23 +47,13 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
                     }
-                    var permissions = PermissionMask.None;
-                    CSV.ToEnumerable(
-                        wasInput(
+
+                    var permissions = Permissions.NoPermissions;
+                    Inventory.wasStringToPermissions(wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                corradeCommandParameters.Message)))
-                        .AsParallel()
-                        .Where(o => !string.IsNullOrEmpty(o))
-                        .ForAll(
-                            o => typeof(PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel()
-                                .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
-                                .ForAll(
-                                    q =>
-                                    {
-                                        BitTwiddling.SetMaskFlag(ref permissions, (PermissionMask)q.GetValue(null));
-                                    }));
+                                corradeCommandParameters.Message)), out permissions);
+
                     var assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
                                                                     BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
@@ -342,7 +332,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     assetType,
                                     wearableUUID, InventoryType.Wearable, (WearableType)wearTypeInfo.GetValue(null),
-                                    permissions == 0 ? PermissionMask.Transfer : permissions,
+                                    permissions.Equals(Permissions.NoPermissions) ? PermissionMask.Transfer : permissions.NextOwnerMask,
                                     delegate (bool completed, InventoryItem createdItem)
                                     {
                                         inventoryItem = createdItem;
@@ -400,7 +390,7 @@ namespace Corrade
                                                 corradeCommandParameters.Message)),
                                         assetType,
                                         UUID.Random(), InventoryType.Gesture,
-                                        permissions == 0 ? PermissionMask.Transfer : permissions,
+                                        permissions.Equals(Permissions.NoPermissions) ? PermissionMask.Transfer : permissions.NextOwnerMask,
                                         delegate (bool completed, InventoryItem createdItem)
                                         {
                                             inventoryItem = createdItem;
@@ -448,7 +438,7 @@ namespace Corrade
                                                 corradeCommandParameters.Message)),
                                         assetType,
                                         UUID.Random(), InventoryType.Notecard,
-                                        permissions == 0 ? PermissionMask.Transfer : permissions,
+                                        permissions.Equals(Permissions.NoPermissions) ? PermissionMask.Transfer : permissions.NextOwnerMask,
                                         delegate (bool completed, InventoryItem createdItem)
                                         {
                                             inventoryItem = createdItem;
@@ -523,7 +513,7 @@ namespace Corrade
                                                 corradeCommandParameters.Message)),
                                         assetType,
                                         UUID.Random(), InventoryType.LSL,
-                                        permissions == 0 ? PermissionMask.Transfer : permissions,
+                                        permissions.Equals(Permissions.NoPermissions) ? PermissionMask.Transfer : permissions.NextOwnerMask,
                                         delegate (bool completed, InventoryItem createdItem)
                                         {
                                             inventoryItem = createdItem;

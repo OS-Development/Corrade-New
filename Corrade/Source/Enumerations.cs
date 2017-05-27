@@ -2336,7 +2336,11 @@ namespace Corrade
 
             [Command.StatusAttribute(01458)]
             [Reflection.DescriptionAttribute("unknown update type")]
-            UNKNOWN_UPDATE_TYPE
+            UNKNOWN_UPDATE_TYPE,
+
+            [Command.StatusAttribute(38504)]
+            [Reflection.DescriptionAttribute("invalid permissions")]
+            INVALID_PERMISSIONS
         }
 
         /// <summary>

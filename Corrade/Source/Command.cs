@@ -46,6 +46,9 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [Reflection.NameAttribute("create")]
+            CREATE,
+
             [CommandInputSyntax(
                 "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<AssetData[,AssetData...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]")]
             [CommandPermissionMask((ulong)Configuration.Permissions.Interact)]
