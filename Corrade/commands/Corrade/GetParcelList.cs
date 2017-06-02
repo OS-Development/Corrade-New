@@ -77,20 +77,26 @@ namespace Corrade
 
                     var accessType = (AccessList)accessField.GetValue(null);
 
-                    var random = new Random().Next();
                     List<ParcelManager.ParcelAccessEntry> accessList = new List<ParcelManager.ParcelAccessEntry>();
                     wasSharp.Timers.DecayingAlarm ParcelAccessListAlarm = new wasSharp.Timers.DecayingAlarm(corradeConfiguration.DataDecayType);
+                    var LockObject = new object();
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        if (!args.LocalID.Equals(parcel.LocalID) || !args.SequenceID.Equals(random)) return;
+                        if (!args.LocalID.Equals(parcel.LocalID) ||
+                            !args.Simulator.RegionID.Equals(simulator.RegionID)) return;
 
                         ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
                         if (args.AccessList != null && args.AccessList.Any())
-                            accessList.AddRange(args.AccessList);
+                        {
+                            lock (LockObject)
+                            {
+                                accessList.AddRange(args.AccessList);
+                            }
+                        }
                     };
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
                     Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
-                    Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
+                    Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
                     if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
@@ -101,7 +107,6 @@ namespace Corrade
                     Locks.ClientInstanceParcelsLock.ExitReadLock();
 
                     var csv = new List<string>();
-                    var LockObject = new object();
                     accessList.AsParallel().ForAll(o =>
                     {
                         var agent = string.Empty;

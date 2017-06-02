@@ -599,7 +599,7 @@ namespace Corrade
             [Reflection.DescriptionAttribute("parameters for requested event not found")]
             PARAMETERS_FOR_REQUESTED_EVENT_NOT_FOUND,
 
-            [Reflection.DescriptionAttribute("timeout preloading downloading preload sound")]
+            [Reflection.DescriptionAttribute("timeout downloading preload sound")]
             TIMEOUT_DOWNLOADING_PRELOAD_SOUND,
 
             [Reflection.DescriptionAttribute("unable to install service")]

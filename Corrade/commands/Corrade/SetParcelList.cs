@@ -156,16 +156,22 @@ namespace Corrade
                         }
                     }
 
-                    var random = new Random().Next();
                     List<ParcelManager.ParcelAccessEntry> accessList = new List<ParcelManager.ParcelAccessEntry>();
                     DecayingAlarm ParcelAccessListAlarm = new DecayingAlarm(corradeConfiguration.DataDecayType);
+                    var LockObject = new object();
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        if (!args.LocalID.Equals(parcel.LocalID) || !args.SequenceID.Equals(random)) return;
+                        if (!args.LocalID.Equals(parcel.LocalID) ||
+                            !args.Simulator.RegionID.Equals(simulator.RegionID)) return;
 
                         ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
                         if (args.AccessList != null && args.AccessList.Any())
-                            accessList.AddRange(args.AccessList);
+                        {
+                            lock (LockObject)
+                            {
+                                accessList.AddRange(args.AccessList);
+                            }
+                        }
                     };
 
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
@@ -175,7 +181,7 @@ namespace Corrade
                     Client.Groups.ActivateGroup(parcel.GroupID);
 
                     Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
-                    Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, random);
+                    Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
                     if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
