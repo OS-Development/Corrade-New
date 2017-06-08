@@ -182,11 +182,8 @@ namespace Corrade
                                             {
                                                 notification.HTTPNotifications.Add(
                                                     (Configuration.Notifications)notificationValue,
-                                                    new SerializableDictionary<string, HashSet<string>>
-                                                        {
-                                                            { url, tags }
-                                                        }
-                                                    );
+                                                    new SerializableDictionary<string, HashSet<string>> { { url, tags } }
+                                                );
                                             }
                                             break;
 
@@ -201,10 +198,10 @@ namespace Corrade
 
                                                 case Enumerations.Action.SET:
                                                     HTTPNotificationData =
-                                                        new SerializableDictionary<string, HashSet<string>>
-                                                    {
+                                                        new SerializableDictionary<string, HashSet<string>>()
+                                                        {
                                                             { url, tags }
-                                                    };
+                                                        };
                                                     break;
                                             }
                                             lock (LockObject)
@@ -255,22 +252,34 @@ namespace Corrade
                                         .Select(p => Reflection.GetEnumValueFromName<Configuration.Notifications>(p)));
                                     // For all notifications, for the current group, that do not match the supplied tags...
                                     o.HTTPNotifications
-                                        .Where(p => !p.Value.Values.Any(q => q.Intersect(tags).Any()) && !types.Contains(p.Key))
-                                        .AsParallel().ForAll(p =>
-                                    {
-                                        switch (!CSV.ToEnumerable(notificationTypes)
-                                            .AsParallel()
-                                            .Where(q => !string.IsNullOrEmpty(q))
-                                            .Any(q => Reflection.GetEnumValueFromName<Configuration.Notifications>(q).Equals(p.Key)))
+                                        .AsParallel()
+                                        .Select(p =>
                                         {
-                                            case true: // If the type of the notification is not of the selected type, then add the notification.
-                                                lock (NotificationDestinationLock)
+                                            var destinations = new SerializableDictionary<string, HashSet<string>>();
+                                            var DestinationLock = new object();
+                                            p.Value.AsParallel().ForAll(q =>
+                                            {
+                                                if (q.Value.Intersect(tags).Any())
+                                                    return;
+                                                lock (DestinationLock)
                                                 {
-                                                    notificationDestination.Add(p.Key, p.Value);
+                                                    destinations.Add(q.Key, q.Value);
                                                 }
-                                                break;
+                                            });
 
-                                            default:
+                                            if (!destinations.Any())
+                                                return null;
+
+                                            return new
+                                            {
+                                                Key = p.Key,
+                                                Value = destinations
+                                            };
+                                        })
+                                        .Where(p => p != null)
+                                        .Switch(
+                                            p =>
+                                            {
                                                 // Filter the notification destination by the supplied URL.
                                                 var URLs = new HashSet<string>(p.Value.Keys
                                                     .AsParallel().Where(q => !q.Contains(url)).Select(q => q));
@@ -287,9 +296,15 @@ namespace Corrade
                                                         notificationDestination[p.Key].Add(URL, URLTags);
                                                     }
                                                 }
-                                                break;
-                                        }
-                                    });
+                                            }, p => !types.Contains(p.Key), p =>
+                                            {
+                                                // Filter by type.
+                                                lock (NotificationDestinationLock)
+                                                {
+                                                    notificationDestination.Add(p.Key, p.Value);
+                                                }
+                                                return true;
+                                            });
                                     lock (LockObject)
                                     {
                                         groupNotifications.Add(new Notifications

@@ -23,6 +23,7 @@ namespace Corrade
     public class Notifications
     {
         public SerializableDictionary<string, string> Afterburn;
+
         public HashSet<string> Data;
         public string GroupName;
         public UUID GroupUUID;

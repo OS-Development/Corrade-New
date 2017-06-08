@@ -1016,9 +1016,14 @@ namespace Corrade.HTTP
             try
             {
                 NucleusResponse.ContentType = @"application/json";
+                BlockingQueue<NotificationQueueElement> nucleusNotification = null;
+                lock (Corrade.NucleusNotificationQueueLock)
+                {
+                    nucleusNotification = Corrade.NucleusNotificationQueue[configuredGroup.UUID];
+                }
                 using (var notificationStream =
                     new MemoryStream(Encoding.UTF8.GetBytes(
-                        JsonConvert.SerializeObject(Corrade.NucleusNotificationQueue[configuredGroup.UUID]))))
+                        JsonConvert.SerializeObject(nucleusNotification))))
                 {
                     await notificationStream.CopyToAsync(memoryStream);
                 }

@@ -90,7 +90,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
-                    InventoryItem inventoryItem = null;
+                    InventoryItem inventoryItem = new InventoryItem(UUID.Zero);
                     if (!string.IsNullOrEmpty(item))
                     {
                         var itemUUID = UUID.Zero;
@@ -248,7 +248,8 @@ namespace Corrade
                                     Client.Inventory.FindFolderForType(assetType),
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
-                                        inventoryItem = Client.Inventory.Store[itemID] as InventoryItem;
+                                        inventoryItem.UUID = itemID;
+                                        inventoryItem.AssetUUID = assetID;
                                         succeeded = completed;
                                         CreateItemFromAssetEvent.Set();
                                     });
@@ -286,7 +287,8 @@ namespace Corrade
                                     Client.Inventory.FindFolderForType(assetType),
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
-                                        inventoryItem = Client.Inventory.Store[itemID] as InventoryItem;
+                                        inventoryItem.UUID = itemID;
+                                        inventoryItem.AssetUUID = assetID;
                                         succeeded = completed;
                                         CreateSoundEvent.Set();
                                     });
@@ -378,7 +380,7 @@ namespace Corrade
                             break;
 
                         case AssetType.Gesture:
-                            if (inventoryItem == null)
+                            if (inventoryItem == null || inventoryItem.UUID.Equals(UUID.Zero))
                             {
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                 var CreateGestureEvent = new ManualResetEvent(false);
@@ -413,7 +415,8 @@ namespace Corrade
                             Client.Inventory.RequestUploadGestureAsset(data, inventoryItem.UUID,
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
-                                        inventoryItem = Client.Inventory.Store[itemID] as InventoryItem;
+                                        inventoryItem.UUID = itemID;
+                                        inventoryItem.AssetUUID = assetID;
                                         succeeded = completed;
                                         UploadGestureAssetEvent.Set();
                                     });
@@ -426,7 +429,7 @@ namespace Corrade
                             break;
 
                         case AssetType.Notecard:
-                            if (inventoryItem == null)
+                            if (inventoryItem == null || inventoryItem.UUID.Equals(UUID.Zero))
                             {
                                 var CreateNotecardEvent = new ManualResetEvent(false);
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
@@ -488,7 +491,8 @@ namespace Corrade
                             Client.Inventory.RequestUploadNotecardAsset(data, inventoryItem.UUID,
                                     delegate (bool completed, string status, UUID itemID, UUID assetID)
                                     {
-                                        inventoryItem = Client.Inventory.Store[itemID] as InventoryItem;
+                                        inventoryItem.UUID = itemID;
+                                        inventoryItem.AssetUUID = assetID;
                                         succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
@@ -501,7 +505,7 @@ namespace Corrade
                             break;
 
                         case AssetType.LSLText:
-                            if (inventoryItem == null)
+                            if (inventoryItem == null || inventoryItem.UUID.Equals(UUID.Zero))
                             {
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                 var CreateScriptEvent = new ManualResetEvent(false);
@@ -545,7 +549,8 @@ namespace Corrade
                                             csv.AddRange(new[] {
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
                                             });
-                                        inventoryItem = Client.Inventory.Store[itemID] as InventoryItem;
+                                        inventoryItem.UUID = itemID;
+                                        inventoryItem.AssetUUID = assetID;
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
@@ -571,7 +576,7 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                     // Store the any asset in the cache.
-                    if (!inventoryItem.AssetUUID.Equals(UUID.Zero))
+                    if (inventoryItem != null && !inventoryItem.AssetUUID.Equals(UUID.Zero))
                     {
                         Locks.ClientInstanceAssetsLock.EnterWriteLock();
                         Client.Assets.Cache.SaveAssetToCache(inventoryItem.AssetUUID, data);

@@ -106,7 +106,7 @@ namespace Corrade
 
                     // Create notecard.
                     var CreateNotecardEvent = new ManualResetEvent(false);
-                    InventoryItem inventoryItem = null;
+                    InventoryItem inventoryItem = new InventoryItem(UUID.Zero);
                     var succeeded = false;
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
@@ -304,6 +304,11 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA);
                     }
+
+                    // Mark the containing asset folder as needing an update.
+                    Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                    Client.Inventory.Store.GetNodeFor(Client.Inventory.FindFolderForType(AssetType.Notecard)).NeedsUpdate = true;
+                    Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                     // Return the item and asset UUID.
                     result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),

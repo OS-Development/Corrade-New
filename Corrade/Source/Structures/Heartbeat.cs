@@ -128,12 +128,7 @@ namespace Corrade.Structures
         ///     A history of the last CPU usage average.
         /// </summary>
         public SerializableDictionary<string, uint> CPUAverageUsageHistory { get; } =
-            new SerializableDictionary<string, uint>
-            {
-                DictionaryNodeName = @"Snapshot",
-                KeyNodeName = @"Timestamp",
-                ValueNodeName = @"Utilization"
-            };
+            new SerializableDictionary<string, uint>();
 
         /// <summary>
         ///     The arithmetic average of all RAM usages across all heartbeats.
@@ -144,12 +139,7 @@ namespace Corrade.Structures
         ///     A history of the last RAM usage average.
         /// </summary>
         public SerializableDictionary<string, long> RAMAverageUsageHistory { get; } =
-            new SerializableDictionary<string, long>
-            {
-                DictionaryNodeName = @"Snapshot",
-                KeyNodeName = @"Timestamp",
-                ValueNodeName = @"Utilization"
-            };
+            new SerializableDictionary<string, long>();
 
         /// <summary>
         ///     The total number of heartbeats.

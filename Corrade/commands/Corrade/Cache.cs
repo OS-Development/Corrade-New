@@ -6,6 +6,7 @@
 
 using CorradeConfigurationSharp;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using wasOpenMetaverse;
 using wasSharp;
@@ -28,12 +29,29 @@ namespace Corrade
                     }
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                            corradeCommandParameters.Message))
-                        ))
+                            corradeCommandParameters.Message))))
                     {
                         case Enumerations.Action.PURGE:
-                            Client.Assets.Cache.BeginPrune();
-                            Cache.Purge();
+                            CSV.ToEnumerable(wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                corradeCommandParameters.Message))).Where(o => !string.IsNullOrEmpty(o)).Distinct().AsParallel().ForAll(o =>
+                                {
+                                    switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(o))
+                                    {
+                                        case Enumerations.Entity.NUCLEUS:
+                                            NucleusHTTPServer
+                                                .CacheExpiryTimer.Change(TimeSpan.FromMilliseconds(1), TimeSpan.Zero);
+                                            break;
+
+                                        case Enumerations.Entity.ASSET:
+                                            Client.Assets.Cache.BeginPrune();
+                                            break;
+
+                                        case Enumerations.Entity.CORRADE:
+                                            Cache.Purge();
+                                            break;
+                                    }
+                                });
                             break;
 
                         case Enumerations.Action.SAVE:

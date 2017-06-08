@@ -26,6 +26,7 @@ using wasSharp.Collections.Specialized;
 using wasSharp.Web;
 using wasSharpNET.Network.HTTP;
 using wasSharpNET.Platform.Windows.Commands.NetSH;
+using wasSharpNET.Serialization;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade.HTTP
@@ -493,17 +494,14 @@ namespace Corrade.HTTP
                         {
                             case Configuration.HordeDataSynchronization.Region:
                                 dataMemoryStream.Position = 0;
-                                var region = (Cache.Region)
-                                    new XmlSerializer(typeof(Cache.Region)).Deserialize(
-                                        dataMemoryStream);
+                                var region = XmlSerializerCache.Deserialize<Cache.Region>(dataMemoryStream);
 
                                 Cache.RemoveRegion(region.Name, region.Handle);
                                 break;
 
                             case Configuration.HordeDataSynchronization.Agent:
                                 dataMemoryStream.Position = 0;
-                                var agent = (Cache.Agent)
-                                    new XmlSerializer(typeof(Cache.Agent)).Deserialize(dataMemoryStream);
+                                var agent = XmlSerializerCache.Deserialize<Cache.Agent>(dataMemoryStream);
 
                                 Cache.RemoveAgent(agent.FirstName, agent.LastName,
                                     agent.UUID);
@@ -511,8 +509,7 @@ namespace Corrade.HTTP
 
                             case Configuration.HordeDataSynchronization.Group:
                                 dataMemoryStream.Position = 0;
-                                var group = (Cache.Group)
-                                    new XmlSerializer(typeof(Cache.Group)).Deserialize(dataMemoryStream);
+                                var group = XmlSerializerCache.Deserialize<Cache.Group>(dataMemoryStream);
 
                                 Cache.RemoveGroup(group.Name, group.UUID);
                                 break;
@@ -579,23 +576,19 @@ namespace Corrade.HTTP
                         {
                             case Configuration.HordeDataSynchronization.Region:
                                 dataMemoryStream.Position = 0;
-                                var region = (Cache.Region)
-                                    new XmlSerializer(typeof(Cache.Region)).Deserialize(
-                                        dataMemoryStream);
+                                var region = XmlSerializerCache.Deserialize<Cache.Region>(dataMemoryStream);
                                 Cache.UpdateRegion(region.Name, region.Handle);
                                 break;
 
                             case Configuration.HordeDataSynchronization.Agent:
                                 dataMemoryStream.Position = 0;
-                                var agent = (Cache.Agent)
-                                    new XmlSerializer(typeof(Cache.Agent)).Deserialize(dataMemoryStream);
+                                var agent = XmlSerializerCache.Deserialize<Cache.Agent>(dataMemoryStream);
                                 Cache.AddAgent(agent.FirstName, agent.LastName, agent.UUID);
                                 break;
 
                             case Configuration.HordeDataSynchronization.Group:
                                 dataMemoryStream.Position = 0;
-                                var group = (Cache.Group)
-                                    new XmlSerializer(typeof(Cache.Group)).Deserialize(dataMemoryStream);
+                                var group = XmlSerializerCache.Deserialize<Cache.Group>(dataMemoryStream);
                                 Cache.AddGroup(group.Name, group.UUID);
                                 break;
                         }
@@ -788,8 +781,7 @@ namespace Corrade.HTTP
             try
             {
                 dataMemoryStream.Position = 0;
-                mute = (MuteEntry)
-                    new XmlSerializer(typeof(MuteEntry)).Deserialize(dataMemoryStream);
+                mute = XmlSerializerCache.Deserialize<MuteEntry>(dataMemoryStream);
             }
             catch (Exception ex)
             {
@@ -867,8 +859,7 @@ namespace Corrade.HTTP
             try
             {
                 dataMemoryStream.Position = 0;
-                mute = (MuteEntry)
-                    new XmlSerializer(typeof(MuteEntry)).Deserialize(dataMemoryStream);
+                mute = XmlSerializerCache.Deserialize<MuteEntry>(dataMemoryStream);
             }
             catch (Exception ex)
             {
@@ -973,8 +964,7 @@ namespace Corrade.HTTP
             try
             {
                 dataMemoryStream.Position = 0;
-                softBan = (SoftBan)
-                    new XmlSerializer(typeof(SoftBan)).Deserialize(dataMemoryStream);
+                softBan = XmlSerializerCache.Deserialize<SoftBan>(dataMemoryStream);
             }
             catch (Exception ex)
             {
@@ -1051,8 +1041,7 @@ namespace Corrade.HTTP
             try
             {
                 dataMemoryStream.Position = 0;
-                softBan = (SoftBan)
-                    new XmlSerializer(typeof(SoftBan)).Deserialize(dataMemoryStream);
+                softBan = XmlSerializerCache.Deserialize<SoftBan>(dataMemoryStream);
             }
             catch (Exception ex)
             {
@@ -1134,8 +1123,7 @@ namespace Corrade.HTTP
             try
             {
                 dataMemoryStream.Position = 0;
-                configurationGroup = (Configuration.Group)
-                    new XmlSerializer(typeof(Configuration.Group)).Deserialize(dataMemoryStream);
+                configurationGroup = XmlSerializerCache.Deserialize<Configuration.Group>(dataMemoryStream);
             }
             catch (Exception ex)
             {
@@ -1228,8 +1216,7 @@ namespace Corrade.HTTP
             try
             {
                 dataMemoryStream.Position = 0;
-                configurationGroup = (Configuration.Group)
-                    new XmlSerializer(typeof(Configuration.Group)).Deserialize(dataMemoryStream);
+                configurationGroup = XmlSerializerCache.Deserialize<Configuration.Group>(dataMemoryStream);
             }
             catch (Exception ex)
             {

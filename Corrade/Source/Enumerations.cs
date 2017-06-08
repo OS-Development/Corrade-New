@@ -876,7 +876,13 @@ namespace Corrade
             AUTHENTICATION,
 
             [Reflection.NameAttribute("asset")]
-            ASSET
+            ASSET,
+
+            [Reflection.NameAttribute("nucleus")]
+            NUCLEUS,
+
+            [Reflection.NameAttribute("corrade")]
+            CORRADE
         }
 
         /// <summary>

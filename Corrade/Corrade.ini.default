@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Version>1.28.6356.39485</Version>
+  <Version>1.28.6368.37116</Version>
   <ClientLanguage>en</ClientLanguage>
   <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
@@ -78,7 +78,7 @@
   <MembershipSweepInterval>60000</MembershipSweepInterval>
   <FeedsUpdateInterval>60000</FeedsUpdateInterval>
   <TOSAccepted>false</TOSAccepted>
-  <EnableMultipleSimulators>true</EnableMultipleSimulators>
+  <EnableMultipleSimulators>false</EnableMultipleSimulators>
   <AutoScriptedAgentStatus>true</AutoScriptedAgentStatus>
   <ClientIdentificationTag>0705230f-cbd0-99bd-040b-28eb348b5255</ClientIdentificationTag>
   <StartLocations>

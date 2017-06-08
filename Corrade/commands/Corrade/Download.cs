@@ -62,7 +62,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
                     var assetType = (AssetType)assetTypeInfo.GetValue(null);
-                    InventoryItem inventoryItem = null;
+                    InventoryItem inventoryItem = new InventoryItem(UUID.Zero);
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
@@ -121,7 +121,7 @@ namespace Corrade
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                                     }
-                                    if (inventoryItem == null)
+                                    if (inventoryItem == null || inventoryItem.UUID.Equals(UUID.Zero))
                                     {
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))

@@ -14,6 +14,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 using wasSharp;
+using wasSharpNET.Serialization;
 
 namespace Corrade
 {
@@ -133,12 +134,11 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_TRANSACTIONS_FOUND);
 
                         Transactions transactions;
-                        var serializer = new XmlSerializer(typeof(Transactions));
                         try
                         {
                             using (TextReader reader = new StringReader(Encoding.UTF8.GetString(postData.Result)))
                             {
-                                transactions = (Transactions)serializer.Deserialize(reader);
+                                transactions = XmlSerializerCache.Deserialize<Transactions>(reader);
                             }
                         }
                         catch (Exception)

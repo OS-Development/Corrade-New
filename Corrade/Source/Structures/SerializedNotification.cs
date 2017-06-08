@@ -12,6 +12,7 @@ using System.IO;
 using System.Text;
 using System.Xml.Serialization;
 using wasSharp.Collections.Generic;
+using wasSharpNET.Serialization;
 
 namespace Corrade.Structures
 {
@@ -46,8 +47,7 @@ namespace Corrade.Structures
             {
                 using (var writer = new StringWriter())
                 {
-                    var serializer = new XmlSerializer(GetType());
-                    serializer.Serialize(writer, this);
+                    XmlSerializerCache.Serialize(writer, this);
                     return writer.ToString();
                 }
             }
@@ -87,8 +87,7 @@ namespace Corrade.Structures
             {
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
-                    var serializer = new XmlSerializer(typeof(SerializedNotification));
-                    return serializer.Deserialize(streamReader) as SerializedNotification;
+                    return XmlSerializerCache.Deserialize<SerializedNotification>(streamReader);
                 }
             }
         }

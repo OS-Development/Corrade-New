@@ -65,6 +65,7 @@ using wasSharp.Web.Utilities;
 using wasSharpNET.Console;
 using wasSharpNET.Cryptography;
 using wasSharpNET.Network.TCP;
+using wasSharpNET.Serialization;
 using static Corrade.Command;
 using Group = OpenMetaverse.Group;
 using GroupNotice = Corrade.Structures.GroupNotice;
@@ -192,8 +193,7 @@ namespace Corrade
                             {
                                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                 {
-                                    _CorradeScriptedAgentStatus = (bool?)(
-                                        new XmlSerializer(typeof(bool?))).Deserialize(streamReader);
+                                    _CorradeScriptedAgentStatus = XmlSerializerCache.Deserialize<bool?>(streamReader);
                                 }
                             }
                         }
@@ -223,9 +223,7 @@ namespace Corrade
                         {
                             using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                             {
-                                (new XmlSerializer(
-                                    typeof(bool?))).Serialize(writer, value);
-                                writer.Flush();
+                                XmlSerializerCache.Serialize(writer, value);
                             }
                         }
                     }
@@ -259,8 +257,7 @@ namespace Corrade
                             {
                                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                                 {
-                                    _CorradeLastExecStatus = (LastExecStatus)(
-                                        new XmlSerializer(typeof(LastExecStatus))).Deserialize(streamReader);
+                                    _CorradeLastExecStatus = XmlSerializerCache.Deserialize<LastExecStatus>(streamReader);
                                 }
                             }
                         }
@@ -290,9 +287,7 @@ namespace Corrade
                         {
                             using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                             {
-                                (new XmlSerializer(
-                                    typeof(LastExecStatus))).Serialize(writer, value);
-                                writer.Flush();
+                                XmlSerializerCache.Serialize(writer, value);
                             }
                         }
                     }
@@ -370,6 +365,8 @@ namespace Corrade
 
         public static readonly Dictionary<UUID, BlockingQueue<NotificationQueueElement>> NucleusNotificationQueue =
             new Dictionary<UUID, BlockingQueue<NotificationQueueElement>>();
+
+        public static readonly object NucleusNotificationQueueLock = new object();
 
         private static readonly BlockingQueue<NotificationTCPQueueElement> NotificationTCPQueue =
             new BlockingQueue<NotificationTCPQueueElement>();
@@ -831,9 +828,7 @@ namespace Corrade
                     {
                         using (var stream = new StreamReader(CORRADE_CONSTANTS.CONFIGURATION_FILE, Encoding.UTF8))
                         {
-                            var serializer =
-                                new XmlSerializer(typeof(Configuration));
-                            var loadedConfiguration = (Configuration)serializer.Deserialize(stream);
+                            var loadedConfiguration = XmlSerializerCache.Deserialize<Configuration>(stream);
                             if (corradeConfiguration.EnableHorde)
                             {
                                 corradeConfiguration.Groups.AsParallel()
@@ -1348,15 +1343,10 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer =
-                                new XmlSerializer(
-                                    typeof(SerializableDictionary<UUID, ObservableHashSet<UUID>>
-                                        ));
                             lock (GroupMembersLock)
                             {
-                                serializer.Serialize(writer, GroupMembers);
+                                XmlSerializerCache.Serialize(writer, GroupMembers);
                             }
-                            writer.Flush();
                         }
                     }
                 }
@@ -1390,11 +1380,8 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                                ((SerializableDictionary<UUID, ObservableHashSet<UUID>>)
-                                    new XmlSerializer(
-                                        typeof(SerializableDictionary
-                                            <UUID, ObservableHashSet<UUID>>))
-                                        .Deserialize(streamReader))
+                                XmlSerializerCache.Deserialize<SerializableDictionary
+                                            <UUID, ObservableHashSet<UUID>>>(streamReader)
                                     .AsParallel()
                                     .Where(
                                         o => groups.Contains(o.Key))
@@ -1448,16 +1435,10 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer =
-                                new XmlSerializer(
-                                    typeof(
-                                        SerializableDictionary<UUID, ObservableHashSet<SoftBan>>
-                                        ));
                             lock (GroupSoftBansLock)
                             {
-                                serializer.Serialize(writer, GroupSoftBans);
+                                XmlSerializerCache.Serialize(writer, GroupSoftBans);
                             }
-                            writer.Flush();
                         }
                     }
                 }
@@ -1492,11 +1473,7 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                                ((SerializableDictionary<UUID, ObservableHashSet<SoftBan>>)
-                                    new XmlSerializer(
-                                        typeof(SerializableDictionary
-                                            <UUID, ObservableHashSet<SoftBan>>))
-                                        .Deserialize(streamReader))
+                                XmlSerializerCache.Deserialize<SerializableDictionary<UUID, ObservableHashSet<SoftBan>>>(streamReader)
                                     .AsParallel()
                                     .Where(
                                         o => groups.Contains(o.Key))
@@ -1551,12 +1528,10 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer = new XmlSerializer(typeof(HashSet<GroupSchedule>));
                             lock (GroupSchedulesLock)
                             {
-                                serializer.Serialize(writer, GroupSchedules);
+                                XmlSerializerCache.Serialize(writer, GroupSchedules);
                             }
-                            writer.Flush();
                         }
                     }
                 }
@@ -1600,8 +1575,7 @@ namespace Corrade
                                                     !o.Schedules.Equals(0) &&
                                                     o.PermissionMask.IsMaskFlagSet(Configuration.Permissions.Schedule))
                                             .Select(o => new UUID(o.UUID)));
-                                ((HashSet<GroupSchedule>)
-                                    new XmlSerializer(typeof(HashSet<GroupSchedule>)).Deserialize(streamReader))
+                                XmlSerializerCache.Deserialize<HashSet<GroupSchedule>>(streamReader)
                                     .AsParallel()
                                     .Where(o => groups.Contains(o.Group.UUID)).ForAll(o =>
                                     {
@@ -1645,12 +1619,10 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer = new XmlSerializer(typeof(HashSet<Notifications>));
                             lock (GroupNotificationsLock)
                             {
-                                serializer.Serialize(writer, GroupNotifications);
+                                XmlSerializerCache.Serialize(writer, GroupNotifications);
                             }
-                            writer.Flush();
                         }
                     }
                 }
@@ -1686,8 +1658,7 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                ((HashSet<Notifications>)
-                                    new XmlSerializer(typeof(HashSet<Notifications>)).Deserialize(streamReader))
+                                XmlSerializerCache.Deserialize<HashSet<Notifications>>(streamReader)
                                     .AsParallel()
                                     .Where(
                                         o => groups.Contains(o.GroupUUID))
@@ -1756,10 +1727,8 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer = new XmlSerializer(typeof(AgentMovement));
-
                             Locks.ClientInstanceSelfLock.EnterReadLock();
-                            serializer.Serialize(writer, new AgentMovement
+                            XmlSerializerCache.Serialize(writer, new AgentMovement
                             {
                                 AlwaysRun = Client.Self.Movement.AlwaysRun,
                                 AutoResetControls = Client.Self.Movement.AutoResetControls,
@@ -1805,8 +1774,7 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var movement = (AgentMovement)(new XmlSerializer(typeof(AgentMovement)))
-                                    .Deserialize(streamReader);
+                                var movement = XmlSerializerCache.Deserialize<AgentMovement>(streamReader);
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
                                 Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
@@ -1850,12 +1818,10 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer = new XmlSerializer(typeof(HashSet<Conference>));
                             lock (ConferencesLock)
                             {
-                                serializer.Serialize(writer, Conferences);
+                                XmlSerializerCache.Serialize(writer, Conferences);
                             }
-                            writer.Flush();
                         }
                     }
                 }
@@ -1888,8 +1854,8 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var serializer = new XmlSerializer(typeof(HashSet<Conference>));
-                                ((HashSet<Conference>)serializer.Deserialize(streamReader)).AsParallel()
+                                XmlSerializerCache.Deserialize<HashSet<Conference>>(streamReader)
+                                    .AsParallel()
                                     .ForAll(o =>
                                     {
                                         try
@@ -2037,15 +2003,10 @@ namespace Corrade
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            var serializer =
-                                new XmlSerializer(
-                                    typeof(SerializableDictionary
-                                        <string, SerializableDictionary<UUID, string>>));
                             lock (GroupFeedsLock)
                             {
-                                serializer.Serialize(writer, GroupFeeds);
+                                XmlSerializerCache.Serialize(writer, GroupFeeds);
                             }
-                            writer.Flush();
                         }
                     }
                 }
@@ -2080,13 +2041,8 @@ namespace Corrade
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
                                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                                var serializer =
-                                    new XmlSerializer(
-                                        typeof(SerializableDictionary
-                                            <string, SerializableDictionary<UUID, string>>));
-                                ((SerializableDictionary
-                                    <string, SerializableDictionary<UUID, string>>)
-                                    serializer.Deserialize(streamReader)).AsParallel()
+                                XmlSerializerCache.Deserialize<SerializableDictionary<string, SerializableDictionary<UUID, string>>>(streamReader)
+                                    .AsParallel()
                                     .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
                                     .ForAll(o =>
                                     {
@@ -2097,7 +2053,10 @@ namespace Corrade
                                                 GroupFeeds.Add(o.Key, o.Value);
                                                 return;
                                             }
-                                            GroupFeeds[o.Key].Clone().AsParallel().ForAll(p =>
+                                            // Clone.
+                                            XmlSerializerCache
+                                                .Deserialize<SerializableDictionary<UUID, string>>(
+                                                    XmlSerializerCache.Serialize(GroupFeeds[o.Key])).AsParallel().ForAll(p =>
                                             {
                                                 if (!GroupFeeds[o.Key].ContainsKey(p.Key))
                                                 {
@@ -4118,18 +4077,21 @@ namespace Corrade
                                 Message = notificationData
                             };
 
-                            switch (NucleusNotificationQueue.ContainsKey(z.GroupUUID))
+                            lock (NucleusNotificationQueueLock)
                             {
-                                case true:
-                                    while (NucleusNotificationQueue[z.GroupUUID].Count > corradeConfiguration.NucleusServerNotificationQueueLength)
-                                        NucleusNotificationQueue[z.GroupUUID].Dequeue();
-                                    NucleusNotificationQueue[z.GroupUUID].Enqueue(notificationQueueElement);
-                                    break;
+                                switch (NucleusNotificationQueue.ContainsKey(z.GroupUUID))
+                                {
+                                    case true:
+                                        while (NucleusNotificationQueue[z.GroupUUID].Count > corradeConfiguration.NucleusServerNotificationQueueLength)
+                                            NucleusNotificationQueue[z.GroupUUID].Dequeue();
+                                        NucleusNotificationQueue[z.GroupUUID].Enqueue(notificationQueueElement);
+                                        break;
 
-                                default:
-                                    NucleusNotificationQueue.Add(z.GroupUUID,
-                                        new BlockingQueue<NotificationQueueElement>(new[] { notificationQueueElement }));
-                                    break;
+                                    default:
+                                        NucleusNotificationQueue.Add(z.GroupUUID,
+                                            new BlockingQueue<NotificationQueueElement>(new[] { notificationQueueElement }));
+                                        break;
+                                }
                             }
 
                             // Check that the notification queue is not already full.
@@ -6120,7 +6082,7 @@ namespace Corrade
 
             // Replace the start locations queue.
             StartLocationQueue.Clear();
-            foreach(var location in corradeConfiguration.StartLocations)
+            foreach (var location in corradeConfiguration.StartLocations)
                 StartLocationQueue.Enqueue(location);
 
             // Log OpenMetaverse Errors.
@@ -7065,8 +7027,7 @@ namespace Corrade
                                 {
                                     using (var memoryStream = new MemoryStream())
                                     {
-                                        var serializer = new XmlSerializer(typeof(Cache.Group));
-                                        serializer.Serialize(memoryStream, o);
+                                        XmlSerializerCache.Serialize(memoryStream, o);
                                         memoryStream.Position = 0;
                                         switch (option)
                                         {
@@ -7121,8 +7082,7 @@ namespace Corrade
                                 {
                                     using (var memoryStream = new MemoryStream())
                                     {
-                                        var serializer = new XmlSerializer(typeof(Cache.Region));
-                                        serializer.Serialize(memoryStream, o);
+                                        XmlSerializerCache.Serialize(memoryStream, o);
                                         memoryStream.Position = 0;
                                         switch (option)
                                         {
@@ -7176,8 +7136,7 @@ namespace Corrade
                                 {
                                     using (var memoryStream = new MemoryStream())
                                     {
-                                        var serializer = new XmlSerializer(typeof(Cache.Agent));
-                                        serializer.Serialize(memoryStream, o);
+                                        XmlSerializerCache.Serialize(memoryStream, o);
                                         memoryStream.Position = 0;
                                         switch (option)
                                         {
@@ -7231,8 +7190,7 @@ namespace Corrade
                                 {
                                     using (var memoryStream = new MemoryStream())
                                     {
-                                        var serializer = new XmlSerializer(typeof(MuteEntry));
-                                        serializer.Serialize(memoryStream, o);
+                                        XmlSerializerCache.Serialize(memoryStream, o);
                                         memoryStream.Position = 0;
                                         switch (option)
                                         {
@@ -7288,8 +7246,7 @@ namespace Corrade
                                 {
                                     using (var memoryStream = new MemoryStream())
                                     {
-                                        var serializer = new XmlSerializer(typeof(UUID));
-                                        serializer.Serialize(memoryStream, agentUUID);
+                                        XmlSerializerCache.Serialize(memoryStream, agentUUID);
                                         memoryStream.Position = 0;
                                         switch (option)
                                         {
@@ -7344,8 +7301,7 @@ namespace Corrade
                                 {
                                     using (var memoryStream = new MemoryStream())
                                     {
-                                        var serializer = new XmlSerializer(typeof(Configuration.Group));
-                                        serializer.Serialize(memoryStream, group);
+                                        XmlSerializerCache.Serialize(memoryStream, group);
                                         memoryStream.Position = 0;
                                         switch (option)
                                         {
