@@ -6,7 +6,6 @@
 
 using Corrade.Constants;
 using CorradeConfigurationSharp;
-using ImageMagick;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
@@ -153,9 +152,14 @@ namespace Corrade
                                         switch (Utils.GetRunningPlatform())
                                         {
                                             case Utils.Platform.Windows:
+                                                Assembly imageMagickDLL = Assembly.LoadFile(
+                                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
                                                 try
                                                 {
-                                                    using (var magickImage = new MagickImage(data))
+                                                    using (dynamic magickImage = imageMagickDLL
+                                                                .CreateInstance(
+                                                                    "ImageMagick.MagickImage",
+                                                                    false, BindingFlags.CreateInstance, null, new[] { data }, null, null))
                                                     {
                                                         using (var image = new Bitmap(magickImage.ToBitmap()))
                                                         {

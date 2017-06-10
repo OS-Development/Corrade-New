@@ -5,7 +5,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using CorradeConfigurationSharp;
-using ImageMagick;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
@@ -15,6 +14,7 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using wasOpenMetaverse;
@@ -237,9 +237,14 @@ namespace Corrade
                                                 switch (Utils.GetRunningPlatform())
                                                 {
                                                     case Utils.Platform.Windows:
+                                                        Assembly imageMagickDLL = Assembly.LoadFile(
+                                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
                                                         try
                                                         {
-                                                            using (var magickImage = new MagickImage(fileBytes))
+                                                            using (dynamic magickImage = imageMagickDLL
+                                                                .CreateInstance(
+                                                                    "ImageMagick.MagickImage",
+                                                                    false, BindingFlags.CreateInstance, null, new[] { fileBytes }, null, null))
                                                             {
                                                                 j2cBytes =
                                                                     OpenJPEG.EncodeFromImage(magickImage.ToBitmap(),

@@ -6,7 +6,6 @@
 
 using Corrade.Constants;
 using CorradeConfigurationSharp;
-using ImageMagick;
 using NAudio.Vorbis;
 using NAudio.Wave;
 using OpenMetaverse;
@@ -226,15 +225,14 @@ namespace Corrade
                             break;
                     }
                     // If the asset type was a texture, convert it to the desired format.
-                    switch (assetType.Equals(AssetType.Texture))
+                    var format = wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
+                        corradeCommandParameters.Message));
+                    if (!string.IsNullOrEmpty(format))
                     {
-                        case true:
-                            var format =
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
-                                    corradeCommandParameters.Message));
-                            if (!string.IsNullOrEmpty(format))
-                            {
+                        switch (assetType)
+                        {
+                            case AssetType.Texture:
                                 ManagedImage managedImage;
                                 /*
                                  * Use ImageMagick on Windows and the .NET converter otherwise.
@@ -242,14 +240,15 @@ namespace Corrade
                                 switch (Utils.GetRunningPlatform())
                                 {
                                     case Utils.Platform.Windows:
-                                        var magickFormat = Enum.GetValues(typeof(MagickFormat))
-                                            .Cast<MagickFormat>()
-                                            .Select(i => new { i, name = Enum.GetName(typeof(MagickFormat), i) })
-                                            .Where(
-                                                t =>
-                                                    t.name != null && t.name.Equals(format, StringComparison.Ordinal))
-                                            .Select(t => t.i).FirstOrDefault();
-                                        if (magickFormat.Equals(MagickFormat.Unknown))
+                                        Assembly imageMagickDLL = Assembly.LoadFile(
+                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
+                                        Type magickFormatType = imageMagickDLL.GetType("ImageMagick.MagickFormat");
+                                        var magickFormatValues = Enum.GetValues(magickFormatType);
+                                        dynamic magickFormat = Enumerable.Range(0, magickFormatValues.Length)
+                                            .AsParallel()
+                                            .Select(i => magickFormatValues.GetValue(i))
+                                            .FirstOrDefault(i => Enum.GetName(magickFormatType, i).Equals(format, StringComparison.Ordinal));
+                                        if (magickFormat == null)
                                         {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
@@ -265,10 +264,13 @@ namespace Corrade
                                             {
                                                 using (var imageStream = new MemoryStream())
                                                 {
-                                                    using (var image = new MagickImage(bitmapImage))
+                                                    using (dynamic magickImage = imageMagickDLL
+                                                        .CreateInstance(
+                                                            "ImageMagick.MagickImage",
+                                                            false, BindingFlags.CreateInstance, null, new[] { bitmapImage }, null, null))
                                                     {
-                                                        image.Format = magickFormat;
-                                                        image.Write(imageStream);
+                                                        magickImage.Format = magickFormat;
+                                                        magickImage.Write(imageStream);
                                                     }
                                                     assetData = imageStream.ToArray();
                                                 }
@@ -328,19 +330,9 @@ namespace Corrade
                                         }
                                         break;
                                 }
-                            }
-                            break;
-                    }
-                    // If the asset type was a sound, convert it to the desired format.
-                    switch (assetType.Equals(AssetType.Sound))
-                    {
-                        case true:
-                            var format =
-                                wasInput(KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
-                                    corradeCommandParameters.Message));
-                            if (!string.IsNullOrEmpty(format))
-                            {
+                                break;
+
+                            case AssetType.Sound:
                                 using (var soundOutputStream = new MemoryStream())
                                 {
                                     using (var soundAssetStream = new MemoryStream(assetData))
@@ -349,30 +341,29 @@ namespace Corrade
                                         {
                                             using (var vorbisStream = new MemoryStream())
                                             {
-                                                switch (format)
+                                                using (var wavWriter = new WaveFileWriter(soundOutputStream,
+                                                    vorbis.WaveFormat))
                                                 {
-                                                    case "wav":
-                                                        using (
-                                                            var wavWriter = new WaveFileWriter(soundOutputStream,
-                                                                vorbis.WaveFormat))
-                                                        {
-                                                            vorbis.CopyTo(vorbisStream);
-                                                            var vorbisData = vorbisStream.ToArray();
-                                                            wavWriter.Write(vorbisData, 0, vorbisData.Length);
-                                                        }
-                                                        break;
-
-                                                    default:
-                                                        throw new Command.ScriptException(
-                                                            Enumerations.ScriptError.UNKOWN_SOUND_FORMAT_REQUESTED);
+                                                    vorbis.CopyTo(vorbisStream);
+                                                    var vorbisData = vorbisStream.ToArray();
+                                                    wavWriter.Write(vorbisData, 0, vorbisData.Length);
                                                 }
                                             }
                                         }
                                     }
-                                    assetData = soundOutputStream.ToArray();
+                                    switch (format)
+                                    {
+                                        case "wav":
+                                            assetData = soundOutputStream.ToArray();
+                                            break;
+
+                                        default:
+                                            throw new Command.ScriptException(
+                                                Enumerations.ScriptError.UNKOWN_SOUND_FORMAT_REQUESTED);
+                                    }
                                 }
-                            }
-                            break;
+                                break;
+                        }
                     }
                     // If no path was specificed, then send the data.
                     var path =

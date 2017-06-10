@@ -19,7 +19,6 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Specialized;
@@ -231,12 +230,12 @@ namespace Corrade.HTTP
                                                 .Where(o => o.ParameterType == typeof(string))
                                                 .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                 .Concat(new dynamic[]
-                                                {httpRequest.RemoteEndPoint, hordePeer, dataMemoryStream})
+                                                    {httpRequest.RemoteEndPoint, hordePeer, dataMemoryStream})
                                                 .ToArray();
 
                                             HTTPServerResponse.StatusCode = (int)HttpStatusCode.OK;
 
-                                            await ((Task)method.Invoke(this, @params)).ContinueWith((o) =>
+                                            await Task.Run(() => method.Invoke(this, @params)).ContinueWith((o) =>
                                             {
                                                 ContentSent = true;
                                             });
@@ -449,7 +448,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.HTTP_SERVER_PROCESSING_ABORTED),
-                    ex.ToString(), ex.InnerException?.ToString());
+                    ex?.ToString(), ex.InnerException?.ToString());
             }
         }
 
@@ -648,7 +647,7 @@ namespace Corrade.HTTP
 
             try
             {
-                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                Locks.ClientInstanceAssetsLock.EnterWriteLock();
                 var hasAsset = Corrade.Client.Assets.Cache.HasAsset(assetUUID);
 
                 if (hasAsset)
@@ -676,7 +675,7 @@ namespace Corrade.HTTP
             }
             finally
             {
-                Locks.ClientInstanceAssetsLock.ExitReadLock();
+                Locks.ClientInstanceAssetsLock.ExitWriteLock();
             }
         }
 
@@ -715,16 +714,14 @@ namespace Corrade.HTTP
 
             try
             {
-                Locks.ClientInstanceAssetsLock.EnterReadLock();
+                Locks.ClientInstanceAssetsLock.EnterWriteLock();
                 var hasAsset = Corrade.Client.Assets.Cache.HasAsset(assetUUID);
 
                 if (!hasAsset)
                 {
                     dataMemoryStream.Position = 0;
                     var requestData = dataMemoryStream.ToArray();
-                    Locks.ClientInstanceAssetsLock.EnterWriteLock();
                     Corrade.Client.Assets.Cache.SaveAssetToCache(assetUUID, requestData);
-                    Locks.ClientInstanceAssetsLock.ExitWriteLock();
                     Corrade.HordeDistributeCacheAsset(assetUUID, requestData,
                         Configuration.HordeDataSynchronizationOption.Add);
                 }
@@ -746,7 +743,7 @@ namespace Corrade.HTTP
             }
             finally
             {
-                Locks.ClientInstanceAssetsLock.ExitReadLock();
+                Locks.ClientInstanceAssetsLock.ExitWriteLock();
             }
         }
 

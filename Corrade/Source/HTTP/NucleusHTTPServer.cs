@@ -948,9 +948,7 @@ namespace Corrade.HTTP
                 {
                     throw new HTTPException((int)HttpStatusCode.Forbidden);
                 }
-                using (
-                    var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true)
-                    )
+                using (var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
                 {
                     await dataMemoryStream.CopyToAsync(fileStream);
                 }
@@ -971,8 +969,7 @@ namespace Corrade.HTTP
                 {
                     case "Corrade.ini":
                         NucleusResponse.ContentType = @"text/xml";
-                        using (
-                            var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open,
+                        using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Open,
                                 FileAccess.Read, FileShare.Read, 16384, true))
                         {
                             await fileStream.CopyToAsync(memoryStream);
