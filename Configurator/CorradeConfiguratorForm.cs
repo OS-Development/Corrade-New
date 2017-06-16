@@ -27,6 +27,7 @@ using OpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
 using wasSharp.Timers;
+using wasSharp.Collections.Specialized;
 
 namespace Configurator
 {
@@ -423,7 +424,7 @@ namespace Configurator
             corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
             // start locations
             corradeConfiguration.StartLocations =
-                new List<string>(mainForm.StartLocations.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
+                new ConcurrentList<string>(mainForm.StartLocations.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
             corradeConfiguration.AutoScriptedAgentStatus = mainForm.AutoScriptedAgentStatus.Checked;
             UUID outUUID;
@@ -480,11 +481,11 @@ namespace Configurator
             corradeConfiguration.InputFilters =
                 mainForm.ActiveInputFilters.Items.OfType<ListViewItem>()
                     .Select(o => (Configuration.Filter)o.Tag)
-                    .ToList();
+                    .ToConcurrentList();
             corradeConfiguration.OutputFilters =
                 mainForm.ActiveOutputFilters.Items.OfType<ListViewItem>()
                     .Select(o => (Configuration.Filter)o.Tag)
-                    .ToList();
+                    .ToConcurrentList();
 
             // cryptography
             corradeConfiguration.ENIGMAConfiguration = new Configuration.ENIGMA
@@ -587,7 +588,7 @@ namespace Configurator
             }
             // Nucleus Blessed Files
             corradeConfiguration.NucleusServerBlessings =
-                new HashSet<string>(mainForm.NucleusServerBlessings.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
+                new ConcurrentHashSet<string>(mainForm.NucleusServerBlessings.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
 
             // Hash HTTP password.
             switch (Regex.IsMatch(mainForm.NucleusServerPassword.Text, "[a-fA-F0-9]{40}"))
@@ -1072,11 +1073,11 @@ namespace Configurator
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
                                (string)GroupNotifications.Items[i]))
-                                                                                       /*!(group.NotificationMask &
-                                                                                         (ulong)
-                                                                                             Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                                                                 (string) GroupNotifications.Items[i]))
-                                                                                           .Equals(0)*/)
+                                                                                           /*!(group.NotificationMask &
+                                                                                             (ulong)
+                                                                                                 Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                                                                     (string) GroupNotifications.Items[i]))
+                                                                                               .Equals(0)*/)
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);
@@ -1967,7 +1968,7 @@ namespace Configurator
                             {
                                 throw new Exception("error in client section");
                             }
-                            corradeConfiguration.StartLocations = new List<string>(new[] { client.InnerText });
+                            corradeConfiguration.StartLocations = new ConcurrentList<string>(new[] { client.InnerText });
                             break;
                     }
             }
@@ -2126,7 +2127,7 @@ namespace Configurator
                             {
                                 throw new Exception("error in filters section");
                             }
-                            corradeConfiguration.InputFilters = new List<Configuration.Filter>();
+                            corradeConfiguration.InputFilters = new ConcurrentList<Configuration.Filter>();
                             foreach (XmlNode inputFilterNode in inputFilterNodeList)
                             {
                                 switch (inputFilterNode.Name.ToLowerInvariant())
@@ -2152,7 +2153,7 @@ namespace Configurator
                             {
                                 throw new Exception("error in filters section");
                             }
-                            corradeConfiguration.OutputFilters = new List<Configuration.Filter>();
+                            corradeConfiguration.OutputFilters = new ConcurrentList<Configuration.Filter>();
                             foreach (XmlNode outputFilterNode in outputFilterNodeList)
                             {
                                 switch (outputFilterNode.Name.ToLowerInvariant())
