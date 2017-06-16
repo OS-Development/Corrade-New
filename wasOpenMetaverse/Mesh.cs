@@ -59,7 +59,6 @@ namespace wasOpenMetaverse
                             return false;
                         }
                         Locks.ClientInstanceAssetsLock.ExitReadLock();
-                        Client.Assets.Cache.SaveAssetToCache(primitive.Sculpt.SculptTexture, assetData);
                         break;
 
                     default:

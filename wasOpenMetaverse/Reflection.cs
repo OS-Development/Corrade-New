@@ -12,6 +12,7 @@ using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Linq;
 
 namespace wasOpenMetaverse
 {
@@ -737,25 +738,46 @@ namespace wasOpenMetaverse
         /// <returns>value strings</returns>
         public static IEnumerable<string> GetStructuredData<T>(this T structure, string query)
         {
-            var result = new HashSet<string[]>();
-            if (structure.Equals(default(T)))
-                return result.SelectMany(o => o);
+            return structure.Equals(default(T)).IfElse(
+                () => Enumerable.Empty<string>(),
+                () => CSV.ToEnumerable(query)
+                .AsParallel()
+                .Where(o => !string.IsNullOrEmpty(o))
+                .Select(o => new { Name = o, Data = wasSerializeObject(structure.GetFP(o)) })
+                .Where(o => o.Data.Any())
+                .AsSequential()
+                .Select(o => new[] { o.Name }.Concat(o.Data))
+                .SelectMany(o => o));
+        }
 
-            var LockObject = new object();
-            CSV.ToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(name =>
-            {
-                var data = new List<string> { name };
-                var vals = new List<string>(wasSerializeObject(structure.GetFP(name)));
-                if (!vals.Any())
-                    return;
-
-                data.AddRange(vals);
-                lock (LockObject)
-                {
-                    result.Add(data.ToArray());
-                }
-            });
-            return result.SelectMany(o => o);
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets the values from structures as strings.
+        /// </summary>
+        /// <typeparam name="T">the type of the structure</typeparam>
+        /// <param name="structure">the structure</param>
+        /// <param name="query">a CSV list of fields or properties to get</param>
+        /// <returns>value strings</returns>
+        public static IEnumerable<string> GetStructuredData<T>(this T structure)
+        {
+            return structure.Equals(default(T)).IfElse(
+                () => Enumerable.Empty<string>(),
+                () => structure.GetFieldsInfo()
+                .AsParallel()
+                .Select(o => new { Name = o.Name, Data = wasSerializeObject(structure.GetFP(o.Name)) })
+                .Where(o => o.Data.Any())
+                .AsSequential()
+                .Select(o => new[] { o.Name }.Concat(o.Data))
+                .SelectMany(o => o)
+                .Concat(structure.GetPropertiesInfo()
+                    .AsParallel()
+                    .Select(o => new { Name = o.Name, Data = wasSerializeObject(structure.GetFP(o.Name)) })
+                    .Where(o => o.Data.Any())
+                    .AsSequential()
+                    .Select(o => new[] { o.Name }.Concat(o.Data))
+                    .SelectMany(o => o)));
         }
     }
 }

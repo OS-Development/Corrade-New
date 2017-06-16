@@ -1048,14 +1048,7 @@ namespace wasOpenMetaverse
                 return true;
             }
             Locks.ClientInstanceAssetsLock.ExitReadLock();
-            var succeeded = directDownloadTexture(Client, assetUUID, out assetData, dataTimeout);
-            if (succeeded)
-            {
-                Locks.ClientInstanceAssetsLock.EnterWriteLock();
-                Client.Assets.Cache.SaveAssetToCache(assetUUID, assetData);
-                Locks.ClientInstanceAssetsLock.ExitWriteLock();
-            }
-            return succeeded;
+            return directDownloadTexture(Client, assetUUID, out assetData, dataTimeout);
         }
     }
 }

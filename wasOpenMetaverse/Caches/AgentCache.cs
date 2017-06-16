@@ -9,19 +9,21 @@ using System.Linq;
 using OpenMetaverse;
 using wasSharp.Collections.Specialized;
 using wasSharp.Collections.Generic;
+using System.Threading;
+using ReaderWriterLockSlim = System.Threading.ReaderWriterLockSlim;
 
 namespace wasOpenMetaverse.Caches
 {
     public class AgentCache : ObservableHashSet<Cache.Agent>
     {
-        private readonly object SyncRoot = new object();
+        private readonly ReaderWriterLockSlim SyncRoot = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
-        public SerializableDictionary<UUID, Cache.Agent> nameCache = new SerializableDictionary<UUID, Cache.Agent>();
+        private SerializableDictionary<UUID, Cache.Agent> nameCache = new SerializableDictionary<UUID, Cache.Agent>();
 
-        public MultiKeyDictionary<string, string, Cache.Agent> nameHandleCache =
+        private MultiKeyDictionary<string, string, Cache.Agent> nameHandleCache =
             new MultiKeyDictionary<string, string, Cache.Agent>();
 
-        public MultiKeyDictionary<string, string, UUID, Cache.Agent> nameUUIDHandleCache =
+        private MultiKeyDictionary<string, string, UUID, Cache.Agent> nameUUIDHandleCache =
             new MultiKeyDictionary<string, string, UUID, Cache.Agent>();
 
         public Cache.Agent this[string firstname, string lastname]
@@ -29,10 +31,9 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Agent agent;
-                lock (SyncRoot)
-                {
-                    nameHandleCache.TryGetValue(firstname, lastname, out agent);
-                }
+                SyncRoot.EnterReadLock();
+                nameHandleCache.TryGetValue(firstname, lastname, out agent);
+                SyncRoot.ExitReadLock();
                 return agent;
             }
         }
@@ -42,10 +43,9 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Agent agent;
-                lock (SyncRoot)
-                {
-                    nameCache.TryGetValue(@UUID, out agent);
-                }
+                SyncRoot.EnterReadLock();
+                nameCache.TryGetValue(@UUID, out agent);
+                SyncRoot.ExitReadLock();
                 return agent;
             }
         }
@@ -55,10 +55,9 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Agent agent;
-                lock (SyncRoot)
-                {
-                    nameUUIDHandleCache.TryGetValue(firstname, lastname, @UUID, out agent);
-                }
+                SyncRoot.EnterReadLock();
+                nameUUIDHandleCache.TryGetValue(firstname, lastname, @UUID, out agent);
+                SyncRoot.ExitReadLock();
                 return agent;
             }
         }
@@ -67,22 +66,15 @@ namespace wasOpenMetaverse.Caches
         {
             get
             {
-                Cache.Agent r;
-
-                lock (SyncRoot)
-                {
-                    r = this[agent.FirstName, agent.LastName];
-                }
+                Cache.Agent r = this[agent.FirstName, agent.LastName];
 
                 if (!r.Equals(default(Cache.Agent)))
                     return r;
 
                 if (!agent.UUID.Equals(UUID.Zero))
                 {
-                    lock (SyncRoot)
-                    {
-                        r = this[agent.UUID];
-                    }
+                    r = this[agent.UUID];
+
                     if (!r.Equals(default(Cache.Agent)))
                         return r;
                 }
@@ -93,79 +85,75 @@ namespace wasOpenMetaverse.Caches
 
         public new void Clear()
         {
-            lock (SyncRoot)
-            {
-                nameCache.Clear();
-                nameHandleCache.Clear();
-                nameUUIDHandleCache.Clear();
-                base.Clear();
-            }
+            SyncRoot.EnterWriteLock();
+            nameCache.Clear();
+            nameHandleCache.Clear();
+            nameUUIDHandleCache.Clear();
+            base.Clear();
+            SyncRoot.ExitWriteLock();
         }
 
         public new void Add(Cache.Agent agent)
         {
-            lock (SyncRoot)
-            {
-                if (!nameCache.ContainsKey(agent.UUID))
-                    nameCache.Add(agent.UUID, agent);
-                if (!nameHandleCache.ContainsKey(agent.FirstName, agent.LastName))
-                    nameHandleCache.Add(agent.FirstName, agent.LastName, agent);
-                if (!nameUUIDHandleCache.ContainsKey(agent.FirstName, agent.LastName, agent.UUID))
-                    nameUUIDHandleCache.Add(agent.FirstName, agent.LastName, agent.UUID, agent);
-                base.Add(agent);
-            }
+            SyncRoot.EnterWriteLock();
+            if (!nameCache.ContainsKey(agent.UUID))
+                nameCache.Add(agent.UUID, agent);
+            if (!nameHandleCache.ContainsKey(agent.FirstName, agent.LastName))
+                nameHandleCache.Add(agent.FirstName, agent.LastName, agent);
+            if (!nameUUIDHandleCache.ContainsKey(agent.FirstName, agent.LastName, agent.UUID))
+                nameUUIDHandleCache.Add(agent.FirstName, agent.LastName, agent.UUID, agent);
+
+            base.Add(agent);
+            SyncRoot.ExitWriteLock();
         }
 
         public new bool Remove(Cache.Agent agent)
         {
-            lock (SyncRoot)
-            {
-                nameCache.Remove(agent.UUID);
-                nameHandleCache.Remove(agent.FirstName, agent.LastName);
-                nameUUIDHandleCache.Remove(agent.FirstName, agent.LastName, agent.UUID);
-                return base.Remove(agent);
-            }
+            SyncRoot.EnterWriteLock();
+            nameCache.Remove(agent.UUID);
+            nameHandleCache.Remove(agent.FirstName, agent.LastName);
+            nameUUIDHandleCache.Remove(agent.FirstName, agent.LastName, agent.UUID);
+            var v = base.Remove(agent);
+            SyncRoot.ExitWriteLock();
+            return v;
         }
 
         public new void UnionWith(IEnumerable<Cache.Agent> list)
         {
-            lock (SyncRoot)
+            SyncRoot.EnterWriteLock();
+            foreach (var agent in list.Except(AsEnumerable()))
             {
-                var lazyList = new ConcurrentLazyList<Cache.Agent>(list);
-                lazyList.Except(AsEnumerable()).AsParallel().ForAll(agent =>
-                {
-                    if (nameCache.ContainsKey(agent.UUID))
-                        nameCache.Remove(agent.UUID);
-                    nameCache.Add(agent.UUID, agent);
+                if (nameCache.ContainsKey(agent.UUID))
+                    nameCache.Remove(agent.UUID);
+                nameCache.Add(agent.UUID, agent);
 
-                    if (nameHandleCache.ContainsKey(agent.FirstName, agent.LastName))
-                        nameHandleCache.Remove(agent.FirstName, agent.LastName);
-                    nameHandleCache.Add(agent.FirstName, agent.LastName, agent);
+                if (nameHandleCache.ContainsKey(agent.FirstName, agent.LastName))
+                    nameHandleCache.Remove(agent.FirstName, agent.LastName);
+                nameHandleCache.Add(agent.FirstName, agent.LastName, agent);
 
-                    if (nameUUIDHandleCache.ContainsKey(agent.FirstName, agent.LastName, agent.UUID))
-                        nameUUIDHandleCache.Remove(agent.FirstName, agent.LastName, agent.UUID);
+                if (nameUUIDHandleCache.ContainsKey(agent.FirstName, agent.LastName, agent.UUID))
+                    nameUUIDHandleCache.Remove(agent.FirstName, agent.LastName, agent.UUID);
 
-                    nameUUIDHandleCache.Add(agent.FirstName, agent.LastName, agent.UUID, agent);
-                });
-
-                base.UnionWith(lazyList);
+                nameUUIDHandleCache.Add(agent.FirstName, agent.LastName, agent.UUID, agent);
             }
+            base.UnionWith(list);
+            SyncRoot.ExitWriteLock();
         }
 
         public bool Contains(string firstname, string lastname)
         {
-            lock (SyncRoot)
-            {
-                return nameHandleCache.ContainsKey(firstname, lastname);
-            }
+            SyncRoot.EnterReadLock();
+            var c = nameHandleCache.ContainsKey(firstname, lastname);
+            SyncRoot.ExitReadLock();
+            return c;
         }
 
         public bool Contains(UUID @UUID)
         {
-            lock (SyncRoot)
-            {
-                return nameCache.ContainsKey(@UUID);
-            }
+            SyncRoot.ExitReadLock();
+            var c = nameCache.ContainsKey(@UUID);
+            SyncRoot.ExitReadLock();
+            return c;
         }
     }
 }

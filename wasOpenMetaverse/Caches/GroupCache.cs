@@ -8,17 +8,19 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
 using wasSharp.Collections.Specialized;
+using System.Threading;
+using ReaderWriterLockSlim = System.Threading.ReaderWriterLockSlim;
 
 namespace wasOpenMetaverse.Caches
 {
     public class GroupCache : ObservableHashSet<Cache.Group>
     {
-        private readonly object SyncRoot = new object();
+        private readonly ReaderWriterLockSlim SyncRoot = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
-        public Dictionary<UUID, Cache.Group> nameCache = new Dictionary<UUID, Cache.Group>();
-        public Dictionary<string, Cache.Group> groupCache = new Dictionary<string, Cache.Group>();
+        private Dictionary<UUID, Cache.Group> nameCache = new Dictionary<UUID, Cache.Group>();
+        private Dictionary<string, Cache.Group> groupCache = new Dictionary<string, Cache.Group>();
 
-        public MultiKeyDictionary<string, UUID, Cache.Group> nameUUIDHandleCache =
+        private MultiKeyDictionary<string, UUID, Cache.Group> nameUUIDHandleCache =
             new MultiKeyDictionary<string, UUID, Cache.Group>();
 
         public Cache.Group this[string name, UUID UUID]
@@ -26,10 +28,9 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                lock (SyncRoot)
-                {
-                    nameUUIDHandleCache.TryGetValue(name, UUID, out group);
-                }
+                SyncRoot.EnterReadLock();
+                nameUUIDHandleCache.TryGetValue(name, UUID, out group);
+                SyncRoot.ExitReadLock();
                 return group;
             }
         }
@@ -39,10 +40,9 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                lock (SyncRoot)
-                {
-                    nameCache.TryGetValue(UUID, out group);
-                }
+                SyncRoot.EnterReadLock();
+                nameCache.TryGetValue(UUID, out group);
+                SyncRoot.ExitReadLock();
                 return group;
             }
         }
@@ -52,10 +52,9 @@ namespace wasOpenMetaverse.Caches
             get
             {
                 Cache.Group group;
-                lock (SyncRoot)
-                {
-                    groupCache.TryGetValue(name, out group);
-                }
+                SyncRoot.EnterReadLock();
+                groupCache.TryGetValue(name, out group);
+                SyncRoot.ExitReadLock();
                 return group;
             }
         }
@@ -64,21 +63,14 @@ namespace wasOpenMetaverse.Caches
         {
             get
             {
-                Cache.Group r;
-                lock (SyncRoot)
-                {
-                    r = this[group.Name];
-                }
+                Cache.Group r = this[group.Name];
 
                 if (!r.Equals(default(Cache.Group)))
                     return r;
 
                 if (!group.UUID.Equals(UUID.Zero))
                 {
-                    lock (SyncRoot)
-                    {
-                        r = this[group.UUID];
-                    }
+                    r = this[group.UUID];
                     if (!r.Equals(default(Cache.Group)))
                         return r;
                 }
@@ -89,75 +81,71 @@ namespace wasOpenMetaverse.Caches
 
         public new void Clear()
         {
-            lock (SyncRoot)
-            {
-                nameCache.Clear();
-                nameUUIDHandleCache.Clear();
-                base.Clear();
-            }
+            SyncRoot.EnterWriteLock();
+            nameCache.Clear();
+            nameUUIDHandleCache.Clear();
+            base.Clear();
+            SyncRoot.ExitWriteLock();
         }
 
         public new void Add(Cache.Group group)
         {
-            lock (SyncRoot)
-            {
-                if (!nameCache.ContainsKey(group.UUID))
-                    nameCache.Add(group.UUID, group);
-                if (!nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
-                    nameUUIDHandleCache.Add(group.Name, group.UUID, group);
-                if (!groupCache.ContainsKey(group.Name))
-                    groupCache.Add(group.Name, group);
-                base.Add(group);
-            }
+            SyncRoot.EnterWriteLock();
+            if (!nameCache.ContainsKey(group.UUID))
+                nameCache.Add(group.UUID, group);
+            if (!nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
+                nameUUIDHandleCache.Add(group.Name, group.UUID, group);
+            if (!groupCache.ContainsKey(group.Name))
+                groupCache.Add(group.Name, group);
+            base.Add(group);
+            SyncRoot.ExitWriteLock();
         }
 
         public new bool Remove(Cache.Group group)
         {
-            lock (SyncRoot)
-            {
-                nameCache.Remove(group.UUID);
-                nameUUIDHandleCache.Remove(group.Name, group.UUID);
-                groupCache.Remove(group.Name);
-                return base.Remove(group);
-            }
+            SyncRoot.EnterWriteLock();
+            nameCache.Remove(group.UUID);
+            nameUUIDHandleCache.Remove(group.Name, group.UUID);
+            groupCache.Remove(group.Name);
+            var v = base.Remove(group);
+            SyncRoot.ExitWriteLock();
+            return v;
         }
 
         public new void UnionWith(IEnumerable<Cache.Group> list)
         {
-            lock (SyncRoot)
+            SyncRoot.EnterWriteLock();
+            foreach (var group in list.Except(AsEnumerable()))
             {
-                var lazyList = new ConcurrentLazyList<Cache.Group>(list);
-                lazyList.Except(AsEnumerable()).AsParallel().ForAll(group =>
-                {
-                    if (nameCache.ContainsKey(group.UUID))
-                        nameCache.Remove(group.UUID);
-                    nameCache.Add(group.UUID, group);
-                    if (nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
-                        nameUUIDHandleCache.Remove(group.Name, group.UUID);
-                    nameUUIDHandleCache.Add(group.Name, group.UUID, group);
-                    if (groupCache.ContainsKey(group.Name))
-                        groupCache.Remove(group.Name);
-                    groupCache.Add(group.Name, group);
-                });
-
-                base.UnionWith(lazyList);
+                if (nameCache.ContainsKey(group.UUID))
+                    nameCache.Remove(group.UUID);
+                nameCache.Add(group.UUID, group);
+                if (nameUUIDHandleCache.ContainsKey(group.Name, group.UUID))
+                    nameUUIDHandleCache.Remove(group.Name, group.UUID);
+                nameUUIDHandleCache.Add(group.Name, group.UUID, group);
+                if (groupCache.ContainsKey(group.Name))
+                    groupCache.Remove(group.Name);
+                groupCache.Add(group.Name, group);
             }
+
+            base.UnionWith(list);
+            SyncRoot.ExitWriteLock();
         }
 
         public bool Contains(string name)
         {
-            lock (SyncRoot)
-            {
-                return groupCache.ContainsKey(name);
-            }
+            SyncRoot.EnterReadLock();
+            var c = groupCache.ContainsKey(name);
+            SyncRoot.ExitReadLock();
+            return c;
         }
 
         public bool Contains(UUID UUID)
         {
-            lock (SyncRoot)
-            {
-                return nameCache.ContainsKey(UUID);
-            }
+            SyncRoot.EnterReadLock();
+            var c = nameCache.ContainsKey(UUID);
+            SyncRoot.ExitReadLock();
+            return c;
         }
     }
 }
