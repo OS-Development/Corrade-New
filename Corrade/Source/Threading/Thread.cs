@@ -14,6 +14,7 @@ using System.Threading;
 using wasSharp;
 using wasSharp.Collections.Generic;
 using Action = Amib.Threading.Action;
+using wasSharpNET.Diagnostics;
 
 namespace Corrade.Threading
 {
@@ -92,7 +93,10 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
+                        Reflection.GetNameFromEnumValue(threadType),
+                        ex?.Message,
+                        ex?.PrettyPrint(),
+                        ex?.InnerException?.Message);
                 }
             });
         }
@@ -117,8 +121,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
-                        ex.StackTrace);
+                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
                 }
             });
         }
@@ -147,8 +150,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
-                        ex.StackTrace);
+                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
                 }
             });
         }
@@ -227,8 +229,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
-                        ex.StackTrace);
+                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
                 }
             }, workItemPriority);
         }
@@ -308,8 +309,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
-                        ex.StackTrace);
+                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
                 }
                 return result;
             }, workItemPriority);

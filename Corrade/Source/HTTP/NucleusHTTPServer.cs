@@ -29,8 +29,10 @@ using wasSharp.Collections.Utilities;
 using wasSharp.Timers;
 using wasSharp.Web;
 using wasSharpNET.Cryptography;
+using wasSharpNET.Diagnostics;
 using wasSharpNET.Network.HTTP;
 using wasSharpNET.Platform.Windows.Commands.NetSH;
+using ReaderWriterLockSlim = System.Threading.ReaderWriterLockSlim;
 using Reflection = wasSharp.Reflection;
 using SHA1 = System.Security.Cryptography.SHA1;
 
@@ -40,18 +42,22 @@ namespace Corrade.HTTP
     {
         public static readonly Action PurgeNucleus = () =>
         {
-            lock (NucleusLock)
+            if (NucleusLock.TryEnterWriteLock(
+                TimeSpan.FromMilliseconds(
+                    Corrade.corradeConfiguration.NucleusServerCachePurgeInterval)))
             {
                 Nucleus.Value.Clear();
+                NucleusLock.ExitWriteLock();
             }
         };
 
         private static readonly Mime mime = new Mime();
 
         private static readonly System.Lazy<ConcurrentDictionary<string, CoreFile>> Nucleus =
-            new System.Lazy<ConcurrentDictionary<string, CoreFile>>();
+            new System.Lazy<ConcurrentDictionary<string, CoreFile>>(true);
 
-        private static readonly object NucleusLock = new object();
+        private static readonly ReaderWriterLockSlim NucleusLock =
+            new ReaderWriterLockSlim(System.Threading.LockRecursionPolicy.SupportsRecursion);
 
         public readonly Timer CacheExpiryTimer = new Timer(((Expression<Action>)(() =>
            Nucleus.Value.Values.AsParallel()
@@ -77,6 +83,7 @@ namespace Corrade.HTTP
 
             try
             {
+                NucleusLock.EnterWriteLock();
                 Directory.GetFiles(CORRADE_CONSTANTS.NUCLEUS_ROOT, @"*.zip")
                     .OrderBy(o => o)
                     .AsParallel()
@@ -129,8 +136,12 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_COMPILE_FAILED),
-                    ex.ToString(), ex.InnerException?.ToString());
+                    ex?.PrettyPrint());
                 return new Dictionary<string, CoreFile>();
+            }
+            finally
+            {
+                NucleusLock.ExitWriteLock();
             }
         }
 
@@ -146,7 +157,7 @@ namespace Corrade.HTTP
                 if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
                     !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
-                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName);
+                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
                     if (!acl.isReserved)
                         acl.Reserve();
                 }
@@ -184,7 +195,7 @@ namespace Corrade.HTTP
                 if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
                     !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
-                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName);
+                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
                     if (acl.isReserved)
                         acl.Release();
                 }
@@ -322,9 +333,9 @@ namespace Corrade.HTTP
                                             NucleusResponse.StatusCode = (int)HttpStatusCode.OK;
 
                                             await ((Task)method.Invoke(this, @params)).ContinueWith((o) =>
-                                           {
-                                               ContentSent = true;
-                                           });
+                                            {
+                                                ContentSent = true;
+                                            });
                                             break;
                                     }
                                 }
@@ -357,6 +368,10 @@ namespace Corrade.HTTP
                             {
                                 try
                                 {
+                                    // Disable cache purge timer for the duration of this request.
+                                    if (Corrade.corradeConfiguration.EnableNucleusServerCache)
+                                        CacheExpiryTimer.Change(TimeSpan.Zero, TimeSpan.Zero);
+
                                     using (var dataMemoryStream = new MemoryStream())
                                     {
                                         // Get the first component.
@@ -402,80 +417,77 @@ namespace Corrade.HTTP
                                                 break;
 
                                             default:
-                                                lock (NucleusLock)
+                                                // If the nucleus is not loaded, then load it now.
+                                                if (!Nucleus.IsValueCreated || !Nucleus.Value.Any())
+                                                    Nucleus.Value.UnionWith(LoadNucleus());
+
+                                                var url = string.Join(@"/", path);
+                                                var file = new CoreFile();
+                                                if (Nucleus.Value.TryGetValue(url, out file) ||
+                                                    Nucleus.Value.TryGetValue(
+                                                        string.Format("{0}/{1}", url,
+                                                            CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT).Trim('/'),
+                                                        out file))
                                                 {
-                                                    // If the nucleus is not loaded, then load it now.
-                                                    if (!Nucleus.IsValueCreated || !Nucleus.Value.Any())
-                                                        Nucleus.Value.UnionWith(LoadNucleus());
-
-                                                    var url = string.Join(@"/", path);
-                                                    var file = new CoreFile();
-                                                    if (Nucleus.Value.TryGetValue(url, out file) ||
-                                                        Nucleus.Value.TryGetValue(
-                                                            string.Format("{0}/{1}", url,
-                                                                CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT).Trim('/'),
-                                                            out file))
+                                                    using (var memoryStream = new MemoryStream(file.Data))
                                                     {
-                                                        using (var memoryStream = new MemoryStream(file.Data))
-                                                        {
-                                                            memoryStream.CopyTo(dataMemoryStream);
-                                                        }
-                                                        // Override Mime.
-                                                        var fileMime = mime.Lookup(file.Name);
-                                                        switch (file.Name.Split('.').Last().ToUpperInvariant())
-                                                        {
-                                                            case "HTML":
-                                                            case "HTM":
-                                                                fileMime = @"text/html";
-                                                                break;
-                                                        }
-                                                        NucleusResponse.ContentType = fileMime;
-                                                        break;
+                                                        memoryStream.CopyTo(dataMemoryStream);
                                                     }
-
-                                                    if (string.IsNullOrEmpty(url))
+                                                    // Override Mime.
+                                                    var fileMime = mime.Lookup(file.Name);
+                                                    switch (file.Name.Split('.').Last().ToUpperInvariant())
                                                     {
-                                                        using (
-                                                            var CSVStream =
-                                                                new MemoryStream(
-                                                                    Encoding.UTF8.GetBytes(
-                                                                        CSV.FromEnumerable(
-                                                                            Nucleus.Value.Keys.AsParallel()
-                                                                                .Select(
-                                                                                    o => o.Split('/').FirstOrDefault())
-                                                                                .Where(o => !string.IsNullOrEmpty(o))
-                                                                                .Distinct()))))
-                                                        {
-                                                            CSVStream.CopyTo(dataMemoryStream);
-                                                        }
-                                                        NucleusResponse.ContentType = @"text/plain";
-                                                        break;
+                                                        case "HTML":
+                                                        case "HTM":
+                                                            fileMime = @"text/html";
+                                                            break;
                                                     }
+                                                    NucleusResponse.ContentType = fileMime;
+                                                    break;
+                                                }
 
-                                                    var items =
-                                                        new List<string>(
-                                                            Nucleus.Value.Values.AsParallel()
-                                                                .Where(
-                                                                    o =>
-                                                                        o.Path.Split('/')
-                                                                            .Reverse()
-                                                                            .Skip(1)
-                                                                            .Reverse()
-                                                                            .SequenceEqual(path))
-                                                                .Select(o => o.Name)
-                                                                .Where(o => !string.IsNullOrEmpty(o))
-                                                                .Distinct());
-                                                    if (items.Any())
+                                                if (string.IsNullOrEmpty(url))
+                                                {
+                                                    using (
+                                                        var CSVStream =
+                                                            new MemoryStream(
+                                                                Encoding.UTF8.GetBytes(
+                                                                    CSV.FromEnumerable(
+                                                                        Nucleus.Value.Keys.AsParallel()
+                                                                            .Select(
+                                                                                o => o.Split('/').FirstOrDefault())
+                                                                            .Where(o => !string.IsNullOrEmpty(o))
+                                                                            .Distinct()))))
                                                     {
-                                                        using (
-                                                            var CSVStream =
-                                                                new MemoryStream(
-                                                                    Encoding.UTF8.GetBytes(CSV.FromEnumerable(items))))
-                                                        {
-                                                            CSVStream.CopyTo(dataMemoryStream);
-                                                        }
-                                                        NucleusResponse.ContentType = @"text/plain";
+                                                        CSVStream.CopyTo(dataMemoryStream);
                                                     }
+                                                    NucleusResponse.ContentType = @"text/plain";
+                                                    break;
+                                                }
+
+                                                var items =
+                                                    new List<string>(
+                                                        Nucleus.Value.Values.AsParallel()
+                                                            .Where(
+                                                                o =>
+                                                                    o.Path.Split('/')
+                                                                        .Reverse()
+                                                                        .Skip(1)
+                                                                        .Reverse()
+                                                                        .SequenceEqual(path))
+                                                            .Select(o => o.Name)
+                                                            .Where(o => !string.IsNullOrEmpty(o))
+                                                            .Distinct());
+                                                if (items.Any())
+                                                {
+                                                    using (
+                                                        var CSVStream =
+                                                            new MemoryStream(
+                                                                Encoding.UTF8.GetBytes(CSV.FromEnumerable(items))))
+                                                    {
+                                                        CSVStream.CopyTo(dataMemoryStream);
+                                                    }
+                                                    NucleusResponse.ContentType = @"text/plain";
                                                 }
                                                 break;
                                         }
@@ -881,7 +893,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_PROCESSING_ABORTED),
-                    ex.ToString(), ex.InnerException?.ToString());
+                    ex?.PrettyPrint());
             }
         }
 
@@ -998,7 +1010,8 @@ namespace Corrade.HTTP
         }
 
         [HTTPRequestMapping("e", "GET")]
-        private async Task GetNotifications(string type, string group, string password, HttpListenerResponse NucleusResponse, MemoryStream memoryStream)
+        private async Task GetNotifications(string type, string group, string password,
+            HttpListenerResponse NucleusResponse, MemoryStream memoryStream)
         {
             UUID groupUUID;
             var configuredGroup = UUID.TryParse(group, out groupUUID)

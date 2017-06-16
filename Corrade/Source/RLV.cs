@@ -10,6 +10,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using wasSharp;
+using wasSharpNET.Diagnostics;
 
 namespace Corrade
 {
@@ -257,7 +258,7 @@ namespace Corrade
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
                     RLVrule.Behaviour,
-                    ex.ToString(), ex.InnerException?.ToString());
+                    ex?.PrettyPrint());
             }
             finally
             {

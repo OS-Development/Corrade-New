@@ -29,10 +29,12 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var data = new List<string>();
+                    CorradeHeartbeatLock.EnterReadLock();
                     data.AddRange(CorradeHeartbeat.GetStructuredData(wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message))));
+                    CorradeHeartbeatLock.ExitReadLock();
                     if (data.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),

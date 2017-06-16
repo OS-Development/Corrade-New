@@ -17,6 +17,7 @@ using System.Text;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
+using wasSharpNET.Diagnostics;
 using Reflection = wasSharp.Reflection;
 
 namespace Corrade
@@ -227,7 +228,7 @@ namespace Corrade
                                         Feedback(
                                             Reflection.GetNameFromEnumValue(
                                                 Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                            ex.ToString(), ex.InnerException?.ToString());
+                                            ex?.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }

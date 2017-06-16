@@ -114,6 +114,11 @@ namespace Corrade.Constants
         public static readonly Regex SHA1Regex = new Regex(@"[a-fA-F0-9]{40}", RegexOptions.Compiled);
 
         /// <summary>
+        ///     Debugging information will be available from this folder.
+        /// </summary>
+        public static readonly string DEBUG_FOLDER_NAME = @"debug";
+
+        /// <summary>
         ///     Corrade version.
         /// </summary>
         public static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();

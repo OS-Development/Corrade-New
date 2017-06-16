@@ -197,9 +197,6 @@ namespace Corrade
                                             Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                 }
                                 Locks.ClientInstanceAssetsLock.ExitReadLock();
-                                Locks.ClientInstanceAssetsLock.EnterWriteLock();
-                                Client.Assets.Cache.SaveAssetToCache(o, assetData);
-                                Locks.ClientInstanceAssetsLock.ExitWriteLock();
                                 if (corradeConfiguration.EnableHorde)
                                     HordeDistributeCacheAsset(o, assetData,
                                         Configuration.HordeDataSynchronizationOption.Add);

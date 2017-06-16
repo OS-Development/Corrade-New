@@ -46,6 +46,12 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [Reflection.NameAttribute("context")]
+            CONTEXT,
+
+            [Reflection.NameAttribute("horde")]
+            HORDE,
+
             [Reflection.NameAttribute("reset")]
             RESET,
 

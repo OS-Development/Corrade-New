@@ -58,7 +58,6 @@ namespace Configurator
             mainForm.StartLocations.DisplayMember = "Text";
 
             mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
-            mainForm.EnableMultipleSimulators.Checked = corradeConfiguration.EnableMultipleSimulators;
             mainForm.AutoScriptedAgentStatus.Checked = corradeConfiguration.AutoScriptedAgentStatus;
             mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
             mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
@@ -292,6 +291,9 @@ namespace Configurator
             }
             mainForm.HordePeers.DisplayMember = "Text";
             mainForm.HordeEnabled.Checked = corradeConfiguration.EnableHorde;
+            mainForm.HordeCommandEnabled.Checked = corradeConfiguration.EnableHordeCommand;
+            mainForm.HordeCommandContributionBox.Text = corradeConfiguration.HordeCommandContribution.ToString();
+            mainForm.HordeCommandContributionTrackBar.Value = (int)corradeConfiguration.HordeCommandContribution;
 
             // groups
             mainForm.Groups.Items.Clear();
@@ -423,7 +425,6 @@ namespace Configurator
             corradeConfiguration.StartLocations =
                 new List<string>(mainForm.StartLocations.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
-            corradeConfiguration.EnableMultipleSimulators = mainForm.EnableMultipleSimulators.Checked;
             corradeConfiguration.AutoScriptedAgentStatus = mainForm.AutoScriptedAgentStatus.Checked;
             UUID outUUID;
             if (UUID.TryParse(mainForm.ClientIdentificationTag.Text, out outUUID))
@@ -791,6 +792,17 @@ namespace Configurator
             }
 
             corradeConfiguration.EnableHorde = mainForm.HordeEnabled.Checked;
+            corradeConfiguration.EnableHordeCommand = mainForm.HordeCommandEnabled.Checked;
+
+            if (!uint.TryParse(mainForm.HordeCommandContributionBox.Text, out outUint))
+                outUint = 0;
+
+            if (outUint > 100)
+                outUint = 100;
+            if (outUint < 0)
+                outUint = 0;
+
+            corradeConfiguration.HordeCommandContribution = outUint;
         };
 
         public CorradeConfiguratorForm()
@@ -1060,11 +1072,11 @@ namespace Configurator
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
                                (string)GroupNotifications.Items[i]))
-                                                                   /*!(group.NotificationMask &
-                                                                     (ulong)
-                                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                                             (string) GroupNotifications.Items[i]))
-                                                                       .Equals(0)*/)
+                                                                                       /*!(group.NotificationMask &
+                                                                                         (ulong)
+                                                                                             Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                                                                 (string) GroupNotifications.Items[i]))
+                                                                                           .Equals(0)*/)
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);
@@ -4347,6 +4359,35 @@ namespace Configurator
                         return;
                     var file = listViewItem.Tag.ToString();
                     mainForm.NucleusServerBlessingsBox.Text = file;
+                }));
+        }
+
+        private void HordeCommandContributionBoxChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    //mainForm.HordeCommandContributionBox.Text = mainForm.HordeCommandContributionTrackBar.Value.ToString();
+                    uint contribution;
+                    if (!uint.TryParse(mainForm.HordeCommandContributionBox.Text, out contribution))
+                    {
+                        mainForm.HordeCommandContributionTrackBar.Value = 0;
+                        mainForm.HordeCommandContributionBox.Text = @"0";
+                    }
+                    if (contribution > 100)
+                        contribution = 100;
+
+                    mainForm.HordeCommandContributionTrackBar.Value = (int)contribution;
+                    mainForm.HordeCommandContributionBox.Text = contribution.ToString();
+                }));
+        }
+
+        private void HordeCommandContributionTrackBarChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    mainForm.HordeCommandContributionBox.Text = mainForm.HordeCommandContributionTrackBar.Value.ToString();
                 }));
         }
     }

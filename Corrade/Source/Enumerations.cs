@@ -2350,7 +2350,23 @@ namespace Corrade
 
             [Command.StatusAttribute(41574)]
             [Reflection.DescriptionAttribute("timeout rezzing primitive")]
-            TIMEOUT_REZZING_PRIMITIVE
+            TIMEOUT_REZZING_PRIMITIVE,
+
+            [Command.StatusAttribute(54084)]
+            [Reflection.DescriptionAttribute("no peers matching context")]
+            NO_PEERS_MATCHING_CONTEXT,
+
+            [Command.StatusAttribute(32355)]
+            [Reflection.DescriptionAttribute("execution returned no result")]
+            EXECUTION_RETURNED_NO_RESULT,
+
+            [Command.StatusAttribute(12408)]
+            [Reflection.DescriptionAttribute("group synchronization failed")]
+            GROUP_SYNCHRONIZATION_FAILED,
+
+            [Command.StatusAttribute(44537)]
+            [Reflection.DescriptionAttribute("unknown horde balancer")]
+            UNKNOWN_HORDE_BALANCER
         }
 
         /// <summary>
@@ -2471,6 +2487,18 @@ namespace Corrade
 
             [Reflection.NameAttribute("bayes")]
             BAYES
+        }
+
+        /// <summary>
+        ///     Possible Horde balance strategies.
+        /// </summary>
+        public enum HordeBalance : uint
+        {
+            [Reflection.NameAttribute("weight")]
+            WEIGHT,
+
+            [Reflection.NameAttribute("unison")]
+            UNISON
         }
 
         /// <summary>

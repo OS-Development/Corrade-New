@@ -580,14 +580,9 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                     // Store the any asset in the cache.
-                    if (inventoryItem != null && !inventoryItem.AssetUUID.Equals(UUID.Zero))
-                    {
-                        Locks.ClientInstanceAssetsLock.EnterWriteLock();
-                        Client.Assets.Cache.SaveAssetToCache(inventoryItem.AssetUUID, data);
-                        Locks.ClientInstanceAssetsLock.ExitWriteLock();
-                        if (corradeConfiguration.EnableHorde)
-                            HordeDistributeCacheAsset(inventoryItem.UUID, data, Configuration.HordeDataSynchronizationOption.Add);
-                    }
+                    if (inventoryItem != null && !inventoryItem.AssetUUID.Equals(UUID.Zero) && corradeConfiguration.EnableHorde)
+                        HordeDistributeCacheAsset(inventoryItem.UUID, data, Configuration.HordeDataSynchronizationOption.Add);
+
                     // Add the item and assetUUID ot the output.
                     csv.AddRange(new[]
                         {

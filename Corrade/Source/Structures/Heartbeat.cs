@@ -25,6 +25,12 @@ namespace Corrade.Structures
         public int ExecutingCommands;
 
         /// <summary>
+        ///     The ratio of busy group workers per total allowed group workers.
+        /// </summary>
+        public int WorkerOccupation => 100 * Corrade.GroupWorkers.Values.OfType<int>().Sum() /
+            (int)Corrade.corradeConfiguration.Groups.Sum(o => o.Workers);
+
+        /// <summary>
         ///     The number of currently executing RLV behaviours.
         /// </summary>
         public int ExecutingRLVBehaviours;

@@ -36,9 +36,6 @@
             this.AutoSASBox = new System.Windows.Forms.GroupBox();
             this.pictureBox66 = new System.Windows.Forms.PictureBox();
             this.AutoScriptedAgentStatus = new System.Windows.Forms.CheckBox();
-            this.groupBox96 = new System.Windows.Forms.GroupBox();
-            this.pictureBox109 = new System.Windows.Forms.PictureBox();
-            this.EnableMultipleSimulators = new System.Windows.Forms.CheckBox();
             this.groupBox63 = new System.Windows.Forms.GroupBox();
             this.ClientLanguage = new System.Windows.Forms.ComboBox();
             this.pictureBox50 = new System.Windows.Forms.PictureBox();
@@ -230,6 +227,13 @@
             this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Add = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.Remove = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.CommandSynchronizationTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox70 = new System.Windows.Forms.GroupBox();
+            this.HordeCommandContributionBox = new System.Windows.Forms.TextBox();
+            this.pictureBox110 = new System.Windows.Forms.PictureBox();
+            this.HordeCommandContributionTrackBar = new System.Windows.Forms.TrackBar();
+            this.HordeCommandEnabled = new System.Windows.Forms.CheckBox();
+            this.pictureBox43 = new System.Windows.Forms.PictureBox();
             this.groupBox66 = new System.Windows.Forms.GroupBox();
             this.pictureBox103 = new System.Windows.Forms.PictureBox();
             this.label37 = new System.Windows.Forms.Label();
@@ -495,8 +499,6 @@
             this.ClientTabPage.SuspendLayout();
             this.AutoSASBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).BeginInit();
-            this.groupBox96.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).BeginInit();
             this.groupBox63.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox65)).BeginInit();
@@ -629,6 +631,11 @@
             this.tabControl1.SuspendLayout();
             this.DataSynchronizationTabPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.HordeSynchronizationDataGridView)).BeginInit();
+            this.CommandSynchronizationTabPage.SuspendLayout();
+            this.groupBox70.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox110)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.HordeCommandContributionTrackBar)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).BeginInit();
             this.groupBox66.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox96)).BeginInit();
@@ -797,7 +804,6 @@
             // ClientTabPage
             // 
             this.ClientTabPage.Controls.Add(this.AutoSASBox);
-            this.ClientTabPage.Controls.Add(this.groupBox96);
             this.ClientTabPage.Controls.Add(this.groupBox63);
             this.ClientTabPage.Controls.Add(this.AutoPruneCacheBox);
             this.ClientTabPage.Controls.Add(this.ExpectedExitCodeBox);
@@ -822,7 +828,7 @@
             // 
             this.AutoSASBox.Controls.Add(this.pictureBox66);
             this.AutoSASBox.Controls.Add(this.AutoScriptedAgentStatus);
-            this.AutoSASBox.Location = new System.Drawing.Point(12, 236);
+            this.AutoSASBox.Location = new System.Drawing.Point(12, 180);
             this.AutoSASBox.Name = "AutoSASBox";
             this.AutoSASBox.Size = new System.Drawing.Size(126, 50);
             this.AutoSASBox.TabIndex = 14;
@@ -852,41 +858,6 @@
             this.AutoScriptedAgentStatus.TabIndex = 0;
             this.AutoScriptedAgentStatus.Text = "Enabled";
             this.AutoScriptedAgentStatus.UseVisualStyleBackColor = true;
-            // 
-            // groupBox96
-            // 
-            this.groupBox96.Controls.Add(this.pictureBox109);
-            this.groupBox96.Controls.Add(this.EnableMultipleSimulators);
-            this.groupBox96.Location = new System.Drawing.Point(12, 180);
-            this.groupBox96.Name = "groupBox96";
-            this.groupBox96.Size = new System.Drawing.Size(126, 50);
-            this.groupBox96.TabIndex = 13;
-            this.groupBox96.TabStop = false;
-            this.groupBox96.Text = "Multiple Simulators";
-            // 
-            // pictureBox109
-            // 
-            this.pictureBox109.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox109.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox109.Image")));
-            this.pictureBox109.Location = new System.Drawing.Point(100, 22);
-            this.pictureBox109.Name = "pictureBox109";
-            this.pictureBox109.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox109.TabIndex = 11;
-            this.pictureBox109.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox109, resources.GetString("pictureBox109.ToolTip"));
-            // 
-            // EnableMultipleSimulators
-            // 
-            this.EnableMultipleSimulators.AutoSize = true;
-            this.EnableMultipleSimulators.Checked = true;
-            this.EnableMultipleSimulators.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.EnableMultipleSimulators.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.EnableMultipleSimulators.Location = new System.Drawing.Point(15, 24);
-            this.EnableMultipleSimulators.Name = "EnableMultipleSimulators";
-            this.EnableMultipleSimulators.Size = new System.Drawing.Size(68, 17);
-            this.EnableMultipleSimulators.TabIndex = 0;
-            this.EnableMultipleSimulators.Text = "Enabled";
-            this.EnableMultipleSimulators.UseVisualStyleBackColor = true;
             // 
             // groupBox63
             // 
@@ -3056,6 +3027,7 @@
             // tabControl1
             // 
             this.tabControl1.Controls.Add(this.DataSynchronizationTabPage);
+            this.tabControl1.Controls.Add(this.CommandSynchronizationTabPage);
             this.tabControl1.Location = new System.Drawing.Point(265, 3);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
@@ -3070,7 +3042,7 @@
             this.DataSynchronizationTabPage.Padding = new System.Windows.Forms.Padding(3);
             this.DataSynchronizationTabPage.Size = new System.Drawing.Size(390, 184);
             this.DataSynchronizationTabPage.TabIndex = 0;
-            this.DataSynchronizationTabPage.Text = "Sync";
+            this.DataSynchronizationTabPage.Text = "Synchronization";
             this.DataSynchronizationTabPage.UseVisualStyleBackColor = true;
             // 
             // HordeSynchronizationDataGridView
@@ -3116,6 +3088,84 @@
             this.Remove.Name = "Remove";
             this.Remove.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             this.Remove.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+            // 
+            // CommandSynchronizationTabPage
+            // 
+            this.CommandSynchronizationTabPage.Controls.Add(this.groupBox70);
+            this.CommandSynchronizationTabPage.Controls.Add(this.HordeCommandEnabled);
+            this.CommandSynchronizationTabPage.Controls.Add(this.pictureBox43);
+            this.CommandSynchronizationTabPage.Location = new System.Drawing.Point(4, 25);
+            this.CommandSynchronizationTabPage.Name = "CommandSynchronizationTabPage";
+            this.CommandSynchronizationTabPage.Size = new System.Drawing.Size(390, 184);
+            this.CommandSynchronizationTabPage.TabIndex = 1;
+            this.CommandSynchronizationTabPage.Text = "Command";
+            this.CommandSynchronizationTabPage.UseVisualStyleBackColor = true;
+            // 
+            // groupBox70
+            // 
+            this.groupBox70.Controls.Add(this.HordeCommandContributionBox);
+            this.groupBox70.Controls.Add(this.pictureBox110);
+            this.groupBox70.Controls.Add(this.HordeCommandContributionTrackBar);
+            this.groupBox70.Location = new System.Drawing.Point(5, 81);
+            this.groupBox70.Name = "groupBox70";
+            this.groupBox70.Size = new System.Drawing.Size(382, 100);
+            this.groupBox70.TabIndex = 7;
+            this.groupBox70.TabStop = false;
+            this.groupBox70.Text = "Contribution";
+            // 
+            // HordeCommandContributionBox
+            // 
+            this.HordeCommandContributionBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HordeCommandContributionBox.Location = new System.Drawing.Point(283, 21);
+            this.HordeCommandContributionBox.MaxLength = 3;
+            this.HordeCommandContributionBox.Name = "HordeCommandContributionBox";
+            this.HordeCommandContributionBox.Size = new System.Drawing.Size(60, 20);
+            this.HordeCommandContributionBox.TabIndex = 8;
+            this.HordeCommandContributionBox.Text = "0";
+            this.HordeCommandContributionBox.TextChanged += new System.EventHandler(this.HordeCommandContributionBoxChanged);
+            // 
+            // pictureBox110
+            // 
+            this.pictureBox110.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox110.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox110.Image")));
+            this.pictureBox110.Location = new System.Drawing.Point(349, 21);
+            this.pictureBox110.Name = "pictureBox110";
+            this.pictureBox110.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox110.TabIndex = 7;
+            this.pictureBox110.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox110, "The weighted load balancer requires a\r\nweight to be set for your current Corrade." +
+        "\r\nThe higher this value, the more likely it\r\nis for this Corrade to be selected " +
+        "to\r\nexecute commands.\r\n");
+            // 
+            // HordeCommandContributionTrackBar
+            // 
+            this.HordeCommandContributionTrackBar.Location = new System.Drawing.Point(-2, 49);
+            this.HordeCommandContributionTrackBar.Maximum = 100;
+            this.HordeCommandContributionTrackBar.Name = "HordeCommandContributionTrackBar";
+            this.HordeCommandContributionTrackBar.Size = new System.Drawing.Size(382, 45);
+            this.HordeCommandContributionTrackBar.TabIndex = 0;
+            this.HordeCommandContributionTrackBar.ValueChanged += new System.EventHandler(this.HordeCommandContributionTrackBarChanged);
+            // 
+            // HordeCommandEnabled
+            // 
+            this.HordeCommandEnabled.AutoSize = true;
+            this.HordeCommandEnabled.Location = new System.Drawing.Point(288, 12);
+            this.HordeCommandEnabled.Name = "HordeCommandEnabled";
+            this.HordeCommandEnabled.Size = new System.Drawing.Size(66, 20);
+            this.HordeCommandEnabled.TabIndex = 5;
+            this.HordeCommandEnabled.Text = "Enabled";
+            this.HordeCommandEnabled.UseVisualStyleBackColor = true;
+            // 
+            // pictureBox43
+            // 
+            this.pictureBox43.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox43.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox43.Image")));
+            this.pictureBox43.Location = new System.Drawing.Point(360, 12);
+            this.pictureBox43.Name = "pictureBox43";
+            this.pictureBox43.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox43.TabIndex = 6;
+            this.pictureBox43.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox43, resources.GetString("pictureBox43.ToolTip"));
             // 
             // groupBox66
             // 
@@ -6011,9 +6061,6 @@
             this.AutoSASBox.ResumeLayout(false);
             this.AutoSASBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox66)).EndInit();
-            this.groupBox96.ResumeLayout(false);
-            this.groupBox96.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).EndInit();
             this.groupBox63.ResumeLayout(false);
             this.groupBox63.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox50)).EndInit();
@@ -6202,6 +6249,13 @@
             this.tabControl1.ResumeLayout(false);
             this.DataSynchronizationTabPage.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.HordeSynchronizationDataGridView)).EndInit();
+            this.CommandSynchronizationTabPage.ResumeLayout(false);
+            this.CommandSynchronizationTabPage.PerformLayout();
+            this.groupBox70.ResumeLayout(false);
+            this.groupBox70.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox110)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.HordeCommandContributionTrackBar)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox43)).EndInit();
             this.groupBox66.ResumeLayout(false);
             this.groupBox66.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox103)).EndInit();
@@ -6811,9 +6865,6 @@
         private System.Windows.Forms.PictureBox pictureBox50;
         private System.Windows.Forms.PictureBox pictureBox65;
         private System.Windows.Forms.CheckBox ClientLanguageAdvertise;
-        private System.Windows.Forms.GroupBox groupBox96;
-        private System.Windows.Forms.PictureBox pictureBox109;
-        private System.Windows.Forms.CheckBox EnableMultipleSimulators;
         private System.Windows.Forms.GroupBox groupBox99;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel17;
         private System.Windows.Forms.GroupBox groupBox101;
@@ -6844,6 +6895,13 @@
         private System.Windows.Forms.GroupBox AutoSASBox;
         private System.Windows.Forms.PictureBox pictureBox66;
         private System.Windows.Forms.CheckBox AutoScriptedAgentStatus;
+        private System.Windows.Forms.TabPage CommandSynchronizationTabPage;
+        private System.Windows.Forms.GroupBox groupBox70;
+        private System.Windows.Forms.TextBox HordeCommandContributionBox;
+        private System.Windows.Forms.PictureBox pictureBox110;
+        private System.Windows.Forms.TrackBar HordeCommandContributionTrackBar;
+        private System.Windows.Forms.CheckBox HordeCommandEnabled;
+        private System.Windows.Forms.PictureBox pictureBox43;
     }
 }
 

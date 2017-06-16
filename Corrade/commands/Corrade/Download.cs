@@ -210,9 +210,6 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.FAILED_TO_DOWNLOAD_ASSET);
                             }
-                            Locks.ClientInstanceAssetsLock.EnterWriteLock();
-                            Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
-                            Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             if (corradeConfiguration.EnableHorde)
                                 HordeDistributeCacheAsset(itemUUID, assetData,
                                     Configuration.HordeDataSynchronizationOption.Add);

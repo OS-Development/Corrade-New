@@ -334,11 +334,6 @@ namespace Corrade
                                                     scriptError = Enumerations.ScriptError.ASSET_UPLOAD_FAILED;
                                                     s.Break();
                                                 }
-                                                // add the item to the cache.
-                                                Locks.ClientInstanceAssetsLock.EnterWriteLock();
-                                                Client.Assets.Cache.SaveAssetToCache(replaceByTextureUUID,
-                                                        j2cBytes);
-                                                Locks.ClientInstanceAssetsLock.ExitWriteLock();
                                                 if (corradeConfiguration.EnableHorde)
                                                     HordeDistributeCacheAsset(replaceByTextureUUID, j2cBytes,
                                                         Configuration.HordeDataSynchronizationOption.Add);
