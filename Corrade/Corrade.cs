@@ -1007,7 +1007,7 @@ namespace Corrade
             if (string.IsNullOrEmpty(o))
                 return string.Empty;
 
-            List<Configuration.Filter> safeFilters;
+            ConcurrentList<Configuration.Filter> safeFilters;
             lock (InputFiltersLock)
             {
                 safeFilters = corradeConfiguration.InputFilters;
@@ -1058,7 +1058,7 @@ namespace Corrade
             if (string.IsNullOrEmpty(o))
                 return string.Empty;
 
-            List<Configuration.Filter> safeFilters;
+            ConcurrentList<Configuration.Filter> safeFilters;
             lock (OutputFiltersLock)
             {
                 safeFilters = corradeConfiguration.OutputFilters;

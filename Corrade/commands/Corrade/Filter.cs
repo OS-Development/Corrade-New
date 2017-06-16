@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using wasSharp;
+using wasSharp.Collections.Specialized;
 
 namespace Corrade
 {
@@ -31,7 +32,7 @@ namespace Corrade
                                 corradeCommandParameters.Message))))
                     {
                         case Enumerations.Action.SET:
-                            var inputFilters = new List<Configuration.Filter>();
+                            var inputFilters = new ConcurrentList<Configuration.Filter>();
                             var input =
                                 wasInput(
                                     KeyValue.Get(
@@ -52,7 +53,7 @@ namespace Corrade
                                     corradeConfiguration.InputFilters = inputFilters;
                                 }
                             }
-                            var outputFilters = new List<Configuration.Filter>();
+                            var outputFilters = new ConcurrentList<Configuration.Filter>();
                             var output =
                                 wasInput(KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.OUTPUT)),

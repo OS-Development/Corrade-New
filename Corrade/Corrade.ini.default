@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Version>1.29.6376.19971</Version>
+  <Version>1.29.6376.23930</Version>
   <ClientLanguage>en</ClientLanguage>
   <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
@@ -144,10 +144,10 @@
         <Permissions>grooming</Permissions>
         <Permissions>interact</Permissions>
         <Permissions>mute</Permissions>
+        <Permissions>notifications</Permissions>
         <Permissions>talk</Permissions>
         <Permissions>friendship</Permissions>
         <Permissions>group</Permissions>
-        <Permissions>notifications</Permissions>
       </Permissions>
       <Schedules>0</Schedules>
       <UUID>aaa465f0-e18c-4aec-baa2-21b153092886</UUID>
