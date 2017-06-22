@@ -24,6 +24,7 @@ using log4net.Config;
 using log4net.Layout;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using OpenMetaverse.Packets;
 using Syn.Bot.Siml;
 using Syn.Bot.Siml.Events;
 using System;
@@ -325,6 +326,7 @@ namespace Corrade
         private static readonly object ClientLogFileLock = new object();
         private static readonly object GroupLogFileLock = new object();
         private static readonly object LocalLogFileLock = new object();
+        private static readonly object OwnerSayLogFileLock = new object();
         private static readonly object RegionLogFileLock = new object();
         private static readonly object InstantMessageLogFileLock = new object();
         private static readonly object ConferenceMessageLogFileLock = new object();
@@ -3456,8 +3458,40 @@ namespace Corrade
                             // Send pings for lag measurement.
                             SEND_PINGS = true,
                             // Throttling.
-                            SEND_AGENT_THROTTLE = true
+                            SEND_AGENT_THROTTLE = true,
+                            // Multiple simulator connections.
+                            MULTIPLE_SIMS = corradeConfiguration.MultipleSimulatorConnections
                     }
+                };
+
+                // Get the next location.
+                var location = StartLocationQueue.Dequeue();
+
+                // Generate a grid location.
+                var startLocation = new wasOpenMetaverse.Helpers.GridLocation(location);
+
+                // Create the new login parameters.
+                Login = new LoginParams(
+                    Client,
+                    corradeConfiguration.FirstName,
+                    corradeConfiguration.LastName,
+                    corradeConfiguration.Password,
+                    CORRADE_CONSTANTS.CLIENT_CHANNEL,
+                    CORRADE_CONSTANTS.CORRADE_VERSION.ToString(Utils.EnUsCulture),
+                    corradeConfiguration.LoginURL)
+                {
+                    Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
+                    AgreeToTos = corradeConfiguration.TOSAccepted,
+                    Start =
+                        startLocation.isCustom
+                            ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
+                                startLocation.Z)
+                            : location,
+                    UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString(),
+                    Version = CORRADE_CONSTANTS.CORRADE_VERSION,
+                    Timeout = (int)corradeConfiguration.ServicesTimeout,
+                    LastExecEvent = CorradeLastExecStatus,
+                    Platform = Utils.GetRunningPlatform().ToString()
                 };
 
                 // Update the configuration.
@@ -3501,35 +3535,6 @@ namespace Corrade
                 NotificationThreadState.Set();
                 CallbackThreadState.Set();
                 TCPNotificationsThreadState.Set();
-
-                // Get the next location.
-                var location = StartLocationQueue.Dequeue();
-
-                // Generate a grid location.
-                var startLocation = new wasOpenMetaverse.Helpers.GridLocation(location);
-
-                // Proceed to log-in.
-                Login = new LoginParams(
-                    Client,
-                    corradeConfiguration.FirstName,
-                    corradeConfiguration.LastName,
-                    corradeConfiguration.Password,
-                    CORRADE_CONSTANTS.CLIENT_CHANNEL,
-                    CORRADE_CONSTANTS.CORRADE_VERSION.ToString(Utils.EnUsCulture),
-                    corradeConfiguration.LoginURL)
-                {
-                    Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
-                    AgreeToTos = corradeConfiguration.TOSAccepted,
-                    Start =
-                        startLocation.isCustom
-                            ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
-                                startLocation.Z)
-                            : location,
-                    UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString(),
-                    Version = CORRADE_CONSTANTS.CORRADE_VERSION,
-                    Timeout = (int)corradeConfiguration.ServicesTimeout,
-                    LastExecEvent = CorradeLastExecStatus
-                };
 
                 // Reset all semaphores.
                 ConnectionSemaphores.Values.AsParallel().ForAll(o => o.Reset());
@@ -4233,7 +4238,7 @@ namespace Corrade
                 case ChatType.StartTyping:
                 case ChatType.StopTyping:
                     // Check that we have a valid agent name.
-                    if (fullName == null)
+                    if (!fullName.Any())
                         break;
                     Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
                     // Send typing notifications.
@@ -4254,7 +4259,7 @@ namespace Corrade
 
                 case ChatType.OwnerSay:
                     // If this is a message from an agent, add the agent to the cache.
-                    if (fullName != null && e.SourceType.Equals(ChatSourceType.Agent))
+                    if (!fullName.Any() && e.SourceType.Equals(ChatSourceType.Agent))
                     {
                         Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
                     }
@@ -4290,6 +4295,48 @@ namespace Corrade
                     CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Configuration.Notifications.OwnerSay, e),
                         corradeConfiguration.MaximumNotificationThreads);
+
+                    // Log ownersay messages.
+                    if (corradeConfiguration.OwnerSayMessageLogEnabled)
+                    {
+                        CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
+                        {
+                            try
+                            {
+                                lock (OwnerSayLogFileLock)
+                                {
+                                    var path = string.Format("{0}.{1}",
+                                        Path.Combine(corradeConfiguration.OwnerSayMessageLogDirectory,
+                                        e.SourceID.ToString()),
+                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                    using (
+                                        var fileStream =
+                                            new FileStream(path, FileMode.Append,
+                                                FileAccess.Write, FileShare.None, 16384, true))
+                                    {
+                                        using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
+                                        {
+                                            logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                Utils.EnUsCulture.DateTimeFormat),
+                                                e.FromName,
+                                                $"({e.SourceID})",
+                                                Enum.GetName(typeof(ChatType), e.Type),
+                                                e.Message);
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // or fail and append the fail message.
+                                Feedback(
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_OWNERSAY_MESSAGE_LOG_FILE),
+                                    ex?.PrettyPrint());
+                            }
+                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                    }
                     break;
 
                 case ChatType.Debug:
@@ -4303,7 +4350,7 @@ namespace Corrade
                 case ChatType.Shout:
                 case ChatType.Whisper:
                     // If this is a message from an agent, add the agent to the cache.
-                    if (fullName != null && e.SourceType.Equals(ChatSourceType.Agent))
+                    if (!fullName.Any() && e.SourceType.Equals(ChatSourceType.Agent))
                     {
                         Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
                     }
@@ -4312,8 +4359,7 @@ namespace Corrade
                         () => SendNotification(Configuration.Notifications.LocalChat, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     // Log local chat if the message could be heard.
-                    if (corradeConfiguration.LocalMessageLogEnabled && fullName != null &&
-                        !string.IsNullOrEmpty(e.Message))
+                    if (corradeConfiguration.LocalMessageLogEnabled)
                     {
                         CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                         {
@@ -4331,12 +4377,26 @@ namespace Corrade
                                     {
                                         using (var logWriter = new StreamWriter(fileStream, Encoding.UTF8))
                                         {
-                                            logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                    Utils.EnUsCulture.DateTimeFormat),
-                                                fullName.First(), fullName.Last(),
-                                                Enum.GetName(typeof(ChatType), e.Type),
-                                                e.Message);
+                                            switch (fullName.Any())
+                                            {
+                                                case true:
+                                                    logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        Utils.EnUsCulture.DateTimeFormat),
+                                                        fullName.First(), fullName.Last(),
+                                                        Enum.GetName(typeof(ChatType), e.Type),
+                                                        e.Message);
+                                                    break;
+
+                                                default:
+                                                    logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        Utils.EnUsCulture.DateTimeFormat),
+                                                        e.FromName,
+                                                        Enum.GetName(typeof(ChatType), e.Type),
+                                                        e.Message);
+                                                    break;
+                                            }
                                         }
                                     }
                                 }
@@ -4820,7 +4880,7 @@ namespace Corrade
             var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(e.ObjectOwnerName));
             var ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
-            if (
+            if (!fullName.Any() ||
                 !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                     corradeConfiguration.ServicesTimeout,
                     corradeConfiguration.DataTimeout,
@@ -5140,6 +5200,9 @@ namespace Corrade
                 // Send typing notification.
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
+                    // Do not process invalid avatars.
+                    if (!fullName.Any())
+                        return;
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -5158,6 +5221,9 @@ namespace Corrade
                     return;
 
                 case InstantMessageDialog.FriendshipOffered:
+                    // Do not process invalid avatars.
+                    if (!fullName.Any())
+                        return;
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Accept friendships only from masters (for the time being)
@@ -5187,6 +5253,9 @@ namespace Corrade
                     return;
 
                 case InstantMessageDialog.RequestTeleport:
+                    // Do not process invalid avatars.
+                    if (!fullName.Any())
+                        return;
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Handle RLV: acccepttp
@@ -5270,7 +5339,7 @@ namespace Corrade
                     // Add the group to the cache.
                     Cache.AddGroup(inviteGroup.Name, inviteGroup.ID);
                     var inviteGroupAgent = UUID.Zero;
-                    if (
+                    if (!fullName.Any() ||
                         !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                             corradeConfiguration.ServicesTimeout,
                             corradeConfiguration.DataTimeout,
@@ -5583,7 +5652,7 @@ namespace Corrade
                                 Cache.CurrentGroupsCache.Remove(groupUUID);
                             }
 
-                            // Log instant messages,
+                            // Log instant messages.
                             if (corradeConfiguration.InstantMessageLogEnabled)
                             {
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
@@ -5693,6 +5762,51 @@ namespace Corrade
                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                     () => SendNotification(Configuration.Notifications.ObjectInstantMessage, args),
                     corradeConfiguration.MaximumNotificationThreads);
+
+                // Log object instant messages.
+                if (corradeConfiguration.InstantMessageLogEnabled)
+                {
+                    CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
+                    {
+                        try
+                        {
+                            lock (InstantMessageLogFileLock)
+                            {
+                                var path = string.Format("{0}.{1}",
+                                    Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
+                                    args.IM.FromAgentID.ToString()),
+                                    CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                using (
+                                    var fileStream =
+                                        new FileStream(path, FileMode.Append,
+                                            FileAccess.Write, FileShare.None, 16384, true))
+                                {
+                                    using (
+                                        var logWriter = new StreamWriter(fileStream,
+                                            Encoding.UTF8))
+                                    {
+                                        logWriter.WriteLine(
+                                            CORRADE_CONSTANTS.INSTANT_MESSAGE_LOG_MESSAGE_FORMAT,
+                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                Utils.EnUsCulture.DateTimeFormat),
+                                            args.IM.FromAgentName,
+                                            $"({args.IM.FromAgentID})",
+                                            args.IM.Message);
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // or fail and append the fail message.
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage
+                                        .COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
+                                ex?.PrettyPrint());
+                        }
+                    }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
+                }
                 return;
             }
 

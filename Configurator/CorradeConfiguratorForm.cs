@@ -64,6 +64,7 @@ namespace Configurator
             mainForm.AutoActivateGroupDelay.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.AutoPruneCache.Checked = corradeConfiguration.CacheEnableAutoPrune;
             mainForm.AutoPruneCacheInterval.Text = corradeConfiguration.CacheAutoPruneInterval.ToString();
+            mainForm.EnableMultipleSimulatorConnections.Checked = corradeConfiguration.MultipleSimulatorConnections;
 
             // language
             mainForm.ClientLanguageAdvertise.Checked = corradeConfiguration.AdvertiseClientLanguage;
@@ -100,6 +101,8 @@ namespace Configurator
             mainForm.RegionLogFileEnabled.Checked = corradeConfiguration.RegionMessageLogEnabled;
             mainForm.ConferenceMessageLogFile.Text = corradeConfiguration.ConferenceMessageLogDirectory;
             mainForm.ConferenceMessageLogFileEnabled.Checked = corradeConfiguration.ConferenceMessageLogEnabled;
+            mainForm.OwnerSayLogFile.Text = corradeConfiguration.OwnerSayMessageLogDirectory;
+            mainForm.OwnerSayLogEnabled.Checked = corradeConfiguration.OwnerSayMessageLogEnabled;
 
             // filters
             mainForm.ActiveInputFilters.Items.Clear();
@@ -341,6 +344,7 @@ namespace Configurator
                            mainForm.ExpectedExitCodeBox.Visible = false;
                            mainForm.AbnormalExitCodeBox.Visible = false;
                            mainForm.AutoSASBox.Visible = false;
+                           mainForm.EnableMultipleSimulatorConnections.Visible = false;
                            break;
 
                        case "Intermediary":
@@ -365,6 +369,7 @@ namespace Configurator
                            mainForm.ExpectedExitCodeBox.Visible = false;
                            mainForm.AbnormalExitCodeBox.Visible = false;
                            mainForm.AutoSASBox.Visible = false;
+                           mainForm.EnableMultipleSimulatorConnections.Visible = false;
                            break;
 
                        case "Advanced":
@@ -389,6 +394,7 @@ namespace Configurator
                            mainForm.ExpectedExitCodeBox.Visible = true;
                            mainForm.AbnormalExitCodeBox.Visible = true;
                            mainForm.AutoSASBox.Visible = true;
+                           mainForm.EnableMultipleSimulatorConnections.Visible = true;
                            break;
                    }
                    mainForm.Tabs.Enabled = true;
@@ -451,6 +457,7 @@ namespace Configurator
             }
             corradeConfiguration.ExitCodeExpected = (int)mainForm.ExpectedExitCode.Value;
             corradeConfiguration.ExitCodeAbnormal = (int)mainForm.AbnomalExitCode.Value;
+            corradeConfiguration.MultipleSimulatorConnections = mainForm.EnableMultipleSimulatorConnections.Checked;
 
             // language
             corradeConfiguration.AdvertiseClientLanguage = mainForm.ClientLanguageAdvertise.Checked;
@@ -476,6 +483,8 @@ namespace Configurator
             corradeConfiguration.RegionMessageLogEnabled = mainForm.RegionLogFileEnabled.Checked;
             corradeConfiguration.ConferenceMessageLogDirectory = mainForm.ConferenceMessageLogFile.Text;
             corradeConfiguration.ConferenceMessageLogEnabled = mainForm.ConferenceMessageLogFileEnabled.Checked;
+            corradeConfiguration.OwnerSayMessageLogDirectory = mainForm.OwnerSayLogFile.Text;
+            corradeConfiguration.OwnerSayMessageLogEnabled = mainForm.OwnerSayLogEnabled.Checked;
 
             // filters
             corradeConfiguration.InputFilters =
@@ -1073,11 +1082,11 @@ namespace Configurator
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
                                (string)GroupNotifications.Items[i]))
-                                                                                           /*!(group.NotificationMask &
-                                                                                             (ulong)
-                                                                                                 Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                                                                     (string) GroupNotifications.Items[i]))
-                                                                                               .Equals(0)*/)
+                                                                                                       /*!(group.NotificationMask &
+                                                                                                         (ulong)
+                                                                                                             Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                                                                                 (string) GroupNotifications.Items[i]))
+                                                                                                           .Equals(0)*/)
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);

@@ -315,7 +315,10 @@ namespace wasOpenMetaverse
             if (succeeded)
             {
                 var fullName = new List<string>(Helpers.GetAvatarNames(AgentName));
-                Cache.AddAgent(fullName.First(), fullName.Last(), AgentUUID);
+                if (fullName.Any())
+                {
+                    Cache.AddAgent(fullName.First(), fullName.Last(), AgentUUID);
+                }
             }
             return succeeded;
         }
@@ -395,7 +398,7 @@ namespace wasOpenMetaverse
             resolvedAgents.AsParallel().ForAll(o =>
             {
                 var fullName = new List<string>(Helpers.GetAvatarNames(o.Value));
-                if (fullName != null)
+                if (fullName.Any())
                 {
                     Cache.AddAgent(fullName.First(), fullName.Last(), o.Key);
                 }

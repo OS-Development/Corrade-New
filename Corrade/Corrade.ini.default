@@ -1,10 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Version>1.29.6376.23930</Version>
+  <Version>1.30.6382.38027</Version>
   <ClientLanguage>en</ClientLanguage>
   <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
   <CacheAutoPruneInterval>300000</CacheAutoPruneInterval>
+  <MultipleSimulatorConnections>true</MultipleSimulatorConnections>
   <HeartbeatLogInterval>3600000</HeartbeatLogInterval>
   <FirstName>Corrade</FirstName>
   <LastName>Bot</LastName>
@@ -20,7 +21,9 @@
   <LocalMessageLogDirectory>logs/local</LocalMessageLogDirectory>
   <LocalMessageLogEnabled>true</LocalMessageLogEnabled>
   <ConferenceMessageLogDirectory>logs/conference</ConferenceMessageLogDirectory>
+  <OwnerSayMessageLogDirectory>logs/ownersay</OwnerSayMessageLogDirectory>
   <ConferenceMessageLogEnabled>true</ConferenceMessageLogEnabled>
+  <OwnerSayMessageLogEnabled>true</OwnerSayMessageLogEnabled>
   <RegionMessageLogDirectory>logs/region</RegionMessageLogDirectory>
   <RegionMessageLogEnabled>true</RegionMessageLogEnabled>
   <EnableHTTPServer>false</EnableHTTPServer>
@@ -80,7 +83,6 @@
   <MembershipSweepInterval>60000</MembershipSweepInterval>
   <FeedsUpdateInterval>60000</FeedsUpdateInterval>
   <TOSAccepted>false</TOSAccepted>
-  <EnableMultipleSimulators>false</EnableMultipleSimulators>
   <AutoScriptedAgentStatus>true</AutoScriptedAgentStatus>
   <ClientIdentificationTag>0705230f-cbd0-99bd-040b-28eb348b5255</ClientIdentificationTag>
   <StartLocations>

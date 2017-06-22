@@ -55,7 +55,7 @@ namespace Corrade
                                     if (!UUID.TryParse(o, out agentUUID))
                                     {
                                         var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
-                                        if (fullName == null ||
+                                        if (!fullName.Any() ||
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,

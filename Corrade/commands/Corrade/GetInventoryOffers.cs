@@ -35,7 +35,7 @@ namespace Corrade
                                 var fullName =
                                     new List<string>(
                                         wasOpenMetaverse.Helpers.GetAvatarNames(o.Args.Offer.FromAgentName));
-                                if (fullName == null)
+                                if (!fullName.Any())
                                     return;
                                 lock (LockObject)
                                 {

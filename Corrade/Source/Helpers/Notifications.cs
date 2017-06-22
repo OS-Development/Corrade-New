@@ -227,13 +227,9 @@ namespace Corrade.Helpers
                                         switch (process.Resolve.ResolveDestination)
                                         {
                                             case SerializedNotification.ResolveDestination.UUID:
-                                                var name =
-                                                    wasOpenMetaverse.Helpers.GetAvatarNames(value as string);
-                                                if (name == null) break;
-                                                var fullName = new List<string>(name);
-                                                if (!fullName.Count.Equals(2)) break;
+                                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(value as string));
                                                 var agentUUID = UUID.Zero;
-                                                if (
+                                                if (!fullName.Any() ||
                                                     !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                         corradeConfiguration.ServicesTimeout,
                                                         corradeConfiguration.DataTimeout,
@@ -267,19 +263,15 @@ namespace Corrade.Helpers
                                     if (!nameSplitCondition.Equals(process.NameSplit.Condition.Value))
                                         continue;
                                 }
-                                var name = wasOpenMetaverse.Helpers.GetAvatarNames(value as string);
-                                if (name != null)
+                                var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(value as string));
+                                if (fullName.Any())
                                 {
-                                    var fullName = new List<string>(name);
-                                    if (fullName.Count.Equals(2))
+                                    lock (sync)
                                     {
-                                        lock (sync)
-                                        {
-                                            store.Add(process.NameSplit.First,
-                                                fullName.First());
-                                            store.Add(process.NameSplit.Last,
-                                                fullName.Last());
-                                        }
+                                        store.Add(process.NameSplit.First,
+                                            fullName.First());
+                                        store.Add(process.NameSplit.Last,
+                                            fullName.Last());
                                     }
                                 }
                                 return;

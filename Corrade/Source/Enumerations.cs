@@ -398,6 +398,9 @@ namespace Corrade
             [Reflection.DescriptionAttribute("could not write to instant message log file")]
             COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
 
+            [Reflection.DescriptionAttribute("could not write to ownersay message log file")]
+            COULD_NOT_WRITE_TO_OWNERSAY_MESSAGE_LOG_FILE,
+
             [Reflection.DescriptionAttribute("could not write to local message log file")]
             COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
 

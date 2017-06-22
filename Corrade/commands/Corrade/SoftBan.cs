@@ -134,7 +134,7 @@ namespace Corrade
                                       if (!UUID.TryParse(o.input, out agentUUID))
                                       {
                                           var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o.input));
-                                          if (fullName == null ||
+                                          if (!fullName.Any() ||
                                               !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                   corradeConfiguration.ServicesTimeout,
                                                   corradeConfiguration.DataTimeout,
@@ -197,7 +197,7 @@ namespace Corrade
 
                                           var fullName =
                                               new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o.input.Value));
-                                          if (fullName == null)
+                                          if (!fullName.Any())
                                               return;
 
                                           var softBan = new SoftBan
@@ -591,7 +591,7 @@ namespace Corrade
                                             return;
 
                                         var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(agentName);
-                                        if (fullName == null)
+                                        if (!fullName.Any())
                                             return;
 
                                         lock (LockObject)
@@ -659,7 +659,7 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout, ref agentName))
                                                 return;
                                             var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(agentName);
-                                            if (fullName == null)
+                                            if (!fullName.Any())
                                                 return;
                                             lock (LockObject)
                                             {

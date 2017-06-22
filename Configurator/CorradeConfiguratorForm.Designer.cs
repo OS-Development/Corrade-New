@@ -494,6 +494,13 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.groupBox95 = new System.Windows.Forms.GroupBox();
+            this.pictureBox109 = new System.Windows.Forms.PictureBox();
+            this.EnableMultipleSimulatorConnections = new System.Windows.Forms.CheckBox();
+            this.groupBox96 = new System.Windows.Forms.GroupBox();
+            this.pictureBox112 = new System.Windows.Forms.PictureBox();
+            this.OwnerSayLogEnabled = new System.Windows.Forms.CheckBox();
+            this.OwnerSayLogFile = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -765,6 +772,10 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
+            this.groupBox95.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).BeginInit();
+            this.groupBox96.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox112)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -803,6 +814,7 @@
             // 
             // ClientTabPage
             // 
+            this.ClientTabPage.Controls.Add(this.groupBox95);
             this.ClientTabPage.Controls.Add(this.AutoSASBox);
             this.ClientTabPage.Controls.Add(this.groupBox63);
             this.ClientTabPage.Controls.Add(this.AutoPruneCacheBox);
@@ -3447,6 +3459,7 @@
             this.flowLayoutPanel18.Controls.Add(this.groupBox13);
             this.flowLayoutPanel18.Controls.Add(this.groupBox14);
             this.flowLayoutPanel18.Controls.Add(this.groupBox6);
+            this.flowLayoutPanel18.Controls.Add(this.groupBox96);
             this.flowLayoutPanel18.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel18.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flowLayoutPanel18.Location = new System.Drawing.Point(0, 0);
@@ -3557,7 +3570,7 @@
             this.groupBox13.Size = new System.Drawing.Size(659, 50);
             this.groupBox13.TabIndex = 2;
             this.groupBox13.TabStop = false;
-            this.groupBox13.Text = "Local Messages Directory";
+            this.groupBox13.Text = "Local Messages Log Directory";
             // 
             // pictureBox15
             // 
@@ -3602,7 +3615,7 @@
             this.groupBox14.Size = new System.Drawing.Size(659, 50);
             this.groupBox14.TabIndex = 3;
             this.groupBox14.TabStop = false;
-            this.groupBox14.Text = "Region Messages Directory";
+            this.groupBox14.Text = "Region Messages Log Directory";
             // 
             // pictureBox16
             // 
@@ -6032,6 +6045,87 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
+            // groupBox95
+            // 
+            this.groupBox95.Controls.Add(this.pictureBox109);
+            this.groupBox95.Controls.Add(this.EnableMultipleSimulatorConnections);
+            this.groupBox95.Location = new System.Drawing.Point(12, 236);
+            this.groupBox95.Name = "groupBox95";
+            this.groupBox95.Size = new System.Drawing.Size(126, 50);
+            this.groupBox95.TabIndex = 15;
+            this.groupBox95.TabStop = false;
+            this.groupBox95.Text = "Multiple Simulators";
+            // 
+            // pictureBox109
+            // 
+            this.pictureBox109.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox109.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox109.Image")));
+            this.pictureBox109.Location = new System.Drawing.Point(100, 21);
+            this.pictureBox109.Name = "pictureBox109";
+            this.pictureBox109.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox109.TabIndex = 11;
+            this.pictureBox109.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox109, "This will allow viewing in to adjeacent simulators if \r\nany. This feature is expe" +
+        "rimental and should be used\r\nsparingly - especially on mainland, if a larger vie" +
+        "wing\r\ndistance is not needed.");
+            // 
+            // EnableMultipleSimulatorConnections
+            // 
+            this.EnableMultipleSimulatorConnections.AutoSize = true;
+            this.EnableMultipleSimulatorConnections.Checked = true;
+            this.EnableMultipleSimulatorConnections.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.EnableMultipleSimulatorConnections.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.EnableMultipleSimulatorConnections.Location = new System.Drawing.Point(15, 24);
+            this.EnableMultipleSimulatorConnections.Name = "EnableMultipleSimulatorConnections";
+            this.EnableMultipleSimulatorConnections.Size = new System.Drawing.Size(68, 17);
+            this.EnableMultipleSimulatorConnections.TabIndex = 0;
+            this.EnableMultipleSimulatorConnections.Text = "Enabled";
+            this.EnableMultipleSimulatorConnections.UseVisualStyleBackColor = true;
+            // 
+            // groupBox96
+            // 
+            this.groupBox96.Controls.Add(this.pictureBox112);
+            this.groupBox96.Controls.Add(this.OwnerSayLogEnabled);
+            this.groupBox96.Controls.Add(this.OwnerSayLogFile);
+            this.groupBox96.Location = new System.Drawing.Point(3, 283);
+            this.groupBox96.Name = "groupBox96";
+            this.groupBox96.Size = new System.Drawing.Size(659, 50);
+            this.groupBox96.TabIndex = 5;
+            this.groupBox96.TabStop = false;
+            this.groupBox96.Text = "OwnerSay Messages Log Directory";
+            // 
+            // pictureBox112
+            // 
+            this.pictureBox112.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox112.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox112.Image")));
+            this.pictureBox112.Location = new System.Drawing.Point(633, 21);
+            this.pictureBox112.Name = "pictureBox112";
+            this.pictureBox112.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox112.TabIndex = 2;
+            this.pictureBox112.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox112, "The logs will be placed under this directory and \r\nnamed after the name of the av" +
+        "atars sending the \r\nmessage to Corrade.");
+            // 
+            // OwnerSayLogEnabled
+            // 
+            this.OwnerSayLogEnabled.AutoSize = true;
+            this.OwnerSayLogEnabled.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OwnerSayLogEnabled.Location = new System.Drawing.Point(565, 23);
+            this.OwnerSayLogEnabled.Name = "OwnerSayLogEnabled";
+            this.OwnerSayLogEnabled.Size = new System.Drawing.Size(62, 17);
+            this.OwnerSayLogEnabled.TabIndex = 1;
+            this.OwnerSayLogEnabled.Text = "Enable";
+            this.toolTip1.SetToolTip(this.OwnerSayLogEnabled, "Whether to log instant messages.");
+            this.OwnerSayLogEnabled.UseVisualStyleBackColor = true;
+            // 
+            // OwnerSayLogFile
+            // 
+            this.OwnerSayLogFile.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OwnerSayLogFile.Location = new System.Drawing.Point(7, 20);
+            this.OwnerSayLogFile.Name = "OwnerSayLogFile";
+            this.OwnerSayLogFile.Size = new System.Drawing.Size(552, 20);
+            this.OwnerSayLogFile.TabIndex = 0;
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -6431,6 +6525,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.groupBox95.ResumeLayout(false);
+            this.groupBox95.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox109)).EndInit();
+            this.groupBox96.ResumeLayout(false);
+            this.groupBox96.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox112)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6902,6 +7002,13 @@
         private System.Windows.Forms.TrackBar HordeCommandContributionTrackBar;
         private System.Windows.Forms.CheckBox HordeCommandEnabled;
         private System.Windows.Forms.PictureBox pictureBox43;
+        private System.Windows.Forms.GroupBox groupBox95;
+        private System.Windows.Forms.PictureBox pictureBox109;
+        private System.Windows.Forms.CheckBox EnableMultipleSimulatorConnections;
+        private System.Windows.Forms.GroupBox groupBox96;
+        private System.Windows.Forms.PictureBox pictureBox112;
+        private System.Windows.Forms.CheckBox OwnerSayLogEnabled;
+        private System.Windows.Forms.TextBox OwnerSayLogFile;
     }
 }
 

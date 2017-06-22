@@ -194,6 +194,9 @@ namespace Corrade
                                     new List<string>(
                                         wasOpenMetaverse.Helpers.GetAvatarNames(agentName));
 
+                                if (!fullName.Any())
+                                    throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
+
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try

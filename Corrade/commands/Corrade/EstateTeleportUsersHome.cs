@@ -55,7 +55,7 @@ namespace Corrade
                             {
                                 case true:
                                     var fullName = new List<string>(wasOpenMetaverse.Helpers.GetAvatarNames(o));
-                                    switch (fullName == null ||
+                                    switch (!fullName.Any() ||
                                             !Resolvers.AgentNameToUUID(Client, fullName.First(), fullName.Last(),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
