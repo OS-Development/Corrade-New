@@ -46,6 +46,15 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [CommandInputSyntax(
+                "<command=toggleparcelflags>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[flags=<ParcelFlags,bool[,ParcelFlags,bool...]>]&[region=<STRING>]&[callback=<STRING>]"
+                )
+            ]
+            [CommandPermissionMask((ulong)Configuration.Permissions.Land)]
+            [CorradeCommand("toggleparcelflags")]
+            [Reflection.NameAttribute("toggleparcelflags")]
+            TOGGLEPARCELFLAGS,
+
             [Reflection.NameAttribute("context")]
             CONTEXT,
 

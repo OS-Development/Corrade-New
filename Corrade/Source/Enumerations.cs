@@ -2369,7 +2369,11 @@ namespace Corrade
 
             [Command.StatusAttribute(44537)]
             [Reflection.DescriptionAttribute("unknown horde balancer")]
-            UNKNOWN_HORDE_BALANCER
+            UNKNOWN_HORDE_BALANCER,
+
+            [Command.StatusAttribute(33717)]
+            [Reflection.DescriptionAttribute("no flags provided")]
+            NO_FLAGS_PROVIDED
         }
 
         /// <summary>

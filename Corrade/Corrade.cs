@@ -172,8 +172,6 @@ namespace Corrade
 
         private static NucleusHTTPServer NucleusHTTPServer;
 
-        private static LoginParams Login;
-
         private static readonly wasSharp.Collections.Generic.CircularQueue<string> StartLocationQueue =
             new wasSharp.Collections.Generic.CircularQueue<string>();
 
@@ -1285,7 +1283,11 @@ namespace Corrade
                         {
                             lock (GroupBayesClassifiersLock)
                             {
-                                streamWriter.WriteLine(GroupBayesClassifiers[group.UUID].ExportJsonData());
+                                var data = GroupBayesClassifiers[group.UUID].ExportJsonData();
+                                if (!string.IsNullOrEmpty(data))
+                                {
+                                    streamWriter.WriteLine(data);
+                                }
                             }
                         }
                     }
@@ -3132,9 +3134,16 @@ namespace Corrade
             }
 
             // Write the logo.
-            Feedback(CORRADE_CONSTANTS.LOGO);
+            //Feedback(CORRADE_CONSTANTS.LOGO);
             // Write the sub-logo.
-            Feedback(CORRADE_CONSTANTS.SUB_LOGO);
+            //Feedback(CORRADE_CONSTANTS.SUB_LOGO);
+
+            Console.WriteLine();
+            // Write Logo.
+            CORRADE_CONSTANTS.LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+            // Write Sub-Logo.
+            CORRADE_CONSTANTS.SUB_LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+            Console.WriteLine();
 
             // Check configuration file compatiblity.
             Version minimalConfig;
@@ -3464,14 +3473,24 @@ namespace Corrade
                     }
                 };
 
+                // Update the configuration.
+                UpdateDynamicConfiguration(corradeConfiguration, firstRun);
+
                 // Get the next location.
                 var location = StartLocationQueue.Dequeue();
-
                 // Generate a grid location.
                 var startLocation = new wasOpenMetaverse.Helpers.GridLocation(location);
 
+                // Check if we have any start locations.
+                if (StartLocationQueue.IsEmpty)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
+                    Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+                }
+
                 // Create the new login parameters.
-                Login = new LoginParams(
+                var Login = new LoginParams(
                     Client,
                     corradeConfiguration.FirstName,
                     corradeConfiguration.LastName,
@@ -3493,17 +3512,6 @@ namespace Corrade
                     LastExecEvent = CorradeLastExecStatus,
                     Platform = Utils.GetRunningPlatform().ToString()
                 };
-
-                // Update the configuration.
-                UpdateDynamicConfiguration(corradeConfiguration, firstRun);
-
-                // Check if we have any start locations.
-                if (StartLocationQueue.IsEmpty)
-                {
-                    Feedback(
-                        Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
-                    Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
-                }
 
                 // Install non-dynamic global event handlers.
                 Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
@@ -7341,17 +7349,6 @@ namespace Corrade
                 }
             }
 
-            // Set the ID0 if specified in the configuration file.
-            if (!string.IsNullOrEmpty(corradeConfiguration.DriveIdentifierHash))
-            {
-                Login.ID0 = Utils.MD5String(corradeConfiguration.DriveIdentifierHash);
-            }
-
-            // Set the MAC if specified in the configuration file.
-            if (!string.IsNullOrEmpty(corradeConfiguration.NetworkCardMAC))
-            {
-                Login.MAC = Utils.MD5String(corradeConfiguration.NetworkCardMAC);
-            }
             // ServicePoint settings.
             ServicePointManager.DefaultConnectionLimit = (int)configuration.ConnectionLimit;
             ServicePointManager.UseNagleAlgorithm = configuration.UseNaggle;
