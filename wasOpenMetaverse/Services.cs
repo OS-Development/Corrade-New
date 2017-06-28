@@ -399,16 +399,7 @@ namespace wasOpenMetaverse
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             Locks.ClientInstanceParcelsLock.EnterReadLock();
             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-            switch (!simulator.IsParcelMapFull())
-            {
-                case true:
-                    Client.Parcels.RequestAllSimParcels(simulator, true, (int)dataTimeout);
-                    break;
-
-                default:
-                    RequestAllSimParcelsEvent.Set();
-                    break;
-            }
+            Client.Parcels.RequestAllSimParcels(simulator, true, (int)dataTimeout);
             if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, true))
             {
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;

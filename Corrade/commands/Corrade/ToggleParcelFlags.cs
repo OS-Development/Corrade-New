@@ -72,8 +72,6 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_FLAGS_PROVIDED);
                     }
 
-                    Console.WriteLine(parcel.Flags);
-
                     // Set the flags as they are sent.
                     CSV.ToKeyValue(flags)
                         .GroupBy(o => o.Key)
@@ -94,8 +92,6 @@ namespace Corrade
                         .ForAll(o => o.Set,
                             o => BitTwiddling.SetMaskFlag(ref parcel.Flags, o.Flag),
                             o => BitTwiddling.UnsetMaskFlag(ref parcel.Flags, o.Flag));
-
-                    Console.WriteLine(parcel.Flags);
 
                     // Store the initial group.
                     var initialGroup = Client.Self.ActiveGroup;
