@@ -185,9 +185,10 @@ namespace Corrade.HTTP
             return base.Start(Prefixes);
         }
 
-        public new bool Stop()
+        public new void Stop()
         {
-            var success = base.Stop();
+            // Stop the HTTP server.
+            base.Stop();
 
             foreach (var prefix in Prefixes)
             {
@@ -206,9 +207,6 @@ namespace Corrade.HTTP
 
             // Clear prefixes.
             Prefixes = Enumerable.Empty<string>();
-
-            // Stop the HTTP server.
-            return success;
         }
 
         public override async void ProcessHTTPContext(HttpListenerContext httpContext)

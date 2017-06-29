@@ -9,18 +9,37 @@
             Default Interface implemented by <see cref="T:Syn.Bot.Siml.SimlBot"/> and <see cref="T:Syn.Bot.Oscova.OscovaBot"/>
             </summary>
         </member>
+        <member name="T:Syn.Bot.Oscova.Attributes.ActionAttribute">
+            <summary>
+            Indicates that the method is an OSCOVA action.
+            </summary>
+            <seealso cref="T:System.Attribute" />
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.ActionAttribute.ID">
+            <summary>
+            Gets or sets the action identifier.
+            </summary>
+            <value>
+            The action identifier.
+            </value>
+        </member>
         <member name="T:Syn.Bot.Oscova.Attributes.ContextAttribute">
             <summary>
             Represents a user session conversation context.
             </summary>
             <seealso cref="T:System.Attribute" />
         </member>
-        <member name="M:Syn.Bot.Oscova.Attributes.ContextAttribute.#ctor(System.Object,System.Int32)">
+        <member name="M:Syn.Bot.Oscova.Attributes.ContextAttribute.#ctor(System.Object)">
             <summary>
             Initializes a new instance of <see cref="T:Syn.Bot.Oscova.Attributes.ContextAttribute"/>.
             </summary>
             <param name="value"></param>
-            <param name="lifespan"></param>
+        </member>
+        <member name="M:Syn.Bot.Oscova.Attributes.ContextAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of <see cref="T:Syn.Bot.Oscova.Attributes.ContextAttribute"/>.
+            </summary>
+            <param name="name">Name of context</param>
         </member>
         <member name="P:Syn.Bot.Oscova.Attributes.ContextAttribute.Name">
             <summary>
@@ -30,13 +49,20 @@
             The context name.
             </value>
         </member>
-        <member name="P:Syn.Bot.Oscova.Attributes.ContextAttribute.Lifespan">
+        <member name="T:Syn.Bot.Oscova.Attributes.DialogAttribute">
             <summary>
-            Gets the lifespan.
+            [EXPERIMENTAL]: Please do not use this attribute at the moment.
             </summary>
-            <value>
-            The lifespan.
-            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.DialogAttribute.Name">
+            <summary>
+            Gets or sets the name of the dialog.
+            </summary>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.DialogAttribute.IntentAlias">
+            <summary>
+            Gets or sets a default intent name for all child intents.
+            </summary>
         </member>
         <member name="T:Syn.Bot.Oscova.Attributes.EntityAttribute">
             <summary>
@@ -80,17 +106,60 @@
             <summary>
             Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Attributes.ExpressionAttribute"/> class.
             </summary>
+            <remarks>Declares an Empty Expression.</remarks>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.ExpressionAttribute.Value">
+            <summary>
+            Gets or sets the expression value.
+            </summary>
+            <value>
+            The value.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.ExpressionAttribute.Name">
+            <summary>
+            Gets or sets the expression name.
+            </summary>
+            <value>
+            The expression name.
+            </value>
         </member>
         <member name="P:Syn.Bot.Oscova.Attributes.IntentAttribute.Name">
             <summary>
-            Specifies the name of this Intent.
+            Gets or sets the intent name.
             </summary>
+            <value>
+            The intent name.
+            </value>
         </member>
         <member name="T:Syn.Bot.Oscova.Attributes.PromptAttribute">
             <summary>
             Represents a Prompt message that is returned when the specified entity is missing.
             </summary>
             <seealso cref="T:System.Attribute" />
+        </member>
+        <member name="M:Syn.Bot.Oscova.Attributes.PromptAttribute.#ctor(System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Attributes.PromptAttribute"/> class.
+            </summary>
+            <param name="missingEntityType">Type of the missing entity.</param>
+            <param name="promptMessage">The prompt message to display when the specified entity is missing.</param>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.PromptAttribute.EntityType">
+            <summary>
+            Gets the type of the missing entity type.
+            </summary>
+            <value>
+            The type of the missing entity.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Attributes.PromptAttribute.Message">
+            <summary>
+            Gets the prompt message.
+            </summary>
+            <value>
+            The prompt message.
+            </value>
         </member>
         <member name="T:Syn.Bot.Oscova.BotConfiguration">
             <summary>
@@ -240,7 +309,7 @@
             Occurs when a <see cref="T:Syn.Bot.Oscova.Response"/> received by this <see cref="T:Syn.Bot.Oscova.BotUser"/>.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.GetEnumerator">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.GetEnumerator">
             <summary>
             Returns an enumerator that iterates through the collection.
             </summary>
@@ -248,7 +317,7 @@
             An enumerator that can be used to iterate through the collection.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.System#Collections#IEnumerable#GetEnumerator">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.System#Collections#IEnumerable#GetEnumerator">
             <summary>
             Returns an enumerator that iterates through a collection.
             </summary>
@@ -256,18 +325,18 @@
             An <see cref="T:System.Collections.IEnumerator" /> object that can be used to iterate through the collection.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.Add(Syn.Bot.Oscova.BotUser)">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.Add(Syn.Bot.Oscova.BotUser)">
             <summary>
             Adds an item to the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
             <param name="item">The object to add to the <see cref="T:System.Collections.Generic.ICollection`1" />.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.Clear">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.Clear">
             <summary>
             Removes all items from the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.Contains(Syn.Bot.Oscova.BotUser)">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.Contains(Syn.Bot.Oscova.BotUser)">
             <summary>
             Determines whether the <see cref="T:System.Collections.Generic.ICollection`1" /> contains a specific value.
             </summary>
@@ -276,14 +345,14 @@
             true if <paramref name="item" /> is found in the <see cref="T:System.Collections.Generic.ICollection`1" />; otherwise, false.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.CopyTo(Syn.Bot.Oscova.BotUser[],System.Int32)">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.CopyTo(Syn.Bot.Oscova.BotUser[],System.Int32)">
             <summary>
             Copies the elements of the <see cref="T:System.Collections.Generic.ICollection`1" /> to an <see cref="T:System.Array" />, starting at a particular <see cref="T:System.Array" /> index.
             </summary>
             <param name="array">The one-dimensional <see cref="T:System.Array" /> that is the destination of the elements copied from <see cref="T:System.Collections.Generic.ICollection`1" />. The <see cref="T:System.Array" /> must have zero-based indexing.</param>
             <param name="arrayIndex">The zero-based index in <paramref name="array" /> at which copying begins.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.BotUserCollection.Remove(Syn.Bot.Oscova.BotUser)">
+        <member name="M:Syn.Bot.Oscova.Collections.BotUserCollection.Remove(Syn.Bot.Oscova.BotUser)">
             <summary>
             Removes the first occurrence of a specific object from the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
@@ -292,17 +361,17 @@
             true if <paramref name="item" /> was successfully removed from the <see cref="T:System.Collections.Generic.ICollection`1" />; otherwise, false. This method also returns false if <paramref name="item" /> is not found in the original <see cref="T:System.Collections.Generic.ICollection`1" />.
             </returns>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.BotUserCollection.Count">
+        <member name="P:Syn.Bot.Oscova.Collections.BotUserCollection.Count">
             <summary>
             Gets the number of elements contained in the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.BotUserCollection.IsReadOnly">
+        <member name="P:Syn.Bot.Oscova.Collections.BotUserCollection.IsReadOnly">
             <summary>
             Gets a value indicating whether the <see cref="T:System.Collections.Generic.ICollection`1" /> is read-only.
             </summary>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.DialogCollection.HasDefault">
+        <member name="P:Syn.Bot.Oscova.Collections.DialogCollection.HasDefault">
             <summary>
             Gets a value indicating whether this collection contains Default Intent.
             </summary>
@@ -310,30 +379,30 @@
             <c>true</c> if this collection has Default Intent; otherwise, <c>false</c>.
             </value>
         </member>
-        <member name="T:Syn.Bot.Oscova.Collection.EntityCollection">
+        <member name="T:Syn.Bot.Oscova.Collections.EntityCollection">
             <summary>
             An entity collection that holds extracted entities.
             </summary>
             <seealso cref="T:Syn.Bot.Oscova.Interfaces.IEntity" />
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.#ctor">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.#ctor">
             <summary>
-            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Collection.EntityCollection"/> class.
+            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Collections.EntityCollection"/> class.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.#ctor(System.Collections.Generic.IEnumerable{Syn.Bot.Oscova.Interfaces.IEntity})">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.#ctor(System.Collections.Generic.IEnumerable{Syn.Bot.Oscova.Interfaces.IEntity})">
             <summary>
-            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Collection.EntityCollection"/> class.
+            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Collections.EntityCollection"/> class.
             </summary>
             <param name="entities">The entities.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.AddRange(System.Collections.Generic.IEnumerable{Syn.Bot.Oscova.Interfaces.IEntity})">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.AddRange(System.Collections.Generic.IEnumerable{Syn.Bot.Oscova.Interfaces.IEntity})">
             <summary>
             Adds the range.
             </summary>
             <param name="entities">The entities.</param>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.EntityCollection.Item(System.Int32)">
+        <member name="P:Syn.Bot.Oscova.Collections.EntityCollection.Item(System.Int32)">
             <summary>
             Gets the <see cref="T:Syn.Bot.Oscova.Interfaces.IEntity"/> at the specified index.
             </summary>
@@ -343,7 +412,7 @@
             <param name="index">The index.</param>
             <returns></returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Contains(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Contains(System.String)">
             <summary>
             Determines whether this collection contains the specified entity type.
             </summary>
@@ -352,79 +421,79 @@
               <c>true</c> if this colleciont containss the specified entity type; otherwise, <c>false</c>.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Clone">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Clone">
             <summary>
             Clones this instance.
             </summary>
             <returns></returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Remove(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Remove(System.String)">
             <summary>
             Removes the specified entity type.
             </summary>
             <param name="entityType">Type of the entity.</param>
             <returns></returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.OfType(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.OfType(System.String)">
             <summary>
             Gets entities of the specified type name or alias.
             </summary>
             <param name="entityType">Type of the entity.</param>
             <returns></returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.AllOfType(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.AllOfType(System.String)">
             <summary>
             Gets entities of the specified type name or alias.
             </summary>
             <param name="entityName">Type of the entity.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.OfType``1(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.OfType``1(System.String)">
             <summary>
             Gets an entity of the specified type.
             </summary>
             <typeparam name="T"></typeparam>
             <param name="entityType">Type of the entity.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.OfCompositeType(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.OfCompositeType(System.String)">
             <summary>
             Gets a <see cref="T:Syn.Bot.Oscova.Interfaces.ICompositeEntity"/> entity of the specified type.
             </summary>
             <param name="entityType">Type of the entity.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.AllOfType``1(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.AllOfType``1(System.String)">
             <summary>
             Gets all entities of the specified type.
             </summary>
             <typeparam name="T"></typeparam>
             <param name="entityType">Type of the entity.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.AllOfType``1">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.AllOfType``1">
             <summary>
             Gets all entities of the specified type.
             </summary>
             <typeparam name="T"></typeparam>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.OfType``1">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.OfType``1">
             <summary>
             Gets an entity of the specified type.
             </summary>
             <typeparam name="T"></typeparam>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.IndexOf(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.IndexOf(System.String)">
             <summary>
             Gets the index of the specified entity type or alias.
             </summary>
             <param name="entityType">Type of the entity.</param>
             <remarks>Returns -1 if no entity is found.</remarks>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.IndexOf(Syn.Bot.Oscova.Interfaces.IEntity)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.IndexOf(Syn.Bot.Oscova.Interfaces.IEntity)">
             <summary>
             Gets the index of the specified entity.
             </summary>
             <param name="entity">The entity.</param>
             <remarks>Returns -1 if the specified entity is not found in this collection.</remarks>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.GetEnumerator">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.GetEnumerator">
             <summary>
             Returns an enumerator that iterates through the collection.
             </summary>
@@ -432,7 +501,7 @@
             An enumerator that can be used to iterate through the collection.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.System#Collections#IEnumerable#GetEnumerator">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.System#Collections#IEnumerable#GetEnumerator">
             <summary>
             Returns an enumerator that iterates through a collection.
             </summary>
@@ -440,18 +509,18 @@
             An <see cref="T:System.Collections.IEnumerator" /> object that can be used to iterate through the collection.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Add(Syn.Bot.Oscova.Interfaces.IEntity)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Add(Syn.Bot.Oscova.Interfaces.IEntity)">
             <summary>
             Adds an item to the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
             <param name="item">The object to add to the <see cref="T:System.Collections.Generic.ICollection`1" />.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Clear">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Clear">
             <summary>
             Removes all items from the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Contains(Syn.Bot.Oscova.Interfaces.IEntity)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Contains(Syn.Bot.Oscova.Interfaces.IEntity)">
             <summary>
             Determines whether the <see cref="T:System.Collections.Generic.ICollection`1" /> contains a specific value.
             </summary>
@@ -460,14 +529,14 @@
             true if <paramref name="item" /> is found in the <see cref="T:System.Collections.Generic.ICollection`1" />; otherwise, false.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.CopyTo(Syn.Bot.Oscova.Interfaces.IEntity[],System.Int32)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.CopyTo(Syn.Bot.Oscova.Interfaces.IEntity[],System.Int32)">
             <summary>
             Copies the elements of the <see cref="T:System.Collections.Generic.ICollection`1" /> to an <see cref="T:System.Array" />, starting at a particular <see cref="T:System.Array" /> index.
             </summary>
             <param name="array">The one-dimensional <see cref="T:System.Array" /> that is the destination of the elements copied from <see cref="T:System.Collections.Generic.ICollection`1" />. The <see cref="T:System.Array" /> must have zero-based indexing.</param>
             <param name="arrayIndex">The zero-based index in <paramref name="array" /> at which copying begins.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntityCollection.Remove(Syn.Bot.Oscova.Interfaces.IEntity)">
+        <member name="M:Syn.Bot.Oscova.Collections.EntityCollection.Remove(Syn.Bot.Oscova.Interfaces.IEntity)">
             <summary>
             Removes the first occurrence of a specific object from the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
@@ -476,57 +545,92 @@
             true if <paramref name="item" /> was successfully removed from the <see cref="T:System.Collections.Generic.ICollection`1" />; otherwise, false. This method also returns false if <paramref name="item" /> is not found in the original <see cref="T:System.Collections.Generic.ICollection`1" />.
             </returns>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.EntityCollection.Count">
+        <member name="P:Syn.Bot.Oscova.Collections.EntityCollection.Count">
             <summary>
             Gets the number of elements contained in the <see cref="T:System.Collections.Generic.ICollection`1" />.
             </summary>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.EntityCollection.IsReadOnly">
+        <member name="P:Syn.Bot.Oscova.Collections.EntityCollection.IsReadOnly">
             <summary>
             Gets a value indicating whether the <see cref="T:System.Collections.Generic.ICollection`1" /> is read-only.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntryCollection.OrderByEntryLength">
+        <member name="T:Syn.Bot.Oscova.Collections.Entry">
+            <summary>
+            Holds information for entries added to <see cref="T:Syn.Bot.Oscova.Collections.EntryCollection"/>.
+            </summary>
+        </member>
+        <member name="M:Syn.Bot.Oscova.Collections.Entry.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Collections.Entry"/> class.
+            </summary>
+            <param name="value">The value.</param>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Collections.Entry.Value">
+            <summary>
+            Gets the entry value.
+            </summary>
+            <value>
+            The value.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Collections.Entry.Reference">
+            <summary>
+            Gets the reference value.
+            </summary>
+            <value>
+            The reference.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Collections.Entry.Index">
+            <summary>
+            Gets or sets the index of this in its parent collection.
+            </summary>
+            <value>
+            The index.
+            </value>
+        </member>
+        <member name="M:Syn.Bot.Oscova.Collections.EntryCollection.OrderByEntryLength">
             <summary>
             Orders the collection based on the length of item values.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.EntryCollection.AddSynonyms(System.String,System.String[])">
+        <member name="M:Syn.Bot.Oscova.Collections.EntryCollection.AddSynonyms(System.String,System.String[])">
             <summary>
-            Adds the synonyms as entries with <paramref name="item"/> as the <see cref="P:Syn.Bot.Oscova.Collection.Entry.Reference"/>.
+            Adds the synonyms as entries with <paramref name="item"/> as the <see cref="P:Syn.Bot.Oscova.Collections.Entry.Reference"/>.
             </summary>
             <param name="item">The item.</param>
             <param name="synonymsList">The synonyms list.</param>
             <remarks><paramref name="item"/>is not added as an entry.</remarks>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.QuickReplyCollection.Add(System.String,System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.QuickReplyCollection.Add(System.String,System.String)">
             <summary>
             Adds the specified template expression and response as a quick reply.
             </summary>
             <param name="templateExpression">The template expression.</param>
             <param name="response">The response.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.QuickReplyCollection.Add(System.String,Syn.Bot.Oscova.Delegates.Responder)">
+        <member name="M:Syn.Bot.Oscova.Collections.QuickReplyCollection.Add(System.String,Syn.Bot.Oscova.Delegates.Responder)">
             <summary>
             Adds the specified template expression and <see cref="T:Syn.Bot.Oscova.Delegates.Responder"/> as a quick reply.
             </summary>
             <param name="templateExpression">The template expression.</param>
             <param name="responder">The responder.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.RecognizerCollection.RegisterType``1(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.RecognizerCollection.RegisterType``1(System.String)">
             <summary>
             Registers a <see cref="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer"/> type. An instance of which is created only when necessary.
             </summary>
             <typeparam name="T"><see cref="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer"/> type.</typeparam>
             <param name="entityType">Type of the entity.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.RecognizerCollection.LoadType(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.RecognizerCollection.LoadType(System.String)">
             <summary>
             Loads a previously registered <see cref="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer"/> for the specified entity type.
             </summary>
             <param name="entityType">Type of the entity.</param>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.RecognizerCollection.IsCompositeType(System.String)">
+        <member name="M:Syn.Bot.Oscova.Collections.RecognizerCollection.IsCompositeType(System.String)">
             <summary>
             Determines whether the specified entity type is composite.
             </summary>
@@ -535,23 +639,35 @@
               <c>true</c> if entity type is composite; otherwise, <c>false</c>.
             </returns>
         </member>
-        <member name="M:Syn.Bot.Oscova.Collection.RecognizerCollection.ExtractEntities(Syn.Bot.Oscova.Request)">
+        <member name="M:Syn.Bot.Oscova.Collections.RecognizerCollection.SetOverridable(System.String,System.String)">
+            <summary>
+            Sets the overriding for overlapping entities.
+            </summary>
+            <param name="sourceEntity">The source entity.</param>
+            <param name="targetEntity">The target entity that will be overridden.</param>
+        </member>
+        <member name="M:Syn.Bot.Oscova.Collections.RecognizerCollection.ExtractEntities(Syn.Bot.Oscova.Request)">
             <summary>
             Extracts known entities from <see cref="T:Syn.Bot.Oscova.Request"/>.
             </summary>
             <param name="request">The request.</param>
         </member>
-        <member name="E:Syn.Bot.Oscova.Collection.RecognizerCollection.EntityCreated">
+        <member name="E:Syn.Bot.Oscova.Collections.RecognizerCollection.EntityRecognized">
             <summary>
             Occurs when an entity is created by <see cref="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer"/>.
             </summary>
         </member>
-        <member name="E:Syn.Bot.Oscova.Collection.RecognizerCollection.CompositeEntityCreated">
+        <member name="E:Syn.Bot.Oscova.Collections.RecognizerCollection.EntitiesExtracted">
+            <summary>
+            Occurs when a collection of entities have been extracted from a user <see cref="T:Syn.Bot.Oscova.Request"/>.
+            </summary>
+        </member>
+        <member name="E:Syn.Bot.Oscova.Collections.RecognizerCollection.CompositeEntityCreated">
             <summary>
             Occurs when a composite entity is created.
             </summary>
         </member>
-        <member name="P:Syn.Bot.Oscova.Collection.Word.Frequency">
+        <member name="P:Syn.Bot.Oscova.Collections.Word.Frequency">
             <summary>
             Gets the word occurance frequency. 
             </summary>
@@ -590,11 +706,11 @@
         </member>
         <member name="M:Syn.Bot.Oscova.Context.Contains(System.String)">
             <summary>
-            Determines whether [contains] [the specified name].
+            Determines whether the specified context name exists.
             </summary>
             <param name="name">The name.</param>
             <returns>
-              <c>true</c> if [contains] [the specified name]; otherwise, <c>false</c>.
+              <c>true</c> if a context with the specified name exists; otherwise, <c>false</c>.
             </returns>
         </member>
         <member name="P:Syn.Bot.Oscova.Context.SharedEntities">
@@ -603,6 +719,14 @@
             </summary>
             <value>
             The shared entities.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Context.SharedData">
+            <summary>
+            Gets the shared data.
+            </summary>
+            <value>
+            The shared data.
             </value>
         </member>
         <member name="T:Syn.Bot.Oscova.ContextItem">
@@ -706,6 +830,14 @@
             The name.
             </value>
             <remarks>If the name is not overriden then type name is returned.</remarks>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Entities.Entity.Reference">
+            <summary>
+            Gets or sets the reference value.
+            </summary>
+            <value>
+            The reference.
+            </value>
         </member>
         <member name="T:Syn.Bot.Oscova.Entities.TextEntity">
             <summary>
@@ -843,6 +975,14 @@
             Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.IntentResult"/> class.
             </summary>
         </member>
+        <member name="P:Syn.Bot.Oscova.IntentResult.CallCount">
+            <summary>
+            Gets the intent call count.
+            </summary>
+            <value>
+            The call count.
+            </value>
+        </member>
         <member name="P:Syn.Bot.Oscova.IntentResult.Name">
             <summary>
             Gets the full name of this intent.
@@ -850,7 +990,6 @@
             <value>
             The full name.
             </value>
-            <remarks>Dialog name and Method name.</remarks>
         </member>
         <member name="P:Syn.Bot.Oscova.IntentResult.PromptMessage">
             <summary>
@@ -889,6 +1028,12 @@
             Represents an empty <see cref="T:Syn.Bot.Oscova.IntentResult"/>. This field is read-only.
             </summary>
         </member>
+        <member name="T:Syn.Bot.Oscova.Interfaces.IBakableRecognizer">
+            <summary>
+            Interface implemented by entity recognizers that contain bakable entries.
+            </summary>
+            <seealso cref="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer" />
+        </member>
         <member name="P:Syn.Bot.Oscova.Interfaces.IBakableRecognizer.IsBaked">
             <summary>
             Gets or sets a value indicating whether the entries are baked.
@@ -897,12 +1042,47 @@
               <c>true</c> if entries are baked; otherwise, <c>false</c>.
             </value>
         </member>
-        <member name="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer">
+        <member name="M:Syn.Bot.Oscova.Interfaces.IBakableRecognizer.Bake">
             <summary>
-            Interface for Oscova Entity Recognizers.
+            Bakes the entries of this recognizer.
             </summary>
         </member>
-        <member name="P:Syn.Bot.Oscova.Interfaces.IEntityRecognizer.Type">
+        <member name="T:Syn.Bot.Oscova.Interfaces.IEntity">
+            <summary>
+            Core Entity interface implemented by all entities.
+            </summary>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Interfaces.IEntity.Type">
+            <summary>
+            Gets or sets the entity type.
+            </summary>
+            <value>
+            The type.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Interfaces.IEntity.Value">
+            <summary>
+            Gets the matched value.
+            </summary>
+            <value>
+            The value.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Interfaces.IEntity.Index">
+            <summary>
+            Gets the match index.
+            </summary>
+            <value>
+            The index.
+            </value>
+            <remarks>Default value is <c>-1</c> which denotes that an index is not set.</remarks>
+        </member>
+        <member name="T:Syn.Bot.Oscova.Interfaces.IEntityRecognizer">
+            <summary>
+            Interface for Oscova Named Entity Recognizers.
+            </summary>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Interfaces.IEntityRecognizer.EntityType">
             <summary>
             Gets the <see cref="T:Syn.Bot.Oscova.Interfaces.IEntity"/> type parsed by this recognizer.
             </summary>
@@ -949,6 +1129,21 @@
             The type.
             </value>
         </member>
+        <member name="F:Syn.Bot.Oscova.Internal.IntentType.Declared">
+            <summary>
+            Denotes an Intent that is explicitly defined within a <see cref="T:Syn.Bot.Oscova.Dialog"/> class.
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Oscova.Internal.IntentType.Prompt">
+            <summary>
+            Denotes a Prompt Intent.
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Oscova.Internal.IntentType.Interactive">
+            <summary>
+            Denotes a quick reply intent that is generated from <see cref="P:Syn.Bot.Oscova.Dialog.QuickReplies"/>.
+            </summary>
+        </member>
         <member name="T:Syn.Bot.Oscova.Language">
             <summary>
             Represents the Human Language Model used for Natural Language Processing by <see cref="T:Syn.Bot.Oscova.OscovaBot"/>.
@@ -975,15 +1170,6 @@
             The WordNet engine.
             </value>
         </member>
-        <member name="P:Syn.Bot.Oscova.Language.WordSpacing">
-            <summary>
-            Gets or sets the word spacing.
-            </summary>
-            <value>
-            The word spacing.
-            </value>
-            <remarks>Number of characters separating each word.</remarks>
-        </member>
         <member name="P:Syn.Bot.Oscova.Language.Culture">
             <summary>
             Gets the culture.
@@ -1007,6 +1193,15 @@
             <value>
             The filters.
             </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Language.Normalizer">
+            <summary>
+            Gets or sets the normalizer.
+            </summary>
+            <value>
+            The normalizer.
+            </value>
+            <remarks>A <see cref="T:Syn.Bot.Oscova.Interfaces.INormalizer"/> applies added filters and pre-processes user requests and example expressions.</remarks>
         </member>
         <member name="P:Syn.Bot.Oscova.Language.Tokenizer">
             <summary>
@@ -1041,9 +1236,9 @@
             <value>
             The stop words.
             </value>
-            <remarks>Stop words are commonly used words which are filtered or ignored during text processing.</remarks>
+            <remarks>Stop words are commonly used words which are filtered out or ignored during text processing.</remarks>
         </member>
-        <member name="M:Syn.Bot.Oscova.Languages.English.EnglishLanguage.#ctor(Syn.Bot.Oscova.OscovaBot)">
+        <member name="M:Syn.Bot.Oscova.Languages.English.EnglishLanguage.#ctor">
             <summary>
             Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Languages.English.EnglishLanguage"/> class.
             </summary>
@@ -1058,19 +1253,6 @@
             <summary>
             Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Languages.English.EnglishTokenizer"/> class.
             </summary>
-        </member>
-        <member name="P:Syn.Bot.Oscova.Languages.English.EnglishTokenizer.TrimPunctuations">
-            <summary>
-            Determines if punctuation marks must be trimmed from tokens.
-            </summary>
-        </member>
-        <member name="P:Syn.Bot.Oscova.Languages.English.EnglishTokenizer.ReservedPatterns">
-            <summary>
-            Gets or sets the reserved patterns.
-            </summary>
-            <value>
-            The reserved patterns.
-            </value>
         </member>
         <member name="M:Syn.Bot.Oscova.Languages.English.EnglishTokenizer.Tokenize(System.String)">
             <summary>
@@ -1216,11 +1398,11 @@
             The trainer.
             </value>
         </member>
-        <member name="M:Syn.Bot.Oscova.OscovaBot.LoadDocument(System.Xml.Linq.XDocument)">
+        <member name="M:Syn.Bot.Oscova.OscovaBot.Import(System.Xml.Linq.XDocument)">
             <summary>
-            [EXPERIMENTAL] Loads Oscova quick replies from provided XML document.
+            [EXPERIMENTAL] Loads Oscova quick replies from provided SIML 2.0 document.
             </summary>
-            <param name="document">XML Document</param>
+            <param name="document">SIML 2.0 Document</param>
             <remarks>Warning: This feature is in its experimental stage.</remarks>
         </member>
         <member name="M:Syn.Bot.Oscova.OscovaBot.CreateUser(System.String)">
@@ -1255,14 +1437,14 @@
         </member>
         <member name="M:Syn.Bot.Oscova.OscovaBot.CreateRecognizer(System.String)">
             <summary>
-            Creates a basic entry based <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/>.
+            Creates a basic case-insensitive entry based <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/>.
             </summary>
             <param name="entityType">Type of the entity.</param>
             <remarks>Developer must fill in the <see cref="P:Syn.Bot.Oscova.Recognizers.EntryRecognizer.Entries"/> values manually.</remarks>
         </member>
         <member name="M:Syn.Bot.Oscova.OscovaBot.CreateRecognizer(System.String,System.Collections.Generic.IEnumerable{System.String})">
             <summary>
-            Creates an <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/> for list of terms.
+            Creates a case-insensitive <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/> for list of terms.
             </summary>
             <param name="entityType">Type of the entity.</param>
             <param name="valueList">The term list.</param>
@@ -1277,7 +1459,7 @@
         </member>
         <member name="M:Syn.Bot.Oscova.OscovaBot.CreateRecognizer``1(System.String)">
             <summary>
-            Creates an <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/> for enum values.
+            Creates a case-insensitive <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/> for enum values.
             </summary>
             <typeparam name="T">Enum Type.</typeparam>
             <param name="entityType">Type of the entity.</param>
@@ -1330,19 +1512,33 @@
             Use in-built NLP engine and Machine Learning algorithm.
             </summary>
         </member>
+        <member name="M:Syn.Bot.Oscova.Recognizers.EntityRecognizer.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of case-insensitive <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/> class.
+            </summary>
+            <param name="type">The entity type.</param>
+        </member>
+        <member name="M:Syn.Bot.Oscova.Recognizers.EntityRecognizer.#ctor(System.String,System.StringComparer)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Recognizers.EntityRecognizer"/> class.
+            </summary>
+            <param name="type">The entity type parsed by the recognizer.</param>
+            <param name="comparer"></param>
+        </member>
         <member name="T:Syn.Bot.Oscova.Recognizers.EntryRecognizer">
             <summary>
             Abstract Entries Recognizer.
             </summary>
             <seealso cref="T:Syn.Bot.Oscova.Interfaces.IBakableRecognizer" />
         </member>
-        <member name="M:Syn.Bot.Oscova.Recognizers.EntryRecognizer.#ctor(System.String)">
+        <member name="M:Syn.Bot.Oscova.Recognizers.EntryRecognizer.#ctor(System.String,System.StringComparer)">
             <summary>
             Initializes a new instance of the <see cref="T:Syn.Bot.Oscova.Recognizers.EntryRecognizer"/> class.
             </summary>
             <param name="type">The entity type parsed by the recognizer.</param>
+            <param name="comparer">The <see cref="T:System.StringComparer"/> to use.</param>
         </member>
-        <member name="P:Syn.Bot.Oscova.Recognizers.EntryRecognizer.Type">
+        <member name="P:Syn.Bot.Oscova.Recognizers.EntryRecognizer.EntityType">
             <summary>
             Gets the <see cref="P:Syn.Bot.Oscova.Interfaces.IEntity.Type"/> parsed by this parser.
             </summary>
@@ -1365,6 +1561,7 @@
             <value>
             The entries regex.
             </value>
+            <remarks>The value of this is initialized after the <see cref="M:Syn.Bot.Oscova.Recognizers.EntryRecognizer.Bake"/> method is called.</remarks>
         </member>
         <member name="M:Syn.Bot.Oscova.Recognizers.EntryRecognizer.CreateEntity(Syn.Bot.Oscova.MatchItem)">
             <summary>
@@ -1373,7 +1570,7 @@
             <param name="match">The match.</param>
             <remarks>
             This method is called after every successful match. 
-            May also return <c>null</c> to avoid adding to returned <see cref="T:Syn.Bot.Oscova.Collection.EntityCollection"/>.
+            May also return <c>null</c> to avoid adding to returned <see cref="T:Syn.Bot.Oscova.Collections.EntityCollection"/>.
             </remarks>
         </member>
         <member name="P:Syn.Bot.Oscova.Recognizers.EntryRecognizer.IsBaked">
@@ -1394,6 +1591,16 @@
             <summary>
             Bakes <see cref="P:Syn.Bot.Oscova.Recognizers.EntryRecognizer.Entries"/> and creates required regular expression.
             </summary>
+        </member>
+        <member name="M:Syn.Bot.Oscova.Recognizers.MultiEntryRecognizer.CreateEntity(Syn.Bot.Oscova.MatchItem)">
+            <summary>
+            Creates the entity.
+            </summary>
+            <param name="match">The match.</param>
+            <remarks>
+            This method is called after every successful match. 
+            May also return <c>null</c> to avoid adding to returned <see cref="T:Syn.Bot.Oscova.Collections.EntityCollection"/>.
+            </remarks>
         </member>
         <member name="T:Syn.Bot.Oscova.Request">
             <summary>
@@ -1491,6 +1698,22 @@
             </summary>
             <value>
             The user request.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Result.Bot">
+            <summary>
+            Gets the bot.
+            </summary>
+            <value>
+            The bot.
+            </value>
+        </member>
+        <member name="P:Syn.Bot.Oscova.Result.User">
+            <summary>
+            Gets the user.
+            </summary>
+            <value>
+            The user.
             </value>
         </member>
         <member name="P:Syn.Bot.Oscova.Result.SessionId">
@@ -1633,6 +1856,11 @@
             </value>
             <remarks>Default value is <c>0.8</c></remarks>
         </member>
+        <member name="P:Syn.Bot.Oscova.ScoreConfiguration.ResultCalibrator">
+            <summary>
+            Gets or sets the <see cref="T:Syn.Bot.Oscova.Interfaces.IResultCalibrator"/> that calibrates the order of intents in <see cref="T:Syn.Bot.Oscova.Collections.IntentCollection"/>.
+            </summary>
+        </member>
         <member name="T:Syn.Bot.Oscova.Sys">
             <summary>
             List of all known System Entity types.
@@ -1696,6 +1924,16 @@
         <member name="F:Syn.Bot.Oscova.Sys.MusicGenre">
             <summary>
             Genre of Music.
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Oscova.Sys.UnitInformation">
+            <summary>
+            Digital Information size with unit.
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Oscova.Sys.UnitInformationName">
+            <summary>
+            Unit of Digital Information.
             </summary>
         </member>
         <member name="F:Syn.Bot.Oscova.Sys.UnitLengthName">
@@ -1806,6 +2044,11 @@
         <member name="F:Syn.Bot.Oscova.Sys.NumberSequence">
             <summary>
             Number sequence.
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Oscova.Sys.Currency">
+            <summary>
+            Number and currency unit.
             </summary>
         </member>
         <member name="F:Syn.Bot.Oscova.Sys.CurrencyName">
@@ -2566,7 +2809,7 @@
         </member>
         <member name="P:Syn.Bot.Siml.ChatRequest.IsTask">
             <summary>
-            Gets or sets a value that indicates if this request was generated by a <see cref="!:BotTask"/>.
+            Gets or sets a value that indicates if this request was generated by a <see cref="T:Syn.Bot.Siml.LateTask"/>.
             </summary>
         </member>
         <member name="M:Syn.Bot.Siml.ChatRequest.#ctor(System.String,Syn.Bot.Siml.BotUser)">
@@ -3308,6 +3551,7 @@
             <param name="request">The request.</param>
             <param name="setName">Name of the set.</param>
             <param name="sentence">The sentence.</param>
+            <param name="looseSearch">Behave like search engine.</param>
             <returns></returns>
         </member>
         <member name="P:Syn.Bot.Siml.Collections.SetCollection.IsOverridable">
@@ -3682,21 +3926,6 @@
             Gets the <see cref="P:Syn.Bot.Siml.DelayBase.Stopwatch"/> used to check if the service can be executed.
             </summary>
         </member>
-        <member name="T:Syn.Bot.Siml.Events.MapChangedEventArgs">
-            <summary>
-            Provides data for the <see cref="E:Syn.Bot.Siml.Collections.MapCollection.CollectionChanged"/> event.
-            </summary>
-        </member>
-        <member name="P:Syn.Bot.Siml.Events.MapChangedEventArgs.MapItem">
-            <summary>
-            Gets the <see cref="T:Syn.Bot.Siml.Interfaces.IMapItem"/> affected by an Add, Remove, Replace action.
-            </summary>
-        </member>
-        <member name="P:Syn.Bot.Siml.Events.MapChangedEventArgs.Action">
-            <summary>
-            Gets the action that caused the event. 
-            </summary>
-        </member>
         <member name="T:Syn.Bot.Siml.Events.MapChangedAction">
             <summary>
             Describes the action that caused a <see cref="E:Syn.Bot.Siml.Collections.MapCollection.CollectionChanged"/> event. 
@@ -3720,6 +3949,21 @@
         <member name="F:Syn.Bot.Siml.Events.MapChangedAction.Replace">
             <summary>
             One or more items were replaced in the Map.
+            </summary>
+        </member>
+        <member name="T:Syn.Bot.Siml.Events.MapChangedEventArgs">
+            <summary>
+            Provides data for the <see cref="E:Syn.Bot.Siml.Collections.MapCollection.CollectionChanged"/> event.
+            </summary>
+        </member>
+        <member name="P:Syn.Bot.Siml.Events.MapChangedEventArgs.MapItem">
+            <summary>
+            Gets the <see cref="T:Syn.Bot.Siml.Interfaces.IMapItem"/> affected by an Add, Remove, Replace action.
+            </summary>
+        </member>
+        <member name="P:Syn.Bot.Siml.Events.MapChangedEventArgs.Action">
+            <summary>
+            Gets the action that caused the event. 
             </summary>
         </member>
         <member name="P:Syn.Bot.Siml.Events.MapCollectionChangedEventArgs.Map">
@@ -4005,33 +4249,23 @@
             Default cache management class for SynBot.
             </summary>
         </member>
-        <member name="F:Syn.Bot.Siml.Helper.Compressor.HashTable">
+        <member name="T:Syn.Bot.Siml.Helper.HelperUtility">
             <summary>
-            Hashtable, that can be allocated only once
+            A collection of helper methods.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Siml.Helper.Compressor.LzfCompress(System.Byte[],System.Byte[]@)">
+        <member name="M:Syn.Bot.Siml.Helper.HelperUtility.CompressString(System.String)">
             <summary>
-            Compresses the data using LibLZF algorithm
+            Compresses the string.
             </summary>
-            <param name="input">Reference to the data to compress</param>
-            <param name="output">Reference to a buffer which will contain the compressed data</param>
-            <returns>The size of the compressed archive in the output buffer</returns>
+            <param name="text">The text to compress.</param>
+            <returns></returns>
         </member>
-        <member name="M:Syn.Bot.Siml.Helper.Compressor.LzfDecompress(System.Byte[],System.Byte[]@)">
+        <member name="M:Syn.Bot.Siml.Helper.HelperUtility.DecompressString(System.String)">
             <summary>
-            Decompresses the data using LibLZF algorithm
+            Decompresses the string.
             </summary>
-            <param name="input">Reference to the data to decompress</param>
-            <param name="output">Reference to a buffer which will contain the decompressed data</param>
-            <returns>Returns decompressed size</returns>
-        </member>
-        <member name="M:Syn.Bot.Siml.Helper.StringComparisonUtility.SentenceSimilarity(System.String,System.String)">
-            <summary>
-            Default Similarity Algorithm based on advanced search techniques.
-            </summary>
-            <param name="source"></param>
-            <param name="target"></param>
+            <param name="compressedText">The compressed text.</param>
             <returns></returns>
         </member>
         <member name="P:Syn.Bot.Siml.Helper.Tag.KnownDeprecatedHtmlTags">
@@ -4067,25 +4301,6 @@
             <value>
             The known symbols.
             </value>
-        </member>
-        <member name="T:Syn.Bot.Siml.Helper.Utility">
-            <summary>
-            A collection of helper methods.
-            </summary>
-        </member>
-        <member name="M:Syn.Bot.Siml.Helper.Utility.CompressString(System.String)">
-            <summary>
-            Compresses the string.
-            </summary>
-            <param name="text">The text to compress.</param>
-            <returns></returns>
-        </member>
-        <member name="M:Syn.Bot.Siml.Helper.Utility.DecompressString(System.String)">
-            <summary>
-            Decompresses the string.
-            </summary>
-            <param name="compressedText">The compressed text.</param>
-            <returns></returns>
         </member>
         <member name="T:Syn.Bot.Siml.Interfaces.IAdapter">
             <summary>
@@ -4213,6 +4428,7 @@
             Gets a value indicating if this Set contains the specified item.
             </summary>
             <param name="value"></param>
+            <param name="parameter">Additional parameter.</param>
             <returns></returns>
         </member>
         <member name="P:Syn.Bot.Siml.Interfaces.ITokenizer.Type">
@@ -4260,12 +4476,6 @@
             Loads SIML Package into the Bot's Master <see cref="T:Syn.Bot.Siml.Graph.GraphNode"/>
             </summary>
             <param name="packageString">The SIML package string.</param>
-        </member>
-        <member name="M:Syn.Bot.Siml.PackageManager.LoadFromFile(System.String)">
-            <summary>
-            Loads an SIML Package from the file path specified.
-            </summary>
-            <param name="filePath">The path to the SIML Package file.</param>
         </member>
         <member name="M:Syn.Bot.Siml.PackageManager.ConvertToPackage(System.Collections.Generic.IEnumerable{System.Xml.Linq.XDocument})">
             <summary>
@@ -4414,26 +4624,6 @@
             <param name="chatResult">The chat result.</param>
             <param name="chatRequest">The chat request.</param>
         </member>
-        <member name="T:Syn.Bot.Siml.ScriptType">
-            <summary>
-            Provides enumerated values to represent a Script.
-            </summary>
-        </member>
-        <member name="F:Syn.Bot.Siml.ScriptType.JavaScript">
-            <summary>
-            Represents a JavaScript
-            </summary>
-        </member>
-        <member name="F:Syn.Bot.Siml.ScriptType.Lua">
-            <summary>
-            Represents a Lua script
-            </summary>
-        </member>
-        <member name="F:Syn.Bot.Siml.ScriptType.CSharp">
-            <summary>
-            Represents a C# code
-            </summary>
-        </member>
         <member name="T:Syn.Bot.Siml.ScriptManager">
             <summary>
             Provides functionality to interact with internal Scripting Engines.
@@ -4454,6 +4644,26 @@
         <member name="M:Syn.Bot.Siml.ScriptManager.FindAndExecute(System.Xml.Linq.XElement)">
             <summary>
             Finds the right script engine and executes the script. Used by <see cref="T:Syn.Bot.Siml.Graph.GraphNode"/>.
+            </summary>
+        </member>
+        <member name="T:Syn.Bot.Siml.ScriptType">
+            <summary>
+            Provides enumerated values to represent a Script.
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Siml.ScriptType.JavaScript">
+            <summary>
+            Represents a JavaScript
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Siml.ScriptType.Lua">
+            <summary>
+            Represents a Lua script
+            </summary>
+        </member>
+        <member name="F:Syn.Bot.Siml.ScriptType.CSharp">
+            <summary>
+            Represents a C# code
             </summary>
         </member>
         <member name="T:Syn.Bot.Siml.Search.ISearchEngine">
@@ -4482,12 +4692,12 @@
             <param name="searchItem">The search item.</param>
             <returns></returns>
         </member>
-        <member name="M:Syn.Bot.Siml.Search.SearchItem.#ctor(Syn.Bot.Siml.SimlBot,System.String)">
+        <member name="M:Syn.Bot.Siml.Search.SearchItem.#ctor(System.String)">
             <summary>
             Initializes a new instance of the <see cref="T:Syn.Bot.Siml.Search.SearchItem"/> class.
             </summary>
-            <param name="bot">The bot.</param>
             <param name="pattern">The pattern.</param>
+            
         </member>
         <member name="P:Syn.Bot.Siml.Search.SearchItem.Pattern">
             <summary>
@@ -4954,12 +5164,6 @@
             Loads SIML Package from String.
             </summary>
         </member>
-        <member name="M:Syn.Bot.Siml.SimlBot.LoadProject(System.String)">
-            <summary>
-            Loads the SIML Project into the Bot.
-            </summary>
-            <param name="filePath">The path to the SIML Project file.</param>
-        </member>
         <member name="M:Syn.Bot.Siml.SimlBot.AddSiml(System.String)">
             <summary>
             Loads SIML from string preserving all whitespace.
@@ -5149,28 +5353,6 @@
         <member name="M:Syn.Bot.Siml.UserSettings.#ctor">
             <summary>
             Initializes a new instance of the <see cref="T:Syn.Bot.Siml.UserSettings"/> class.
-            </summary>
-        </member>
-        <member name="M:Syn.Bot.Siml.Utilities.ProjectManager.LoadFromDirectory(System.String)">
-            <summary>
-            Loads all SIML files in the specified directory and its sub-directories.
-            </summary>
-            <param name="directoryPath">The directory path.</param>
-        </member>
-        <member name="M:Syn.Bot.Siml.Utilities.ProjectManager.LoadIntoBot(Syn.Bot.Siml.SimlBot)">
-            <summary>
-            Loads all the SIML documents in the specified Bot.
-            </summary>
-            <param name="bot">The bot.</param>
-        </member>
-        <member name="P:Syn.Bot.Siml.Utilities.ProjectManager.Name">
-            <summary>
-            Name of the Project. Can be the Name of the Bot as well.
-            </summary>
-        </member>
-        <member name="P:Syn.Bot.Siml.Utilities.ProjectManager.Personality">
-            <summary>
-            Type of Personality given to the Bot. Example ( Girl Friend, Virtual Agent, Customer Support )
             </summary>
         </member>
         <member name="F:Syn.Bot.Siml.VariableNames.UserMessage">
